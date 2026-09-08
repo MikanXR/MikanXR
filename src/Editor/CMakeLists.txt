@@ -764,6 +764,22 @@ set(OPENVR_DLL ${ROOT_DIR}/thirdparty/openvr/bin/win64/openvr_api.dll)
 function(copy_mikan_runtime_deps mikan_target)
   set_property(TARGET ${mikan_target} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "../../..")
 
+  # The app resolves resources/ against the working directory, so debugging from
+  # Visual Studio reads the source tree (the property above puts the working
+  # directory at the repo root) but running the exe from its own output folder
+  # needs a copy beside it. copy_directory_if_different keeps the per-build cost
+  # to the files that actually changed; older CMake gets the unconditional copy.
+  if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.26)
+    set(resources_copy_command copy_directory_if_different)
+  else()
+    set(resources_copy_command copy_directory)
+  endif()
+  add_custom_command(
+    TARGET ${mikan_target} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E ${resources_copy_command}
+    "${ROOT_DIR}/resources"
+    "$<TARGET_FILE_DIR:${mikan_target}>/resources")
+
   add_custom_command(
     TARGET ${mikan_target} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE_DIR:MikanClientAPI>/MikanClientAPI.dll $<TARGET_FILE_DIR:${mikan_target}>)

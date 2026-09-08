@@ -97,7 +97,7 @@ Kodgen's own post-build step still copies `libclang.dll` into `build/Bin/<Config
 
 - Library targets: one per `src/Libraries` subdirectory, `SHARED` except `MikanDMX` and `MikanOnnx`, which are `STATIC` (see [layout.md](./layout.md)).
 
-- Plugin DLLs: `MikanWMFVideo`, `MikanSteamVR`, `MikanGStreamerVideo` (GStreamer builds only), and `MikanARKitVideo` (GStreamer plus CUDA builds only). Each is a `SHARED` library compiled with `CXX_VISIBILITY_PRESET hidden` and its own `*_EXPORTS` define, then copied next to `Mikan.exe` by the `copy_mikan_runtime_deps` post-build step in `src/Editor/CMakeLists.txt` (along with SDL2, OpenCV, GLEW, Spout2, CEF, Lua, Refureku, easy_profiler, ONNX Runtime, and DirectML runtime DLLs).
+- Plugin DLLs: `MikanWMFVideo`, `MikanSteamVR`, `MikanGStreamerVideo` (GStreamer builds only), and `MikanARKitVideo` (GStreamer plus CUDA builds only). Each is a `SHARED` library compiled with `CXX_VISIBILITY_PRESET hidden` and its own `*_EXPORTS` define, then copied next to `Mikan.exe` by the `copy_mikan_runtime_deps` post-build step in `src/Editor/CMakeLists.txt` (along with SDL2, OpenCV, GLEW, Spout2, CEF, Lua, Refureku, easy_profiler, ONNX Runtime, and DirectML runtime DLLs). The same step syncs the repo's `resources` tree into the output folder, so an exe run from there resolves resources without the repo root as its working directory.
 
 - `MikanClientCodeGen`: bindings generator executable (`src/Programs/ClientCodeGen`).
 
