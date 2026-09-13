@@ -161,17 +161,9 @@ void ScriptObjectSystem::disposeScriptContext()
 
 ScriptComponentPtr ScriptObjectSystem::addNewScript()
 {
-	const std::filesystem::path scriptsDir= PathUtils::getProjectDirectory() / "scripts";
-	std::filesystem::create_directories(scriptsDir);
-
-	const std::filesystem::path scriptPath= PathUtils::makeTimestampedFilePath(scriptsDir, "script", ".lua");
-	std::ofstream(scriptPath).flush();
-
 	return addNewObjectByTypedDefinition(
-		[&scriptPath](ScriptDefinitionPtr definition)
+		[](ScriptDefinitionPtr definition)
 		{
-			definition->setComponentName(scriptPath.stem().string());
-			definition->setScriptPath(scriptPath);
 			return true;
 		});
 }
