@@ -14,6 +14,7 @@
 #include "PathUtils.h"
 #include "ProjectAssetCatalog.h"
 
+#include "Graphs/NodeGraphFileTypes.h"
 #include "MaterialCompiler/GlslShaderWriter.h"
 #include "MaterialCompiler/MaterialCompiler.h"
 #include "Nodes/Material/ShaderNodeUtils.h"
