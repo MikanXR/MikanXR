@@ -32,8 +32,7 @@ bool component_naming_test_default_name_format()
 
 	// No App runs under MikanCmd, so the resolver falls back to the built-in table
 	success&= resolveDefaultComponentName(CameraComponent::k_componentClassName, 7) == "CAM_7";
-	success&=
-		resolveDefaultComponentName(TrackingMountComponent::k_componentClassName, 7) == "TrackingMountComponent_7";
+	success&= resolveDefaultComponentName("UnlistedComponent", 7) == "UnlistedComponent_7";
 
 	UNIT_TEST_COMPLETE()
 }
@@ -58,7 +57,7 @@ bool component_naming_test_default_table()
 	}
 
 	success&= getDefaultComponentNamePrefix(RGBSpotLightComponent::k_componentClassName) == "LIGHT";
-	success&= getDefaultComponentNamePrefix(TrackingMountComponent::k_componentClassName).empty();
+	success&= getDefaultComponentNamePrefix(TrackingMountComponent::k_componentClassName) == "MOUNT";
 	success&= getDefaultComponentNamePrefix("NoSuchComponent").empty();
 
 	UNIT_TEST_COMPLETE()
@@ -70,7 +69,7 @@ bool component_naming_test_settings_store_only_departures()
 
 	auto settings= std::make_shared<AppSettingsConfig>("ComponentNamingTest");
 	const std::string& cameraClass= CameraComponent::k_componentClassName;
-	const std::string& mountClass= TrackingMountComponent::k_componentClassName;
+	const std::string mountClass= "UnlistedComponent";
 
 	// Untouched classes read their defaults and write nothing
 	success&= settings->getComponentNamePrefix(cameraClass) == "CAM";
@@ -106,6 +105,7 @@ bool component_naming_test_settings_round_trip()
 	const std::string& cameraClass= CameraComponent::k_componentClassName;
 	const std::string& lightClass= RGBSpotLightComponent::k_componentClassName;
 	const std::string& mountClass= TrackingMountComponent::k_componentClassName;
+	const std::string unlistedClass= "UnlistedComponent";
 
 	auto source= std::make_shared<AppSettingsConfig>("ComponentNamingTest");
 	source->setComponentNamePrefix(cameraClass, "CAMERA");
@@ -116,7 +116,8 @@ bool component_naming_test_settings_round_trip()
 	loaded->readFromJSON(json);
 	success&= loaded->getComponentNamePrefix(cameraClass) == "CAMERA";
 	success&= loaded->getComponentNamePrefix(lightClass).empty();
-	success&= loaded->getComponentNamePrefix(mountClass).empty();
+	success&= loaded->getComponentNamePrefix(mountClass) == "MOUNT";
+	success&= loaded->getComponentNamePrefix(unlistedClass).empty();
 	success&= loaded->getComponentNamePrefix(SceneComponent::k_componentClassName) == "SCN";
 
 	UNIT_TEST_COMPLETE()

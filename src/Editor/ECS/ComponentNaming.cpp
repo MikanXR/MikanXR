@@ -61,11 +61,11 @@ const std::vector<ComponentNamePrefixEntry>& getComponentNamePrefixEntries()
 		{QuadShapeComponent::k_componentClassName, "SHP"},
 		{BoxShapeComponent::k_componentClassName, "SHP"},
 		{ModelShapeComponent::k_componentClassName, "SHP"},
-		{AnchorComponent::k_componentClassName, ""},
-		{TrackingMountComponent::k_componentClassName, ""},
-		{VRDeviceComponent::k_componentClassName, ""},
-		{LightEnvironmentComponent::k_componentClassName, ""},
-		{DMXFixtureComponent::k_componentClassName, ""},
+		{AnchorComponent::k_componentClassName, "ANCHOR"},
+		{TrackingMountComponent::k_componentClassName, "MOUNT"},
+		{VRDeviceComponent::k_componentClassName, "VRDEVICE"},
+		{LightEnvironmentComponent::k_componentClassName, "ENV"},
+		{DMXFixtureComponent::k_componentClassName, "DMX"},
 	};
 
 	return k_entries;
