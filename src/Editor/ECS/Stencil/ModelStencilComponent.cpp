@@ -208,8 +208,10 @@ void ModelStencilComponent::customRender(IMkGraphicsContext* graphicsContext, Mi
 			drawTransformedAxes(graphicsContext, xform, 0.1f, 0.1f, 0.1f);
 			if (getObjectSystemOfType<EditorObjectSystem>()->getEditorSettings().bRenderComponentNames)
 			{
-				drawTextAtWorldPosition(graphicsContext, style, position, L"Stencil %d",
-										modelStencilDefinition->getComponentId());
+				wchar_t wszName[256];
+				StringUtils::convertMbsToWcs(modelStencilDefinition->getComponentName().c_str(), wszName,
+											 sizeof(wszName));
+				drawTextAtWorldPosition(graphicsContext, style, position, L"%s", wszName);
 			}
 		}
 	}

@@ -673,8 +673,9 @@ void RGBPixelGridComponent::customRender(IMkGraphicsContext* graphicsContext, Mi
 	if (getObjectSystemOfType<EditorObjectSystem>()->getEditorSettings().bRenderComponentNames)
 	{
 		TextStyle style= getDefaultTextStyle();
-		drawTextAtWorldPosition(graphicsContext, style, position, L"PixelGrid %d [%dx%d]", def->getComponentId(),
-								columns, rows);
+		wchar_t wszName[256];
+		StringUtils::convertMbsToWcs(def->getComponentName().c_str(), wszName, sizeof(wszName));
+		drawTextAtWorldPosition(graphicsContext, style, position, L"%s [%dx%d]", wszName, columns, rows);
 	}
 }
 

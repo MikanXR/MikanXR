@@ -1,5 +1,6 @@
 // -- includes -----
 #include "AppSettingsConfig.h"
+#include "ComponentNaming.h"
 
 // -- Profile Config
 const std::string AppSettingsConfig::k_lastProjectPathPropertyId= "lastProjectFilePath";
@@ -11,6 +12,7 @@ const std::string AppSettingsConfig::k_spoutLogEnabledPropertyId= "spoutLogEnabl
 const std::string AppSettingsConfig::k_editBundledResourcesPropertyId= "editBundledResources";
 const std::string AppSettingsConfig::k_arkitDebugChannelEnabledPropertyId= "arkitDebugChannelEnabled";
 const std::string AppSettingsConfig::k_arkitDebugChannelPortPropertyId= "arkitDebugChannelPort";
+const std::string AppSettingsConfig::k_componentNamePrefixesPropertyId= "componentNamePrefixes";
 
 AppSettingsConfig::AppSettingsConfig(const std::string& fnamebase)
 	: CommonConfig(fnamebase) {};
@@ -28,6 +30,7 @@ configuru::Config AppSettingsConfig::writeToJSON()
 	pt[k_editBundledResourcesPropertyId]= m_bEditBundledResources;
 	pt[k_arkitDebugChannelEnabledPropertyId]= m_bARKitDebugChannelEnabled;
 	pt[k_arkitDebugChannelPortPropertyId]= m_arkitDebugChannelPort;
+	writeStdMap(pt, k_componentNamePrefixesPropertyId, m_componentNamePrefixes);
 
 	return pt;
 }
@@ -45,6 +48,7 @@ void AppSettingsConfig::readFromJSON(const configuru::Config& pt)
 	m_bEditBundledResources= pt.get_or<bool>(k_editBundledResourcesPropertyId, m_bEditBundledResources);
 	m_bARKitDebugChannelEnabled= pt.get_or<bool>(k_arkitDebugChannelEnabledPropertyId, m_bARKitDebugChannelEnabled);
 	m_arkitDebugChannelPort= pt.get_or<int>(k_arkitDebugChannelPortPropertyId, m_arkitDebugChannelPort);
+	readStdMap(pt, k_componentNamePrefixesPropertyId, m_componentNamePrefixes);
 }
 
 void AppSettingsConfig::setLastProjectPath(const std::filesystem::path& projectPath)
@@ -126,4 +130,35 @@ void AppSettingsConfig::setARKitDebugChannelPort(int port)
 		m_arkitDebugChannelPort= port;
 		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_arkitDebugChannelPortPropertyId));
 	}
+}
+
+std::string AppSettingsConfig::getComponentNamePrefix(const std::string& componentClassName) const
+{
+	auto it= m_componentNamePrefixes.find(componentClassName);
+	if (it != m_componentNamePrefixes.end())
+		return it->second;
+
+	return getDefaultComponentNamePrefix(componentClassName);
+}
+
+void AppSettingsConfig::setComponentNamePrefix(const std::string& componentClassName, const std::string& prefix)
+{
+	if (getComponentNamePrefix(componentClassName) == prefix)
+		return;
+
+	if (prefix == getDefaultComponentNamePrefix(componentClassName))
+		m_componentNamePrefixes.erase(componentClassName);
+	else
+		m_componentNamePrefixes[componentClassName]= prefix;
+
+	notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_componentNamePrefixesPropertyId));
+}
+
+void AppSettingsConfig::resetComponentNamePrefixes()
+{
+	if (m_componentNamePrefixes.empty())
+		return;
+
+	m_componentNamePrefixes.clear();
+	notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_componentNamePrefixesPropertyId));
 }

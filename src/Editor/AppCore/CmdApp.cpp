@@ -8,6 +8,7 @@
 #include "AutomationProtocolTests.h"
 #include "AutomationVariantTextTests.h"
 #include "ClientApiPropertySchemaTests.h"
+#include "ComponentNamingTests.h"
 #include "DepthMeshGeneratorTests.h"
 #include "DMXPresetPersistenceTests.h"
 #include "DMXSequenceTests.h"
@@ -45,6 +46,7 @@ bool run_all_editor_unit_tests()
 	success&= run_automation_protocol_tests();
 	success&= run_automation_variant_text_tests();
 	success&= run_client_api_property_schema_tests();
+	success&= run_component_naming_tests();
 	success&= run_depth_mesh_generator_unit_tests();
 	success&= run_dmx_preset_persistence_tests();
 	success&= run_dmx_sequence_tests();

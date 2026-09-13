@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 905,
-		"translatedCount": 905,
-		"reviewedCount": 905
+		"stringCount": 908,
+		"translatedCount": 908,
+		"reviewedCount": 908
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -699,6 +699,7 @@
 		"znearZfarFmt": "znear=%.3f  zfar=%.1f m"
 	},
 	"projectSettings": {
+		"componentNamingTooltip": "A new component is named <prefix>_<id>, for example CAM_1096.\nAn empty prefix names it by its class instead, for example CameraComponent_1096.",
 		"debugCameraAlignment": "Debug Camera Alignment",
 		"debugCameraAlignmentTooltip": "Overlays the MR alignment chain: axes at stage origin / puck / aperture,\nand a window with live vs calibrated intrinsics, resolution, and offsets.",
 		"debugRenderInCompositor": "Debug Render in Compositor",
@@ -717,6 +718,7 @@
 		"renderModelStencils": "Render Model Stencils",
 		"renderOrigin": "Render Origin",
 		"renderQuadStencils": "Render Quad Stencils",
+		"resetComponentNamePrefixes": "Reset to Defaults",
 		"rulerSnapToGridByDefault": "Ruler Snap To Grid By Default",
 		"rulerSnapTooltip": "Hold Shift while measuring to invert snapping.\nOff (default): hold Shift to snap, release to move freely.",
 		"rulerUnitCentimeters": "Centimeters",
@@ -725,6 +727,7 @@
 		"rulerUnits": "Ruler Units",
 		"scriptEditorCommand": "Script Editor Command",
 		"sectionAssets": "Assets",
+		"sectionComponentNaming": "Component Naming",
 		"sectionDMX": "DMX",
 		"sectionLocalization": "Localization",
 		"sectionLogging": "Logging",

@@ -27,6 +27,7 @@
 #include "PathUtils.h"
 #include "SelectionComponent.h"
 #include "StaticMeshComponent.h"
+#include "StringUtils.h"
 #include "TextStyle.h"
 
 #include <cmath>
@@ -543,7 +544,9 @@ void RGBSpotLightComponent::customRender(IMkGraphicsContext* graphicsContext, Mi
 		if (getObjectSystemOfType<EditorObjectSystem>()->getEditorSettings().bRenderComponentNames)
 		{
 			TextStyle style= getDefaultTextStyle();
-			drawTextAtWorldPosition(graphicsContext, style, position, L"Light %d [%d,%d,%d]", def->getComponentId(),
+			wchar_t wszName[256];
+			StringUtils::convertMbsToWcs(def->getComponentName().c_str(), wszName, sizeof(wszName));
+			drawTextAtWorldPosition(graphicsContext, style, position, L"%s [%d,%d,%d]", wszName,
 									static_cast<int>(getRed()), static_cast<int>(getGreen()),
 									static_cast<int>(getBlue()));
 		}

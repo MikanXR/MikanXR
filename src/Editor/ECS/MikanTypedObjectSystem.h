@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ComponentNaming.h"
 #include "MikanObjectSystem.h"
 #include "MikanTypedComponentPool.h"
 #include "MikanTypedObjectSystemDefinition.h"
@@ -239,8 +240,8 @@ public:
 
 		// Allocate new component definition (doesn't add to pool yet)
 		ComponentDefinitionPtr componentDefinition= systemDefinition->allocateNewDefinition();
-		componentDefinition->setComponentName(TComponent::k_componentClassName
-											  + std::to_string(componentDefinition->getComponentId()));
+		componentDefinition->setComponentName(
+			resolveDefaultComponentName(TComponent::k_componentClassName, componentDefinition->getComponentId()));
 
 		// Allow caller to initialize definition before creating object
 		if (definitionInit)

@@ -151,7 +151,11 @@ void BoxStencilComponent::customRender(IMkGraphicsContext* graphicsContext, Mika
 		if (!selectionComponent || !selectionComponent->getIsSelected())
 			drawTransformedAxes(graphicsContext, xform, 0.1f, 0.1f, 0.1f);
 		if (getObjectSystemOfType<EditorObjectSystem>()->getEditorSettings().bRenderComponentNames)
-			drawTextAtWorldPosition(graphicsContext, style, position, L"Stencil %d", boxDefinition->getComponentId());
+		{
+			wchar_t wszName[256];
+			StringUtils::convertMbsToWcs(boxDefinition->getComponentName().c_str(), wszName, sizeof(wszName));
+			drawTextAtWorldPosition(graphicsContext, style, position, L"%s", wszName);
+		}
 	}
 }
 

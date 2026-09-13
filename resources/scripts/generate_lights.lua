@@ -19,7 +19,7 @@ ScriptContext.registerVariable("start_universe_id", 1)
 ScriptContext.registerVariable("start_channel_index", 1)
 ScriptContext.registerVariable("parent_stage", -1)
 
-local LIGHT_PREFIX = "gen_light_"
+local LIGHT_PREFIX = "LIGHT_gen_"
 local CHANNELS_PER_LIGHT = 3
 
 local function resolve_stage()

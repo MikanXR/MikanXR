@@ -2,6 +2,7 @@
 #include "App.h"
 #include "AppSettingsConfig.h"
 #include "AppStage.h"
+#include "ComponentNaming.h"
 #include "EditorObjectSystem.h"
 #include "IEditorWindow.h"
 #include "ProjectAssetCatalog.h"
@@ -310,6 +311,36 @@ void GuiPanel_ProjectSettings::onGui()
 		{
 			const std::string newCmd(editorBuf);
 			addDeferredGuiEvent([appSettings, newCmd]() { appSettings->setScriptEditorCommand(newCmd); });
+		}
+	}
+
+	// -- Component Naming ----
+	if (MkGui::drawPropertySheetHeader(m_defaultGuiStyle, locText("projectSettings.sectionComponentNaming")))
+	{
+		// One prefix per creatable component class. The class name is the row
+		// label as well as the key in AppSettingsConfig.json, so it reads raw.
+		auto appSettings= App::getInstance()->getAppSettings();
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("%s", locText("projectSettings.componentNamingTooltip"));
+		}
+
+		for (const ComponentNamePrefixEntry& entry : getComponentNamePrefixEntries())
+		{
+			const std::string& className= entry.componentClassName;
+			char prefixBuf[32];
+			strncpy_s(prefixBuf, appSettings->getComponentNamePrefix(className).c_str(), sizeof(prefixBuf) - 1);
+			if (ImGui::InputText(className.c_str(), prefixBuf, sizeof(prefixBuf)))
+			{
+				const std::string newPrefix(prefixBuf);
+				addDeferredGuiEvent([appSettings, className, newPrefix]()
+									{ appSettings->setComponentNamePrefix(className, newPrefix); });
+			}
+		}
+
+		if (ImGui::Button(locLabel("projectSettings.resetComponentNamePrefixes")))
+		{
+			addDeferredGuiEvent([appSettings]() { appSettings->resetComponentNamePrefixes(); });
 		}
 	}
 

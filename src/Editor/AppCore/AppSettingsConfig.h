@@ -4,6 +4,8 @@
 #include "CommonConfig.h"
 
 #include <filesystem>
+#include <map>
+#include <string>
 
 // -- definitions -----
 class AppSettingsConfig : public CommonConfig
@@ -51,6 +53,13 @@ public:
 	inline int getARKitDebugChannelPort() const { return m_arkitDebugChannelPort; }
 	void setARKitDebugChannelPort(int port);
 
+	// The prefix a new component of the class is named with ("CAM" gives
+	// "CAM_1096"). An empty prefix names it by its class instead.
+	static const std::string k_componentNamePrefixesPropertyId;
+	std::string getComponentNamePrefix(const std::string& componentClassName) const;
+	void setComponentNamePrefix(const std::string& componentClassName, const std::string& prefix);
+	void resetComponentNamePrefixes();
+
 protected:
 	std::filesystem::path m_lastProjectPath;
 	std::string m_appLanguage;
@@ -65,4 +74,8 @@ protected:
 	// automation channel, so it stays off until asked for
 	bool m_bARKitDebugChannelEnabled= false;
 	int m_arkitDebugChannelPort= 21121;
+	// Only the prefixes that differ from the built-in defaults, keyed by
+	// component class name. An entry holding "" is a deliberate class-name
+	// fallback, which is not the same as no entry.
+	std::map<std::string, std::string> m_componentNamePrefixes;
 };

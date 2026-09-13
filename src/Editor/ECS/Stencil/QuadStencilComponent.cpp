@@ -159,7 +159,11 @@ void QuadStencilComponent::customRender(IMkGraphicsContext* graphicsContext, Mik
 		if (!selectionComponent || !selectionComponent->getIsSelected())
 			drawTransformedAxes(graphicsContext, xform, 0.1f, 0.1f, 0.1f);
 		if (getObjectSystemOfType<EditorObjectSystem>()->getEditorSettings().bRenderComponentNames)
-			drawTextAtWorldPosition(graphicsContext, style, position, L"Stencil %d", quadDefinition->getComponentId());
+		{
+			wchar_t wszName[256];
+			StringUtils::convertMbsToWcs(quadDefinition->getComponentName().c_str(), wszName, sizeof(wszName));
+			drawTextAtWorldPosition(graphicsContext, style, position, L"%s", wszName);
+		}
 	}
 }
 

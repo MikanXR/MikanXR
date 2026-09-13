@@ -3281,6 +3281,13 @@ msgid "znear=%.3f  zfar=%.1f m"
 msgstr ""
 
 #. Section: projectSettings
+msgctxt "projectSettings.componentNamingTooltip"
+msgid ""
+"A new component is named <prefix>_<id>, for example CAM_1096.\n"
+"An empty prefix names it by its class instead, for example CameraComponent_1096."
+msgstr ""
+
+#. Section: projectSettings
 msgctxt "projectSettings.debugCameraAlignment"
 msgid "Debug Camera Alignment"
 msgstr ""
@@ -3378,6 +3385,11 @@ msgid "Render Quad Stencils"
 msgstr ""
 
 #. Section: projectSettings
+msgctxt "projectSettings.resetComponentNamePrefixes"
+msgid "Reset to Defaults"
+msgstr ""
+
+#. Section: projectSettings
 msgctxt "projectSettings.rulerSnapToGridByDefault"
 msgid "Ruler Snap To Grid By Default"
 msgstr ""
@@ -3417,6 +3429,11 @@ msgstr ""
 #. Section: projectSettings
 msgctxt "projectSettings.sectionAssets"
 msgid "Assets"
+msgstr ""
+
+#. Section: projectSettings
+msgctxt "projectSettings.sectionComponentNaming"
+msgid "Component Naming"
 msgstr ""
 
 #. Section: projectSettings

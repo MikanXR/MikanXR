@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 905,
+		"stringCount": 908,
 		"translatedCount": 902,
 		"reviewedCount": 0
 	},
@@ -699,6 +699,7 @@
 		"znearZfarFmt": "znear=%.3f  zfar=%.1f m"
 	},
 	"projectSettings": {
+		"componentNamingTooltip": "A new component is named <prefix>_<id>, for example CAM_1096.\nAn empty prefix names it by its class instead, for example CameraComponent_1096.",
 		"debugCameraAlignment": "カメラアライメントのデバッグ",
 		"debugCameraAlignmentTooltip": "MRアライメントチェーンを表示します: ステージ原点 / パック / アパーチャの軸、\nおよびライブと校正済みの内部パラメータ、解像度、オフセットを示すウィンドウ。",
 		"debugRenderInCompositor": "コンポジターでデバッグ表示",
@@ -717,6 +718,7 @@
 		"renderModelStencils": "モデルステンシルを表示",
 		"renderOrigin": "原点を表示",
 		"renderQuadStencils": "クアッドステンシルを表示",
+		"resetComponentNamePrefixes": "Reset to Defaults",
 		"rulerSnapToGridByDefault": "既定でルーラーをグリッドにスナップ",
 		"rulerSnapTooltip": "計測中にShiftを押すとスナップを反転します。\nオフ(既定): Shiftを押している間だけスナップし、離すと自由に動きます。",
 		"rulerUnitCentimeters": "センチメートル",
@@ -725,6 +727,7 @@
 		"rulerUnits": "ルーラー単位",
 		"scriptEditorCommand": "スクリプトエディタコマンド",
 		"sectionAssets": "アセット",
+		"sectionComponentNaming": "Component Naming",
 		"sectionDMX": "DMX",
 		"sectionLocalization": "ローカライズ",
 		"sectionLogging": "ログ",
