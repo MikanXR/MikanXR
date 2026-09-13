@@ -11,6 +11,11 @@ public:
 	virtual std::string getClassName() const override { return k_assetClassName; }
 	virtual std::string getAssetTypeName() const override { return "Script"; }
 	virtual const char* editorGetIcon() const override { return ICON_FK_FILE_CODE_O; }
+
+	// Scripts open in the external editor from the app settings rather than a
+	// window of their own. A bundled script is copied into the project first.
+	virtual bool editorCanOpen() const override { return !isEmpty(); }
+	virtual void editorOpen() override;
 };
 
 class ScriptAssetReferenceFactory : public TypedAssetReferenceFactory<ScriptAssetReference, AssetReferenceConfig>
