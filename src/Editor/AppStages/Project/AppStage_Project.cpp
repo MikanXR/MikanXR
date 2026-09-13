@@ -121,10 +121,6 @@ void AppStage_Project::enter()
 	m_spotLightSystem= objectSystemManager->getSystemOfType<RGBSpotLightSystem>();
 
 	// Stage view collision set
-	m_stageObjectSystemFilter.insert(m_editorSystem.lock().get());
-	m_stageObjectSystemFilter.insert(m_cameraObjectSystem.lock().get());
-	m_stageObjectSystemFilter.insert(m_pixelGridLightSystem.lock().get());
-	m_stageObjectSystemFilter.insert(m_spotLightSystem.lock().get());
 
 	// Scene view collision set: the stage set plus the scene actors
 	m_sceneObjectSystemFilter.insert(m_anchorObjectSystem.lock().get());
@@ -134,7 +130,10 @@ void AppStage_Project::enter()
 	m_sceneObjectSystemFilter.insert(m_quadShapeSystem.lock().get());
 	m_sceneObjectSystemFilter.insert(m_boxShapeSystem.lock().get());
 	m_sceneObjectSystemFilter.insert(m_modelShapeSystem.lock().get());
-	m_sceneObjectSystemFilter.insert(m_stageObjectSystemFilter.begin(), m_stageObjectSystemFilter.end());
+	m_sceneObjectSystemFilter.insert(m_editorSystem.lock().get());
+	m_sceneObjectSystemFilter.insert(m_cameraObjectSystem.lock().get());
+	m_sceneObjectSystemFilter.insert(m_pixelGridLightSystem.lock().get());
+	m_sceneObjectSystemFilter.insert(m_spotLightSystem.lock().get());
 
 	// Tracking view collision set is empty
 
@@ -231,13 +230,13 @@ void AppStage_Project::update(float deltaSeconds)
 	{
 		switch (m_projectOutlinerPanel->getSelectedNodeKind())
 		{
-		case eOutlinerNodeKind::folderMarkers:
-		case eOutlinerNodeKind::folderTrackingVolumes:
 		case eOutlinerNodeKind::trackingVolume:
-		case eOutlinerNodeKind::trackingMount:
-		case eOutlinerNodeKind::marker:
 			setViewMode(eProjectViewMode::tracking);
 			break;
+		case eOutlinerNodeKind::trackingMount:
+		case eOutlinerNodeKind::marker:
+		case eOutlinerNodeKind::folderMarkers:
+		case eOutlinerNodeKind::folderTrackingVolumes:
 		case eOutlinerNodeKind::folderSources:
 		case eOutlinerNodeKind::folderCameras:
 		case eOutlinerNodeKind::folderLights:
@@ -246,8 +245,6 @@ void AppStage_Project::update(float deltaSeconds)
 		case eOutlinerNodeKind::stageLight:
 		case eOutlinerNodeKind::videoSource:
 		case eOutlinerNodeKind::textureSource:
-			setViewMode(eProjectViewMode::stage);
-			break;
 		case eOutlinerNodeKind::folderScripts:
 		case eOutlinerNodeKind::script:
 		default:
@@ -524,9 +521,6 @@ void AppStage_Project::onViewModeChanged()
 	case eProjectViewMode::scene:
 		m_editorSystem.lock()->setObjectSystemSelectionFilter(m_sceneObjectSystemFilter);
 		break;
-	case eProjectViewMode::stage:
-		m_editorSystem.lock()->setObjectSystemSelectionFilter(m_stageObjectSystemFilter);
-		break;
 	default:
 		m_editorSystem.lock()->setObjectSystemSelectionFilter(m_emptyObjectSystemFilter);
 	}
@@ -678,9 +672,6 @@ void AppStage_Project::render(IMkViewportPtr targetViewport)
 	case eProjectViewMode::scene:
 		renderProjectScene(graphicsContext, viewportCamera, deferredShapeGraphs);
 		break;
-	case eProjectViewMode::stage:
-		renderProjectStage(graphicsContext, viewportCamera);
-		break;
 	case eProjectViewMode::tracking:
 		renderProjectTracking(graphicsContext, viewportCamera);
 		break;
@@ -721,7 +712,7 @@ void AppStage_Project::render(IMkViewportPtr targetViewport)
 	// Translucent spot light cones last: they write no depth, so any opaque
 	// geometry drawn after them (the environment probe sphere encloses the
 	// whole scene in perspective) would paint over them
-	if (m_viewMode == eProjectViewMode::scene || m_viewMode == eProjectViewMode::stage)
+	if (m_viewMode == eProjectViewMode::scene)
 	{
 		if (auto spotLightSystem= m_spotLightSystem.lock())
 			spotLightSystem->renderConeVolumes(graphicsContext, viewportCamera);
@@ -733,7 +724,7 @@ void AppStage_Project::render(IMkViewportPtr targetViewport)
 	// in either).
 	if (auto editorSystem= m_editorSystem.lock())
 	{
-		if (m_viewMode == eProjectViewMode::scene || m_viewMode == eProjectViewMode::stage)
+		if (m_viewMode == eProjectViewMode::scene)
 		{
 			editorSystem->renderGizmo(graphicsContext, viewportCamera);
 		}

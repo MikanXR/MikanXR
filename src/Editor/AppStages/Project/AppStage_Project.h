@@ -24,8 +24,7 @@ enum class eProjectViewMode : int
 	INVALID= -1,
 
 	scene= 0,
-	stage= 1,
-	tracking= 2,
+	tracking= 1,
 
 	COUNT
 };
@@ -125,7 +124,6 @@ protected:
 
 	// Collision Systems Filters
 	std::set<const MikanObjectSystem*> m_sceneObjectSystemFilter;
-	std::set<const MikanObjectSystem*> m_stageObjectSystemFilter;
 	std::set<const MikanObjectSystem*> m_emptyObjectSystemFilter;
 
 	// Shared context for GuiPanel component/system panels
