@@ -2138,6 +2138,11 @@ msgid "Details"
 msgstr "詳細"
 
 #. Section: nodeEditor
+msgctxt "nodeEditor.disconnect"
+msgid "Disconnect"
+msgstr ""
+
+#. Section: nodeEditor
 #, fuzzy
 msgctxt "nodeEditor.editMenu"
 msgid "Edit"

@@ -397,6 +397,7 @@ void NodeEditorWindow::renderMainFrame()
 	// Interaction results gathered inside the canvas scope but acted on after
 	// it closes: popups and graph mutations stay out of the canvas transform
 	bool bOpenNodeMenu= false;
+	bool bOpenPinMenu= false;
 	bool bOpenLinkMenu= false;
 	bool bOpenBackgroundMenu= false;
 	struct PendingLinkCreate
@@ -476,9 +477,36 @@ void NodeEditorWindow::renderMainFrame()
 		// Calling it unconditionally therefore fires on every frame that is not
 		// mid-drag, which is nearly all of them. It went unnoticed because
 		// IM_ASSERT is assert(), so only a debug build trips it.
+		// Ctrl+press on a connected pin picks up that link's end: the editor is
+		// told to drag from the far pin, the link hides while carried, and the
+		// graph changes only on release (rewire on a pin, delete on the canvas).
+		// One link at a time: an input holds at most one, an output qualifies
+		// only while it holds exactly one.
+		if (nodeGraph && m_editorState.detachedLinkId == -1 && ImGui::GetIO().KeyCtrl
+			&& ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		{
+			const ed::PinId hoveredPinId= ed::GetHoveredPin();
+			NodePinPtr heldPin= hoveredPinId.Get() != 0
+									? nodeGraph->getPinById(MkCanvas::fromCanvasId((int)hoveredPinId.Get()))
+									: NodePinPtr();
+			if (heldPin && heldPin->getConnectedLinks().size() == 1)
+			{
+				NodeLinkPtr heldLink= heldPin->getConnectedLinks()[0];
+				NodePinPtr anchorPin= heldLink->getConnectedPin(heldPin);
+				if (anchorPin)
+				{
+					ed::SetLinkDragAnchor(MkCanvas::toCanvasId(anchorPin->getId()));
+					m_editorState.detachedLinkId= heldLink->getId();
+					m_detachHeldPinId= heldPin->getId();
+					m_detachAnchorPinId= anchorPin->getId();
+				}
+			}
+		}
+
 		const bool bCreateStarted= ed::BeginCreate();
 		if (bCreateStarted)
 		{
+			const bool bDetachInFlight= m_editorState.detachedLinkId != -1;
 			ed::PinId startPinId, endPinId;
 			ed::PinId hangPinId;
 			if (ed::QueryNewLink(&startPinId, &endPinId))
@@ -489,11 +517,26 @@ void NodeEditorWindow::renderMainFrame()
 
 				NodePinPtr startPin= nodeGraph ? nodeGraph->getPinById(startGraphPinId) : NodePinPtr();
 				NodePinPtr endPin= nodeGraph ? nodeGraph->getPinById(endGraphPinId) : NodePinPtr();
-				if (startPin && endPin && startPin->canPinsBeConnected(endPin))
+				if (bDetachInFlight && endGraphPinId == m_detachHeldPinId)
+				{
+					// Dropped back where it was picked up: the old link stays
+					if (ed::AcceptNewItem())
+					{
+						clearLinkDetach();
+					}
+				}
+				else if (startPin && endPin && startPin->canPinsBeConnected(endPin))
 				{
 					const ImVec4 previewColor= ImGui::ColorConvertU32ToFloat4(startPin->editorGetLinkStyleColor());
 					if (ed::AcceptNewItem(previewColor, 3.f))
 					{
+						// A rewire deletes the carried link and creates the new one
+						// in the same apply pass, so undo sees a single step
+						if (bDetachInFlight)
+						{
+							pendingLinkDeletes.push_back(m_editorState.detachedLinkId);
+							clearLinkDetach();
+						}
 						pendingLinkCreates.push_back({startGraphPinId, endGraphPinId});
 					}
 				}
@@ -506,7 +549,16 @@ void NodeEditorWindow::renderMainFrame()
 			{
 				m_editorState.startedLinkPinId= MkCanvas::fromCanvasId((int)hangPinId.Get());
 
-				if (ed::AcceptNewItem())
+				if (bDetachInFlight)
+				{
+					// A carried link released over the canvas is dropped, not re-homed
+					if (ed::AcceptNewItem())
+					{
+						pendingLinkDeletes.push_back(m_editorState.detachedLinkId);
+						clearLinkDetach();
+					}
+				}
+				else if (ed::AcceptNewItem())
 				{
 					// Link dropped on empty canvas: offer node creation there
 					m_editorState.bLinkHanged= true;
@@ -518,6 +570,13 @@ void NodeEditorWindow::renderMainFrame()
 		else if (!m_editorState.bLinkHanged)
 		{
 			m_editorState.startedLinkPinId= -1;
+
+			// A Ctrl+press that never became a drag, or a drag the editor
+			// cancelled, leaves the link as it was
+			if (m_editorState.detachedLinkId != -1 && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
+			{
+				clearLinkDetach();
+			}
 		}
 
 		if (bCreateStarted)
@@ -587,6 +646,7 @@ void NodeEditorWindow::renderMainFrame()
 
 		// Context menu queries; popups open after the canvas closes
 		ed::NodeId contextNodeId;
+		ed::PinId contextPinId;
 		ed::LinkId contextLinkId;
 		if (ed::ShowNodeContextMenu(&contextNodeId))
 		{
@@ -594,6 +654,11 @@ void NodeEditorWindow::renderMainFrame()
 			m_objectSelection.setObjectId(0, MkCanvas::fromCanvasId((int)contextNodeId.Get()));
 			ed::SelectNode(contextNodeId);
 			bOpenNodeMenu= true;
+		}
+		else if (ed::ShowPinContextMenu(&contextPinId))
+		{
+			m_contextPinId= MkCanvas::fromCanvasId((int)contextPinId.Get());
+			bOpenPinMenu= true;
 		}
 		else if (ed::ShowLinkContextMenu(&contextLinkId))
 		{
@@ -624,17 +689,19 @@ void NodeEditorWindow::renderMainFrame()
 	// the drop target must attach before any other item renders
 	handleMainFrameDragDrop(m_editorState);
 
-	// Apply the gathered graph mutations
+	// Apply the gathered graph mutations. Deletes go first: a rewire that lands
+	// on an input pin would otherwise have the input's own single-link rule
+	// delete the carried link before the queued delete reaches it.
 	if (nodeGraph)
 	{
+		for (t_node_link_id linkId : pendingLinkDeletes)
+		{
+			nodeGraph->deleteLinkById(linkId);
+		}
 		for (const PendingLinkCreate& linkCreate : pendingLinkCreates)
 		{
 			m_editorState.startedLinkPinId= -1;
 			nodeGraph->createLink(linkCreate.startPinId, linkCreate.endPinId);
-		}
-		for (t_node_link_id linkId : pendingLinkDeletes)
-		{
-			nodeGraph->deleteLinkById(linkId);
 		}
 		for (t_node_id nodeId : pendingNodeDeletes)
 		{
@@ -649,6 +716,10 @@ void NodeEditorWindow::renderMainFrame()
 	if (bOpenNodeMenu)
 	{
 		ImGui::OpenPopup("editor_context_menu_node");
+	}
+	else if (bOpenPinMenu)
+	{
+		ImGui::OpenPopup("editor_context_menu_pin");
 	}
 	else if (bOpenLinkMenu)
 	{
@@ -740,34 +811,67 @@ void NodeEditorWindow::renderMainFrameContextMenu(const NodeEditorState& editorS
 		}
 		else
 		{
-			MkGuiScopedPopup linkPopup("editor_context_menu_link");
-			if (linkPopup)
+			MkGuiScopedPopup pinPopup("editor_context_menu_pin");
+			if (pinPopup)
 			{
-				if (m_objectSelection.getObjectIdType() == GraphObjectIdType::LINK
-					&& ImGui::MenuItem(locLabel("nodeEditor.delete"), ICON_FK_TRASH, "DELETE"))
+				NodePinPtr pin= getNodeGraph() ? getNodeGraph()->getPinById(m_contextPinId) : NodePinPtr();
+				if (pin)
 				{
-					getNodeGraph()->deleteLinkById(m_objectSelection.getObjectId(0));
+					// Disconnect drops every link on the pin; the pin kind may add its own items after it
+					if (ImGui::MenuItem(locLabel("nodeEditor.disconnect"), ICON_FK_CHAIN_BROKEN, false,
+										pin->hasAnyConnectedLinks()))
+					{
+						const std::vector<NodeLinkPtr> links= pin->getConnectedLinks();
+						for (const NodeLinkPtr& link : links)
+						{
+							getNodeGraph()->deleteLinkById(link->getId());
+						}
+					}
+					pin->editorRenderContextMenu(editorState);
+				}
+				else
+				{
+					ImGui::CloseCurrentPopup();
 				}
 			}
 			else
 			{
-				MkGuiScopedPopup nodesPopup("editor_context_menu_nodes");
-				if (nodesPopup)
+				MkGuiScopedPopup linkPopup("editor_context_menu_link");
+				if (linkPopup)
 				{
-					NodeGraphPtr nodeGraph= getNodeGraph();
-					if (nodeGraph)
+					if (m_objectSelection.getObjectIdType() == GraphObjectIdType::LINK
+						&& ImGui::MenuItem(locLabel("nodeEditor.delete"), ICON_FK_TRASH, "DELETE"))
 					{
-						renderCreateNodeMenu(editorState);
+						getNodeGraph()->deleteLinkById(m_objectSelection.getObjectId(0));
 					}
 				}
-				else if (m_editorState.bLinkHanged)
+				else
 				{
-					m_editorState.bLinkHanged= false;
-					m_editorState.startedLinkPinId= -1;
+					MkGuiScopedPopup nodesPopup("editor_context_menu_nodes");
+					if (nodesPopup)
+					{
+						NodeGraphPtr nodeGraph= getNodeGraph();
+						if (nodeGraph)
+						{
+							renderCreateNodeMenu(editorState);
+						}
+					}
+					else if (m_editorState.bLinkHanged)
+					{
+						m_editorState.bLinkHanged= false;
+						m_editorState.startedLinkPinId= -1;
+					}
 				}
 			}
 		}
 	}
+}
+
+void NodeEditorWindow::clearLinkDetach()
+{
+	m_editorState.detachedLinkId= -1;
+	m_detachHeldPinId= -1;
+	m_detachAnchorPinId= -1;
 }
 
 void NodeEditorWindow::renderCreateNodeMenu(const NodeEditorState& editorState)

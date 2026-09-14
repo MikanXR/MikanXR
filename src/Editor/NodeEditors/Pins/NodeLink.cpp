@@ -70,6 +70,10 @@ NodePinPtr NodeLink::getConnectedPin(NodePinPtr pin) const
 
 void NodeLink::editorRender(const NodeEditorState& editorState)
 {
+	// A link picked up by Ctrl+drag is drawn by the drag itself until it lands
+	if (m_id == editorState.detachedLinkId)
+		return;
+
 	// Dim existing links while a new link is being dragged
 	const float alpha= editorState.startedLinkPinId == -1 ? 1.f : 0.2f;
 

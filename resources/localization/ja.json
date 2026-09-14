@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 908,
+		"stringCount": 909,
 		"translatedCount": 902,
 		"reviewedCount": 0
 	},
@@ -403,6 +403,7 @@
 		"compositorOutputWindowTitle": "コンポジター出力",
 		"delete": "削除",
 		"details": "詳細",
+		"disconnect": "Disconnect",
 		"editMenu": "編集",
 		"evalErrorWindowTitle": "評価エラー",
 		"materialGraphFilesFilterDescription": "マテリアルグラフファイル (*.matgraph)",

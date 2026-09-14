@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 908,
-		"translatedCount": 908,
-		"reviewedCount": 908
+		"stringCount": 909,
+		"translatedCount": 909,
+		"reviewedCount": 909
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -403,6 +403,7 @@
 		"compositorOutputWindowTitle": "Compositor Output",
 		"delete": "Delete",
 		"details": "Details",
+		"disconnect": "Disconnect",
 		"editMenu": "Edit",
 		"evalErrorWindowTitle": "Eval Error",
 		"materialGraphFilesFilterDescription": "Material Graph Files (*.matgraph)",

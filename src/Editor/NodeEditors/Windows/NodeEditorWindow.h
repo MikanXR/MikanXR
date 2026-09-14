@@ -218,6 +218,15 @@ protected:
 
 	GraphObjectSelection m_objectSelection;
 
+	// Ctrl+drag link detach in flight: the pin the link was picked up from and
+	// the far pin the drag now hangs off. The link itself is in the editor state.
+	t_node_pin_id m_detachHeldPinId= -1;
+	t_node_pin_id m_detachAnchorPinId= -1;
+	void clearLinkDetach();
+
+	// The pin whose right-click menu is open
+	t_node_pin_id m_contextPinId= -1;
+
 	// Errors that occurred during the last graph evaluation
 	std::vector<NodeEvaluationError> m_lastNodeEvalErrors;
 
