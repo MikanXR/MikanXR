@@ -640,8 +640,11 @@ bool MainWindow::onWindowEvent(const MkWindowEvent& event)
 	const auto eventType= event.getEventType();
 	const auto keySym= event.getKeySym();
 
-	// First see if we got an app shutdown request
-	if (eventType == eMkWindowEventType::Quit || (eventType == eMkWindowEventType::KeyDown && keySym == MkKey::ESCAPE))
+	// First see if we got an app shutdown request. Escape inside a text field
+	// belongs to the field (it cancels the edit), not to the app.
+	const bool bEscapeOutsideTextField= eventType == eMkWindowEventType::KeyDown && keySym == MkKey::ESCAPE
+										&& !(m_guiContext && m_guiContext->wantsTextInput());
+	if (eventType == eMkWindowEventType::Quit || bEscapeOutsideTextField)
 	{
 		MIKAN_LOG_INFO("App::exec") << "QUIT message received";
 		App::getInstance()->requestShutdown();

@@ -169,6 +169,13 @@ bool MkGuiContext::initImGuiOpenGlBackend()
 	return false;
 }
 
+bool MkGuiContext::wantsTextInput()
+{
+	MkGuiScopedContext scopedContext(*this);
+
+	return ImGui::GetIO().WantTextInput;
+}
+
 bool MkGuiContext::onWindowEvent(const MkWindowEvent& event)
 {
 	// Make sure this ImGui context is current when reading IO state

@@ -28,6 +28,10 @@ public:
 	struct ImFont* getBigIconFont() const { return m_BigIconFont; }
 	class IMkTextureCache* getTextureCache() const;
 
+	// Whether a text field held the keyboard on the last frame, so a window
+	// can keep its own key bindings (Escape to quit) out of an edit
+	bool wantsTextInput();
+
 	// -- IMkWindowEventListener
 	virtual bool onWindowEvent(const MkWindowEvent& event) override;
 
