@@ -3,6 +3,7 @@
 #include "CommonConfigFwd.h"
 #include "ComponentFwd.h"
 #include "IMkGuiStyle.h"
+#include "MkGuiDrawUtils.h"
 #include "ObjectFwd.h"
 #include "ObjectSystemConfigFwd.h"
 #include "ObjectSystemFwd.h"
@@ -56,6 +57,9 @@ private:
 	// Delete and Backspace: polled from ImGui while it holds the keyboard, and
 	// raised by the editor system when it does not, so exactly one path fires
 	void handleDeleteShortcut();
+	// F2 opens the inline rename field on the selected component row
+	void handleRenameShortcut();
+	void beginRename(MikanComponentPtr component);
 	void onDeleteSelectionRequested();
 	int getAddParentTransformId(ProjectOutlinerNodePtr selectedNode) const;
 	void deferAddAction(std::function<int(ProjectManagerPtr)> addAction);
@@ -100,6 +104,11 @@ private:
 
 	// Viewport pick to tree sync: scroll to the row on the next draw
 	bool m_bScrollToSelection= false;
+
+	// Inline rename of a component row, keyed by component id since a rename
+	// rebuilds the tree under it
+	MkGui::InlineRenameState m_rename;
+	int m_renamePressedComponentId= -1;
 
 	// The tree height follows the project setting except while the splitter
 	// is held, when the drag drives it and the release writes it back

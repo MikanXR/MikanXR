@@ -49,6 +49,40 @@ drawGlyphButtonWithLabel(const std::string& fieldName, const std::string& glyph,
 // content width, otherwise let it wrap. Call between items of a flowing strip.
 MIKAN_GUI_FUNC(void) sameLineIfFits(float itemWidth);
 
+// One list's inline rename, owned by the panel that draws the list: the row
+// being edited by its own id, the text so far, and whether the field still
+// has to take keyboard focus on its first frame. Each ImGui context's lists
+// own their own state, so nothing here is shared across windows.
+struct MIKAN_GUI_CLASS InlineRenameState
+{
+	int activeId= -1;
+	char buffer[256]= {};
+	bool bFocusPending= false;
+
+	void begin(int id, const std::string& currentName);
+	bool isEditing(int id) const { return activeId == id; }
+	void end();
+};
+
+enum class eInlineRenameResult
+{
+	editing,
+	committed,
+	cancelled
+};
+
+// Draws the field where a row label would go, filling the rest of the row, and
+// takes keyboard focus with the text selected on its first frame. Enter or a
+// click elsewhere commits, Escape cancels. A commit leaves the trimmed text in
+// the state's buffer, and one that trims to nothing reports as cancelled.
+MIKAN_GUI_FUNC(eInlineRenameResult) drawInlineRenameField(InlineRenameState& state, const std::string& fieldId);
+
+// The click-on-selected gesture that starts a rename: true on the frame a
+// press that began on this already selected row releases on it without
+// travelling past the drag threshold and without being a double click. Call
+// it right after the row item, with the selection state from before the click.
+MIKAN_GUI_FUNC(bool) isRenameClickOnSelectedItem(bool bWasSelected, int itemId, int& inout_pressedId);
+
 class MIKAN_GUI_CLASS ComboBoxDataSource
 {
 public:

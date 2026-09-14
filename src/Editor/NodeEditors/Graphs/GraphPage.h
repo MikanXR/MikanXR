@@ -53,6 +53,10 @@ public:
 	virtual std::string editorGetTitle() const { return m_name; }
 	virtual const char* editorGetIcon() const;
 	virtual void editorRenderPropertySheet(const class NodeEditorState& editorState) {}
+	// Whether the Pages panel offers an inline rename, and the rename itself. A
+	// page kind that validates its name overrides both; the base accepts nothing.
+	virtual bool editorCanRename() const { return false; }
+	virtual bool editorRename(const std::string& name) { return false; }
 
 protected:
 	NodeGraphPtr m_ownerGraph;

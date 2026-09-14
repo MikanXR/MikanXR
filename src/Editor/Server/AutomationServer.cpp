@@ -1373,8 +1373,7 @@ bool AutomationServer::handleNodeGraphCommand(const std::vector<std::string>& ar
 			newName+= " " + args[argIndex];
 		}
 
-		property->setName(newName);
-		property->notifyPropertyModified();
+		nodeGraph->renameProperty(propertyId, newName);
 		return true;
 	}
 	else if (verb == "reordervar")

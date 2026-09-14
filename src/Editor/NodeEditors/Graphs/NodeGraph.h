@@ -273,8 +273,12 @@ public:
 	void addProperty(GraphPropertyPtr property);
 	bool deletePropertyById(t_graph_property_id id);
 
-	// Appends a numeric suffix when baseName is already taken by another property
-	std::string makeUniquePropertyName(const std::string& baseName) const;
+	// Appends a numeric suffix when baseName is already taken by a property
+	// other than the excluded one (the property being renamed to it)
+	std::string makeUniquePropertyName(const std::string& baseName, t_graph_property_id excludePropertyId= -1) const;
+	// The one rename path for a property: the requested name is made unique
+	// against the others, so every rename surface agrees. True when the name changed.
+	bool renameProperty(t_graph_property_id propertyId, const std::string& requestedName);
 
 	// Moves a property to the target's slot in the variable list ordering,
 	// renumbering every property's sort order to match the result

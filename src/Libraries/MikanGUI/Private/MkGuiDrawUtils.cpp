@@ -138,6 +138,97 @@ bool drawStringProperty(MkGuiStyleConstPtr style, const std::string fieldName, c
 	return ImGui::InputText(imguiElementName.c_str(), buf, bufSize, ImGuiInputTextFlags_EnterReturnsTrue);
 }
 
+void InlineRenameState::begin(int id, const std::string& currentName)
+{
+	activeId= id;
+	bFocusPending= true;
+	strncpy_s(buffer, sizeof(buffer), currentName.c_str(), _TRUNCATE);
+}
+
+void InlineRenameState::end()
+{
+	activeId= -1;
+	bFocusPending= false;
+}
+
+static void trimInlineRenameBuffer(char* buffer, size_t bufSize)
+{
+	const std::string text(buffer);
+	const size_t firstIndex= text.find_first_not_of(" \t");
+	const size_t lastIndex= text.find_last_not_of(" \t");
+	const std::string trimmed=
+		(firstIndex == std::string::npos) ? std::string() : text.substr(firstIndex, lastIndex - firstIndex + 1);
+	strncpy_s(buffer, bufSize, trimmed.c_str(), _TRUNCATE);
+}
+
+eInlineRenameResult drawInlineRenameField(InlineRenameState& state, const std::string& fieldId)
+{
+	if (state.bFocusPending)
+	{
+		ImGui::SetKeyboardFocusHere();
+		state.bFocusPending= false;
+	}
+
+	ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+	const bool bEntered= ImGui::InputText(fieldId.c_str(), state.buffer, sizeof(state.buffer),
+										  ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
+
+	eInlineRenameResult result= eInlineRenameResult::editing;
+	if (bEntered)
+	{
+		result= eInlineRenameResult::committed;
+	}
+	else if (ImGui::IsItemDeactivated())
+	{
+		// ImGui restores the original text on Escape, so a missed Escape still
+		// commits the old name, which the caller treats as no change
+		result= ImGui::IsKeyPressed(ImGuiKey_Escape, false) ? eInlineRenameResult::cancelled
+															: eInlineRenameResult::committed;
+	}
+
+	if (result == eInlineRenameResult::committed)
+	{
+		trimInlineRenameBuffer(state.buffer, sizeof(state.buffer));
+		if (state.buffer[0] == '\0')
+			result= eInlineRenameResult::cancelled;
+	}
+
+	if (result != eInlineRenameResult::editing)
+		state.end();
+
+	return result;
+}
+
+bool isRenameClickOnSelectedItem(bool bWasSelected, int itemId, int& inout_pressedId)
+{
+	if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+	{
+		// The second press of a double click never starts a rename
+		inout_pressedId= (bWasSelected && !ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) ? itemId : -1;
+		return false;
+	}
+
+	// A press anywhere else disarms this row
+	if (inout_pressedId == itemId && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	{
+		inout_pressedId= -1;
+		return false;
+	}
+
+	if (inout_pressedId == itemId && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+	{
+		inout_pressedId= -1;
+
+		// The drag delta reads zero unless the press travelled past the drag
+		// threshold at some point, which is exactly the case that is a drag
+		const ImVec2 dragDelta= ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
+		const bool bDragged= dragDelta.x != 0.f || dragDelta.y != 0.f;
+		return ImGui::IsItemHovered() && !bDragged;
+	}
+
+	return false;
+}
+
 bool drawSimpleComboBoxProperty(MkGuiStyleConstPtr style, const std::string fieldName, const std::string label,
 								const char* items, int& inout_selectedIdex)
 {

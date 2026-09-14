@@ -865,18 +865,18 @@ void NodeGraph::initNewProperty(GraphPropertyPtr property)
 	property->setName(StringUtils::stringify(property->editorGetTitle(), property->getId()));
 }
 
-std::string NodeGraph::makeUniquePropertyName(const std::string& baseName) const
+std::string NodeGraph::makeUniquePropertyName(const std::string& baseName, t_graph_property_id excludePropertyId) const
 {
 	if (baseName.empty())
 	{
 		return baseName;
 	}
 
-	auto isNameTaken= [this](const std::string& name)
+	auto isNameTaken= [this, excludePropertyId](const std::string& name)
 	{
 		for (const auto& propertyPair : m_properties)
 		{
-			if (propertyPair.second->getName() == name)
+			if (propertyPair.second->getId() != excludePropertyId && propertyPair.second->getName() == name)
 				return true;
 		}
 
@@ -896,6 +896,22 @@ std::string NodeGraph::makeUniquePropertyName(const std::string& baseName) const
 			return candidate;
 		}
 	}
+}
+
+bool NodeGraph::renameProperty(t_graph_property_id propertyId, const std::string& requestedName)
+{
+	GraphPropertyPtr property= getPropertyById(propertyId);
+	if (!property || requestedName.empty())
+		return false;
+
+	const std::string uniqueName= makeUniquePropertyName(requestedName, propertyId);
+	if (uniqueName == property->getName())
+		return false;
+
+	property->setName(uniqueName);
+	property->notifyPropertyModified();
+
+	return true;
 }
 
 std::vector<GraphPropertyPtr> NodeGraph::getPropertiesInSortOrder() const

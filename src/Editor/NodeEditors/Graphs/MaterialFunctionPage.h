@@ -76,6 +76,8 @@ public:
 
 	virtual const char* editorGetIcon() const override;
 	virtual void editorRenderPropertySheet(const class NodeEditorState& editorState) override;
+	virtual bool editorCanRename() const override { return true; }
+	virtual bool editorRename(const std::string& name) override { return setFunctionName(name); }
 
 protected:
 	bool hasInputNamed(const std::string& name) const;

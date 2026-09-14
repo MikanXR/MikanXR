@@ -8,6 +8,7 @@
 #include "NodeEditorState.h"
 
 #include "Graphs/GraphObjectSelection.h"
+#include "MkGuiDrawUtils.h"
 #include "Graphs/NodeError.h"
 #include "Graphs/NodeGraphHistory.h"
 #include "Graphs/NodeGraphLogWriter.h"
@@ -131,6 +132,8 @@ protected:
 	virtual void renderAssetsPanel();
 	virtual void renderSelectedObjectPanel();
 	void renderVariableNameField(GraphPropertyPtr property);
+	// F2: the selected variable or page gets its inline rename field
+	void beginSelectedObjectRename();
 
 	// The assets panel's New Material button: open or focus the material editor
 	// on a fresh graph for this window's authored domain, and add the written
@@ -237,6 +240,14 @@ protected:
 	// Rename field state for the selected graph variable
 	char m_variableNameBuffer[256]= {};
 	t_graph_property_id m_variableNameBufferId= -1;
+	bool m_bVariableNameFieldActive= false;
+
+	// Inline rename of a Variables row and of a Pages row, with the row a
+	// rename click was pressed on
+	MkGui::InlineRenameState m_variableRename;
+	t_graph_property_id m_variableRenamePressedId= -1;
+	MkGui::InlineRenameState m_pageRename;
+	t_graph_page_id m_pageRenamePressedId= -1;
 
 	// Filter text of the create-node context menu, cleared each time it opens
 	char m_nodeSearchBuffer[64]= {};

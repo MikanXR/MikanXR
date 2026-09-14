@@ -297,6 +297,10 @@ void NodeEditorWindow::updateUI()
 			undo();
 		}
 	}
+	if (ImGui::IsKeyPressed(ImGuiKey_F2, false) && !ImGui::IsAnyItemActive())
+	{
+		beginSelectedObjectRename();
+	}
 	if (ImGui::IsKeyPressed(ImGuiKey_S, false) && io.KeyCtrl && !ImGui::IsAnyItemActive())
 	{
 		saveGraph(false);
@@ -865,22 +869,34 @@ void NodeEditorWindow::renderGraphVariablesPanel()
 			ImGui::TextColored(variconColor, "%s", varIcon.c_str());
 			ImGui::SameLine();
 
+			// A row being renamed shows the field in place of its label and takes
+			// no drag, drop, or context menu until the edit ends
+			if (m_variableRename.isEditing(propertyId))
+			{
+				const MkGui::eInlineRenameResult result= MkGui::drawInlineRenameField(
+					m_variableRename, StringUtils::stringify("##rename_property", std::to_string(propertyId)));
+				if (result == MkGui::eInlineRenameResult::committed)
+				{
+					getNodeGraph()->renameProperty(propertyId, m_variableRename.buffer);
+				}
+				continue;
+			}
+
 			const std::string varEntryName=
 				StringUtils::stringify(variable->getName(), "##property", std::to_string(propertyId));
 			bool isSelected= m_objectSelection.getObjectIdType() == GraphObjectIdType::VARIABLE;
 			isSelected= isSelected && (m_objectSelection.getObjectId(0) == variable->getId());
-			if (ImGui::Selectable(varEntryName.c_str(), &isSelected))
+			// A click on the selected row keeps it selected: released in place it
+			// starts the rename, dragged it carries the variable to the canvas
+			if (ImGui::Selectable(varEntryName.c_str(), isSelected))
 			{
 				clearCanvasSelection();
-				if (isSelected)
-				{
-					m_objectSelection= GraphObjectSelection(GraphObjectIdType::VARIABLE, 1);
-					m_objectSelection.setObjectId(0, variable->getId());
-				}
-				else
-				{
-					m_objectSelection.clear();
-				}
+				m_objectSelection= GraphObjectSelection(GraphObjectIdType::VARIABLE, 1);
+				m_objectSelection.setObjectId(0, variable->getId());
+			}
+			if (MkGui::isRenameClickOnSelectedItem(isSelected, propertyId, m_variableRenamePressedId))
+			{
+				m_variableRename.begin(propertyId, variable->getName());
 			}
 			{
 				MkGuiScopedDragDropSource dds(ImGuiDragDropFlags_None);
@@ -993,17 +1009,32 @@ void NodeEditorWindow::renderPagesPanel()
 	{
 		MkGuiScopedStyle selectionStyle(m_styleManager->getStyle("node_editor_variable_list"));
 
-		const auto renderPageRow= [&](t_graph_page_id pageId, const char* icon, const std::string& title)
+		const auto renderPageRow=
+			[&](GraphPagePtr page, t_graph_page_id pageId, const char* icon, const std::string& title)
 		{
 			const bool bIsRootPage= (pageId == NodeGraph::k_rootPageId);
 
 			ImGui::TextUnformatted(icon);
 			ImGui::SameLine();
 
+			// A row being renamed shows the field in place of its label. The page
+			// validates the name itself and a refused one leaves the old name.
+			if (page && m_pageRename.isEditing(pageId))
+			{
+				const MkGui::eInlineRenameResult result= MkGui::drawInlineRenameField(
+					m_pageRename, StringUtils::stringify("##rename_page", std::to_string(pageId)));
+				if (result == MkGui::eInlineRenameResult::committed)
+				{
+					page->editorRename(m_pageRename.buffer);
+				}
+				return;
+			}
+
 			// The current page draws selected; the row click also selects the
 			// page object so the Details panel shows its sheet
+			const bool bWasCurrent= m_editorState.currentPageId == pageId;
 			const std::string rowLabel= StringUtils::stringify(title, "##page", std::to_string(pageId));
-			if (ImGui::Selectable(rowLabel.c_str(), m_editorState.currentPageId == pageId))
+			if (ImGui::Selectable(rowLabel.c_str(), bWasCurrent))
 			{
 				setCurrentPage(pageId);
 				clearCanvasSelection();
@@ -1016,6 +1047,11 @@ void NodeEditorWindow::renderPagesPanel()
 					m_objectSelection= GraphObjectSelection(GraphObjectIdType::PAGE, 1);
 					m_objectSelection.setObjectId(0, pageId);
 				}
+			}
+			if (page && page->editorCanRename()
+				&& MkGui::isRenameClickOnSelectedItem(bWasCurrent, pageId, m_pageRenamePressedId))
+			{
+				m_pageRename.begin(pageId, page->getName());
 			}
 
 			if (!bIsRootPage)
@@ -1036,11 +1072,11 @@ void NodeEditorWindow::renderPagesPanel()
 			}
 		};
 
-		renderPageRow(NodeGraph::k_rootPageId, ICON_FK_HOME, locText("nodeEditor.rootPage"));
+		renderPageRow(GraphPagePtr(), NodeGraph::k_rootPageId, ICON_FK_HOME, locText("nodeEditor.rootPage"));
 		for (const auto& pageEntry : nodeGraph->getPages())
 		{
 			GraphPagePtr page= pageEntry.second;
-			renderPageRow(page->getId(), page->editorGetIcon(), page->editorGetTitle());
+			renderPageRow(page, page->getId(), page->editorGetIcon(), page->editorGetTitle());
 		}
 	}
 
@@ -1275,9 +1311,11 @@ void NodeEditorWindow::renderSelectedObjectPanel()
 
 void NodeEditorWindow::renderVariableNameField(GraphPropertyPtr property)
 {
-	// Refill the edit buffer when the selection moves to a different variable,
+	// Refill the edit buffer when the selection moves to a different variable
+	// or the name changed elsewhere (the inline rename, automation, undo),
 	// leaving in-progress typing alone otherwise
-	if (m_variableNameBufferId != property->getId())
+	const bool bNameChangedOutside= !m_bVariableNameFieldActive && property->getName() != m_variableNameBuffer;
+	if (m_variableNameBufferId != property->getId() || bNameChangedOutside)
 	{
 		m_variableNameBufferId= property->getId();
 		strncpy(m_variableNameBuffer, property->getName().c_str(), sizeof(m_variableNameBuffer) - 1);
@@ -1297,15 +1335,37 @@ void NodeEditorWindow::renderVariableNameField(GraphPropertyPtr property)
 									   ? std::string()
 									   : typedName.substr(firstIndex, lastIndex - firstIndex + 1);
 
-		if (!newName.empty())
-		{
-			property->setName(newName);
-			property->notifyPropertyModified();
-		}
+		// The graph keeps the name unique, so an all-space or duplicate entry
+		// lands as nothing or as a suffixed name
+		getNodeGraph()->renameProperty(property->getId(), newName);
 
-		// Reflect whatever the property actually kept (an all-space entry is dropped)
+		// Reflect whatever the property actually kept
 		strncpy(m_variableNameBuffer, property->getName().c_str(), sizeof(m_variableNameBuffer) - 1);
 		m_variableNameBuffer[sizeof(m_variableNameBuffer) - 1]= '\0';
+	}
+	m_bVariableNameFieldActive= ImGui::IsItemActive();
+}
+
+void NodeEditorWindow::beginSelectedObjectRename()
+{
+	NodeGraphPtr nodeGraph= getNodeGraph();
+	if (!nodeGraph || m_objectSelection.getObjectCount() < 1)
+		return;
+
+	if (m_objectSelection.getObjectIdType() == GraphObjectIdType::VARIABLE)
+	{
+		if (GraphPropertyPtr property= nodeGraph->getPropertyById(m_objectSelection.getObjectId(0)))
+		{
+			m_variableRename.begin(property->getId(), property->getName());
+		}
+	}
+	else if (m_objectSelection.getObjectIdType() == GraphObjectIdType::PAGE)
+	{
+		GraphPagePtr page= nodeGraph->getPageById(m_objectSelection.getObjectId(0));
+		if (page && page->editorCanRename())
+		{
+			m_pageRename.begin(page->getId(), page->getName());
+		}
 	}
 }
 

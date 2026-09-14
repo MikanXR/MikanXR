@@ -149,7 +149,7 @@ Drives the node editor window and its snapshot undo history ([transactions.md](.
 - `nodegraph undo [n]` / `nodegraph redo [n]` step the window's snapshot history, replying the resulting cursor
 - `nodegraph run on|off` pauses or resumes compositor evaluation of the editor graph (the Compositor menu's Run item), replying the resulting state
 - `nodegraph compile` compiles the material editor's graph and writes its shaders and material file beside the graph file (the Material menu's Compile item), replying `compiled`, or one `error <nodeId> <message>` line per compile error. An unsaved graph has nowhere to write and answers an error. On any other editor window the command answers an error.
-- `nodegraph renamevar <propertyId> <name...>` renames a graph variable (the name is the rest of the line, so spaces survive)
+- `nodegraph renamevar <propertyId> <name...>` renames a graph variable (the name is the rest of the line, so spaces survive). A name another variable holds gets a numeric suffix, the same rule every rename surface applies
 - `nodegraph reordervar <movedPropertyId> <targetPropertyId>` moves a variable to the target's slot in the list, the headless equivalent of dragging one variable row onto another
 
 `nodegraph list properties` replies in variable-list order, so a reorder is observable there.

@@ -139,6 +139,7 @@ void GuiPanel_ProjectOutliner::onGui()
 	drawSelectedNodeActions(getSelectedNode());
 
 	handleDeleteShortcut();
+	handleRenameShortcut();
 }
 
 void GuiPanel_ProjectOutliner::rebuildIfDirty()
@@ -276,8 +277,15 @@ void GuiPanel_ProjectOutliner::drawNode(ProjectOutlinerNodePtr node)
 	if (bIsSelected)
 		flags|= ImGuiTreeNodeFlags_Selected;
 
-	const std::string label= node->icon + " " + node->displayName + "##node" + std::to_string((int)node->kind) + "_"
-							 + std::to_string(node->componentId);
+	// A row being renamed keeps only its icon in the tree node, so the arrow and
+	// indent stay put while the field takes the rest of the row
+	const bool bIsComponentRow= node->componentId != INVALID_MIKAN_ID;
+	const bool bIsRenaming= bIsComponentRow && m_rename.isEditing(node->componentId);
+	const std::string rowId= "node" + std::to_string((int)node->kind) + "_" + std::to_string(node->componentId);
+	const std::string label=
+		bIsRenaming ? node->icon + "##" + rowId : node->icon + " " + node->displayName + "##" + rowId;
+	if (bIsRenaming)
+		flags&= ~ImGuiTreeNodeFlags_SpanAvailWidth;
 
 	bool bOpen= false;
 	if (isActiveHighlightNode(node))
@@ -296,21 +304,46 @@ void GuiPanel_ProjectOutliner::drawNode(ProjectOutlinerNodePtr node)
 							{ editorConfig->setOutlinerNodeOpen(stateKey, bOpen, bDefaultOpen); });
 	}
 
-	if (bIsSelected && m_bScrollToSelection)
+	if (bIsRenaming)
 	{
-		ImGui::SetScrollHereY(0.5f);
-		m_bScrollToSelection= false;
+		ImGui::SameLine();
+		const MkGui::eInlineRenameResult result= MkGui::drawInlineRenameField(m_rename, "##rename_" + rowId);
+		if (result == MkGui::eInlineRenameResult::committed)
+		{
+			// The same path as the property row: one recorded transaction
+			const std::string newName= m_rename.buffer;
+			MikanComponentPtr component= node->component.lock();
+			if (component && newName != component->getName())
+			{
+				addDeferredGuiEvent([component, newName]() { component->setName(newName); });
+			}
+		}
 	}
-
-	// The unparented tray is the one row that is not selectable
-	const bool bIsSelectable= node->componentId != INVALID_MIKAN_ID || bIsSyntheticSelectable;
-	if (bIsSelectable && ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
+	else
 	{
-		ProjectOutlinerNodePtr clickedNode= node;
-		addDeferredGuiEvent([this, clickedNode]() { setSelectedNode(clickedNode, true); });
-	}
+		if (bIsSelected && m_bScrollToSelection)
+		{
+			ImGui::SetScrollHereY(0.5f);
+			m_bScrollToSelection= false;
+		}
 
-	handleNodeDragDrop(node);
+		// The unparented tray is the one row that is not selectable
+		const bool bIsSelectable= bIsComponentRow || bIsSyntheticSelectable;
+		if (bIsSelectable && ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
+		{
+			ProjectOutlinerNodePtr clickedNode= node;
+			addDeferredGuiEvent([this, clickedNode]() { setSelectedNode(clickedNode, true); });
+		}
+
+		// A second click on the selected row, released in place, starts the rename
+		if (bIsComponentRow
+			&& MkGui::isRenameClickOnSelectedItem(bIsSelected, node->componentId, m_renamePressedComponentId))
+		{
+			beginRename(node->component.lock());
+		}
+
+		handleNodeDragDrop(node);
+	}
 
 	if (bOpen)
 	{
@@ -531,6 +564,32 @@ void GuiPanel_ProjectOutliner::handleDeleteShortcut()
 		if (canDeleteNode(selectedNode))
 			requestDeleteNode(selectedNode);
 	}
+}
+
+void GuiPanel_ProjectOutliner::handleRenameShortcut()
+{
+	// The outliner window has to be the focused one, so F2 in another panel
+	// of the main window does nothing here. Keyboard capture is not required:
+	// with no widget active ImGui does not claim the keyboard, and that is
+	// exactly when a row rename should start.
+	if (ImGui::IsAnyItemActive() || m_ownerAppStage->getCurrentModalDialog() != nullptr
+		|| !ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
+		return;
+
+	if (ImGui::IsKeyPressed(ImGuiKey_F2, false))
+	{
+		ProjectOutlinerNodePtr selectedNode= getSelectedNode();
+		if (selectedNode)
+			beginRename(selectedNode->component.lock());
+	}
+}
+
+void GuiPanel_ProjectOutliner::beginRename(MikanComponentPtr component)
+{
+	// The field starts from the component's own name rather than the row's
+	// display text, which substitutes a placeholder for an empty name
+	if (component)
+		m_rename.begin(component->getComponentId(), component->getName());
 }
 
 void GuiPanel_ProjectOutliner::onDeleteSelectionRequested()
