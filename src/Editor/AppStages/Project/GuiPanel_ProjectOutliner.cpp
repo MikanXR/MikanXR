@@ -78,6 +78,12 @@
 
 #include <algorithm>
 
+// The outliner tree never shrinks below this, and the action strip below it
+// always keeps at least its minimum
+static constexpr float k_minOutlinerTreeHeight= 100.f;
+static constexpr float k_minOutlinerActionsHeight= 120.f;
+static constexpr float k_outlinerSplitterHeight= 6.f;
+
 // One payload type for all seven scene actor classes: the payload itself is
 // always a TransformComponentPtr
 static const char* k_outlinerActorPayloadType= "OutlinerSceneActor";
@@ -130,8 +136,6 @@ void GuiPanel_ProjectOutliner::onGui()
 
 	drawTree();
 
-	ImGui::Separator();
-
 	drawSelectedNodeActions(getSelectedNode());
 
 	handleDeleteShortcut();
@@ -175,8 +179,18 @@ void GuiPanel_ProjectOutliner::rebuildIfDirty()
 // -- Tree drawing ----
 void GuiPanel_ProjectOutliner::drawTree()
 {
-	const float treeHeight= std::max(150.f, ImGui::GetContentRegionAvail().y * 0.6f);
-	if (ImGui::BeginChild("##OutlinerTree", ImVec2(0.f, treeHeight)))
+	// A fixed height the splitter below adjusts, clamped so the tree never
+	// collapses and the action strip under it always keeps some room
+	EditorObjectSystemDefinitionPtr editorConfig= getEditorConfig();
+	if (!m_bTreeHeightDragging && editorConfig)
+	{
+		m_treeHeight= editorConfig->getOutlinerTreeHeight();
+	}
+	const float maxTreeHeight=
+		std::max(k_minOutlinerTreeHeight, ImGui::GetContentRegionAvail().y - k_minOutlinerActionsHeight);
+	m_treeHeight= std::clamp(m_treeHeight, k_minOutlinerTreeHeight, maxTreeHeight);
+
+	if (ImGui::BeginChild("##OutlinerTree", ImVec2(0.f, m_treeHeight)))
 	{
 		if (ProjectOutlinerNodePtr rootNode= m_model.getRoot())
 		{
@@ -184,6 +198,48 @@ void GuiPanel_ProjectOutliner::drawTree()
 		}
 	}
 	ImGui::EndChild();
+
+	drawTreeSplitter(editorConfig, maxTreeHeight);
+}
+
+void GuiPanel_ProjectOutliner::drawTreeSplitter(EditorObjectSystemDefinitionPtr editorConfig, float maxTreeHeight)
+{
+	const float width= std::max(ImGui::GetContentRegionAvail().x, 1.f);
+	ImGui::InvisibleButton("##OutlinerSplitter", ImVec2(width, k_outlinerSplitterHeight));
+	const bool bHovered= ImGui::IsItemHovered();
+	const bool bActive= ImGui::IsItemActive();
+
+	if (bHovered || bActive)
+	{
+		ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
+	}
+
+	// The drag moves the local height frame by frame; the release commits it
+	// to the project once, so a drag lands as one config change
+	if (bActive)
+	{
+		m_bTreeHeightDragging= true;
+		m_treeHeight+= ImGui::GetIO().MouseDelta.y;
+	}
+	else if (m_bTreeHeightDragging)
+	{
+		m_bTreeHeightDragging= false;
+		const float treeHeight= std::clamp(m_treeHeight, k_minOutlinerTreeHeight, maxTreeHeight);
+		if (editorConfig)
+		{
+			addDeferredGuiEvent([editorConfig, treeHeight]() { editorConfig->setOutlinerTreeHeight(treeHeight); });
+		}
+	}
+
+	// Drawn as a separator line that brightens under the mouse, so the bar
+	// reads as a handle without taking more room than the separator it replaces
+	const ImVec2 rectMin= ImGui::GetItemRectMin();
+	const ImVec2 rectMax= ImGui::GetItemRectMax();
+	const float lineY= (rectMin.y + rectMax.y) * 0.5f;
+	const ImU32 lineColor= ImGui::GetColorU32(bActive    ? ImGuiCol_SeparatorActive
+											  : bHovered ? ImGuiCol_SeparatorHovered
+														 : ImGuiCol_Separator);
+	ImGui::GetWindowDrawList()->AddLine(ImVec2(rectMin.x, lineY), ImVec2(rectMax.x, lineY), lineColor);
 }
 
 void GuiPanel_ProjectOutliner::drawNode(ProjectOutlinerNodePtr node)

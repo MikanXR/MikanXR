@@ -96,6 +96,10 @@ struct EditorSettings
 	// Outliner rows whose open state differs from their default, keyed by
 	// ProjectOutlinerModel::getNodeStateKey. An absent row is at its default.
 	std::map<std::string, bool> outlinerOpenState;
+
+	// Height of the outliner tree above its action strip, in pixels, set by
+	// dragging the splitter between them
+	float outlinerTreeHeight= 300.f;
 };
 
 class EditorObjectSystemDefinition : public MikanObjectSystemDefinition
@@ -199,6 +203,10 @@ public:
 	// Stores only a departure from the default, and notifies only when the
 	// stored state actually changed
 	void setOutlinerNodeOpen(const std::string& nodeKey, bool bOpen, bool bDefaultOpen);
+
+	static const std::string k_outlinerTreeHeightPropertyId;
+	float getOutlinerTreeHeight() const { return m_editorSettings.outlinerTreeHeight; }
+	void setOutlinerTreeHeight(float height);
 
 private:
 	EditorSettings m_editorSettings;

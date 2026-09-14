@@ -60,6 +60,7 @@ const std::string EditorObjectSystemDefinition::k_renderFrameRatePropertyId= "re
 const std::string EditorObjectSystemDefinition::k_renderComponentNamesPropertyId= "render_component_names";
 const std::string EditorObjectSystemDefinition::k_editorCameraStatePropertyId= "editor_camera_state";
 const std::string EditorObjectSystemDefinition::k_outlinerOpenStatePropertyId= "outliner_open_state";
+const std::string EditorObjectSystemDefinition::k_outlinerTreeHeightPropertyId= "outliner_tree_height";
 
 // Viewpoint names used as the keys of the saved ortho views, in eCameraViewpoint order
 static const char* k_orthoViewpointStrings[EditorCameraState::k_orthoViewCount]= {"top",  "bottom", "front",
@@ -198,6 +199,7 @@ configuru::Config EditorObjectSystemDefinition::writeToJSON()
 		outlinerPt[nodeKey]= bOpen;
 	}
 	pt[k_outlinerOpenStatePropertyId]= outlinerPt;
+	pt[k_outlinerTreeHeightPropertyId]= m_editorSettings.outlinerTreeHeight;
 
 	return pt;
 }
@@ -253,6 +255,9 @@ void EditorObjectSystemDefinition::readFromJSON(const configuru::Config& pt)
 				m_editorSettings.outlinerOpenState[entry.key()]= (bool)entry.value();
 		}
 	}
+
+	m_editorSettings.outlinerTreeHeight=
+		pt.get_or<float>(k_outlinerTreeHeightPropertyId, m_editorSettings.outlinerTreeHeight);
 }
 
 void EditorObjectSystemDefinition::setRenderOriginFlag(bool flag)
@@ -467,6 +472,15 @@ void EditorObjectSystemDefinition::setOutlinerNodeOpen(const std::string& nodeKe
 	if (bChanged)
 	{
 		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_outlinerOpenStatePropertyId));
+	}
+}
+
+void EditorObjectSystemDefinition::setOutlinerTreeHeight(float height)
+{
+	if (m_editorSettings.outlinerTreeHeight != height)
+	{
+		m_editorSettings.outlinerTreeHeight= height;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_outlinerTreeHeightPropertyId));
 	}
 }
 

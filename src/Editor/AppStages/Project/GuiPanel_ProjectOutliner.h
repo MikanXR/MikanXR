@@ -39,6 +39,8 @@ private:
 
 	// Tree drawing
 	void drawTree();
+	// The drag bar between the tree and the action strip, which sets the tree height
+	void drawTreeSplitter(EditorObjectSystemDefinitionPtr editorConfig, float maxTreeHeight);
 	void drawNode(ProjectOutlinerNodePtr node);
 	void handleNodeDragDrop(ProjectOutlinerNodePtr node);
 
@@ -98,6 +100,11 @@ private:
 
 	// Viewport pick to tree sync: scroll to the row on the next draw
 	bool m_bScrollToSelection= false;
+
+	// The tree height follows the project setting except while the splitter
+	// is held, when the drag drives it and the release writes it back
+	float m_treeHeight= 300.f;
+	bool m_bTreeHeightDragging= false;
 
 	MkGuiStyleConstPtr m_outlinerGuiStyle;
 	MkGuiStyleConstPtr m_deleteButtonGuiStyle;
