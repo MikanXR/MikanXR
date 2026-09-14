@@ -3,6 +3,11 @@ setlocal
 
 set UNZIP_EXE=%~dp0/tools/7zip/7za.exe
 
+:: GSTREAMER_ONLY=1 installs the GStreamer MSIs and nothing else. The MSIs install
+:: system-wide, so a job that restored a cached deps folder still has to run them, and it
+:: must not wipe the folder it just restored.
+IF DEFINED GSTREAMER_ONLY goto gstreamer_only
+
 ::Clean up the old build folder
 IF EXIST build (
 del /f /s /q build > nul
@@ -94,32 +99,10 @@ IF %ERRORLEVEL% NEQ 0 (
   goto failure
 )
 
-if not defined SKIP_GSTREAMER (
-  echo "Downloading gstreamer-runtime installer"
-  curl -L https://gstreamer.freedesktop.org/data/pkg/windows/1.26.10/mingw/gstreamer-1.0-mingw-x86_64-1.26.10.msi --output gstreamer-1.0-mingw-x86_64-1.26.10.msi
-  IF %ERRORLEVEL% NEQ 0 (
-    echo "Error downloading gstreamer-1.0-mingw-x86_64-1.26.10.msi"
-    goto failure
-  )
-  msiexec /i gstreamer-1.0-mingw-x86_64-1.26.10.msi /qb
-  IF %ERRORLEVEL% NEQ 0 (
-    echo "Error installing gstreamer-runtime installer"
-    goto failure
-  )
-
-  echo "Downloading gstreamer-devel installer"
-
-  curl -L https://gstreamer.freedesktop.org/data/pkg/windows/1.26.10/mingw/gstreamer-1.0-devel-mingw-x86_64-1.26.10.msi --output gstreamer-1.0-devel-mingw-x86_64-1.26.10.msi
-  IF %ERRORLEVEL% NEQ 0 (
-    echo "Error downloading gstreamer-1.0-devel-mingw-x86_64-1.26.10.msi"
-    goto failure
-  )
-  msiexec /i gstreamer-1.0-devel-mingw-x86_64-1.26.10.msi /qb
-  IF %ERRORLEVEL% NEQ 0 (
-    echo "Error installing gstreamer-devel installer"
-    goto failure
-  )
-)
+if defined SKIP_GSTREAMER goto skip_gstreamer
+call :install_gstreamer
+IF ERRORLEVEL 1 goto failure
+:skip_gstreamer
 
 echo "Downloading easy_profiler..."
 curl -L https://github.com/yse/easy_profiler/releases/download/v2.1.0/easy_profiler-v2.1.0-msvc15-win64.zip --output easy_profiler-v2.1.0-msvc15-win64.zip
@@ -226,6 +209,41 @@ curl -L https://dist.nuget.org/win-x86-commandline/latest/nuget.exe --output nug
 :: Exit back out of the deps folder
 popd
 
+EXIT /B 0
+
+:gstreamer_only
+IF NOT EXIST deps mkdir deps
+pushd deps
+call :install_gstreamer
+IF ERRORLEVEL 1 goto failure
+popd
+EXIT /B 0
+
+:: Downloads and runs both GStreamer MSIs. Called from the deps folder.
+:install_gstreamer
+echo "Downloading gstreamer-runtime installer"
+curl -L https://gstreamer.freedesktop.org/data/pkg/windows/1.26.10/mingw/gstreamer-1.0-mingw-x86_64-1.26.10.msi --output gstreamer-1.0-mingw-x86_64-1.26.10.msi
+IF %ERRORLEVEL% NEQ 0 (
+  echo "Error downloading gstreamer-1.0-mingw-x86_64-1.26.10.msi"
+  EXIT /B 1
+)
+msiexec /i gstreamer-1.0-mingw-x86_64-1.26.10.msi /qb
+IF %ERRORLEVEL% NEQ 0 (
+  echo "Error installing gstreamer-runtime installer"
+  EXIT /B 1
+)
+
+echo "Downloading gstreamer-devel installer"
+curl -L https://gstreamer.freedesktop.org/data/pkg/windows/1.26.10/mingw/gstreamer-1.0-devel-mingw-x86_64-1.26.10.msi --output gstreamer-1.0-devel-mingw-x86_64-1.26.10.msi
+IF %ERRORLEVEL% NEQ 0 (
+  echo "Error downloading gstreamer-1.0-devel-mingw-x86_64-1.26.10.msi"
+  EXIT /B 1
+)
+msiexec /i gstreamer-1.0-devel-mingw-x86_64-1.26.10.msi /qb
+IF %ERRORLEVEL% NEQ 0 (
+  echo "Error installing gstreamer-devel installer"
+  EXIT /B 1
+)
 EXIT /B 0
 
 :failure

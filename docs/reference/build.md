@@ -26,7 +26,7 @@ The DirectML package ships every architecture at roughly 350MB. The script keeps
 
 The model checkpoints those tools consume are not dependencies and `InitialSetup_x64.bat` does not fetch them. They live under a gitignored `models/` at the repo root and are produced by the Python tools in `tools/` (see [commands.md](./commands.md)).
 
-GStreamer is different: the script downloads runtime and devel MSIs (1.26.10 mingw x86_64) and installs them system-wide via `msiexec`. Setting the environment variable `SKIP_GSTREAMER=1` skips both MSIs (CI does this).
+GStreamer is different: the script downloads runtime and devel MSIs (1.26.10 mingw x86_64) and installs them system-wide via `msiexec`. Setting the environment variable `SKIP_GSTREAMER=1` skips both MSIs (CI does this), and `GSTREAMER_ONLY=1` runs only the two MSI installs (the release workflow does this after restoring the cached `deps/`).
 
 Since the script wipes `build/` and `deps/`, rerun project generation afterwards.
 
@@ -74,7 +74,7 @@ Third-party source builds: `thirdparty/CMakeLists.txt` builds `fast_obj_lib`, `i
 
 - `LocalizationSync` / `LocalizationCheck`: wrappers around `tools/localization.py` (`cmake/Localization.cmake`), which regenerates the JSON string tables from the gettext catalogs. See [localization.md](./localization.md).
 
-- `CREATE_INSTALLER`: Inno Setup installer build (`cmake/Installer.cmake`); only created when Inno Setup is found. Uses `templates/installer_win64.iss.in`.
+- `CREATE_INSTALLER`: Inno Setup installer build (`cmake/Installer.cmake`); only created when `ISCC.exe` (Inno Setup 6) is found. Fills in `templates/installer_win64.iss.in` and writes `dist/Mikan_<version>_Win64_Setup.exe` from the `dist/Win64` payload.
 
 - `INSTALL`: installs exes, DLLs, bindings, and the bundled `resources/` tree into `dist/Win64`, and every executable and DLL PDB into `dist/symbols/Win64`. The resources filter ships the graph, material, shader, and model sources as well as images, fonts, scripts, and ONNX models, since a project reads the bundled assets in place rather than owning copies.
 
@@ -110,7 +110,9 @@ Release builds compile with `/Z7` and link with `/DEBUG:FULL /OPT:REF /OPT:ICF` 
 -DCMAKE_UNITY_BUILD=ON
 ```
 
-CI then builds `MikanCmd` and `unit_test_suite_cpp`, runs `build\bin\MikanCmd.exe -runTests` (dumping `MikanCmd.log` afterwards) and `build\bin\unit_test_suite_cpp.exe`, and uploads `build\bin` as an artifact on `main` pushes.
+CI then builds `MikanCmd` and `unit_test_suite_cpp`, runs `build\bin\MikanCmd.exe -runTests` (dumping `MikanCmd.log` afterwards) and `build\bin\unit_test_suite_cpp.exe`, crashes `MikanCmd` on purpose with `-crash=access` and requires the report files to appear, and uploads `build\bin` (PDBs included) as an artifact on `main` pushes.
+
+`.github/workflows/release.yml` runs on a `v*` tag push. It restores the same `deps/` cache, installs the GStreamer MSIs (`GSTREAMER_ONLY=1`) and a minimal CUDA toolkit (the `MikanARKitVideo` plugin builds under the GStreamer gate and includes `cuda.h`), checks the tag against `src/Editor/AppCore/Version.h`, configures like CI with `MIKAN_WITH_GSTREAMER=ON`, builds the `install` target, runs both suites and the crash check, then `PACKAGE_SYMBOLS`, `PACKAGE_APP`, and `CREATE_INSTALLER`, and drafts a GitHub release with the three assets. See [commands.md](./commands.md) for the tagging procedure.
 
 ---
 

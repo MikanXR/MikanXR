@@ -212,14 +212,22 @@ To drop a session the attribution rule wrongly claimed, add its id to the ledger
 
 ---
 
-## Install and installer
+## Install, packaging, and the installer
 
 ```
-cmake --build build --target INSTALL --config Release       # install exes/DLLs/bindings into dist\Win64
-cmake --build build --target CREATE_INSTALLER               # build the Inno Setup installer (requires Inno Setup installed)
+cmake --build build --target INSTALL --config Release           # exes/DLLs/bindings/resources into dist\Win64, PDBs into dist\symbols\Win64
+cmake --build build --target PACKAGE_APP --config Release       # zip dist\Win64 into dist\Mikan_<version>_Win64.zip
+cmake --build build --target PACKAGE_SYMBOLS --config Release   # zip dist\symbols\Win64 into dist\Mikan_<version>_Win64_symbols.zip
+cmake --build build --target CREATE_INSTALLER                   # build dist\Mikan_<version>_Win64_Setup.exe (requires Inno Setup 6)
 ```
 
-`CREATE_INSTALLER` only exists if the Inno Setup compiler was found at configure time (`cmake/Installer.cmake`); it compiles `templates/installer_win64.iss.in` with the version string filled in.
+The packaging targets assume `INSTALL` has run. `CREATE_INSTALLER` only exists if `ISCC.exe` was found at configure time (`cmake/Installer.cmake`); it compiles `templates/installer_win64.iss.in` with the version and paths filled in.
+
+---
+
+## Releases
+
+Bump the four defines in `src/Editor/AppCore/Version.h`, commit, then push a tag `v<product>.<major>.<minor>.<release>`. `.github/workflows/release.yml` fails unless the tag matches the header. It builds Release with GStreamer on, runs both suites and the crash check, and drafts a GitHub release carrying the app zip, the setup exe, and the symbols zip. Publish the draft after checking the assets. Every published build keeps its symbols zip: a crash dump from that build cannot be read without it.
 
 ---
 

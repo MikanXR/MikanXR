@@ -1,0 +1,350 @@
+name: Release
+
+# Pushing a vX.Y.Z.W tag builds the shipping configuration and drafts a GitHub release
+# from it. The draft is never published automatically: the release notes and the three
+# attached artifacts get a human read before anyone can download them.
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Needed by the draft-release step, which creates a release object on this repository.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-2022
+
+    # Enable the sccache GitHub Actions cache backend for the whole job.
+    # sccache runs as a background server whose storage backend is fixed
+    # by the first invocation that starts it, so this must be visible to
+    # every step (configure, builds, stats) and not just the build steps.
+    # Otherwise the server can pin to local disk and nothing persists.
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+
+    steps:
+      # ---------------------------------------------------------------
+      # Shallow checkout without recursive submodules. We init only the
+      # submodules actually needed for the build, skipping heavy/unused
+      # ones (LuaBridge3/ThirdParty nested submodules).
+      # ---------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Init required submodules
+        shell: bash
+        run: |
+          git submodule update --init --depth=1 \
+            thirdparty/openvr \
+            thirdparty/glm \
+            thirdparty/Configuru \
+            thirdparty/stb \
+            thirdparty/fast-cpp-csv-parser \
+            thirdparty/LuaBridge3 \
+            thirdparty/imgui \
+            thirdparty/imgui-node-editor \
+            thirdparty/fast_obj \
+            thirdparty/IXWebSocket \
+            thirdparty/readerwriterqueue \
+            thirdparty/nlohmann_json \
+            thirdparty/Vulkan-Headers \
+            thirdparty/volk
+          # LuaBridge3 has its own sub-submodules we don't need, so skip them.
+
+      # ---------------------------------------------------------------
+      # The version baked into the binaries comes from
+      # src/Editor/AppCore/Version.h, and the release is named after the
+      # pushed tag. A mismatch would ship binaries reporting a version
+      # nobody can find, so refuse the release instead.
+      # ---------------------------------------------------------------
+      - name: Check the tag against Version.h
+        shell: bash
+        run: |
+          version_part() {
+            grep -E "^#define[[:space:]]+MIKAN_RELEASE_VERSION_$1[[:space:]]" src/Editor/AppCore/Version.h | awk '{print $3}'
+          }
+          expected="v$(version_part PRODUCT).$(version_part MAJOR).$(version_part MINOR).$(version_part RELEASE)"
+          if [ "$expected" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match src/Editor/AppCore/Version.h, which says $expected."
+            echo "Bump the MIKAN_RELEASE_VERSION_* defines or retag, then push again."
+            exit 1
+          fi
+          echo "Tag $GITHUB_REF_NAME matches Version.h"
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      # ---------------------------------------------------------------
+      # Same cache key expression as the build-and-test workflow so a
+      # release shares the deps folder the ordinary CI runs already
+      # populated. GStreamer is excluded from the cached paths because
+      # the MSIs install system-wide and can't be restored from a
+      # folder cache, which is why it is installed separately below.
+      # ---------------------------------------------------------------
+      - name: Cache dependencies
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            !deps/*.msi
+            !deps/*.exe
+          key: deps-${{ runner.os }}-${{ hashFiles('InitialSetup_x64.bat') }}
+          restore-keys: |
+            deps-${{ runner.os }}-
+
+      # ---------------------------------------------------------------
+      # Unlike the test build, a release needs GStreamer: the shipped
+      # tree carries the MikanGStreamerVideo and MikanARKitVideo
+      # plugins. On a cache miss the full setup runs with SKIP_GSTREAMER
+      # unset. On a cache hit everything else is already on disk, so
+      # only the system-wide MSI install has to happen.
+      # ---------------------------------------------------------------
+      - name: Fetch dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        shell: cmd
+        run: |
+          call InitialSetup_x64.bat
+          if %ERRORLEVEL% NEQ 0 (
+            echo InitialSetup_x64.bat failed
+            exit /b 1
+          )
+
+      - name: Install GStreamer
+        if: steps.cache-deps.outputs.cache-hit == 'true'
+        shell: cmd
+        env:
+          GSTREAMER_ONLY: "1"
+        run: |
+          call InitialSetup_x64.bat
+          if %ERRORLEVEL% NEQ 0 (
+            echo InitialSetup_x64.bat failed
+            exit /b 1
+          )
+
+      # ---------------------------------------------------------------
+      # Put the MSVC toolchain (cl.exe, link.exe, etc.) on PATH. The
+      # Ninja generator invokes the compiler directly rather than going
+      # through MSBuild, so it needs the dev environment exported. This
+      # action writes the vcvars environment to $GITHUB_ENV so later
+      # steps inherit it. arch: x64 matches our build target.
+      # ---------------------------------------------------------------
+      - name: Setup MSVC dev environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # ---------------------------------------------------------------
+      # The GStreamer MSI sets GSTREAMER_1_0_ROOT_MINGW_X86_64 as a
+      # machine-level variable, which a process already running (this
+      # job) never sees. cmake/FindGStreamer.cmake reads exactly that
+      # variable, so export it by hand at the path the MSI installs to.
+      # Single quotes keep bash from eating the trailing backslash.
+      # ---------------------------------------------------------------
+      - name: Export GStreamer root
+        shell: bash
+        run: echo 'GSTREAMER_1_0_ROOT_MINGW_X86_64=C:\gstreamer\1.0\mingw_x86_64\' >> $GITHUB_ENV
+
+      # ---------------------------------------------------------------
+      # MikanARKitVideo builds whenever GStreamer is on and includes the
+      # CUDA driver API headers directly, and links cuda.lib. Only the
+      # cudart sub-package is installed: it carries include\cuda.h and
+      # lib\x64\cuda.lib, which is everything cmake/ThirdParty.cmake
+      # looks for. No nvcc, no runtime libraries, no driver. The action
+      # writes CUDA_PATH to GITHUB_ENV itself.
+      # ---------------------------------------------------------------
+      - name: Install CUDA headers and driver import library
+        uses: Jimver/cuda-toolkit@v0.2.36
+        with:
+          cuda: '12.6.3'
+          method: 'network'
+          sub-packages: '["cudart"]'
+
+      # The sub-package naming is the NVIDIA installer's, not the
+      # action's, so fail loudly and early rather than inside a compile.
+      - name: Verify CUDA headers and libraries
+        shell: bash
+        run: |
+          test -f "$CUDA_PATH/include/cuda.h" || { echo "cuda.h missing from $CUDA_PATH"; exit 1; }
+          test -f "$CUDA_PATH/lib/x64/cuda.lib" || { echo "cuda.lib missing from $CUDA_PATH"; exit 1; }
+
+      # ---------------------------------------------------------------
+      # Same configure as the build-and-test workflow, with two
+      # differences: GStreamer is ON because a release ships its video
+      # plugins, and CEF_DEBUG_INFO_FLAG is not passed because
+      # thirdparty/CMakeLists.txt now sets it. CMAKE_RUNTIME_OUTPUT_
+      # DIRECTORY still flattens the binaries into build\bin so the test
+      # steps below find them where CI does.
+      # ---------------------------------------------------------------
+      - name: Generate project files
+        shell: cmd
+        run: |
+          IF NOT EXIST build mkdir build
+          pushd build
+
+          set DEPS_ROOT_PATH=%GITHUB_WORKSPACE%\deps
+          set THIRDPARTY_ROOT_PATH=%GITHUB_WORKSPACE%\thirdparty
+          set DIST_ROOT_PATH=%GITHUB_WORKSPACE%\dist\Win64
+
+          cmake .. -G "Ninja" ^
+            -DCMAKE_BUILD_TYPE=Release ^
+            -DCMAKE_INSTALL_PREFIX=%DIST_ROOT_PATH% ^
+            -DCEF_ROOT="%DEPS_ROOT_PATH%/cef/cef_binary_145.0.27+g4ddda2e+chromium-145.0.7632.117_windows64" ^
+            -DOpenCV_DIR=%DEPS_ROOT_PATH%\opencv\build ^
+            -DOPENVR_ROOT_DIR=%THIRDPARTY_ROOT_PATH%\openvr ^
+            -DOPENVR_HEADERS_ROOT_DIR=%THIRDPARTY_ROOT_PATH%\openvr\include ^
+            -DSDL2_LIBRARY="%DEPS_ROOT_PATH%\SDL2-2.30.10\lib\x64\sdl2.lib" ^
+            -DSDL2_INCLUDE_DIR="%DEPS_ROOT_PATH%\SDL2-2.30.10\include" ^
+            -DSDL2TTF_LIBRARY="%DEPS_ROOT_PATH%\SDL2_ttf-2.24.0\lib\x64\sdl2_ttf.lib" ^
+            -DSDL2TTF_INCLUDE_DIR="%DEPS_ROOT_PATH%\SDL2_ttf-2.24.0\include" ^
+            -DSDL2_IMAGE_LIBRARY="%DEPS_ROOT_PATH%\SDL2_image-2.8.8\lib\x64\sdl2_image.lib" ^
+            -DSDL2_IMAGE_INCLUDE_DIR="%DEPS_ROOT_PATH%\SDL2_image-2.8.8\include" ^
+            -DCMAKE_PREFIX_PATH="%DEPS_ROOT_PATH%\easy_profiler\lib\cmake\easy_profiler" ^
+            -DNUGET_PATH="%DEPS_ROOT_PATH%" ^
+            -DMIKAN_WITH_GSTREAMER=ON ^
+            -DCMAKE_RUNTIME_OUTPUT_DIRECTORY="%GITHUB_WORKSPACE%\build\bin" ^
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache ^
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache ^
+            -DCMAKE_UNITY_BUILD=ON
+
+          if %ERRORLEVEL% NEQ 0 (
+            echo CMake configure failed
+            exit /b 1
+          )
+          popd
+
+      # ---------------------------------------------------------------
+      # The install target builds everything it installs, so this is the
+      # full build plus the population of dist\Win64 and
+      # dist\symbols\Win64 that the packaging targets below zip.
+      # ---------------------------------------------------------------
+      - name: Build and install
+        shell: cmd
+        run: |
+          cmake --build build --target install --parallel
+          if %ERRORLEVEL% NEQ 0 (
+            echo Build/install failed
+            exit /b 1
+          )
+
+      - name: Show sccache stats
+        shell: cmd
+        run: sccache --show-stats
+
+      # MikanCmd writes test details to MikanCmd.log (in addition to the
+      # console). Dump that log and the actual exit code afterward so a
+      # failure shows which assertion failed (clean failure) or crashed
+      # (no flushed output, nonzero crash code like 0xC0000005).
+      - name: Run MikanCmd tests
+        shell: cmd
+        run: |
+          build\bin\MikanCmd.exe -runTests
+          set TEST_EXIT=%ERRORLEVEL%
+          echo ===== MikanCmd.log =====
+          if exist MikanCmd.log type MikanCmd.log
+          echo ========================
+          if %TEST_EXIT% NEQ 0 (
+            echo MikanCmd tests failed with exit code %TEST_EXIT%
+            exit /b 1
+          )
+
+      - name: Run C++ unit tests
+        shell: cmd
+        run: |
+          build\bin\unit_test_suite_cpp.exe
+          if %ERRORLEVEL% NEQ 0 (
+            echo C++ unit tests failed
+            exit /b 1
+          )
+
+      # ---------------------------------------------------------------
+      # A release build's whole reason for carrying symbols is that a
+      # crash in the field produces a usable minidump, so prove the
+      # handler still works before shipping. -crash=access faults on
+      # purpose: the process must die nonzero and leave a dump plus its
+      # text report behind.
+      # ---------------------------------------------------------------
+      - name: Check the crash reporter
+        shell: bash
+        run: |
+          set +e
+          build/bin/MikanCmd.exe -crash=access -crashReportDir=build/crash
+          crash_exit=$?
+          set -e
+          if [ "$crash_exit" -eq 0 ]; then
+            echo "MikanCmd.exe survived the injected access violation (exit 0)"
+            exit 1
+          fi
+          if [ ! -d build/crash ]; then
+            echo "No crash report directory was created"
+            exit 1
+          fi
+          ls -l build/crash
+          # pending_report.txt is the handler's own marker file, not the report, so it
+          # does not count toward the text reports.
+          dumps=$(find build/crash -name '*.dmp' | wc -l)
+          reports=$(find build/crash -name '*.txt' -not -name 'pending_report.txt' | wc -l)
+          if [ "$dumps" -lt 1 ] || [ "$reports" -lt 1 ]; then
+            echo "Expected at least one .dmp and one .txt in build/crash, found $dumps and $reports"
+            exit 1
+          fi
+
+      # ---------------------------------------------------------------
+      # The packaging targets zip what the install step already wrote,
+      # so they are cheap and order-independent among themselves.
+      # ---------------------------------------------------------------
+      - name: Package application
+        shell: cmd
+        run: |
+          cmake --build build --target PACKAGE_APP
+          if %ERRORLEVEL% NEQ 0 (
+            echo PACKAGE_APP failed
+            exit /b 1
+          )
+
+      - name: Package symbols
+        shell: cmd
+        run: |
+          cmake --build build --target PACKAGE_SYMBOLS
+          if %ERRORLEVEL% NEQ 0 (
+            echo PACKAGE_SYMBOLS failed
+            exit /b 1
+          )
+
+      - name: Build installer
+        shell: cmd
+        run: |
+          cmake --build build --target CREATE_INSTALLER
+          if %ERRORLEVEL% NEQ 0 (
+            echo CREATE_INSTALLER failed
+            exit /b 1
+          )
+
+      # Upload the payload as a workflow artifact as well as attaching it
+      # to the release, so a failure in the draft step still leaves the
+      # three files somewhere they can be inspected.
+      - name: Upload release artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MikanXR-Release
+          path: |
+            dist/Mikan_*_Win64.zip
+            dist/Mikan_*_Win64_symbols.zip
+            dist/Mikan_*_Win64_Setup.exe
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Draft the GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: |
+            dist/Mikan_*_Win64.zip
+            dist/Mikan_*_Win64_symbols.zip
+            dist/Mikan_*_Win64_Setup.exe
