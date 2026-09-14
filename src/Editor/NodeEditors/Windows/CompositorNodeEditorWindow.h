@@ -20,7 +20,6 @@ public:
 
 	virtual void handleGraphVariablesDragDrop(const class NodeEditorState& editorState) override;
 	virtual void handleMainFrameDragDrop(const class NodeEditorState& editorState) override;
-	virtual eMaterialDomain getAuthoredMaterialDomain() const override { return eMaterialDomain::compositor; }
 	virtual const char* getGraphFileExtension() const override
 	{
 		return NodeGraphFileTypes::k_compositorGraphExtension;

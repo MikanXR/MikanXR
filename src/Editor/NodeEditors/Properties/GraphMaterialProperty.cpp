@@ -301,8 +301,8 @@ void GraphMaterialProperty::editorRenderPropertySheet(const NodeEditorState& edi
 	if (MkGui::drawPropertySheetHeader(editorState.styleManager->getStyle("node_editor_panel_header"),
 									   locLabel("graphProperties.materialHeader")))
 	{
-		// Name
-		std::string name= m_materialResource ? m_materialResource->getName() : "";
+		// Name: the material file, not its full path
+		const std::string name= m_materialAssetRef ? m_materialAssetRef->getShortName() : std::string();
 		MkGui::drawStaticTextProperty(propertyStyle, locText("graphProperties.name"), name);
 
 		// Material Asset

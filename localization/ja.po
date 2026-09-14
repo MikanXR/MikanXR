@@ -650,10 +650,10 @@ msgid "Material Asset"
 msgstr "マテリアルアセット"
 
 #. Section: assets
-#, fuzzy
-msgctxt "assets.newMaterial"
-msgid "New Material"
-msgstr "新規マテリアル"
+#, c-format
+msgctxt "assets.newAssetFmt"
+msgid "New %s"
+msgstr ""
 
 #. Section: assets
 #, fuzzy
@@ -5486,3 +5486,8 @@ msgstr "シーン"
 msgctxt "windows.selectCamera"
 msgid "Select Camera"
 msgstr "カメラを選択"
+
+#, fuzzy
+#~ msgctxt "assets.newMaterial"
+#~ msgid "New Material"
+#~ msgstr "新規マテリアル"

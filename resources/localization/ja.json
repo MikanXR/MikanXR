@@ -3,7 +3,7 @@
 		"code": "ja",
 		"nativeName": "日本語",
 		"stringCount": 909,
-		"translatedCount": 902,
+		"translatedCount": 901,
 		"reviewedCount": 0
 	},
 	"CEFTextureSourceComponent": {
@@ -124,7 +124,7 @@
 		"loadTextureDialogTitle": "テクスチャを読み込む",
 		"material": "マテリアル",
 		"materialAssetHeader": "マテリアルアセット",
-		"newMaterial": "新規マテリアル",
+		"newAssetFmt": "New %s",
 		"pixelContentFilterDescription": "画像ファイル (*.png, *.gif, *.bmp, *.tga, *.jpg, *.jpeg)",
 		"readOnlyAsset": "アプリ付属のアセットは読み取り専用です",
 		"readOnlyFolder": "アプリケーション付属 (読み取り専用)",

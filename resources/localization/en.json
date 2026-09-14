@@ -124,7 +124,7 @@
 		"loadTextureDialogTitle": "Load Texture",
 		"material": "Material",
 		"materialAssetHeader": "Material Asset",
-		"newMaterial": "New Material",
+		"newAssetFmt": "New %s",
 		"pixelContentFilterDescription": "Image Files (*.png, *.gif, *.bmp, *.tga, *.jpg, *.jpeg)",
 		"readOnlyAsset": "Bundled assets are read only",
 		"readOnlyFolder": "Bundled with the application (read only)",

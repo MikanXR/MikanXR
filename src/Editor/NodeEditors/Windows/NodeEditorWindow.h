@@ -88,10 +88,6 @@ public:
 	// Ask the app to tear this window down at the end of the frame
 	void requestClose() { m_bCloseRequested= true; }
 
-	// The domain a material authored from this window's assets panel is
-	// compiled for. INVALID for graphs that consume no materials.
-	virtual eMaterialDomain getAuthoredMaterialDomain() const { return eMaterialDomain::INVALID; }
-
 	// -- IEditorWindow ----
 	virtual bool startup() override;
 	virtual void update(float deltaSeconds) override;
@@ -134,12 +130,6 @@ protected:
 	void renderVariableNameField(GraphPropertyPtr property);
 	// F2: the selected variable or page gets its inline rename field
 	void beginSelectedObjectRename();
-
-	// The assets panel's New Material button: open or focus the material editor
-	// on a fresh graph for this window's authored domain, and add the written
-	// .mat to this graph once it is saved
-	void openNewMaterialEditor(eMaterialDomain domain);
-	void addMaterialAssetReference(const std::filesystem::path& materialPath);
 
 	virtual void deleteSelectedItem();
 

@@ -1212,25 +1212,9 @@ void NodeEditorWindow::renderAssetsPanel()
 
 	MkGuiScopedChild assetSubFrame("AssetSubFrame");
 
-	ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPos().x + 6, ImGui::GetCursorPos().y + 1));
-
-	// Assets are imported from the project's Assets panel. Materials can also be
-	// authored in place for graphs that consume them.
-	const eMaterialDomain authoredDomain= getAuthoredMaterialDomain();
-	if (authoredDomain != eMaterialDomain::INVALID)
-	{
-		if (ImGui::SmallButton(locLabel("assets.newMaterial")))
-		{
-			openNewMaterialEditor(authoredDomain);
-		}
-		ImGui::SameLine();
-	}
-
-	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 18);
-	ImGui::Separator();
-
 	// The project's assets of the types this graph accepts, drawn as drag sources
-	// for the canvas and the variables panel
+	// for the canvas and the variables panel. Assets are imported and authored
+	// from the project's Assets panel, so there is no toolbar here.
 	ProjectAssetCatalog* catalog= getAssetCatalog();
 	if (!nodeGraph || catalog == nullptr)
 	{
@@ -1282,6 +1266,12 @@ void NodeEditorWindow::renderAssetsPanel()
 		{
 			continue;
 		}
+
+		// One divider between folder groups (materials above textures), none above the first
+		if (bAnyEntryDrawn)
+		{
+			ImGui::Separator();
+		}
 		bAnyEntryDrawn= true;
 
 		if (folderDesc.bPreviewTiles)
@@ -1320,56 +1310,6 @@ void NodeEditorWindow::renderAssetsPanel()
 	}
 
 	ImGui::Dummy(ImVec2(1, 10));
-}
-
-void NodeEditorWindow::openNewMaterialEditor(eMaterialDomain domain)
-{
-	App* app= getOwnerApp();
-
-	// One material editor at a time, brought forward when it already exists
-	MaterialNodeEditorWindow* materialWindow= app->getWindowOfType<MaterialNodeEditorWindow>();
-	if (materialWindow != nullptr)
-	{
-		materialWindow->getMkWindowContext()->raiseWindow();
-	}
-	else
-	{
-		materialWindow= app->createAppWindow<MaterialNodeEditorWindow>();
-	}
-
-	if (materialWindow == nullptr)
-	{
-		return;
-	}
-
-	materialWindow->newMaterialGraph(domain);
-
-	// The material window outlives any one requesting window, so the callback
-	// checks this window is still open before touching its graph
-	NodeEditorWindow* requestingWindow= this;
-	materialWindow->setOnMaterialSaved(
-		[requestingWindow](const std::filesystem::path& materialPath)
-		{
-			const std::vector<EditorWindow*>& openWindows= App::getInstance()->getAppWindows();
-			if (std::find(openWindows.begin(), openWindows.end(), requestingWindow) == openWindows.end())
-			{
-				return;
-			}
-
-			requestingWindow->addMaterialAssetReference(materialPath);
-		});
-}
-
-void NodeEditorWindow::addMaterialAssetReference(const std::filesystem::path& materialPath)
-{
-	NodeGraphPtr nodeGraph= getNodeGraph();
-	if (!nodeGraph)
-	{
-		return;
-	}
-
-	// Saving the same material again keeps the existing reference rather than duplicating it
-	nodeGraph->findOrAddAssetReference(getMaterialAssetClassName(getAuthoredMaterialDomain()), materialPath);
 }
 
 void NodeEditorWindow::renderSelectedObjectPanel()

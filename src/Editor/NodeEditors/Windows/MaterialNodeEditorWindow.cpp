@@ -133,11 +133,28 @@ MaterialNodeGraphPtr MaterialNodeEditorWindow::getMaterialNodeGraph() const
 	return MaterialNodeGraphPtr();
 }
 
+MaterialNodeEditorWindow* MaterialNodeEditorWindow::openOnNewMaterial(App* app, eMaterialDomain domain)
+{
+	MaterialNodeEditorWindow* materialWindow= app->getWindowOfType<MaterialNodeEditorWindow>();
+	if (materialWindow != nullptr)
+	{
+		materialWindow->getMkWindowContext()->raiseWindow();
+	}
+	else
+	{
+		materialWindow= app->createAppWindow<MaterialNodeEditorWindow>();
+	}
+
+	if (materialWindow != nullptr)
+	{
+		materialWindow->newMaterialGraph(domain);
+	}
+
+	return materialWindow;
+}
+
 void MaterialNodeEditorWindow::newMaterialGraph(eMaterialDomain domain)
 {
-	// A saved callback belongs to the graph it was requested for
-	m_onMaterialSaved= nullptr;
-
 	createNewGraph([this, domain]() { return MaterialNodeGraphFactory().initialCreateMaterialGraph(this, domain); });
 
 	compileGraph();
@@ -145,8 +162,6 @@ void MaterialNodeEditorWindow::newMaterialGraph(eMaterialDomain domain)
 
 bool MaterialNodeEditorWindow::openMaterialGraph(const std::filesystem::path& graphPath)
 {
-	m_onMaterialSaved= nullptr;
-
 	// The loader keys on the file's class name, so a graph of another kind can arrive here
 	const bool bLoaded= loadGraph(graphPath);
 	if (bLoaded && !getMaterialNodeGraph())
@@ -246,11 +261,6 @@ bool MaterialNodeEditorWindow::compileAndWriteOutputs()
 	if (ProjectAssetCatalog* catalog= getAssetCatalog())
 	{
 		catalog->refresh();
-	}
-
-	if (m_onMaterialSaved)
-	{
-		m_onMaterialSaved(materialPath);
 	}
 
 	return true;

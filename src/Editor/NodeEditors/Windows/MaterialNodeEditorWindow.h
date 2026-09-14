@@ -33,6 +33,9 @@ public:
 
 	void newMaterialGraph(eMaterialDomain domain);
 	bool openMaterialGraph(const std::filesystem::path& graphPath);
+	// The one material editor window, created or brought forward, on a fresh
+	// graph of the domain (the Assets panel's New material buttons)
+	static MaterialNodeEditorWindow* openOnNewMaterial(class App* app, eMaterialDomain domain);
 
 	// Compile the graph and refresh the error overlay and preview, writing nothing
 	MaterialCompileResult compileGraph();
@@ -42,10 +45,6 @@ public:
 	// Whether the graph's file sits under its domain's material folder, which is
 	// where its compiled material file is allowed to land
 	bool isGraphInDomainFolder(const std::filesystem::path& graphPath) const;
-
-	// Invoked with the written .mat path after each successful compileAndWriteOutputs
-	using MaterialSavedCallback= std::function<void(const std::filesystem::path&)>;
-	void setOnMaterialSaved(MaterialSavedCallback callback) { m_onMaterialSaved= std::move(callback); }
 
 protected:
 	virtual void updateUI() override;
@@ -77,5 +76,4 @@ protected:
 	bool m_bShowPreviewPanel= true;
 	// The update delta, carried into render() where the preview animates
 	float m_lastDeltaSeconds= 0.f;
-	MaterialSavedCallback m_onMaterialSaved;
 };

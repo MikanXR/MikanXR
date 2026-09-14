@@ -556,8 +556,9 @@ msgid "Material Asset"
 msgstr ""
 
 #. Section: assets
-msgctxt "assets.newMaterial"
-msgid "New Material"
+#, c-format
+msgctxt "assets.newAssetFmt"
+msgid "New %s"
 msgstr ""
 
 #. Section: assets

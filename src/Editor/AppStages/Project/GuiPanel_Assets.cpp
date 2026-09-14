@@ -1,10 +1,12 @@
 #include "GuiPanel_Assets.h"
+#include "App.h"
 #include "AppStage.h"
 #include "AssetReference.h"
 #include "AssetTileGui.h"
 #include "IconsForkAwesome.h"
 #include "IEditorWindow.h"
 #include "LocText.h"
+#include "MkGuiDrawUtils.h"
 #include "MkGuiScopedChild.h"
 #include "MkGuiScopedDragDropSource.h"
 #include "MkGuiScopedPopup.h"
@@ -15,6 +17,7 @@
 #include "ProjectAssetCatalog.h"
 #include "Project/ProjectGuiPanelContext.h"
 #include "StringUtils.h"
+#include "Windows/MaterialNodeEditorWindow.h"
 
 #include "imgui.h"
 #include "tinyfiledialogs.h"
@@ -201,30 +204,50 @@ void GuiPanel_Assets::renderToolbar(const ProjectAssetFolderDesc& desc)
 	}
 	else
 	{
+		// The buttons flow: one that no longer fits the panel width wraps to the next row
+		const auto smallButtonWidth= [](const std::string& label)
+		{ return ImGui::CalcTextSize(label.c_str(), nullptr, true).x + ImGui::GetStyle().FramePadding.x * 2.f; };
+
 		bool bFirstButton= true;
 		for (const AssetReferenceFactoryPtr& factory : desc.factories)
 		{
-			if (!bFirstButton)
-			{
-				ImGui::SameLine();
-			}
-			bFirstButton= false;
-
 			const std::string buttonLabel= StringUtils::stringify(
 				ICON_FK_PLUS_CIRCLE "  ", locFormat("assets.addAssetFmt", factory->getAssetTypeName().c_str()), "##add",
 				factory->getAssetRefClassName());
+			if (!bFirstButton)
+			{
+				MkGui::sameLineIfFits(smallButtonWidth(buttonLabel));
+			}
+			bFirstButton= false;
 
 			if (ImGui::SmallButton(buttonLabel.c_str()))
 			{
 				importFromFileDialog(desc, factory);
 			}
+
+			// A material folder also authors: the material editor opens on a fresh
+			// graph of the folder's domain, and its save rescans the catalog
+			if (desc.bMaterialFolder)
+			{
+				const std::string newLabel= StringUtils::stringify(
+					ICON_FK_PLUS_CIRCLE "  ", locFormat("assets.newAssetFmt", factory->getAssetTypeName().c_str()),
+					"##new", factory->getAssetRefClassName());
+				MkGui::sameLineIfFits(smallButtonWidth(newLabel));
+				if (ImGui::SmallButton(newLabel.c_str()))
+				{
+					// Deferred: opening pushes an editor window while the toolbar is drawing
+					const eMaterialDomain domain= (eMaterialDomain)desc.materialDomain;
+					addDeferredGuiEvent([domain]()
+										{ MaterialNodeEditorWindow::openOnNewMaterial(App::getInstance(), domain); });
+				}
+			}
 		}
 	}
 
-	ImGui::SameLine();
-
 	const std::string refreshLabel=
 		StringUtils::stringify(ICON_FK_REFRESH "  ", locText("assets.refresh"), "##refreshAssets");
+	MkGui::sameLineIfFits(ImGui::CalcTextSize(refreshLabel.c_str(), nullptr, true).x
+						  + ImGui::GetStyle().FramePadding.x * 2.f);
 	if (ImGui::SmallButton(refreshLabel.c_str()))
 	{
 		// Deferred: a rescan replaces the entries the grid is drawing from
