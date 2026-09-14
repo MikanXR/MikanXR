@@ -6,14 +6,16 @@
 			"class_name":      "GraphMaterialProperty",
 			"id":              2,
 			"parent_id":       0,
-			"name":            "GraphMaterialProperty2",
+			"name":            "rgbUndistortionFrameMat",
+			"sort_order":      -1,
 			"asset_ref_index": 0
 		},
 		{
 			"class_name":      "GraphMaterialProperty",
 			"id":              5,
 			"parent_id":       0,
-			"name":            "GraphMaterialProperty5",
+			"name":            "rgbFrameMat",
+			"sort_order":      -1,
 			"asset_ref_index": 1
 		}
 	],
@@ -33,7 +35,7 @@
 			"id":         0,
 			"pins_in":    [ ],
 			"pins_out":   [ 1 ],
-			"pos":        [ -131.92291, 91.105293 ],
+			"pos":        [ -131.0, 91.0 ],
 			"event_name": "OnCompositeFrame"
 		},
 		{
@@ -53,29 +55,33 @@
 			"material_property_id": 5
 		},
 		{
-			"class_name":           "VideoTextureNode",
-			"id":                   17,
-			"pins_in":              [ ],
-			"pins_out":             [ 18 ],
-			"pos":                  [ 39.0, 221.0 ],
-			"video_texture_source": "Distortion Texture"
+			"class_name":                 "VideoTextureNode",
+			"id":                         17,
+			"pins_in":                    [ ],
+			"pins_out":                   [ 18 ],
+			"pos":                        [ 39.0, 221.0 ],
+			"video_texture_source":       "Distortion Texture",
+			"transfer_function_override": -1
 		},
 		{
-			"class_name":           "VideoTextureNode",
-			"id":                   19,
-			"pins_in":              [ ],
-			"pins_out":             [ 20 ],
-			"pos":                  [ 50.0, 389.0 ],
-			"video_texture_source": "Video Texture"
+			"class_name":                 "VideoTextureNode",
+			"id":                         19,
+			"pins_in":                    [ ],
+			"pins_out":                   [ 20 ],
+			"pos":                        [ 50.0, 389.0 ],
+			"video_texture_source":       "Video Texture",
+			"transfer_function_override": -1
 		},
 		{
-			"class_name":          "ColorTextureSourceNode",
-			"id":                  32,
-			"pins_in":             [ ],
-			"pins_out":            [ 33 ],
-			"pos":                 [ 443.0, 245.0 ],
+			"class_name":                "ColorTextureSourceNode",
+			"id":                        32,
+			"pins_in":                   [ ],
+			"pins_out":                  [ 33 ],
+			"pos":                       [ 443.0, 245.0 ],
 			"texture_source_color_type": "colorRGBA",
-			"texture_source_id":        -1
+			"fallback_mode":             "auto",
+			"texture_source_id":         -1,
+			"vertical_flip":             false
 		},
 		{
 			"class_name":                "DrawLayerNode",
@@ -83,7 +89,7 @@
 			"pins_in":                   [ 36, 37, 38, 41, 42 ],
 			"pins_out":                  [ 39 ],
 			"pos":                       [ 304.0, 92.0 ],
-			"blend_mode":                "blendOn",
+			"blend_mode":                "blendNormal",
 			"stencil_mode":              "insideStencil",
 			"vertical_flip":             true,
 			"invert_when_camera_inside": false,
@@ -98,7 +104,7 @@
 			"pins_in":                   [ 48, 49, 50, 53 ],
 			"pins_out":                  [ 51 ],
 			"pos":                       [ 713.0, 87.0 ],
-			"blend_mode":                "blendOn",
+			"blend_mode":                "blendNormal",
 			"stencil_mode":              "insideStencil",
 			"vertical_flip":             false,
 			"invert_when_camera_inside": false,
