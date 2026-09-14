@@ -127,10 +127,14 @@ bool App::startup(int argc, char** argv)
 
 	LoggerSettings settings= {};
 	settings.min_log_level= LogSeverityLevel::debug;
+	// The log and the crash reports live in the user's MikanXR folder: an
+	// installed build runs from a directory it cannot write to
+	const std::filesystem::path userDataDirectory= PathUtils::getProjectsRootDirectory();
+
 	// No console window: the editor shows the log in its own panel, and the
 	// same lines still go to MikanXR.log
 	settings.enable_console= false;
-	settings.log_filename= "MikanXR.log";
+	settings.log_filename= (userDataDirectory / "MikanXR.log").string();
 	// Feeds both the automation server's log command and the editor's log panel
 	settings.log_callback= AutomationLogBuffer::logCallback;
 

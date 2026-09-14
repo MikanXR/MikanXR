@@ -1,5 +1,6 @@
 #include "SpoutLogRelay.h"
 #include "Logger.h"
+#include "PathUtils.h"
 #include "SpoutLibrary.h"
 
 #include <cstdlib>
@@ -74,7 +75,7 @@ static void emitSpoutLogLine(const std::string& line)
 }
 
 SpoutLogRelay::SpoutLogRelay()
-	: m_logPath(std::filesystem::current_path() / k_spoutLogFileName)
+	: m_logPath(PathUtils::getProjectsRootDirectory() / k_spoutLogFileName)
 {
 }
 

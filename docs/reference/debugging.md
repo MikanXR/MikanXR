@@ -8,10 +8,10 @@ Logging, test suites, and diagnostic surfaces for the editor. Build invocations 
 
 The logger lives in `MikanCoreApp` (`src/Libraries/MikanCoreApp/Public/Logger.h`). Levels are `LogSeverityLevel` trace/debug/info/warning/error/fatal. Log with the `MIKAN_LOG_<LEVEL>("Scope::function") << ...` stream macros; use the `MIKAN_MT_LOG_*` variants only off the main thread (they take a mutex). Each process calls `log_init(LoggerSettings)` once; settings choose the minimum level, an optional log file, an optional callback, and whether a Win32 GUI process allocates a console (`enable_console`).
 
-Every line goes to stdout (stderr for error and above) and, if configured, to the log file. Log files are opened with a relative path, so they land in the process working directory:
+Every line goes to stdout (stderr for error and above) and, if configured, to the log file:
 
-- `Mikan.exe`: `MikanXR.log`, minimum level debug, no console (`App::startup`); the same lines feed the editor's log panel through `AutomationLogBuffer::logCallback`.
-- `MikanCmd.exe`: `MikanCmd.log`, minimum level debug (`CmdApp::exec`).
+- `Mikan.exe`: `Documents\MikanXR\MikanXR.log` (the projects root from `PathUtils::getProjectsRootDirectory`, a folder an installed build can write to, since `Program Files` is not), minimum level debug, no console (`App::startup`); the same lines feed the editor's log panel through `AutomationLogBuffer::logCallback`.
+- `MikanCmd.exe`: `MikanCmd.log` in the working directory, minimum level debug (`CmdApp::exec`). It is a developer tool run from the repo root, and CI reads the log from there.
 
 Both executables parse `-flag` and `-key=value` command-line arguments (`hasCommandLineFlag` / `getCommandLineStringArg`).
 
@@ -79,7 +79,7 @@ Before suspecting pipeline code, check how the process was launched, then run th
 
 Spout keeps its own diagnostics, and Spout 2.007 exposes no log callback: `EnableSpoutLog()` allocates a console window titled "Spout Log" over the host process, and `EnableSpoutLogFile()` appends to a file. Both flags live in module globals, so one call configures every sender and receiver in that module. Spout logging is off by default everywhere.
 
-The editor turns it on through `SpoutLogRelay` (`src/Editor/Interprocess/SpoutLogRelay.cpp`), owned by `App` and gated on the `spoutLogEnabled` setting in `AppSettingsConfig` (the "Relay Spout Logs" checkbox in the project Settings panel, off by default). Enabling it points Spout's file logging at `MikanSpout.log` in the working directory at verbose level, and `App::tick` tails the new bytes each frame into the logger under the `Spout` scope, so Spout's output lands in the log panel and `MikanXR.log` with no extra window. Level tags map `[warning]`/`[error]`/`[fatal]` onto the matching severity; `[notice]` and untagged verbose lines log as info.
+The editor turns it on through `SpoutLogRelay` (`src/Editor/Interprocess/SpoutLogRelay.cpp`), owned by `App` and gated on the `spoutLogEnabled` setting in `AppSettingsConfig` (the "Relay Spout Logs" checkbox in the project Settings panel, off by default). Enabling it points Spout's file logging at `MikanSpout.log` next to `MikanXR.log` at verbose level, and `App::tick` tails the new bytes each frame into the logger under the `Spout` scope, so Spout's output lands in the log panel and `MikanXR.log` with no extra window. Level tags map `[warning]`/`[error]`/`[fatal]` onto the matching severity; `[notice]` and untagged verbose lines log as info.
 
 Client processes (and the editor's own sender path inside `MikanSharedTexture`) have no settings file to read, so they gate on the `MIKAN_SPOUT_LOG` environment variable instead, applied once per process in `SharedTextureWriter.cpp`:
 
