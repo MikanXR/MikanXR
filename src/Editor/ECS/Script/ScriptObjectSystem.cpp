@@ -161,9 +161,5 @@ void ScriptObjectSystem::disposeScriptContext()
 
 ScriptComponentPtr ScriptObjectSystem::addNewScript()
 {
-	return addNewObjectByTypedDefinition(
-		[](ScriptDefinitionPtr definition)
-		{
-			return true;
-		});
+	return addNewObjectByTypedDefinition([](ScriptDefinitionPtr definition) { return true; });
 }
