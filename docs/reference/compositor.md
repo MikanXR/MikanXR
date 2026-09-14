@@ -96,6 +96,8 @@ Draw state (blend, stencil, masks, viewport) is managed through the scoped `MkSt
 
 - **Video recording.** No video-file recorder currently exists in the compositor path; `eSupportedCodec` (MP4V/MJPG/RGBA) in `CompositorConstants.h` is defined but unreferenced outside that file.
 
+Which compositors run: `CompositorObjectSystem::refreshRunningCompositors` starts the current scene's display compositor (`SceneComponent::refreshActiveCompositors` hands it over) plus any compositor a graph editor window is bound to (`CompositorComponent::setEditorHeld`), and stops every other one. A stopped compositor holds no video distortion view and skips `update`, which is why its graph shows black source nodes and never evaluates. A compositor running only because an editor holds it streams its video source and evaluates the graph being edited (`tryCompositeOldestFrame` prefers the editor graph) but is denied output streaming (`setOutputStreamingAllowed`), so no Spout sender appears for it until it becomes the display compositor.
+
 ---
 
 ## Frame anatomy

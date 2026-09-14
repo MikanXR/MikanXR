@@ -46,7 +46,12 @@ public:
 	}
 	std::vector<MikanCompositorID> getCompositorIdListForStage(MikanStageID stageId) const;
 
+	// The scene's display compositors. A compositor runs when it is one of
+	// these or when a graph editor window holds it; only the scene's may
+	// publish output.
 	void setActiveCompositors(const std::vector<MikanCompositorID>& activeCompositorIdList);
+	// Starts and stops compositors to match the scene list plus the editor holds
+	void refreshRunningCompositors();
 	MulticastDelegate<void(CompositorComponentPtr oldCompositor)> OnCompositorDeactivated;
 	MulticastDelegate<void(CompositorComponentPtr newCompositor)> OnCompositorActivated;
 
@@ -57,5 +62,6 @@ public:
 	bool getAllCompositorsPaused() const { return m_bAllCompositorsPaused; }
 
 private:
+	std::vector<MikanCompositorID> m_sceneActiveCompositorIds;
 	bool m_bAllCompositorsPaused= false;
 };

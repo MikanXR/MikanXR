@@ -32,6 +32,7 @@
 #include "VideoFrameDistortionView.h"
 #include "VideoSourceComponent.h"
 #include "Windows/CompositorNodeEditorWindow.h"
+#include "IMkWindowContext.h"
 
 #include "AssetReferencePropertyMetaData.h"
 #include "Graphs/CompositorNodeGraph.h"
@@ -438,9 +439,30 @@ void CompositorComponent::editCompositorGraph()
 {
 	App* app= App::getInstance();
 
-	if (!app->hasWindowOfType<CompositorNodeEditorWindow>())
+	// One editor window serves every compositor: an open one rebinds and comes forward
+	CompositorNodeEditorWindow* window= app->getWindowOfType<CompositorNodeEditorWindow>();
+	if (window == nullptr)
 	{
 		app->createAppWindow<CompositorNodeEditorWindow>()->bindCompositorComponent(getSelfPtr<CompositorComponent>());
+	}
+	else
+	{
+		window->openCompositorComponent(getSelfPtr<CompositorComponent>());
+		window->getMkWindowContext()->raiseWindow();
+	}
+}
+
+void CompositorComponent::setEditorHeld(bool bHeld)
+{
+	if (m_bEditorHeld != bHeld)
+	{
+		m_bEditorHeld= bHeld;
+
+		// A window closing during app shutdown may outlive the project's systems
+		if (CompositorObjectSystemPtr ownerSystem= getOwnerObjectSystem())
+		{
+			ownerSystem->refreshRunningCompositors();
+		}
 	}
 }
 
@@ -566,7 +588,8 @@ void CompositorComponent::startVideoSourceStreaming(VideoSourceComponentPtr vide
 void CompositorComponent::updateOutputStreaming()
 {
 	CompositorDefinitionConstPtr definition= getCompositorDefinition();
-	const bool bWantsOutput= definition->getIsSpoutOutputStreaming() && !definition->getSpoutOutputName().empty();
+	const bool bWantsOutput= m_bOutputStreamingAllowed && definition->getIsSpoutOutputStreaming()
+							 && !definition->getSpoutOutputName().empty();
 	const bool bIsStreaming= getIsOutputStreaming();
 
 	// Create the Spout sender if we don't have one already but want to stream

@@ -84,6 +84,14 @@ public:
 	bool getIsRunning() const { return m_bIsRunning; }
 	void stop();
 
+	// A graph editor window holds its compositor running while it is open, so
+	// the graph gets frames and evaluation whichever compositor the scene displays
+	bool getIsEditorHeld() const { return m_bEditorHeld; }
+	void setEditorHeld(bool bHeld);
+	// Whether the compositor may publish its output; the owning system grants it
+	// only to the scene's display compositor
+	void setOutputStreamingAllowed(bool bAllowed) { m_bOutputStreamingAllowed= bAllowed; }
+
 	inline static const std::string k_componentClassName= "CompositorComponent";
 	virtual std::string getComponentClassName() const override { return k_componentClassName; }
 
@@ -185,6 +193,8 @@ private:
 	ISharedTextureWriteAccessorPtr m_renderTargetWriteAccessor;
 
 	bool m_bIsRunning= false;
+	bool m_bEditorHeld= false;
+	bool m_bOutputStreamingAllowed= true;
 	int64_t m_lastReadVideoFrameIndex= 0;
 	int64_t m_lastCompositedFrameIndex= 0;
 	float m_timeSinceLastFrameComposited= 0.f;

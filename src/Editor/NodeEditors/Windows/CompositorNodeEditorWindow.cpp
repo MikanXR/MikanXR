@@ -59,6 +59,9 @@ bool CompositorNodeEditorWindow::bindCompositorComponent(CompositorComponentPtr 
 	// Tell the compositor component about the node graph it's bound to
 	m_compositorComponent->setEditorCompositorNodeGraph(compositorNodeGraph);
 
+	// Keep it running while this window shows its graph
+	m_compositorComponent->setEditorHeld(true);
+
 	return true;
 }
 
@@ -66,6 +69,7 @@ void CompositorNodeEditorWindow::unbindCompositorComponent()
 {
 	if (m_compositorComponent)
 	{
+		m_compositorComponent->setEditorHeld(false);
 		m_compositorComponent->setEditorCompositorNodeGraph(nullptr);
 		m_compositorComponent= nullptr;
 	}
@@ -126,12 +130,8 @@ void CompositorNodeEditorWindow::update(float deltaSeconds)
 
 void CompositorNodeEditorWindow::shutdown()
 {
-	// Tell the frame compositor to free the editor compositor texture
-	if (m_compositorComponent)
-	{
-		m_compositorComponent->setEditorCompositorNodeGraph(nullptr);
-		m_compositorComponent= nullptr;
-	}
+	// Frees the editor compositor texture and releases the running hold
+	unbindCompositorComponent();
 
 	NodeEditorWindow::shutdown();
 }
@@ -226,6 +226,12 @@ void CompositorNodeEditorWindow::renderMenuBarExtras()
 {
 	if (ImGui::BeginMenu(locLabel("nodeEditor.compositorMenu")))
 	{
+		// The bound compositor's name heads the menu (data, so drawn raw)
+		const std::string boundName=
+			m_compositorComponent ? m_compositorComponent->getName() : std::string(locText("nodeEditor.noCompositor"));
+		ImGui::MenuItem(boundName.c_str(), nullptr, false, false);
+		ImGui::Separator();
+
 		bool bRunning= m_compositorComponent ? !m_compositorComponent->getEditorEvaluationPaused() : true;
 		if (ImGui::MenuItem(locLabel("nodeEditor.runCompositor"), nullptr, &bRunning) && m_compositorComponent)
 		{

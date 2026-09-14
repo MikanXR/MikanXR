@@ -40,6 +40,12 @@ std::vector<MikanCompositorID> CompositorObjectSystem::getCompositorIdListForSta
 
 void CompositorObjectSystem::setActiveCompositors(const std::vector<MikanCompositorID>& activeCompositorIdList)
 {
+	m_sceneActiveCompositorIds= activeCompositorIdList;
+	refreshRunningCompositors();
+}
+
+void CompositorObjectSystem::refreshRunningCompositors()
+{
 	// Iterate through all compositor components
 	for (const auto& compositorPair : Super::getComponentMap())
 	{
@@ -48,10 +54,14 @@ void CompositorObjectSystem::setActiveCompositors(const std::vector<MikanComposi
 
 		if (compositor)
 		{
-			// Check if this compositor should be active
-			bool shouldBeActive= std::find(activeCompositorIdList.begin(), activeCompositorIdList.end(), compositorId)
-								 != activeCompositorIdList.end();
+			// The scene's display compositor runs and publishes. A compositor an
+			// editor holds runs for its frames and evaluation but keeps its output down.
+			const bool bSceneActive=
+				std::find(m_sceneActiveCompositorIds.begin(), m_sceneActiveCompositorIds.end(), compositorId)
+				!= m_sceneActiveCompositorIds.end();
+			bool shouldBeActive= bSceneActive || compositor->getIsEditorHeld();
 			bool isCurrentlyRunning= compositor->getIsRunning();
+			compositor->setOutputStreamingAllowed(bSceneActive);
 
 			if (shouldBeActive && !isCurrentlyRunning)
 			{
