@@ -99,6 +99,9 @@ bool parseKeyName(const std::string& name, MkKeySym& outKeySym)
 		{"f10", MkKey::F10},
 		{"f11", MkKey::F11},
 		{"f12", MkKey::F12},
+		{"ctrl", MkKey::LEFT_CTRL},
+		{"shift", MkKey::LEFT_SHIFT},
+		{"alt", MkKey::LEFT_ALT},
 	};
 
 	std::string lowered= name;
@@ -444,13 +447,13 @@ void AutomationServer::registerCoreNamespaces()
 	registerCommandNamespace("window", {"window list", "window focus <windowIndex>"},
 							 std::bind(&AutomationServer::handleWindowCommand, this, _1, _2, _3));
 
-	registerCommandNamespace("input",
-							 {"input move <windowIndex> <x> <y>",
-							  "input click <windowIndex> <x> <y> [left|middle|right] [clickCount]",
-							  "input press|release <windowIndex> <x> <y> [left|middle|right]",
-							  "input wheel <windowIndex> <x> <y> <scrollY> [scrollX]",
-							  "input key <windowIndex> <keyName> [modifiers...]", "input text <windowIndex> <text...>"},
-							 std::bind(&AutomationServer::handleInputCommand, this, _1, _2, _3));
+	registerCommandNamespace(
+		"input",
+		{"input move <windowIndex> <x> <y>", "input click <windowIndex> <x> <y> [left|middle|right] [clickCount]",
+		 "input press|release <windowIndex> <x> <y> [left|middle|right]",
+		 "input wheel <windowIndex> <x> <y> <scrollY> [scrollX]",
+		 "input key|keydown|keyup <windowIndex> <keyName> [modifiers...]", "input text <windowIndex> <text...>"},
+		std::bind(&AutomationServer::handleInputCommand, this, _1, _2, _3));
 
 	registerCommandNamespace(
 		"script",
@@ -1689,11 +1692,11 @@ bool AutomationServer::handleInputCommand(const std::vector<std::string>& args, 
 
 		return true;
 	}
-	else if (verb == "key")
+	else if (verb == "key" || verb == "keydown" || verb == "keyup")
 	{
 		if (args.size() < 3)
 		{
-			outError= "usage: input key <windowIndex> <keyName> [modifiers...]";
+			outError= "usage: input " + verb + " <windowIndex> <keyName> [modifiers...]";
 			return false;
 		}
 
@@ -1716,8 +1719,12 @@ bool AutomationServer::handleInputCommand(const std::vector<std::string>& args, 
 			keyMod|= parsedMod;
 		}
 
-		windowContext->injectKey(keySym, keyMod, true);
-		windowContext->injectKey(keySym, keyMod, false);
+		// keydown and keyup are the halves of key, so a drive can hold a
+		// modifier (keydown ctrl ctrl) across a mouse press, move, and release
+		if (verb != "keyup")
+			windowContext->injectKey(keySym, keyMod, true);
+		if (verb != "keydown")
+			windowContext->injectKey(keySym, keyMod, false);
 		return true;
 	}
 	else if (verb == "text")
