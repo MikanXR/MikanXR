@@ -316,6 +316,36 @@ jobs:
             echo C++ unit tests failed
             exit /b 1
           )
+      # ---------------------------------------------------------------
+      # Crash the command-line tool on purpose and require the crash
+      # reporter's files. A nonzero exit is the expected outcome here:
+      # a zero exit means the crash never happened. The stack overflow
+      # kind is the one that needs the reporter's writer thread, so it
+      # runs too.
+      # ---------------------------------------------------------------
+      - name: Check crash reporter
+        shell: cmd
+        run: |
+          setlocal EnableDelayedExpansion
+          for %%K in (access stackoverflow) do (
+            if exist build\crash rmdir /s /q build\crash
+            build\bin\MikanCmd.exe -crash=%%K -crashReportDir=build\crash
+            if !ERRORLEVEL! EQU 0 (
+              echo MikanCmd did not crash on kind %%K
+              exit /b 1
+            )
+            if not exist build\crash\*.dmp (
+              echo No minidump written for kind %%K
+              exit /b 1
+            )
+            if not exist build\crash\*.txt (
+              echo No crash summary written for kind %%K
+              exit /b 1
+            )
+            type build\crash\*.txt
+          )
+          exit /b 0
+
 
       # Upload test binaries and runtime DLLs for inspection.
       # Only upload on main branch pushes to avoid wasting storage on

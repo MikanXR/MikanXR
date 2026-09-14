@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 909,
+		"stringCount": 911,
 		"translatedCount": 901,
 		"reviewedCount": 0
 	},
@@ -211,6 +211,10 @@
 		"videoSource": "映像ソース",
 		"vrDevice": "VRデバイス",
 		"width": "幅"
+	},
+	"crashReport": {
+		"questionFmt": "MikanXR closed unexpectedly last time. A crash report was saved to:\n%s\nOpen that folder now? Attaching its .dmp, .txt and .log files to a GitHub issue helps get the crash fixed.",
+		"title": "Crash Report"
 	},
 	"depthMeshCapture": {
 		"arucoAutoCalibrateNote": "プロジェクトのArUcoマーカーがフレーム内に見える場合、それを使ってメートル法のスケールを自動的にキャリブレーションします。",

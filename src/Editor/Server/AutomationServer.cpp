@@ -5,6 +5,7 @@
 #include "AutomationProtocol.h"
 #include "AutomationSocket.h"
 #include "AutomationVariantText.h"
+#include "CrashHandler.h"
 #include "ProjectAssetCatalog.h"
 #include "ProjectScriptContext.h"
 #include "CompositorObjectSystem.h"
@@ -417,7 +418,7 @@ void AutomationServer::registerCoreNamespaces()
 
 	registerCommandNamespace("app",
 							 {"app info", "app push <stageName>", "app pop", "app open <projectPath>",
-							  "app new <projectPath>", "app resume", "app quit"},
+							  "app new <projectPath>", "app resume", "app quit", "app crash <kind>"},
 							 std::bind(&AutomationServer::handleAppCommand, this, _1, _2, _3));
 
 	registerCommandNamespace("stage", {"stage <command> [parameters...]"},
@@ -507,7 +508,7 @@ bool AutomationServer::handleAppCommand(const std::vector<std::string>& args, st
 {
 	if (args.empty())
 	{
-		outError= "usage: app info|push|pop|open|new|resume|quit";
+		outError= "usage: app info|push|pop|open|new|resume|quit|crash";
 		return false;
 	}
 
@@ -575,6 +576,23 @@ bool AutomationServer::handleAppCommand(const std::vector<std::string>& args, st
 	else if (verb == "quit")
 	{
 		App::getInstance()->requestShutdown();
+		return true;
+	}
+	else if (verb == "crash")
+	{
+		// The process dies before any reply, so the client sees the socket close
+		if (args.size() < 2)
+		{
+			outError= std::string("usage: app crash <kind>, kinds: ") + CrashHandler::getTestCrashKinds();
+			return false;
+		}
+
+		if (!CrashHandler::triggerTestCrash(args[1]))
+		{
+			outError= "unknown crash kind '" + args[1] + "', kinds: " + CrashHandler::getTestCrashKinds();
+			return false;
+		}
+
 		return true;
 	}
 

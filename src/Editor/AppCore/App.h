@@ -8,7 +8,7 @@
 #include "ObjectSystemConfigFwd.h"
 
 #include <chrono>
-
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <set>
@@ -40,6 +40,7 @@ public:
 	inline EventBus* getEventBus() const { return m_eventBus.get(); }
 	inline class LocalizationManager* getLocalizationManager() const { return m_localizationManager; }
 	inline SpoutLogRelay* getSpoutLogRelay() const { return m_spoutLogRelay.get(); }
+	inline const std::filesystem::path& getCrashReportDirectory() const { return m_crashReportDirectory; }
 
 	double getSecondsSinceAppStart() const;
 	inline float getFPS() const { return m_fps; }
@@ -154,6 +155,9 @@ private:
 
 	// Flag requesting that we exit the update loop
 	bool m_bShutdownRequested= false;
+
+	// Where the crash handler writes its reports
+	std::filesystem::path m_crashReportDirectory;
 
 	// Command line arguments parsed at startup
 	std::map<std::string, std::string> m_commandLineParams;

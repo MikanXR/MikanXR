@@ -15,6 +15,8 @@ Every line goes to stdout (stderr for error and above) and, if configured, to th
 
 Both executables parse `-flag` and `-key=value` command-line arguments (`hasCommandLineFlag` / `getCommandLineStringArg`).
 
+The logger flushes every line, so the file is complete up to a crash, which is what lets the crash handler copy it into the report (see [Crash reports](#crash-reports)).
+
 ---
 
 ## Test suites
@@ -37,19 +39,47 @@ The localization module reads `resources/localization` relative to the working d
 
 `Mikan.exe` no longer allocates a console window: its log is the editor's Log panel (View menu), backed by the same `AutomationLogBuffer` ring the `log tail` automation command reads. `MikanXR.log` still receives every line. A callback passed to `log_init` is an additional sink rather than a replacement, so the standard streams and the log file stay connected alongside it.
 
-**`build\bin\unit_test_suite_cpp.exe`** runs the C++ unit tests, entry point `src/Programs/Tests/UnitTests/unit_test_suite.cpp`. Modules: math utility, GLM math, serialization, mikan API, spherical harmonic lighting, and ONNX session. The `unit_test.h` macros print a `PASSED`/`FAILED` line per test and per module. The spherical harmonic module is the round-trip guard on the lighting solve described in [scene-lighting.md](./scene-lighting.md): it validates the fit against synthetic data with known ground truth and asserts the l=2 ridge actually shrinks that band. Neither ML module touches a checkpoint or requires a GPU, which is what lets both suites run unchanged on a CI runner: the ONNX module probes for DirectML and reports the result without failing when it is absent, and otherwise only checks that a missing model file fails cleanly instead of throwing. On the `iphone` branch this suite also carries the ARKit wire-protocol, CUDA-GL-interop, video-device, and video-source-system modules; the CUDA-GL interop module deliberately runs early there because it creates its own CUDA context.
+**`build\bin\unit_test_suite_cpp.exe`** runs the C++ unit tests, entry point `src/Programs/Tests/UnitTests/unit_test_suite.cpp`. Modules: math utility, crash handler (the report directory and pending-marker plumbing; the crash paths themselves are exercised by `MikanCmd.exe -crash`, below), GLM math, serialization, mikan API, spherical harmonic lighting, and ONNX session. The `unit_test.h` macros print a `PASSED`/`FAILED` line per test and per module. The spherical harmonic module is the round-trip guard on the lighting solve described in [scene-lighting.md](./scene-lighting.md): it validates the fit against synthetic data with known ground truth and asserts the l=2 ridge actually shrinks that band. Neither ML module touches a checkpoint or requires a GPU, which is what lets both suites run unchanged on a CI runner: the ONNX module probes for DirectML and reports the result without failing when it is absent, and otherwise only checks that a missing model file fails cleanly instead of throwing. On the `iphone` branch this suite also carries the ARKit wire-protocol, CUDA-GL-interop, video-device, and video-source-system modules; the CUDA-GL interop module deliberately runs early there because it creates its own CUDA context.
 
 ---
 
 ## When a run crashes with no output
 
-`CmdApp::exec` sets stdout unbuffered (`setvbuf(stdout, nullptr, _IONBF, 0)`) precisely because a piped stdout (CI) is fully buffered and a hard crash would otherwise discard everything: the last printed line is the crash site. Also check `MikanCmd.log`, since test results are written there in addition to stdout.
+`CmdApp::exec` sets stdout unbuffered (`setvbuf(stdout, nullptr, _IONBF, 0)`) precisely because a piped stdout (CI) is fully buffered and a hard crash would otherwise discard everything: the last printed line is the crash site. Also check `MikanCmd.log`, since test results are written there in addition to stdout. A hard crash also leaves a minidump in the crash report folder (see [Crash reports](#crash-reports)).
 
 If a process dies instantly with exit status `0xC0000135` (`STATUS_DLL_NOT_FOUND`), a runtime DLL is missing next to the executable. Known project gotcha: a locally installed GStreamer on `PATH` can satisfy DLL loads that CI cannot, so a missing post-build DLL copy passes locally and only fails in CI. Verify the DLL copy steps rather than the code.
 
 Second known gotcha: with the default `CMAKE_UNITY_BUILD=ON`, a transitively included `windows.h` in a jumbo TU can rewrite a method name that collides with a Win32 macro (`GetObject` → `GetObjectA`, likewise `SendMessage`, `CreateWindow`, ...), producing an `LNK2019` far from the real conflict. Avoid such method names; see [build.md](./build.md).
 
 Third known gotcha, specific to the node editor: ImGui's `IM_ASSERT` is plain `assert()`, so imgui-node-editor's API-contract checks fire only in a Debug build and vanish under `NDEBUG`. Misusing that API therefore looks harmless in Release and stops the app dead in Debug. Its `Begin`/`End` pairs are not uniformly forgiving either, so read the one you are calling: `DeleteItemsAction::End` returns early when inactive and is safe to call unconditionally, while `CreateItemAction::End` asserts, so `ed::EndCreate()` may only run when `ed::BeginCreate()` returned true.
+
+---
+
+## Crash reports
+
+`CrashHandler` (`src/Libraries/MikanCoreApp/Public/CrashHandler.h`) turns an unhandled crash in `Mikan.exe` or `MikanCmd.exe` into a report on disk instead of the Windows error dialog. Nothing is uploaded anywhere. Each report is a set of files sharing one base name, `<app>_<version>_<yyyy-mm-dd_hh-mm-ss>`:
+
+- `.dmp`: a minidump carrying the crashing thread's context, thread info, handle data, indirectly referenced memory, and the unloaded module list. Data segments are left out to keep the file within an issue attachment's size limit.
+- `.txt`: the exception code and its name, the faulting address, the module it falls in with the offset, and the crashing thread id
+- `.log`: a copy of the process log at the moment of the crash
+- `pending_report.txt`: a marker naming the newest report. The editor consumes it on the next launch: the main menu shows a notice with a button that opens the folder, then clears the marker.
+
+`Mikan.exe` writes to `Documents\MikanXR\CrashReports`. `MikanCmd.exe` writes to the same folder unless `-crashReportDir=<dir>` says otherwise.
+
+What is caught: SEH exceptions (access violations, stack overflows, uncaught C++ exceptions), `abort()` and `std::terminate`, pure virtual calls, and CRT invalid-parameter faults. The last three arrive as CRT callbacks rather than exceptions, so the handler synthesizes an exception record for them with codes `0xE0000001` (abort), `0xE0000002` (purecall), and `0xE0000003` (invalid parameter). Not caught: `__fastfail` paths such as `/GS` stack cookie failures, which no user-mode handler can see, and anything that happens while a debugger is attached, since the debugger takes the exception first.
+
+The dump is written by a thread created at install time, which is what lets a stack overflow on the crashing thread still produce one. Chromium replaces the process crash hooks during `CefInitialize`, so `App::startup` re-asserts them right after and logs a warning when they had been swapped. A CRT fault that shows up in a report as a breakpoint exception means that re-assert was lost.
+
+Symbolicating a dump needs the PDBs of the build that crashed. Release builds emit them (see [build.md](./build.md)) and each GitHub release carries `Mikan_<version>_Win64_symbols.zip`. Unpack it beside the dump and open the dump in WinDbg (`.sympath+ <folder>` then `!analyze -v`), in Visual Studio, or in a minidump viewer such as CrashCatch Analyze.
+
+To exercise a report path on purpose:
+
+```
+build\bin\MikanCmd.exe -crash=access -crashReportDir=build\crash
+python tools/automate.py "app crash access"
+```
+
+Kinds: `access`, `abort`, `terminate`, `purecall`, `invalidparam`, `stackoverflow`. The process exits with the exception code, and the automation client reports the connection closed, since the reply never comes. CI runs the `MikanCmd` form and requires the `.dmp` and `.txt` to appear.
 
 ---
 

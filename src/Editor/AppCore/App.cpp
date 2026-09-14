@@ -3,6 +3,7 @@
 #include "AppSettingsConfig.h"
 #include "AutomationLogBuffer.h"
 #include "CommonConfig.h"
+#include "CrashHandler.h"
 #include "EventBus.h"
 #include "FrameTimer.h"
 #include "Graphs/CompositorNodeGraph.h"
@@ -22,6 +23,7 @@
 #include "IMkWindowContextManager.h"
 #include "SpoutLogRelay.h"
 #include "TypeRegistry.h"
+#include "Version.h"
 
 // #include "Windows/TestNodeEditorWindow.h"
 #include "Windows/CompositorNodeEditorWindow.h"
@@ -125,12 +127,12 @@ bool App::startup(int argc, char** argv)
 		}
 	}
 
-	LoggerSettings settings= {};
-	settings.min_log_level= LogSeverityLevel::debug;
 	// The log and the crash reports live in the user's MikanXR folder: an
 	// installed build runs from a directory it cannot write to
 	const std::filesystem::path userDataDirectory= PathUtils::getProjectsRootDirectory();
 
+	LoggerSettings settings= {};
+	settings.min_log_level= LogSeverityLevel::debug;
 	// No console window: the editor shows the log in its own panel, and the
 	// same lines still go to MikanXR.log
 	settings.enable_console= false;
@@ -139,6 +141,14 @@ bool App::startup(int argc, char** argv)
 	settings.log_callback= AutomationLogBuffer::logCallback;
 
 	log_init(settings);
+
+	m_crashReportDirectory= userDataDirectory / "CrashReports";
+	CrashHandlerSettings crashSettings= {};
+	crashSettings.reportDirectory= m_crashReportDirectory;
+	crashSettings.logFilePath= settings.log_filename;
+	crashSettings.appName= "Mikan";
+	crashSettings.appVersion= MIKAN_RELEASE_VERSION_STRING;
+	CrashHandler::install(crashSettings);
 
 	profiler::startListen();
 
@@ -215,6 +225,9 @@ bool App::startup(int argc, char** argv)
 			MIKAN_LOG_ERROR("CEFTextureSourceSystem") << "CefInitialize failed";
 			return false;
 		}
+
+		// Chromium installs its own crash hooks during initialization
+		CrashHandler::ensureInstalled();
 	}
 
 	if (success)
@@ -269,6 +282,8 @@ void App::shutdown()
 #ifdef _WIN32
 	CoUninitialize();
 #endif // _WIN32
+
+	CrashHandler::uninstall();
 }
 
 double App::getSecondsSinceAppStart() const

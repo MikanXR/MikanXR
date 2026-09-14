@@ -1,8 +1,11 @@
 #include "CmdApp.h"
+#include "CrashHandler.h"
 #include "DepthMeshGenerator.h"
 #include "Logger.h"
+#include "PathUtils.h"
 #include "SceneLightingEstimator.h"
 #include "TypeRegistry.h"
+#include "Version.h"
 #include "TrackerPoseCalibratorTests.h"
 #include "ARKitDebugProtocolTests.h"
 #include "AutomationProtocolTests.h"
@@ -88,13 +91,26 @@ int CmdApp::exec(int argc, char** argv)
 	settings.log_filename= "MikanCmd.log";
 	log_init(settings);
 
+	// Crash reports go where the editor's do unless a run points them elsewhere
+	CrashHandlerSettings crashSettings= {};
+	crashSettings.reportDirectory=
+		getCommandLineStringArg("crashReportDir", (PathUtils::getProjectsRootDirectory() / "CrashReports").string());
+	crashSettings.logFilePath= settings.log_filename;
+	crashSettings.appName= "MikanCmd";
+	crashSettings.appVersion= MIKAN_RELEASE_VERSION_STRING;
+	CrashHandler::install(crashSettings);
+
 	// Build the reflection type registry
 	// (Used by the serialization-based commands such as the unit tests).
 	Serialization::TypeRegistry::buildFromRfkDatabase();
 
 	// Dispatch to the requested command.
 	int result= EXIT_SUCCESS;
-	if (hasCommandLineFlag("runTests"))
+	if (!getCommandLineStringArg("crash").empty())
+	{
+		result= triggerCrash();
+	}
+	else if (hasCommandLineFlag("runTests"))
 	{
 		result= runTests();
 	}
@@ -116,6 +132,7 @@ int CmdApp::exec(int argc, char** argv)
 		result= EXIT_FAILURE;
 	}
 
+	CrashHandler::uninstall();
 	log_dispose();
 
 	return result;
@@ -148,23 +165,41 @@ std::string CmdApp::getCommandLineStringArg(const std::string& key, const std::s
 
 void CmdApp::printUsage() const
 {
-	fprintf(stdout, "MikanCmd - Mikan command-line tool\n"
-					"\n"
-					"Usage: MikanCmd <command>\n"
-					"\n"
-					"Commands:\n"
-					"  -runTests    Run the editor unit test suites\n"
-					"  -estimateLighting -image=<path> [-fov=<degrees>] [-models=<dir>]\n"
-					"               [-mogeModels=<dir>] [-cpu] [-dump=<dir>]\n"
-					"               Estimate scene lighting from a single frame and print the\n"
-					"               recovered spherical harmonic environment.\n"
-					"  -depthMesh -image=<path> -fov=<degrees> [-obj=<path>] [-mogeModels=<dir>]\n"
-					"               [-stride=<n>] [-maxDepth=<metres>] [-cpu]\n"
-					"               Generate a camera-space depth proxy mesh from a single frame\n"
-					"               and write it as an OBJ.\n"
-					"  -compileMaterial=<graph>\n"
-					"               Compile a material graph (.matgraph) and write its .vert, .frag\n"
-					"               and .compmat or .shapemat beside the graph file.\n");
+	fprintf(stdout,
+			"MikanCmd - Mikan command-line tool\n"
+			"\n"
+			"Usage: MikanCmd <command>\n"
+			"\n"
+			"Commands:\n"
+			"  -runTests    Run the editor unit test suites\n"
+			"  -estimateLighting -image=<path> [-fov=<degrees>] [-models=<dir>]\n"
+			"               [-mogeModels=<dir>] [-cpu] [-dump=<dir>]\n"
+			"               Estimate scene lighting from a single frame and print the\n"
+			"               recovered spherical harmonic environment.\n"
+			"  -depthMesh -image=<path> -fov=<degrees> [-obj=<path>] [-mogeModels=<dir>]\n"
+			"               [-stride=<n>] [-maxDepth=<metres>] [-cpu]\n"
+			"               Generate a camera-space depth proxy mesh from a single frame\n"
+			"               and write it as an OBJ.\n"
+			"  -compileMaterial=<graph>\n"
+			"               Compile a material graph (.matgraph) and write its .vert, .frag\n"
+			"               and .compmat or .shapemat beside the graph file.\n"
+			"  -crash=<kind> [-crashReportDir=<dir>]\n"
+			"               Crash on purpose to exercise the crash reporter. Kinds: %s\n",
+			CrashHandler::getTestCrashKinds());
+}
+
+int CmdApp::triggerCrash() const
+{
+	const std::string kind= getCommandLineStringArg("crash");
+
+	fprintf(stdout, "Triggering a '%s' crash\n", kind.c_str());
+	if (!CrashHandler::triggerTestCrash(kind))
+	{
+		fprintf(stderr, "Unknown crash kind '%s'. Kinds: %s\n", kind.c_str(), CrashHandler::getTestCrashKinds());
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
 }
 
 int CmdApp::compileMaterial() const

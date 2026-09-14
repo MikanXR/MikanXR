@@ -10,13 +10,16 @@
 #include "IMkTriangulatedMesh.h"
 #include "Project/AppStage_Project.h"
 #include "MainMenu/AppStage_MainMenu.h"
+#include "ModalConfirm/ModalDialog_Confirm.h"
 #include "MkGuiScopedWindow.h"
 #include "ProjectFileDialogs.h"
 #include "ProjectManager.h"
 #include "App.h"
 #include "AppSettingsConfig.h"
+#include "CrashHandler.h"
 #include "LocText.h"
 #include "MainWindow.h"
+#include "OSUtils.h"
 #include "PathUtils.h"
 #include "Logger.h"
 
@@ -67,6 +70,25 @@ void AppStage_MainMenu::enter()
 		m_languageNameList.push_back(info.nativeName);
 	}
 	m_languageDataSource.setEntries(m_languageNameList);
+
+	m_bCheckPendingCrashReport= true;
+}
+
+void AppStage_MainMenu::showPendingCrashReport()
+{
+	const std::filesystem::path reportDirectory= App::getInstance()->getCrashReportDirectory();
+	if (CrashHandler::findPendingReport(reportDirectory).empty())
+		return;
+
+	const std::string question= locFormat("crashReport.questionFmt", reportDirectory.string().c_str());
+	ModalDialog_Confirm::confirmQuestion(
+		this, locText("crashReport.title"), question,
+		[reportDirectory]()
+		{
+			OSUtils::openFileWithDefaultApplication(reportDirectory);
+			CrashHandler::clearPendingReport(reportDirectory);
+		},
+		[reportDirectory]() { CrashHandler::clearPendingReport(reportDirectory); });
 }
 
 void AppStage_MainMenu::onResumeProject()
@@ -106,6 +128,12 @@ void AppStage_MainMenu::onExit()
 void AppStage_MainMenu::onGui()
 {
 	AppStage::onGui();
+
+	if (m_bCheckPendingCrashReport)
+	{
+		m_bCheckPendingCrashReport= false;
+		showPendingCrashReport();
+	}
 
 	constexpr float k_panelWidth= 300.f;
 	const ImVec2 center= ImGui::GetMainViewport()->GetCenter();

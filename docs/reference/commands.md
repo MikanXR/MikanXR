@@ -67,6 +67,15 @@ build\bin\unit_test_suite_cpp.exe
 
 - Both suites must pass in CI (`.github/workflows/build-and-test.yml`).
 
+The crash reporter is exercised by crashing on purpose (see [debugging.md](./debugging.md)):
+
+```
+build\bin\MikanCmd.exe -crash=access -crashReportDir=build\crash   # kinds: access abort terminate purecall invalidparam stackoverflow
+python tools/automate.py "app crash access"                          # same through a running editor
+```
+
+CI runs the first form and requires a `.dmp` and a `.txt` in the report folder.
+
 One check needs a running editor instead, so it sits outside the suites:
 
 ```

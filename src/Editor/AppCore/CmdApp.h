@@ -26,6 +26,7 @@ private:
 
 	// Command handlers (return a process exit code)
 	int runTests() const;
+	int triggerCrash() const;
 	int estimateLighting() const;
 	int generateDepthMesh() const;
 	int compileMaterial() const;

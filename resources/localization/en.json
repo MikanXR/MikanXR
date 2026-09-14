@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 909,
-		"translatedCount": 909,
-		"reviewedCount": 909
+		"stringCount": 911,
+		"translatedCount": 911,
+		"reviewedCount": 911
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -211,6 +211,10 @@
 		"videoSource": "Video Source",
 		"vrDevice": "VR Device",
 		"width": "Width"
+	},
+	"crashReport": {
+		"questionFmt": "MikanXR closed unexpectedly last time. A crash report was saved to:\n%s\nOpen that folder now? Attaching its .dmp, .txt and .log files to a GitHub issue helps get the crash fixed.",
+		"title": "Crash Report"
 	},
 	"depthMeshCapture": {
 		"arucoAutoCalibrateNote": "If one of the project's ArUco markers is visible in the frame, it is used to calibrate the metric scale automatically.",

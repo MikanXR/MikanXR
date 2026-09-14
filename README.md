@@ -17,6 +17,9 @@ You can download prebuilt releases (Windows only at the moment) from the [Releas
 # Building from source
 If you want to make modifications to the service or want to debug it, you can build the project from source by following the  [Building-from-source](https://github.com/brendanwalker/MikanXR/wiki/Building-from-source) instructions. Currently the supported build platform is Win10 with Linux support hopefully coming in the near future.
 
+# Reporting a crash
+When MikanXR crashes it writes a report to `Documents\MikanXR\CrashReports` and offers to open that folder the next time it starts. Please attach the report's `.dmp`, `.txt` and `.log` files to a [GitHub issue](https://github.com/brendanwalker/MikanXR/issues) along with what you were doing. Nothing is uploaded automatically.
+
 # Contributing
 Code under `src/` is formatted with clang-format and enforced by CI. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to format your changes (`cmake --build build --target FormatFix`).
 

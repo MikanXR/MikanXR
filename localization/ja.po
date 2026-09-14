@@ -1143,6 +1143,20 @@ msgctxt "componentPanel.width"
 msgid "Width"
 msgstr "幅"
 
+#. Section: crashReport
+#, c-format
+msgctxt "crashReport.questionFmt"
+msgid ""
+"MikanXR closed unexpectedly last time. A crash report was saved to:\n"
+"%s\n"
+"Open that folder now? Attaching its .dmp, .txt and .log files to a GitHub issue helps get the crash fixed."
+msgstr ""
+
+#. Section: crashReport
+msgctxt "crashReport.title"
+msgid "Crash Report"
+msgstr ""
+
 #. Section: depthMeshCapture
 #, fuzzy
 msgctxt "depthMeshCapture.arucoAutoCalibrateNote"

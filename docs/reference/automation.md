@@ -31,6 +31,7 @@ Stage transitions land on the frame after the command that requested them, so a 
 - `app push <stageName>` / `app pop` push a registered app stage by name, or pop back to the parent stage
 - `app open <projectPath>` / `app new <projectPath>` / `app resume` open, create, or resume a project (routed to the main menu stage's remote control commands, so they answer an error outside the main menu)
 - `app quit` requests a clean shutdown, the same path as the window close button
+- `app crash <kind>` crashes the editor on purpose to exercise the crash reporter (kinds: `access`, `abort`, `terminate`, `purecall`, `invalidparam`, `stackoverflow`; see [debugging.md](./debugging.md)). No reply ever comes: the client sees the connection close, and `tools/automate.py` exits with its closed-connection error.
 
 ### Stage commands (stage)
 

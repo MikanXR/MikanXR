@@ -31,6 +31,11 @@ list(APPEND MIKAN_CORE_APP_REQ_LIBS
 	dylib
 )
 
+# The crash handler writes minidumps through dbghelp
+IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	list(APPEND MIKAN_CORE_APP_REQ_LIBS dbghelp)
+ENDIF()
+
 add_library(MikanCoreApp SHARED ${MIKAN_CORE_APP_SRC})
 target_include_directories(MikanCoreApp PRIVATE ${MIKAN_CORE_APP_INCL_DIRS})
 target_compile_definitions(MikanCoreApp PRIVATE MIKAN_COREAPP_EXPORTS)

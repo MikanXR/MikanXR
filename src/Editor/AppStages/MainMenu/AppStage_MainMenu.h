@@ -21,6 +21,7 @@ protected:
 	void onOpenProject();
 	void onNewProject();
 	void onExit();
+	void showPendingCrashReport();
 
 	// -- AppStage --
 	virtual void onGui() override;
@@ -45,4 +46,7 @@ private:
 	std::vector<std::string> m_languageIdList;
 	std::vector<std::string> m_languageNameList;
 	GuiDataSource_StringList m_languageDataSource;
+
+	// Set on enter, consumed by the first onGui so the notice pushes from the GUI pass
+	bool m_bCheckPendingCrashReport= false;
 };
