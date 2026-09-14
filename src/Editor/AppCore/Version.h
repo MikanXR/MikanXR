@@ -16,9 +16,12 @@
 
 /// "Product.Major.Minor.Release"
 #if !defined(MIKAN_RELEASE_VERSION_STRING)
+// Each part is stringized on its own: stringizing the dotted expression as a whole
+// keeps the whitespace of the line continuation ("1.0.0 .0")
 #define MIKAN_RELEASE_VERSION_STRING                                                                                   \
-	MIKAN_STRINGIZE(MIKAN_RELEASE_VERSION_PRODUCT.MIKAN_RELEASE_VERSION_MAJOR.MIKAN_RELEASE_VERSION_MINOR              \
-						.MIKAN_RELEASE_VERSION_RELEASE)
+	MIKAN_STRINGIZE(MIKAN_RELEASE_VERSION_PRODUCT)                                                                     \
+	"." MIKAN_STRINGIZE(MIKAN_RELEASE_VERSION_MAJOR) "." MIKAN_STRINGIZE(                                              \
+		MIKAN_RELEASE_VERSION_MINOR) "." MIKAN_STRINGIZE(MIKAN_RELEASE_VERSION_RELEASE)
 #endif
 
 // Latest Mikan API Protocol Version used by the server
