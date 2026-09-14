@@ -228,7 +228,6 @@ jobs:
             -DCMAKE_RUNTIME_OUTPUT_DIRECTORY="%GITHUB_WORKSPACE%\build\bin" ^
             -DCMAKE_C_COMPILER_LAUNCHER=sccache ^
             -DCMAKE_CXX_COMPILER_LAUNCHER=sccache ^
-            -DCEF_DEBUG_INFO_FLAG=/Z7 ^
             -DCMAKE_UNITY_BUILD=ON
 
           if %ERRORLEVEL% NEQ 0 (
@@ -316,6 +315,7 @@ jobs:
             echo C++ unit tests failed
             exit /b 1
           )
+
       # ---------------------------------------------------------------
       # Crash the command-line tool on purpose and require the crash
       # reporter's files. A nonzero exit is the expected outcome here:
@@ -345,7 +345,6 @@ jobs:
             type build\crash\*.txt
           )
           exit /b 0
-
 
       # Upload test binaries and runtime DLLs for inspection.
       # Only upload on main branch pushes to avoid wasting storage on

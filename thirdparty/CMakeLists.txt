@@ -18,6 +18,10 @@ if(DEFINED CEF_ROOT)
     # CEF_RUNTIME_LIBRARY_FLAG is a CACHE string consumed by cef_variables.cmake before
     # libcef_dll_wrapper is configured, so setting it here (with FORCE) propagates correctly.
     set(CEF_RUNTIME_LIBRARY_FLAG "/MD" CACHE STRING "Use dynamic CRT to match Mikan" FORCE)
+    # CEF defaults to /Zi, which writes a shared PDB the compiler serializes on. Mikan
+    # builds everything else with /Z7 (Environment.cmake) so sccache can cache the object
+    # files and unity builds stay correct, so override CEF's flag the same way.
+    set(CEF_DEBUG_INFO_FLAG "/Z7" CACHE STRING "Embed debug info so sccache and unity builds work" FORCE)
     # Find CEF package
     find_package(CEF REQUIRED)
     # Add libcef_dll_wrapper

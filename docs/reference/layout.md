@@ -14,13 +14,13 @@ MikanXR/
 ├── CLAUDE.md / README.md / CONTRIBUTING.md / LICENSE
 ├── .github/workflows/build-and-test.yml # CI: Linux format-check and localization-check jobs + Windows Ninja build/test job
 ├── .gitmodules                         # submodule list (all under thirdparty/)
-├── cmake/                              # CMake modules: Environment, Version, ThirdParty, Installer, ClangFormat, Localization, Find*.cmake
+├── cmake/                              # CMake modules: Environment, Version, ThirdParty, Installer, Symbols, ClangFormat, Localization, Find*.cmake
 ├── src/                                # all first-party C++ source (the only tree clang-format touches)
 ├── bindings/                           # generated client bindings for C# and TypeScript
 ├── thirdparty/                         # git submodules + a few vendored libs, built from source or used header-only
 ├── deps/                               # prebuilt binary dependencies downloaded by InitialSetup_x64.bat (not in git)
 ├── build/                              # CMake binary dir (build/Mikan.sln, object files, built exes; not in git)
-├── dist/                               # install prefix (dist/Win64) written by the INSTALL target; version.txt
+├── dist/                               # install prefix (dist/Win64, PDBs under dist/symbols) written by the INSTALL target; version.txt; the packaging zips and the installer
 ├── resources/                          # runtime assets: calibration patterns, config, dnn models, fonts, icons, gui_styles, localization, lua-definitions
 ├── localization/                       # gettext catalogs translators own; resources/localization is generated from them
 ├── models/                             # ONNX checkpoints for the ML capture tools (gitignored, produced by tools/*.py)

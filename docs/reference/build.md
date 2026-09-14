@@ -76,9 +76,19 @@ Third-party source builds: `thirdparty/CMakeLists.txt` builds `fast_obj_lib`, `i
 
 - `CREATE_INSTALLER`: Inno Setup installer build (`cmake/Installer.cmake`); only created when Inno Setup is found. Uses `templates/installer_win64.iss.in`.
 
-- `INSTALL`: installs exes, DLLs, bindings, and the bundled `resources/` tree into `dist/Win64`. The resources filter ships the graph, material, shader, and model sources as well as images, fonts, scripts, and ONNX models, since a project reads the bundled assets in place rather than owning copies.
+- `INSTALL`: installs exes, DLLs, bindings, and the bundled `resources/` tree into `dist/Win64`, and every executable and DLL PDB into `dist/symbols/Win64`. The resources filter ships the graph, material, shader, and model sources as well as images, fonts, scripts, and ONNX models, since a project reads the bundled assets in place rather than owning copies.
+
+- `PACKAGE_APP` / `PACKAGE_SYMBOLS` (`cmake/Symbols.cmake`): zip `dist/Win64` and `dist/symbols/Win64` into `dist/Mikan_<version>_Win64.zip` and `dist/Mikan_<version>_Win64_symbols.zip`. Both assume `INSTALL` has run.
 
 Output locations: under the VS generator, executables land in per-target config folders (`build\src\Editor\<Config>\Mikan.exe`, `build\src\Programs\Tests\UnitTests\<Config>\unit_test_suite_cpp.exe`). CI overrides this with `CMAKE_RUNTIME_OUTPUT_DIRECTORY=build\bin`.
+
+---
+
+## Symbols
+
+Release builds compile with `/Z7` and link with `/DEBUG:FULL /OPT:REF /OPT:ICF` (`cmake/Environment.cmake`), so every executable and DLL has a PDB while the optimized code stays what a plain Release link produces. The options are directory-scoped on purpose: `cmake/cef_variables.cmake` clears `CMAKE_CXX_FLAGS_RELEASE` under Ninja in the scope where `find_package(CEF)` runs, which would silently drop a flag set that way. `/Z7` rather than `/Zi` because sccache and unity builds need the debug info inside the object file; `thirdparty/CMakeLists.txt` forces `CEF_DEBUG_INFO_FLAG` to the same for `libcef_dll_wrapper`.
+
+`cmake/Symbols.cmake` walks the `src` target tree and installs the PDB of every executable, shared, and module library under `dist/symbols/Win64` (the type filter matters: `$<TARGET_PDB_FILE>` is a generate-time error for OBJECT, static, and utility targets). A crash minidump from a shipped build is only readable against that build's PDBs, which is why every release carries the symbols zip (see [debugging.md](./debugging.md)).
 
 ---
 
@@ -97,7 +107,6 @@ Output locations: under the VS generator, executables land in per-target config 
 -DMIKAN_WITH_GSTREAMER=OFF
 -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=%GITHUB_WORKSPACE%\build\bin
 -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
--DCEF_DEBUG_INFO_FLAG=/Z7
 -DCMAKE_UNITY_BUILD=ON
 ```
 

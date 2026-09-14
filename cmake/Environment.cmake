@@ -55,6 +55,20 @@ if (MSVC)
   if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:SSE2")
   endif()
+
+  # Release keeps full symbols so crash minidumps symbolicate. /Z7 rather than /Zi
+  # because sccache and unity builds need the debug info embedded in the object files.
+  # /OPT:REF and /OPT:ICF keep the optimized code identical to a plain Release link,
+  # which /DEBUG would otherwise turn off.
+  #
+  # These are directory-scoped options rather than additions to CMAKE_CXX_FLAGS_RELEASE
+  # because cmake/cef_variables.cmake clears CMAKE_CXX_FLAGS_RELEASE under Ninja in the
+  # scope where find_package(CEF) runs.
+  # The COMPILE_LANGUAGE guard keeps /Z7 off the C# projects, whose compiler rejects it.
+  add_compile_options($<$<AND:$<CONFIG:Release>,$<COMPILE_LANGUAGE:C,CXX>>:/Z7>)
+  add_link_options($<$<CONFIG:Release>:/DEBUG:FULL>)
+  add_link_options($<$<CONFIG:Release>:/OPT:REF>)
+  add_link_options($<$<CONFIG:Release>:/OPT:ICF>)
 endif()
 
 # Compile with compiler warnings turned on
