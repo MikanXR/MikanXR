@@ -2,32 +2,35 @@
 # Project Version
 #------------------------
 
-# Retrieve version from header file
+# The version lives in the header as string-literal parts (calendar style, zero
+# padded, so integers would not do). This reads the same parts back so every
+# name CMake produces (dist/version.txt, the zips, the installer) matches the
+# string the binaries carry.
 set(MIKAN_VERSION_HEADER_FILE "${ROOT_DIR}/src/Editor/AppCore/Version.h")
 
-file(STRINGS ${MIKAN_VERSION_HEADER_FILE} MIKAN_VERSION_PARTS
-  REGEX "^#define[ \t]+MIKAN_RELEASE_VERSION_(PRODUCT|MAJOR|MINOR|RELEASE)[ \t]+[0-9a-z]+$")
-  
-# Verify version parts
-string(REGEX MATCH "MIKAN_RELEASE_VERSION_PRODUCT[ \t]+[0-9a-z]+" MIKAN_VERSION_PRODUCT  ${MIKAN_VERSION_PARTS})
-string(REGEX MATCH "MIKAN_RELEASE_VERSION_MAJOR[ \t]+[0-9a-z]+" MIKAN_VERSION_MAJOR  ${MIKAN_VERSION_PARTS})
-string(REGEX MATCH "MIKAN_RELEASE_VERSION_MINOR[ \t]+[0-9a-z]+" MIKAN_VERSION_MINOR  ${MIKAN_VERSION_PARTS})
-string(REGEX MATCH "MIKAN_RELEASE_VERSION_RELEASE[ \t]+[0-9a-z]+" MIKAN_VERSION_RELEASE  ${MIKAN_VERSION_PARTS})
+function(mikan_read_version_part part out_var)
+  file(STRINGS ${MIKAN_VERSION_HEADER_FILE} matched_lines
+    REGEX "^#define[ \t]+MIKAN_RELEASE_VERSION_${part}[ \t]+\"[^\"]*\"")
+  list(LENGTH matched_lines match_count)
+  if(NOT match_count EQUAL 1)
+    message(FATAL_ERROR "Unable to retrieve MIKAN_RELEASE_VERSION_${part} from ${MIKAN_VERSION_HEADER_FILE}")
+  endif()
+  string(REGEX REPLACE "^#define[ \t]+MIKAN_RELEASE_VERSION_${part}[ \t]+\"([^\"]*)\".*$" "\\1"
+    value "${matched_lines}")
+  set(${out_var} "${value}" PARENT_SCOPE)
+endfunction()
 
-if(NOT MIKAN_VERSION_PRODUCT 
-    OR NOT MIKAN_VERSION_MAJOR 
-    OR NOT MIKAN_VERSION_MINOR 
-    OR NOT MIKAN_VERSION_RELEASE)
-  message(FATAL_ERROR "Unable to retrieve project version from ${MIKAN_VERSION_HEADER_FILE}")
+mikan_read_version_part(YEAR MIKAN_VERSION_YEAR)
+mikan_read_version_part(MONTH MIKAN_VERSION_MONTH)
+mikan_read_version_part(DAY MIKAN_VERSION_DAY)
+mikan_read_version_part(REVISION MIKAN_VERSION_REVISION)
+
+if(NOT MIKAN_VERSION_YEAR OR NOT MIKAN_VERSION_MONTH OR NOT MIKAN_VERSION_DAY)
+  message(FATAL_ERROR "The release date in ${MIKAN_VERSION_HEADER_FILE} is incomplete")
 endif()
 
-# Extract version numbers
-string(REGEX REPLACE "MIKAN_RELEASE_VERSION_PRODUCT[ \t]+([0-9a-z]+)" "\\1" MIKAN_VERSION_PRODUCT  ${MIKAN_VERSION_PRODUCT})
-string(REGEX REPLACE "MIKAN_RELEASE_VERSION_MAJOR[ \t]+([0-9a-z]+)" "\\1" MIKAN_VERSION_MAJOR  ${MIKAN_VERSION_MAJOR})
-string(REGEX REPLACE "MIKAN_RELEASE_VERSION_MINOR[ \t]+([0-9a-z]+)" "\\1" MIKAN_VERSION_MINOR  ${MIKAN_VERSION_MINOR})
-string(REGEX REPLACE "MIKAN_RELEASE_VERSION_RELEASE[ \t]+([0-9a-z]+)" "\\1" MIKAN_VERSION_RELEASE  ${MIKAN_VERSION_RELEASE})
-
-# Matches MIKAN_RELEASE_VERSION_STRING in the header above and the vX.Y.Z.W git tag convention
-set(MIKAN_VERSION_STRING "${MIKAN_VERSION_PRODUCT}.${MIKAN_VERSION_MAJOR}.${MIKAN_VERSION_MINOR}.${MIKAN_VERSION_RELEASE}")
+# Matches MIKAN_RELEASE_VERSION_STRING in the header and the vYYYY.MM.DD git tag convention.
+# The revision is already "" or ".N", so it appends as is.
+set(MIKAN_VERSION_STRING "${MIKAN_VERSION_YEAR}.${MIKAN_VERSION_MONTH}.${MIKAN_VERSION_DAY}${MIKAN_VERSION_REVISION}")
 
 message(STATUS "Project version: ${MIKAN_VERSION_STRING}")

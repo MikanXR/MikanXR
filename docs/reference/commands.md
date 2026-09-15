@@ -227,7 +227,13 @@ The packaging targets assume `INSTALL` has run. `CREATE_INSTALLER` only exists i
 
 ## Releases
 
-Bump the four defines in `src/Editor/AppCore/Version.h`, commit, then push a tag `v<product>.<major>.<minor>.<release>`. `.github/workflows/release.yml` fails unless the tag matches the header. It builds Release with GStreamer on, runs both suites and the crash check, and drafts a GitHub release carrying the app zip, the setup exe, and the symbols zip. Publish the draft after checking the assets. Every published build keeps its symbols zip: a crash dump from that build cannot be read without it.
+Versions are calendar dates. Set `MIKAN_RELEASE_VERSION_YEAR`, `MONTH`, and `DAY` in `src/Editor/AppCore/Version.h` to the release date, zero padded (they are string literals because `09` is not a valid integer literal), leave `REVISION` empty or set it to `.1`, `.2`, ... for a same-day re-cut, commit, then push a tag `v<YYYY.MM.DD>` (plus the revision when there is one):
+
+```
+git tag v2026.09.14 && git push origin v2026.09.14
+```
+
+`.github/workflows/release.yml` fails unless the tag matches the header. It builds Release with GStreamer on, runs both suites and the crash check, and drafts a GitHub release carrying the app zip, the setup exe, and the symbols zip. Publish the draft after checking the assets. Every published build keeps its symbols zip: a crash dump from that build cannot be read without it.
 
 ---
 

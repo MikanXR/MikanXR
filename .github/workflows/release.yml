@@ -1,6 +1,6 @@
 name: Release
 
-# Pushing a vX.Y.Z.W tag builds the shipping configuration and drafts a GitHub release
+# Pushing a vYYYY.MM.DD tag builds the shipping configuration and drafts a GitHub release
 # from it. The draft is never published automatically: the release notes and the three
 # attached artifacts get a human read before anyone can download them.
 on:
@@ -64,13 +64,14 @@ jobs:
       - name: Check the tag against Version.h
         shell: bash
         run: |
+          # The parts are quoted string literals in the header; the revision is "" or ".N"
           version_part() {
-            grep -E "^#define[[:space:]]+MIKAN_RELEASE_VERSION_$1[[:space:]]" src/Editor/AppCore/Version.h | awk '{print $3}'
+            grep -E "^#define[[:space:]]+MIKAN_RELEASE_VERSION_$1[[:space:]]" src/Editor/AppCore/Version.h | sed -E 's/.*"([^"]*)".*/\1/'
           }
-          expected="v$(version_part PRODUCT).$(version_part MAJOR).$(version_part MINOR).$(version_part RELEASE)"
+          expected="v$(version_part YEAR).$(version_part MONTH).$(version_part DAY)$(version_part REVISION)"
           if [ "$expected" != "$GITHUB_REF_NAME" ]; then
             echo "Tag $GITHUB_REF_NAME does not match src/Editor/AppCore/Version.h, which says $expected."
-            echo "Bump the MIKAN_RELEASE_VERSION_* defines or retag, then push again."
+            echo "Set the MIKAN_RELEASE_VERSION_* date in the header or retag, then push again."
             exit 1
           fi
           echo "Tag $GITHUB_REF_NAME matches Version.h"

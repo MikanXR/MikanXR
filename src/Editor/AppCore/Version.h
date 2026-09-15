@@ -1,27 +1,21 @@
 #ifndef VERSION_H
 #define VERSION_H
 
-/// Conventional string-ification macro.
-// From: http://stackoverflow.com/questions/5256313/c-c-macro-string-concatenation
-#if !defined(MIKAN_STRINGIZE)
-#define MIKAN_STRINGIZEIMPL(x) #x
-#define MIKAN_STRINGIZE(x) MIKAN_STRINGIZEIMPL(x)
-#endif
+// Release version, calendar style: the date the release was cut, zero padded.
+// The parts are string literals because a padded month or day ("09") is not a
+// valid C++ integer literal. REVISION is empty for the day's first release and
+// ".1", ".2", ... for a same-day re-cut.
+// The release workflow refuses a tag that does not read "v" + this string.
+#define MIKAN_RELEASE_VERSION_YEAR "2026"
+#define MIKAN_RELEASE_VERSION_MONTH "09"
+#define MIKAN_RELEASE_VERSION_DAY "14"
+#define MIKAN_RELEASE_VERSION_REVISION ""
 
-// Current version of this release
-#define MIKAN_RELEASE_VERSION_PRODUCT 1
-#define MIKAN_RELEASE_VERSION_MAJOR 0
-#define MIKAN_RELEASE_VERSION_MINOR 0
-#define MIKAN_RELEASE_VERSION_RELEASE 0
-
-/// "Product.Major.Minor.Release"
+/// "YYYY.MM.DD" or "YYYY.MM.DD.N"
 #if !defined(MIKAN_RELEASE_VERSION_STRING)
-// Each part is stringized on its own: stringizing the dotted expression as a whole
-// keeps the whitespace of the line continuation ("1.0.0 .0")
 #define MIKAN_RELEASE_VERSION_STRING                                                                                   \
-	MIKAN_STRINGIZE(MIKAN_RELEASE_VERSION_PRODUCT)                                                                     \
-	"." MIKAN_STRINGIZE(MIKAN_RELEASE_VERSION_MAJOR) "." MIKAN_STRINGIZE(                                              \
-		MIKAN_RELEASE_VERSION_MINOR) "." MIKAN_STRINGIZE(MIKAN_RELEASE_VERSION_RELEASE)
+	MIKAN_RELEASE_VERSION_YEAR "." MIKAN_RELEASE_VERSION_MONTH                                                         \
+							   "." MIKAN_RELEASE_VERSION_DAY MIKAN_RELEASE_VERSION_REVISION
 #endif
 
 // Latest Mikan API Protocol Version used by the server
