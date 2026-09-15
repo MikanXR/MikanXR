@@ -82,10 +82,13 @@ AssetReferencePtr AssetReferenceFactory::allocateAssetReference() const { return
 
 bool AssetReferenceFactory::matchesFilterPatterns(const std::filesystem::path& path) const
 {
-	std::string extension= path.extension().string();
-	std::transform(extension.begin(), extension.end(), extension.begin(),
+	// Compared as a filename suffix rather than by path::extension(), so a
+	// two-part pattern such as "*.pose.json" can match: extension() would see
+	// only ".json". Single-extension patterns match exactly as before.
+	std::string filename= path.filename().string();
+	std::transform(filename.begin(), filename.end(), filename.begin(),
 				   [](unsigned char c) { return (char)std::tolower(c); });
-	if (extension.empty())
+	if (filename.empty())
 	{
 		return false;
 	}
@@ -103,7 +106,8 @@ bool AssetReferenceFactory::matchesFilterPatterns(const std::filesystem::path& p
 		std::transform(pattern.begin(), pattern.end(), pattern.begin(),
 					   [](unsigned char c) { return (char)std::tolower(c); });
 
-		if (pattern == extension)
+		if (!pattern.empty() && filename.size() > pattern.size()
+			&& filename.compare(filename.size() - pattern.size(), pattern.size(), pattern) == 0)
 		{
 			return true;
 		}
