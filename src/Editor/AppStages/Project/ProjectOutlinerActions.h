@@ -13,6 +13,7 @@ namespace ProjectOutlinerActions
 int addUSBVideoSource(ProjectManagerPtr projectManager);
 int addNetworkVideoSource(ProjectManagerPtr projectManager);
 int addARKitVideoSource(ProjectManagerPtr projectManager);
+int addFileVideoSource(ProjectManagerPtr projectManager);
 int addClientTextureSource(ProjectManagerPtr projectManager);
 int addSpoutTextureSource(ProjectManagerPtr projectManager);
 int addCEFTextureSource(ProjectManagerPtr projectManager);

@@ -33,6 +33,7 @@
 #include "TextStyle.h"
 #include "VideoDisplayConstants.h"
 #include "VideoFrameDistortionView.h"
+#include "IAlignmentReferenceSource.h"
 #include "VideoSourceComponent.h"
 #include "VRTrackingVolumeComponent.h"
 
@@ -176,6 +177,12 @@ void AppStage_AlignCameraByUtilityMarker::exit()
 			m_targetVideoSource->stopVideoStream(m_targetDistortionView);
 		delete m_targetDistortionView;
 		m_targetDistortionView= nullptr;
+	}
+	if (m_bAlignmentReferenceActive)
+	{
+		if (auto* referenceSource= dynamic_cast<IAlignmentReferenceSource*>(m_targetVideoSource.get()))
+			referenceSource->endAlignmentReference();
+		m_bAlignmentReferenceActive= false;
 	}
 	m_targetVideoSource= nullptr;
 
@@ -401,6 +408,15 @@ void AppStage_AlignCameraByUtilityMarker::startVideoStreams()
 	// Create views eagerly — they are the stream ownership tokens
 	m_sourceDistortionView= new VideoFrameDistortionView(m_sourceVideoSource, eVideoFrameProcessorMode::CALIBRATION);
 	m_sourceDistortionView->setVideoDisplayMode(eVideoDisplayMode::mode_undistored);
+
+	// A recorded take keeps the marker out of shot; its reference recording is
+	// what gets sampled, and the source switches back when the stage exits
+	if (auto* referenceSource= dynamic_cast<IAlignmentReferenceSource*>(m_targetVideoSource.get());
+		referenceSource != nullptr && referenceSource->hasAlignmentReference())
+	{
+		referenceSource->beginAlignmentReference();
+		m_bAlignmentReferenceActive= true;
+	}
 
 	m_targetDistortionView= new VideoFrameDistortionView(m_targetVideoSource, eVideoFrameProcessorMode::CALIBRATION);
 	m_targetDistortionView->setVideoDisplayMode(eVideoDisplayMode::mode_undistored);

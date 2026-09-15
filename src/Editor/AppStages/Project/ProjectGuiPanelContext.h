@@ -7,6 +7,7 @@ class GuiPanel_DMXObjectSystem;
 class GuiPanel_MarkerObjectSystem;
 class GuiPanel_AnchorComponent;
 class GuiPanel_ARKitVideoSourceComponent;
+class GuiPanel_FileVideoSourceComponent;
 class GuiPanel_BoxShapeComponent;
 class GuiPanel_BoxStencilComponent;
 class GuiPanel_CameraComponent;
@@ -51,6 +52,7 @@ public:
 	// Component Panels
 	inline GuiPanel_AnchorComponent* getAnchorPanel() const { return m_anchorPanel; }
 	inline GuiPanel_ARKitVideoSourceComponent* getARKitVideoSourcePanel() const { return m_arkitVideoSourcePanel; }
+	inline GuiPanel_FileVideoSourceComponent* getFileVideoSourcePanel() const { return m_fileVideoSourcePanel; }
 	inline GuiPanel_BoxShapeComponent* getBoxShapePanel() const { return m_boxShapePanel; }
 	inline GuiPanel_BoxStencilComponent* getBoxStencilPanel() const { return m_boxStencilPanel; }
 	inline GuiPanel_CameraComponent* getCameraPanel() const { return m_cameraPanel; }
@@ -100,6 +102,7 @@ private:
 	// Component Panels
 	GuiPanel_AnchorComponent* m_anchorPanel= nullptr;
 	GuiPanel_ARKitVideoSourceComponent* m_arkitVideoSourcePanel= nullptr;
+	GuiPanel_FileVideoSourceComponent* m_fileVideoSourcePanel= nullptr;
 	GuiPanel_BoxShapeComponent* m_boxShapePanel= nullptr;
 	GuiPanel_BoxStencilComponent* m_boxStencilPanel= nullptr;
 	GuiPanel_CameraComponent* m_cameraPanel= nullptr;

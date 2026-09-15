@@ -1,7 +1,9 @@
 //-- inludes -----
 #include "VideoSourceSettings/AppStage_VideoSourceSettings.h"
 #include "ARKitVideoSourceComponent.h"
+#include "FileVideoSourceComponent.h"
 #include "Shared/GuiPanel_ARKitVideoSourceComponent.h"
+#include "Shared/GuiPanel_FileVideoSourceComponent.h"
 #include "Shared/GuiPanel_USBVideoSourceComponent.h"
 #include "Shared/GuiPanel_NetworkVideoSourceComponent.h"
 #include "MonoLensCalibration/AppStage_MonoLensCalibration.h"
@@ -61,6 +63,13 @@ void AppStage_VideoSourceSettings::enter()
 		if (auto arkitVideoSourceComponent= std::dynamic_pointer_cast<ARKitVideoSourceComponent>(videoSourceComponent))
 		{
 			arkitPanel->setComponent(arkitVideoSourceComponent);
+		}
+
+		auto* filePanel= addGuiPanel<GuiPanel_FileVideoSourceComponent>();
+		filePanel->init();
+		if (auto fileVideoSourceComponent= std::dynamic_pointer_cast<FileVideoSourceComponent>(videoSourceComponent))
+		{
+			filePanel->setComponent(fileVideoSourceComponent);
 		}
 	}
 

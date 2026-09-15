@@ -4,6 +4,7 @@
 #include "ProjectGuiPanelContext.h"
 #include "Shared/GuiPanel_AnchorComponent.h"
 #include "Shared/GuiPanel_ARKitVideoSourceComponent.h"
+#include "Shared/GuiPanel_FileVideoSourceComponent.h"
 #include "Shared/GuiPanel_CameraComponent.h"
 #include "Shared/GuiPanel_ClientTextureSourceComponent.h"
 #include "Shared/GuiPanel_CompositorComponent.h"
@@ -51,6 +52,9 @@ bool ProjectGuiPanelContext::init()
 
 	m_arkitVideoSourcePanel= m_ownerAppStage->addGuiPanel<GuiPanel_ARKitVideoSourceComponent>();
 	m_arkitVideoSourcePanel->init();
+
+	m_fileVideoSourcePanel= m_ownerAppStage->addGuiPanel<GuiPanel_FileVideoSourceComponent>();
+	m_fileVideoSourcePanel->init();
 
 	m_boxShapePanel= m_ownerAppStage->addGuiPanel<GuiPanel_BoxShapeComponent>();
 	m_boxShapePanel->init();

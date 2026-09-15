@@ -67,6 +67,7 @@ private:
 	// Target camera (being calibrated - no tracking mount)
 	CameraComponentPtr m_targetCameraComponent;
 	VideoSourceComponentPtr m_targetVideoSource;
+	bool m_bAlignmentReferenceActive= false;
 	class VideoFrameDistortionView* m_targetDistortionView= nullptr;
 	class ArucoMarkerPoseSampler* m_targetMarkerSampler= nullptr;
 

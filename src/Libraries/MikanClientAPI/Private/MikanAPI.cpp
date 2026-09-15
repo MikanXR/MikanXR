@@ -198,6 +198,9 @@ const char* MikanNetworkVideoSourceValues::k_ownerSystemName= "NetworkVideoSourc
 const char* MikanARKitVideoSourceValues::k_componentClassName= "ARKitVideoSourceComponent";
 const char* MikanARKitVideoSourceValues::k_ownerSystemName= "ARKitVideoSourceSystem";
 
+const char* MikanFileVideoSourceValues::k_componentClassName= "FileVideoSourceComponent";
+const char* MikanFileVideoSourceValues::k_ownerSystemName= "FileVideoSourceSystem";
+
 const char* MikanUSBVideoSourceValues::k_componentClassName= "USBVideoSourceComponent";
 const char* MikanUSBVideoSourceValues::k_ownerSystemName= "USBVideoSourceSystem";
 

@@ -16,6 +16,8 @@
 #include "ShapeGraphAssetReference.h"
 #include "PathUtils.h"
 #include "PixelContentAssetReference.h"
+#include "MovieAssetReference.h"
+#include "PoseTrackAssetReference.h"
 #include "ProjectManager.h"
 #include "ScriptAssetReference.h"
 #include "TextureAssetReference.h"
@@ -114,9 +116,23 @@ const std::vector<ProjectAssetFolderDesc>& ProjectAssetCatalog::getFolderDescs()
 		textures.projectSubfolder= "textures";
 		textures.bundledSubfolder= "textures";
 		textures.bPreviewTiles= true;
+		// A photo's pose track sits beside the photo, so the folder lists that
+		// type too. Its two-part extension keeps it from matching the image
+		// factories ahead of it.
 		textures.factories= {AssetReferenceFactory::createFactory<TextureAssetReferenceFactory>(),
-							 AssetReferenceFactory::createFactory<PixelContentAssetReferenceFactory>()};
+							 AssetReferenceFactory::createFactory<PixelContentAssetReferenceFactory>(),
+							 AssetReferenceFactory::createFactory<PoseTrackAssetReferenceFactory>()};
 		s_descs.push_back(textures);
+
+		// Recorded takes and the pose tracks a phone writes next to them
+		ProjectAssetFolderDesc movies;
+		movies.id= "movies";
+		movies.locKey= "assets.folderMovies";
+		movies.projectSubfolder= "movies";
+		movies.bPreviewTiles= true;
+		movies.factories= {AssetReferenceFactory::createFactory<MovieAssetReferenceFactory>(),
+						   AssetReferenceFactory::createFactory<PoseTrackAssetReferenceFactory>()};
+		s_descs.push_back(movies);
 
 		ProjectAssetFolderDesc fonts;
 		fonts.id= "fonts";

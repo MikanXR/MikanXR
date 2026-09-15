@@ -44,3 +44,11 @@ using ScriptAssetReferenceConstPtr= std::shared_ptr<const ScriptAssetReference>;
 class TextureAssetReference;
 using TextureAssetReferencePtr= std::shared_ptr<TextureAssetReference>;
 using TextureAssetReferenceConstPtr= std::shared_ptr<const TextureAssetReference>;
+
+class MovieAssetReference;
+using MovieAssetReferencePtr= std::shared_ptr<MovieAssetReference>;
+using MovieAssetReferenceConstPtr= std::shared_ptr<const MovieAssetReference>;
+
+class PoseTrackAssetReference;
+using PoseTrackAssetReferencePtr= std::shared_ptr<PoseTrackAssetReference>;
+using PoseTrackAssetReferenceConstPtr= std::shared_ptr<const PoseTrackAssetReference>;

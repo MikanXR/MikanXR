@@ -34,7 +34,7 @@ Two further consumers of a calibrated frame share this directory but not this do
 
 Three flows share `ArucoMarkerPoseSampler`, which detects a single ArUco marker (`CalibrationPatternFinder_Aruco`), computes the aperture-relative marker transform each frame via `cv::solvePnP`, and averages a desired sample count:
 
-- `AppStage_AlignCameraByOriginMarker`: for a camera viewing the stage's designated origin marker (`VRTrackingVolumeDefinition::getOriginMarkerId()`). The averaged marker pose is inverted into a stage-space aperture pose and applied with `CameraComponent::setRelativeTransform()`. This localizes a camera without a VR tracker.
+- `AppStage_AlignCameraByOriginMarker`: for a camera viewing the stage's designated origin marker (`VRTrackingVolumeDefinition::getOriginMarkerId()`). For a fixed camera the averaged marker pose is inverted into a stage-space aperture pose and applied with `CameraComponent::setRelativeTransform()`. For a frame-coupled source (an ARKit phone, or a recorded take with a pose track) each sample is converted into a world-to-stage offset using that frame's own pose and the average is stored through `IFrameCoupledPoseProvider::setPoseOffset()` instead, see [videosources.md](./videosources.md). A source that offers no pose, such as a recording without a track, takes the fixed camera path. A file source with a marker reference recording is switched to it for the stage's lifetime through `IAlignmentReferenceSource`.
 
 - `AppStage_AlignCameraByUtilityMarker`: same mechanic against an explicit utility `MarkerDefinition`, additionally using a second, already-aligned source camera; the target camera's stage-space aperture transform is set from the shared marker observation.
 

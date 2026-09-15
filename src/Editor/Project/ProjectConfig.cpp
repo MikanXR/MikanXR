@@ -1,6 +1,7 @@
 // -- includes -----
 #include "AnchorObjectSystem.h"
 #include "ARKitVideoSourceSystem.h"
+#include "FileVideoSourceSystem.h"
 #include "BoxShapeSystem.h"
 #include "BoxStencilSystem.h"
 #include "CameraObjectSystem.h"
@@ -57,6 +58,8 @@ ProjectConfig::ProjectConfig(const std::string& fnamebase)
 	anchorConfig= addTypedDefinition<AnchorObjectSystemDefinition, AnchorObjectSystem>(persistentIDAllocator);
 	arkitVideoSourceSystemConfig=
 		addTypedDefinition<ARKitVideoSourceSystemDefinition, ARKitVideoSourceSystem>(persistentIDAllocator);
+	fileVideoSourceSystemConfig=
+		addTypedDefinition<FileVideoSourceSystemDefinition, FileVideoSourceSystem>(persistentIDAllocator);
 	boxShapeSystemDefinition= addTypedDefinition<BoxShapeSystemDefinition, BoxShapeSystem>(persistentIDAllocator);
 	boxStencilSystemDefinition= addTypedDefinition<BoxStencilSystemDefinition, BoxStencilSystem>(persistentIDAllocator);
 	cameraConfig= addTypedDefinition<CameraObjectSystemDefinition, CameraObjectSystem>(persistentIDAllocator);

@@ -16,6 +16,7 @@
 #include "DMXPresetPersistenceTests.h"
 #include "DMXSequenceTests.h"
 #include "DMXUniverseRLETests.h"
+#include "FileVideoSourceTests.h"
 #include "LegacyContentMigrationTests.h"
 #include "LightEnvironmentPersistenceTests.h"
 #include "LocalizationTests.h"
@@ -55,6 +56,7 @@ bool run_all_editor_unit_tests()
 	success&= run_dmx_preset_persistence_tests();
 	success&= run_dmx_sequence_tests();
 	success&= run_dmx_universe_rle_tests();
+	success&= run_file_video_source_tests();
 	success&= run_legacy_content_migration_tests();
 	success&= run_light_environment_persistence_tests();
 	success&= run_localization_unit_tests();

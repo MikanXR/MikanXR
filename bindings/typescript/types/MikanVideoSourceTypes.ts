@@ -272,6 +272,28 @@ export class MikanARKitVideoSourceValues extends MikanVideoSourceValues {
   ];
 }
 
+export class MikanFileVideoSourceValues extends MikanVideoSourceValues {
+  media_path: string = '';
+  marker_media_path: string = '';
+  pose_track_path: string = '';
+  marker_pose_track_path: string = '';
+  loop: boolean = false;
+  playback_state: number = 0;
+  playback_time: number = 0;
+  duration_seconds: number = 0;
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'media_path', type: 'string' },
+    { name: 'marker_media_path', type: 'string' },
+    { name: 'pose_track_path', type: 'string' },
+    { name: 'marker_pose_track_path', type: 'string' },
+    { name: 'loop', type: 'boolean' },
+    { name: 'playback_state', type: 'int32' },
+    { name: 'playback_time', type: 'float' },
+    { name: 'duration_seconds', type: 'float' }
+  ];
+}
+
 export class MikanUSBVideoSourceSystemValues extends MikanSystemValues {
   usb_device_map: Record<string, string> = {};
 

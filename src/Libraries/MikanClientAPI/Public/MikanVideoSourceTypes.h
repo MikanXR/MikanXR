@@ -240,6 +240,26 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes")) M
 #endif // MIKANAPI_REFLECTION_ENABLED
 };
 
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes")) MikanFileVideoSourceValues
+	: public MikanVideoSourceValues
+{
+	static const char* k_componentClassName;
+	static const char* k_ownerSystemName;
+
+	FIELD() Serialization::String media_path;        ///< Project-relative movie or image the source plays
+	FIELD() Serialization::String marker_media_path; ///< Same shot with the origin ArUco marker in frame, for alignment
+	FIELD() Serialization::String pose_track_path;   ///< Sidecar camera pose track for media_path, optional
+	FIELD() Serialization::String marker_pose_track_path; ///< Sidecar camera pose track for marker_media_path, optional
+	FIELD() bool loop;                                    ///< Wrap to the start when the movie ends
+	FIELD() int playback_state;                           ///< 0 stopped, 1 playing, 2 paused; read only
+	FIELD() float playback_time;                          ///< Seconds from the start of the movie; writing seeks
+	FIELD() float duration_seconds;                       ///< Movie length, 0 for a still image, read only
+
+#ifdef MIKANAPI_REFLECTION_ENABLED
+	MikanFileVideoSourceValues_GENERATED
+#endif // MIKANAPI_REFLECTION_ENABLED
+};
+
 struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes")) MikanUSBVideoSourceValues
 	: public MikanVideoSourceValues
 {

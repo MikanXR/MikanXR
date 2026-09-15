@@ -1,6 +1,7 @@
 #include "ProjectOutlinerActions.h"
 #include "AnchorObjectSystem.h"
 #include "ARKitVideoSourceSystem.h"
+#include "FileVideoSourceSystem.h"
 #include "BoxShapeSystem.h"
 #include "BoxStencilSystem.h"
 #include "CameraComponent.h"
@@ -63,6 +64,12 @@ int addNetworkVideoSource(ProjectManagerPtr projectManager)
 int addARKitVideoSource(ProjectManagerPtr projectManager)
 {
 	auto sys= projectManager->getSystemOfType<ARKitVideoSourceSystem>();
+	return sys ? componentIdOrInvalid(sys->addNewObjectByTypedDefinition()) : INVALID_MIKAN_ID;
+}
+
+int addFileVideoSource(ProjectManagerPtr projectManager)
+{
+	auto sys= projectManager->getSystemOfType<FileVideoSourceSystem>();
 	return sys ? componentIdOrInvalid(sys->addNewObjectByTypedDefinition()) : INVALID_MIKAN_ID;
 }
 

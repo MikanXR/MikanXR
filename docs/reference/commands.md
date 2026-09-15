@@ -63,7 +63,7 @@ build\bin\MikanCmd.exe -runTests
 build\bin\unit_test_suite_cpp.exe
 ```
 
-- `MikanCmd.exe -runTests` runs the editor unit test modules (tracker pose calibrator, client-API property schema guard, depth mesh generator, DMX universe RLE, light environment persistence, script variable persistence, project asset catalog) and writes details to `MikanCmd.log` in the working directory in addition to stdout. Check that file if the run fails with no console output (e.g. a crash exit code like `0xC0000005`).
+- `MikanCmd.exe -runTests` runs the editor unit test modules (tracker pose calibrator, client-API property schema guard, depth mesh generator, DMX universe RLE, file video source, light environment persistence, script variable persistence, project asset catalog) and writes details to `MikanCmd.log` in the working directory in addition to stdout. Check that file if the run fails with no console output (e.g. a crash exit code like `0xC0000005`).
 
 - Both suites must pass in CI (`.github/workflows/build-and-test.yml`).
 

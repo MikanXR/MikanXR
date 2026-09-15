@@ -27,6 +27,11 @@ using ARKitVideoSourceSystemDefinitionPtr= std::shared_ptr<ARKitVideoSourceSyste
 using ARKitVideoSourceSystemDefinitionConstPtr= std::shared_ptr<const ARKitVideoSourceSystemDefinition>;
 using ARKitVideoSourceSystemDefinitionWeakPtr= std::weak_ptr<ARKitVideoSourceSystemDefinition>;
 
+class FileVideoSourceSystemDefinition;
+using FileVideoSourceSystemDefinitionPtr= std::shared_ptr<FileVideoSourceSystemDefinition>;
+using FileVideoSourceSystemDefinitionConstPtr= std::shared_ptr<const FileVideoSourceSystemDefinition>;
+using FileVideoSourceSystemDefinitionWeakPtr= std::weak_ptr<FileVideoSourceSystemDefinition>;
+
 class CameraObjectSystemDefinition;
 using CameraObjectSystemDefinitionPtr= std::shared_ptr<CameraObjectSystemDefinition>;
 using CameraObjectSystemDefinitionConstPtr= std::shared_ptr<const CameraObjectSystemDefinition>;

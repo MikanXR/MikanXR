@@ -530,6 +530,11 @@ msgid "Models"
 msgstr "モデル"
 
 #. Section: assets
+msgctxt "assets.folderMovies"
+msgid "Movies"
+msgstr ""
+
+#. Section: assets
 #, fuzzy
 msgctxt "assets.folderScripts"
 msgid "Scripts"
@@ -614,10 +619,25 @@ msgid "Load Font"
 msgstr "フォントを読み込む"
 
 #. Section: assets
+msgctxt "assets.loadMediaDialogTitle"
+msgid "Load Movie or Image"
+msgstr ""
+
+#. Section: assets
+msgctxt "assets.loadMovieDialogTitle"
+msgid "Load Movie"
+msgstr ""
+
+#. Section: assets
 #, fuzzy
 msgctxt "assets.loadPixelContentDialogTitle"
 msgid "Load Image or Animation"
 msgstr "画像またはアニメーションを読み込む"
+
+#. Section: assets
+msgctxt "assets.loadPoseTrackDialogTitle"
+msgid "Load Pose Track"
+msgstr ""
 
 #. Section: assets
 #, fuzzy
@@ -650,6 +670,16 @@ msgid "Material Asset"
 msgstr "マテリアルアセット"
 
 #. Section: assets
+msgctxt "assets.mediaFilterDescription"
+msgid "Movie or Image Files (*.mp4;*.mov;*.m4v;*.mkv;*.avi;*.jpg;*.jpeg;*.png;*.bmp;*.tga)"
+msgstr ""
+
+#. Section: assets
+msgctxt "assets.movieFilterDescription"
+msgid "Movie Files (*.mp4;*.mov;*.m4v;*.mkv;*.avi)"
+msgstr ""
+
+#. Section: assets
 #, c-format
 msgctxt "assets.newAssetFmt"
 msgid "New %s"
@@ -660,6 +690,11 @@ msgstr ""
 msgctxt "assets.pixelContentFilterDescription"
 msgid "Image Files (*.png, *.gif, *.bmp, *.tga, *.jpg, *.jpeg)"
 msgstr "画像ファイル (*.png, *.gif, *.bmp, *.tga, *.jpg, *.jpeg)"
+
+#. Section: assets
+msgctxt "assets.poseTrackFilterDescription"
+msgid "Pose Track Files (*.pose.json)"
+msgstr ""
 
 #. Section: assets
 #, fuzzy
@@ -894,6 +929,17 @@ msgstr "スクリプトを編集"
 msgctxt "componentPanel.exposureScaleNote"
 msgid "Values include the exposure scale."
 msgstr "値には露出スケールが含まれています。"
+
+#. Section: componentPanel
+msgctxt "componentPanel.fileMarkerReferenceActive"
+msgid "Showing the marker reference"
+msgstr ""
+
+#. Section: componentPanel
+#, c-format
+msgctxt "componentPanel.filePlaybackStatusFmt"
+msgid "%s (%.2f / %.2f s)"
+msgstr ""
 
 #. Section: componentPanel
 #, fuzzy
@@ -1482,10 +1528,20 @@ msgid "Match Resolution to Window"
 msgstr "解像度をウィンドウに合わせる"
 
 #. Section: functions
+msgctxt "functions.pause"
+msgid "Pause"
+msgstr ""
+
+#. Section: functions
 #, fuzzy
 msgctxt "functions.pause_sequence"
 msgid "Pause"
 msgstr "一時停止"
+
+#. Section: functions
+msgctxt "functions.play"
+msgid "Play"
+msgstr ""
 
 #. Section: functions
 #, fuzzy
@@ -1528,6 +1584,11 @@ msgstr "テクスチャソース設定を表示"
 msgctxt "functions.show_video_source_settings"
 msgid "Show Video Source Settings"
 msgstr "映像ソース設定を表示"
+
+#. Section: functions
+msgctxt "functions.stop"
+msgid "Stop"
+msgstr ""
 
 #. Section: functions
 #, fuzzy
@@ -3555,6 +3616,11 @@ msgid "Add Compositor"
 msgstr "コンポジターを追加"
 
 #. Section: project
+msgctxt "project.outlinerAddFileSource"
+msgid "Add File Video Source"
+msgstr ""
+
+#. Section: project
 #, fuzzy
 msgctxt "project.outlinerAddLightGroup"
 msgid "Add Light Group"
@@ -4496,6 +4562,21 @@ msgid "Loop"
 msgstr "ループ"
 
 #. Section: properties
+msgctxt "properties.marker_media_path"
+msgid "Marker Reference Media"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.marker_pose_track_path"
+msgid "Marker Reference Pose Track"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.media_path"
+msgid "Media"
+msgstr ""
+
+#. Section: properties
 #, fuzzy
 msgctxt "properties.model_path"
 msgid "Model Path"
@@ -4544,10 +4625,25 @@ msgid "Playback Speed"
 msgstr "再生速度"
 
 #. Section: properties
+msgctxt "properties.playback_state"
+msgid "Playback"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.playback_time"
+msgid "Time"
+msgstr ""
+
+#. Section: properties
 #, fuzzy
 msgctxt "properties.port"
 msgid "Port"
 msgstr "ポート"
+
+#. Section: properties
+msgctxt "properties.pose_track_path"
+msgid "Pose Track"
+msgstr ""
 
 #. Section: properties
 #, fuzzy
@@ -4896,6 +4992,21 @@ msgstr "左上"
 msgctxt "propertyValues.pixel_origin_upper_right"
 msgid "Upper Right"
 msgstr "右上"
+
+#. Section: propertyValues
+msgctxt "propertyValues.playback_paused"
+msgid "Paused"
+msgstr ""
+
+#. Section: propertyValues
+msgctxt "propertyValues.playback_playing"
+msgid "Playing"
+msgstr ""
+
+#. Section: propertyValues
+msgctxt "propertyValues.playback_stopped"
+msgid "Stopped"
+msgstr ""
 
 #. Section: propertyValues
 #, fuzzy

@@ -167,6 +167,16 @@ using ARKitVideoSourceComponentPtr= std::shared_ptr<ARKitVideoSourceComponent>;
 using ARKitVideoSourceComponentConstPtr= std::shared_ptr<const ARKitVideoSourceComponent>;
 using ARKitVideoSourceComponentWeakPtr= std::weak_ptr<ARKitVideoSourceComponent>;
 
+class FileVideoSourceDefinition;
+using FileVideoSourceDefinitionPtr= std::shared_ptr<FileVideoSourceDefinition>;
+using FileVideoSourceDefinitionConstPtr= std::shared_ptr<const FileVideoSourceDefinition>;
+using FileVideoSourceDefinitionWeakPtr= std::weak_ptr<FileVideoSourceDefinition>;
+
+class FileVideoSourceComponent;
+using FileVideoSourceComponentPtr= std::shared_ptr<FileVideoSourceComponent>;
+using FileVideoSourceComponentConstPtr= std::shared_ptr<const FileVideoSourceComponent>;
+using FileVideoSourceComponentWeakPtr= std::weak_ptr<FileVideoSourceComponent>;
+
 class NetworkVideoSourceDefinition;
 using NetworkVideoSourceDefinitionPtr= std::shared_ptr<NetworkVideoSourceDefinition>;
 using NetworkVideoSourceDefinitionConstPtr= std::shared_ptr<const NetworkVideoSourceDefinition>;

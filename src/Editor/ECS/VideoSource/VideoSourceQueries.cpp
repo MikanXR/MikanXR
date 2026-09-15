@@ -1,6 +1,8 @@
 #include "VideoSourceQueries.h"
 #include "ARKitVideoSourceSystem.h"
 #include "ARKitVideoSourceComponent.h"
+#include "FileVideoSourceSystem.h"
+#include "FileVideoSourceComponent.h"
 #include "NetworkVideoSourceSystem.h"
 #include "NetworkVideoSourceComponent.h"
 #include "ProjectManager.h"
@@ -24,6 +26,10 @@ VideoSourceIdList getVideoSourceIdList(ProjectManagerConstPtr projectManager)
 	auto arkitVideoSourceSystem= projectManager->getSystemOfType<ARKitVideoSourceSystem>();
 	auto arkitVideoSourceIds= arkitVideoSourceSystem->getVideoSourceIdList();
 	videoSourceIdList.insert(videoSourceIdList.end(), arkitVideoSourceIds.begin(), arkitVideoSourceIds.end());
+
+	auto fileVideoSourceSystem= projectManager->getSystemOfType<FileVideoSourceSystem>();
+	auto fileVideoSourceIds= fileVideoSourceSystem->getVideoSourceIdList();
+	videoSourceIdList.insert(videoSourceIdList.end(), fileVideoSourceIds.begin(), fileVideoSourceIds.end());
 
 	return videoSourceIdList;
 }
@@ -49,6 +55,13 @@ VideoSourceComponentPtr getVideoSourceById(ProjectManagerConstPtr projectManager
 	if (arkitVideoSourcePtr)
 	{
 		return arkitVideoSourcePtr;
+	}
+
+	auto fileVideoSourceSystem= projectManager->getSystemOfType<FileVideoSourceSystem>();
+	auto fileVideoSourcePtr= fileVideoSourceSystem->getTypedComponentById(videoSourceId);
+	if (fileVideoSourcePtr)
+	{
+		return fileVideoSourcePtr;
 	}
 
 	return VideoSourceComponentPtr();
@@ -77,6 +90,13 @@ eVideoSourceType getVideoSourceType(ProjectManagerConstPtr projectManager, Mikan
 		return eVideoSourceType::arkit;
 	}
 
+	auto fileVideoSourceSystem= projectManager->getSystemOfType<FileVideoSourceSystem>();
+	auto fileVideoSourcePtr= fileVideoSourceSystem->getTypedComponentById(videoSourceId);
+	if (fileVideoSourcePtr)
+	{
+		return eVideoSourceType::file;
+	}
+
 	return eVideoSourceType::INVALID;
 }
 
@@ -98,6 +118,11 @@ bool removeVideoSource(ProjectManagerConstPtr projectManager, MikanVideoSourceID
 	{
 		auto arkitVideoSourceSystem= projectManager->getSystemOfType<ARKitVideoSourceSystem>();
 		return arkitVideoSourceSystem->removeObjectByPrimaryComponentId(videoSourceId);
+	}
+	case eVideoSourceType::file:
+	{
+		auto fileVideoSourceSystem= projectManager->getSystemOfType<FileVideoSourceSystem>();
+		return fileVideoSourceSystem->removeObjectByPrimaryComponentId(videoSourceId);
 	}
 	}
 

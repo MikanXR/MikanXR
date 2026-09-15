@@ -69,6 +69,18 @@ namespace MikanXR
 		public double p2;
 	};
 
+	public class MikanFileVideoSourceValues : MikanVideoSourceValues
+	{
+		public string media_path;
+		public string marker_media_path;
+		public string pose_track_path;
+		public string marker_pose_track_path;
+		public bool loop;
+		public int playback_state;
+		public float playback_time;
+		public float duration_seconds;
+	};
+
 	public class MikanMonoIntrinsics : MikanBaseIntrinsics
 	{
 		public MikanDistortionCoefficients distortion_coefficients;

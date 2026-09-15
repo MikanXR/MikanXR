@@ -45,7 +45,7 @@ import { MikanVRDeviceComponentValues, MikanVRObjectSystemValues } from './Mikan
 import { MikanVector2fValue, MikanUByteValue, MikanUShortValue, MikanStringValue, MikanVariant, MikanUByteArrayValue, MikanIntArrayValue, MikanMatrix4fValue, MikanVariantBase, MikanBoolValue, MikanIntValue, MikanLongValue, MikanFloatValue, MikanDoubleValue, MikanVector3fValue, MikanVector4fValue, MikanQuatfValue, MikanVector2dValue, MikanVector3dValue, MikanVector4dValue, MikanQuatdValue, MikanBoolArrayValue, MikanFloatArrayValue, MikanStringArrayValue, MikanStringMapValue } from './MikanVariantTypes.js';
 import { MikanVideoSourceOpenedEvent, MikanVideoSourceClosedEvent, MikanVideoSourceModeChangedEvent } from './MikanVideoSourceEvents.js';
 import { SetUSBVideoSourceDevice, SetUSBVideoSourceFormat, SetUSBVideoSourceFrameRate, MikanVideoSourceModeResponse, GetVideoSourceMode, GetVideoSourceIntrinsics, SetUSBVideoSourceResolution, MikanVideoSourceIntrinsicsResponse } from './MikanVideoSourceRequest.js';
-import { MikanUSBVideoSourceValues, MikanNetworkVideoSourceValues, MikanDistortionCoefficients, MikanBaseIntrinsics, MikanMonoIntrinsics, MikanStereoIntrinsics, MikanVideoSourceIntrinsics, MikanVideoSourceValues, MikanARKitVideoSourceValues, MikanUSBVideoSourceSystemValues } from './MikanVideoSourceTypes.js';
+import { MikanUSBVideoSourceValues, MikanNetworkVideoSourceValues, MikanDistortionCoefficients, MikanBaseIntrinsics, MikanMonoIntrinsics, MikanStereoIntrinsics, MikanVideoSourceIntrinsics, MikanVideoSourceValues, MikanARKitVideoSourceValues, MikanFileVideoSourceValues, MikanUSBVideoSourceSystemValues } from './MikanVideoSourceTypes.js';
 
 export function registerAllTypes(): void {
   TypeRegistry.register('MikanResponse', MikanResponse);
@@ -229,6 +229,7 @@ export function registerAllTypes(): void {
   TypeRegistry.register('MikanVideoSourceIntrinsics', MikanVideoSourceIntrinsics);
   TypeRegistry.register('MikanVideoSourceValues', MikanVideoSourceValues);
   TypeRegistry.register('MikanARKitVideoSourceValues', MikanARKitVideoSourceValues);
+  TypeRegistry.register('MikanFileVideoSourceValues', MikanFileVideoSourceValues);
   TypeRegistry.register('MikanUSBVideoSourceSystemValues', MikanUSBVideoSourceSystemValues);
 }
 

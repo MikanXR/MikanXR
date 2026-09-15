@@ -3,6 +3,8 @@
 #include "AnchorObjectSystem.h"
 #include "ARKitVideoSourceComponent.h"
 #include "ARKitVideoSourceSystem.h"
+#include "FileVideoSourceComponent.h"
+#include "FileVideoSourceSystem.h"
 #include "BoxShapeComponent.h"
 #include "BoxShapeSystem.h"
 #include "BoxStencilSystem.h"
@@ -74,6 +76,8 @@ static const char* pickNodeIcon(eOutlinerNodeKind kind, const std::string& compo
 		return ICON_FK_WIFI;
 	if (componentClassName == ARKitVideoSourceComponent::k_componentClassName)
 		return ICON_FK_MOBILE;
+	if (componentClassName == FileVideoSourceComponent::k_componentClassName)
+		return ICON_FK_FILM;
 	if (componentClassName == ClientTextureSourceComponent::k_componentClassName)
 		return ICON_FK_PLUG;
 	if (componentClassName == SpoutTextureSourceComponent::k_componentClassName)
@@ -249,6 +253,9 @@ void ProjectOutlinerModel::rebuild(ProjectManagerPtr projectManager)
 							 { addComponentNode(sourcesFolder, eOutlinerNodeKind::videoSource, comp); });
 	if (auto sys= projectManager->getSystemOfType<ARKitVideoSourceSystem>())
 		sys->visitComponents([&](ARKitVideoSourceComponentPtr comp)
+							 { addComponentNode(sourcesFolder, eOutlinerNodeKind::videoSource, comp); });
+	if (auto sys= projectManager->getSystemOfType<FileVideoSourceSystem>())
+		sys->visitComponents([&](FileVideoSourceComponentPtr comp)
 							 { addComponentNode(sourcesFolder, eOutlinerNodeKind::videoSource, comp); });
 
 	// Texture sources

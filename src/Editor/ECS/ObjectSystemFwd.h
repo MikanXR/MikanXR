@@ -10,6 +10,10 @@ class ARKitVideoSourceSystem;
 using ARKitVideoSourceSystemPtr= std::shared_ptr<ARKitVideoSourceSystem>;
 using ARKitVideoSourceSystemWeakPtr= std::weak_ptr<ARKitVideoSourceSystem>;
 
+class FileVideoSourceSystem;
+using FileVideoSourceSystemPtr= std::shared_ptr<FileVideoSourceSystem>;
+using FileVideoSourceSystemWeakPtr= std::weak_ptr<FileVideoSourceSystem>;
+
 class CameraObjectSystem;
 using CameraObjectSystemPtr= std::shared_ptr<CameraObjectSystem>;
 using CameraObjectSystemWeakPtr= std::weak_ptr<CameraObjectSystem>;

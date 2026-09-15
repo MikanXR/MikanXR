@@ -6,6 +6,7 @@
 #include "ArucoMarkerPoseSampler.h"
 #include "CalibrationRenderHelpers.h"
 #include "CameraComponent.h"
+#include "IAlignmentReferenceSource.h"
 #include "IFrameCoupledPoseProvider.h"
 #include "Colors.h"
 #include "IMkFrameBuffer.h"
@@ -138,6 +139,15 @@ void AppStage_AlignCameraByOriginMarker::enter()
 	m_targetVideoSource= m_targetCameraComponent->getVideoSourceComponent();
 	assert(m_targetVideoSource != nullptr);
 
+	// A recorded take keeps the marker out of shot; its reference recording is
+	// what gets sampled, and the source switches back when the stage exits
+	if (auto* referenceSource= dynamic_cast<IAlignmentReferenceSource*>(m_targetVideoSource.get());
+		referenceSource != nullptr && referenceSource->hasAlignmentReference())
+	{
+		referenceSource->beginAlignmentReference();
+		m_bAlignmentReferenceActive= true;
+	}
+
 	// Create GUI panel
 	m_calibrationPanel= addGuiPanel<GuiPanel_AlignCameraByOriginMarker>();
 	m_calibrationPanel->OnBeginEvent= [this]() { onBeginEvent(); };
@@ -165,6 +175,12 @@ void AppStage_AlignCameraByOriginMarker::exit()
 			m_targetVideoSource->stopVideoStream(m_targetDistortionView);
 		delete m_targetDistortionView;
 		m_targetDistortionView= nullptr;
+	}
+	if (m_bAlignmentReferenceActive)
+	{
+		if (auto* referenceSource= dynamic_cast<IAlignmentReferenceSource*>(m_targetVideoSource.get()))
+			referenceSource->endAlignmentReference();
+		m_bAlignmentReferenceActive= false;
 	}
 	m_targetVideoSource= nullptr;
 
@@ -522,10 +538,21 @@ void AppStage_AlignCameraByOriginMarker::computeAndApplyTargetTransform()
 }
 
 // The video source's frame-coupled pose interface, or null for the ordinary
-// case of a camera whose pose comes from a tracked puck.
+// case of a camera whose pose comes from a tracked puck. A source that can
+// carry poses but has none loaded (a recording with no pose track) is a fixed
+// camera for this purpose, so it takes the same path as the puck case.
 IFrameCoupledPoseProvider* AppStage_AlignCameraByOriginMarker::getFrameCoupledPoseProvider() const
 {
-	return dynamic_cast<IFrameCoupledPoseProvider*>(m_targetVideoSource.get());
+	auto* poseProvider= dynamic_cast<IFrameCoupledPoseProvider*>(m_targetVideoSource.get());
+	if (poseProvider != nullptr)
+	{
+		glm::mat4 transform;
+		uint32_t frameSeq= 0;
+		if (!poseProvider->getLatestSourceWorldPose(transform, frameSeq))
+			return nullptr;
+	}
+
+	return poseProvider;
 }
 
 void AppStage_AlignCameraByOriginMarker::setMenuState(eAlignCameraByOriginMarkerMenuState newState)

@@ -30,6 +30,7 @@
 #include "TrackingVolume/VRTrackingVolumeComponent.h"
 #include "VRObject/VRDeviceComponent.h"
 #include "VideoSource/ARKitVideoSourceComponent.h"
+#include "VideoSource/FileVideoSourceComponent.h"
 #include "VideoSource/NetworkVideoSourceComponent.h"
 #include "VideoSource/USBVideoSourceComponent.h"
 
@@ -45,6 +46,7 @@ const std::vector<ComponentNamePrefixEntry>& getComponentNamePrefixEntries()
 		{USBVideoSourceComponent::k_componentClassName, "SRC"},
 		{NetworkVideoSourceComponent::k_componentClassName, "SRC"},
 		{ARKitVideoSourceComponent::k_componentClassName, "SRC"},
+		{FileVideoSourceComponent::k_componentClassName, "SRC"},
 		{ClientTextureSourceComponent::k_componentClassName, "SRC"},
 		{SpoutTextureSourceComponent::k_componentClassName, "SRC"},
 		{CEFTextureSourceComponent::k_componentClassName, "SRC"},

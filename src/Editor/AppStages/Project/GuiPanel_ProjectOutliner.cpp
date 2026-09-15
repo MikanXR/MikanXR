@@ -1,6 +1,7 @@
 #include "GuiPanel_ProjectOutliner.h"
 #include "AnchorComponent.h"
 #include "ARKitVideoSourceComponent.h"
+#include "FileVideoSourceComponent.h"
 #include "BoxShapeComponent.h"
 #include "BoxStencilComponent.h"
 #include "CameraComponent.h"
@@ -44,6 +45,7 @@
 #include "SelectionComponent.h"
 #include "Shared/GuiPanel_AnchorComponent.h"
 #include "Shared/GuiPanel_ARKitVideoSourceComponent.h"
+#include "Shared/GuiPanel_FileVideoSourceComponent.h"
 #include "Shared/GuiPanel_CameraComponent.h"
 #include "Shared/GuiPanel_CEFTextureSourceComponent.h"
 #include "Shared/GuiPanel_ClientTextureSourceComponent.h"
@@ -412,6 +414,8 @@ void GuiPanel_ProjectOutliner::drawSelectedNodeActions(ProjectOutlinerNodePtr se
 			deferAddAction([](ProjectManagerPtr pm) { return ProjectOutlinerActions::addNetworkVideoSource(pm); });
 		if (drawAddButton("outlinerAddARKitSource", ICON_FK_MOBILE, "project.outlinerAddARKitSource"))
 			deferAddAction([](ProjectManagerPtr pm) { return ProjectOutlinerActions::addARKitVideoSource(pm); });
+		if (drawAddButton("outlinerAddFileSource", ICON_FK_FILM, "project.outlinerAddFileSource"))
+			deferAddAction([](ProjectManagerPtr pm) { return ProjectOutlinerActions::addFileVideoSource(pm); });
 
 		if (drawAddButton("outlinerAddClientSource", ICON_FK_PLUG, "project.outlinerAddClientSource"))
 			deferAddAction([](ProjectManagerPtr pm) { return ProjectOutlinerActions::addClientTextureSource(pm); });
@@ -755,6 +759,8 @@ GuiPanel_MikanComponent* GuiPanel_ProjectOutliner::getPanelForComponentClass(
 		return m_context->getNetworkVideoSourcePanel();
 	if (componentClassName == ARKitVideoSourceComponent::k_componentClassName)
 		return m_context->getARKitVideoSourcePanel();
+	if (componentClassName == FileVideoSourceComponent::k_componentClassName)
+		return m_context->getFileVideoSourcePanel();
 	if (componentClassName == ClientTextureSourceComponent::k_componentClassName)
 		return m_context->getClientTextureSourcePanel();
 	if (componentClassName == SpoutTextureSourceComponent::k_componentClassName)
@@ -814,6 +820,7 @@ void GuiPanel_ProjectOutliner::clearComponentPanels()
 	m_context->getUSBVideoSourcePanel()->setComponent(nullptr);
 	m_context->getNetworkVideoSourcePanel()->setComponent(nullptr);
 	m_context->getARKitVideoSourcePanel()->setComponent(nullptr);
+	m_context->getFileVideoSourcePanel()->setComponent(nullptr);
 	m_context->getClientTextureSourcePanel()->setComponent(nullptr);
 	m_context->getSpoutTextureSourcePanel()->setComponent(nullptr);
 	m_context->getCEFTextureSourcePanel()->setComponent(nullptr);
@@ -860,6 +867,11 @@ void GuiPanel_ProjectOutliner::drawComponentPanelForNode(ProjectOutlinerNodePtr 
 	if (node->componentClassName == ARKitVideoSourceComponent::k_componentClassName)
 	{
 		m_context->getARKitVideoSourcePanel()->drawCompactGui();
+		return;
+	}
+	if (node->componentClassName == FileVideoSourceComponent::k_componentClassName)
+	{
+		m_context->getFileVideoSourcePanel()->drawCompactGui();
 		return;
 	}
 

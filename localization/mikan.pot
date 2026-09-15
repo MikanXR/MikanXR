@@ -452,6 +452,11 @@ msgid "Models"
 msgstr ""
 
 #. Section: assets
+msgctxt "assets.folderMovies"
+msgid "Movies"
+msgstr ""
+
+#. Section: assets
 msgctxt "assets.folderScripts"
 msgid "Scripts"
 msgstr ""
@@ -526,8 +531,23 @@ msgid "Load Font"
 msgstr ""
 
 #. Section: assets
+msgctxt "assets.loadMediaDialogTitle"
+msgid "Load Movie or Image"
+msgstr ""
+
+#. Section: assets
+msgctxt "assets.loadMovieDialogTitle"
+msgid "Load Movie"
+msgstr ""
+
+#. Section: assets
 msgctxt "assets.loadPixelContentDialogTitle"
 msgid "Load Image or Animation"
+msgstr ""
+
+#. Section: assets
+msgctxt "assets.loadPoseTrackDialogTitle"
+msgid "Load Pose Track"
 msgstr ""
 
 #. Section: assets
@@ -556,6 +576,16 @@ msgid "Material Asset"
 msgstr ""
 
 #. Section: assets
+msgctxt "assets.mediaFilterDescription"
+msgid "Movie or Image Files (*.mp4;*.mov;*.m4v;*.mkv;*.avi;*.jpg;*.jpeg;*.png;*.bmp;*.tga)"
+msgstr ""
+
+#. Section: assets
+msgctxt "assets.movieFilterDescription"
+msgid "Movie Files (*.mp4;*.mov;*.m4v;*.mkv;*.avi)"
+msgstr ""
+
+#. Section: assets
 #, c-format
 msgctxt "assets.newAssetFmt"
 msgid "New %s"
@@ -564,6 +594,11 @@ msgstr ""
 #. Section: assets
 msgctxt "assets.pixelContentFilterDescription"
 msgid "Image Files (*.png, *.gif, *.bmp, *.tga, *.jpg, *.jpeg)"
+msgstr ""
+
+#. Section: assets
+msgctxt "assets.poseTrackFilterDescription"
+msgid "Pose Track Files (*.pose.json)"
 msgstr ""
 
 #. Section: assets
@@ -766,6 +801,17 @@ msgstr ""
 #. Section: componentPanel
 msgctxt "componentPanel.exposureScaleNote"
 msgid "Values include the exposure scale."
+msgstr ""
+
+#. Section: componentPanel
+msgctxt "componentPanel.fileMarkerReferenceActive"
+msgid "Showing the marker reference"
+msgstr ""
+
+#. Section: componentPanel
+#, c-format
+msgctxt "componentPanel.filePlaybackStatusFmt"
+msgid "%s (%.2f / %.2f s)"
 msgstr ""
 
 #. Section: componentPanel
@@ -1273,8 +1319,18 @@ msgid "Match Resolution to Window"
 msgstr ""
 
 #. Section: functions
+msgctxt "functions.pause"
+msgid "Pause"
+msgstr ""
+
+#. Section: functions
 msgctxt "functions.pause_sequence"
 msgid "Pause"
+msgstr ""
+
+#. Section: functions
+msgctxt "functions.play"
+msgid "Play"
 msgstr ""
 
 #. Section: functions
@@ -1310,6 +1366,11 @@ msgstr ""
 #. Section: functions
 msgctxt "functions.show_video_source_settings"
 msgid "Show Video Source Settings"
+msgstr ""
+
+#. Section: functions
+msgctxt "functions.stop"
+msgid "Stop"
 msgstr ""
 
 #. Section: functions
@@ -3031,6 +3092,11 @@ msgid "Add Compositor"
 msgstr ""
 
 #. Section: project
+msgctxt "project.outlinerAddFileSource"
+msgid "Add File Video Source"
+msgstr ""
+
+#. Section: project
 msgctxt "project.outlinerAddLightGroup"
 msgid "Add Light Group"
 msgstr ""
@@ -3823,6 +3889,21 @@ msgid "Loop"
 msgstr ""
 
 #. Section: properties
+msgctxt "properties.marker_media_path"
+msgid "Marker Reference Media"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.marker_pose_track_path"
+msgid "Marker Reference Pose Track"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.media_path"
+msgid "Media"
+msgstr ""
+
+#. Section: properties
 msgctxt "properties.model_path"
 msgid "Model Path"
 msgstr ""
@@ -3863,8 +3944,23 @@ msgid "Playback Speed"
 msgstr ""
 
 #. Section: properties
+msgctxt "properties.playback_state"
+msgid "Playback"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.playback_time"
+msgid "Time"
+msgstr ""
+
+#. Section: properties
 msgctxt "properties.port"
 msgid "Port"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.pose_track_path"
+msgid "Pose Track"
 msgstr ""
 
 #. Section: properties
@@ -4155,6 +4251,21 @@ msgstr ""
 #. Section: propertyValues
 msgctxt "propertyValues.pixel_origin_upper_right"
 msgid "Upper Right"
+msgstr ""
+
+#. Section: propertyValues
+msgctxt "propertyValues.playback_paused"
+msgid "Paused"
+msgstr ""
+
+#. Section: propertyValues
+msgctxt "propertyValues.playback_playing"
+msgid "Playing"
+msgstr ""
+
+#. Section: propertyValues
+msgctxt "propertyValues.playback_stopped"
+msgid "Stopped"
 msgstr ""
 
 #. Section: propertyValues

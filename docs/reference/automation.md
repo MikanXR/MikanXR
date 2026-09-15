@@ -219,6 +219,19 @@ The commands the MikanARStreamer app answers today:
 - `stats` replies the capture, encode, drop, and send counters as `name value` lines
 - `verbose on|off` gates the per-frame encode-latency relay, which is off by default because one line per frame fills the 2000-line log ring in about a minute and evicts the editor's own diagnostics
 - `screenshot [name]` captures the app's own UI to a PNG in its container and replies with the path, pixel size, and byte count
+- `mode [photo|video|stream]` reads or sets the capture mode the phone's screen is in
+- `capture [marker]` writes the next frame as a JPEG with its one-frame pose track beside it, `marker` naming it as the marker reference for the last take, and replies with both container paths, the pixel size, and the byte count
+- `record start [marker]` begins recording an H.264 movie with its pose track, replying with the take name; `record stop` finishes it and replies with both paths, the frames written and dropped, and the duration; `record` alone reports whether one is in progress
+
+A take and its marker reference pulled off the phone drop straight into a project's `movies` folder as a file video source ([videosources.md](./videosources.md)):
+
+```
+python tools/automate.py "arkit send record start" "sleep:5" "arkit send record stop"
+python tools/automate.py "arkit send capture marker"
+xcrun devicectl device copy from --device <deviceId> \
+  --domain-type appDataContainer --domain-identifier com.mikan.ARStreamer \
+  --source Documents/take_20260915_120000.mp4 --destination ./movies/take_20260915_120000.mp4
+```
 
 The screenshot command exists because nothing else can see that screen. `devicectl` can copy files off a device but cannot capture one, and `simctl io screenshot` is simulator only, so the app takes the picture itself and leaves it where a copy can reach:
 

@@ -96,6 +96,7 @@ enum class eVideoSourceType : int
 	usb,
 	networked,
 	arkit,
+	file,
 
 	COUNT
 };

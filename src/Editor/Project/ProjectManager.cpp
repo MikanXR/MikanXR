@@ -4,6 +4,7 @@
 #include "AppSettingsConfig.h"
 #include "AnchorObjectSystem.h"
 #include "ARKitVideoSourceSystem.h"
+#include "FileVideoSourceSystem.h"
 #include "ClientTextureSourceSystem.h"
 #include "CameraObjectSystem.h"
 #include "CompositorObjectSystem.h"
@@ -72,6 +73,7 @@ bool ProjectManager::startup(MainWindow* mainWindow)
 	addSystem<NetworkVideoSourceSystem>();
 	addSystem<USBVideoSourceSystem>();
 	addSystem<ARKitVideoSourceSystem>();
+	addSystem<FileVideoSourceSystem>();
 	addSystem<MarkerObjectSystem>();
 	addSystem<StageObjectSystem>();
 	addSystem<SceneObjectSystem>();

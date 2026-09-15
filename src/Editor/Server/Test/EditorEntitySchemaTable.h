@@ -72,6 +72,7 @@
 #include "TrackingVolume/TrackingVolumeComponent.h"
 #include "TrackingVolume/VRTrackingVolumeComponent.h"
 #include "VideoSource/ARKitVideoSourceComponent.h"
+#include "VideoSource/FileVideoSourceComponent.h"
 #include "VideoSource/NetworkVideoSourceComponent.h"
 #include "VideoSource/USBVideoSourceComponent.h"
 #include "VideoSource/USBVideoSourceSystem.h"
@@ -133,6 +134,7 @@ inline const SchemaTestEntry k_schemaTestEntries[]= {
 	SCHEMA_ENTRY(TrackingVolumeComponent, MikanTrackingVolumeComponentValues),
 	SCHEMA_ENTRY(VRTrackingVolumeComponent, MikanVRTrackingVolumeComponentValues),
 	SCHEMA_ENTRY(ARKitVideoSourceComponent, MikanARKitVideoSourceValues),
+	SCHEMA_ENTRY(FileVideoSourceComponent, MikanFileVideoSourceValues),
 	SCHEMA_ENTRY(NetworkVideoSourceComponent, MikanNetworkVideoSourceValues),
 	SCHEMA_ENTRY(USBVideoSourceComponent, MikanUSBVideoSourceValues),
 	SCHEMA_ENTRY(VideoSourceComponent, MikanVideoSourceValues),
