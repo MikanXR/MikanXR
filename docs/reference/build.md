@@ -38,7 +38,7 @@ Since the script wipes `build/` and `deps/`, rerun project generation afterwards
 
 Notable CMake options (defined in `cmake/ThirdParty.cmake` unless noted):
 
-- `MIKAN_WITH_GSTREAMER` (default `ON`): gates the GStreamer `find_package` calls and the `MikanGStreamerVideo` plugin (`src/Plugins/CMakeLists.txt`), plus GStreamer-dependent unit tests. On the `iphone` branch it also gates `MikanARKitVideo`.
+- `MIKAN_WITH_GSTREAMER` (default `ON`): gates the GStreamer `find_package` calls and the `MikanGStreamerVideo` plugin (`src/Plugins/CMakeLists.txt`), plus GStreamer-dependent unit tests and the `MikanARKitVideo` plugin.
 
 - `CMAKE_UNITY_BUILD`: on in both local and CI configurations; see the gotcha below.
 
@@ -62,7 +62,7 @@ Third-party source builds: `thirdparty/CMakeLists.txt` builds `fast_obj_lib`, `i
 
 - Library targets: one per `src/Libraries` subdirectory, `SHARED` except `MikanDMX` and `MikanOnnx`, which are `STATIC` (see [layout.md](./layout.md)).
 
-- Plugin DLLs: `MikanWMFVideo`, `MikanSteamVR`, and (GStreamer builds only) `MikanGStreamerVideo`; the `iphone` branch adds `MikanARKitVideo` under the same gate. Each is a `SHARED` library compiled with `CXX_VISIBILITY_PRESET hidden` and its own `*_EXPORTS` define, then copied next to `Mikan.exe` by the `copy_mikan_runtime_deps` post-build step in `src/Editor/CMakeLists.txt` (along with SDL2, OpenCV, GLEW, Spout2, CEF, Lua, Refureku, easy_profiler, ONNX Runtime, and DirectML runtime DLLs).
+- Plugin DLLs: `MikanWMFVideo`, `MikanSteamVR`, and (GStreamer builds only) `MikanGStreamerVideo` and `MikanARKitVideo`. Each is a `SHARED` library compiled with `CXX_VISIBILITY_PRESET hidden` and its own `*_EXPORTS` define, then copied next to `Mikan.exe` by the `copy_mikan_runtime_deps` post-build step in `src/Editor/CMakeLists.txt` (along with SDL2, OpenCV, GLEW, Spout2, CEF, Lua, Refureku, easy_profiler, ONNX Runtime, and DirectML runtime DLLs).
 
 - `MikanClientCodeGen`: bindings generator executable (`src/Programs/ClientCodeGen`).
 
