@@ -42,6 +42,8 @@ public:
 	virtual std::string getObjectSystemClassName() const { return k_objectSystemClassName; }
 
 	virtual void update(float deltaTime) override;
+	virtual ~ARKitVideoSourceSystem();
+
 	virtual void dispose() override;
 	virtual bool isLoading() const override { return m_deviceManagerLoader.isLoading(); }
 

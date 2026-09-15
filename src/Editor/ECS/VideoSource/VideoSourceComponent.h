@@ -158,8 +158,9 @@ protected:
 
 	void recomputeCameraProjectionMatrix();
 
-	// Called by derived classes when raw video source frame is received in video receive thread
-	size_t getActiveViews(class VideoFrameDistortionView** outActiveViewsList, size_t activeViewsMaxListSize);
+	// Called by derived classes when raw video source frame is received in video receive thread.
+	// The active view set is locked for the whole write, so a view that unsubscribes
+	// on the main thread is never written to after stopVideoStream returns.
 	void writeVideoFrame(const unsigned char* videoBuffer, const cv::Size& bufferDimensions, const bool bIsFlipped);
 	void writeStereoVideoFrameSection(const unsigned char* videoBuffer, const cv::Size& bufferDimensions,
 									  const bool bIsFlipped, const VideoFrameSection section,

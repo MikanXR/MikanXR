@@ -699,11 +699,11 @@ void USBVideoSourceComponent::closeVideoSource()
 		// Stop the video stream if it is running
 		forceStopVideoStream();
 
+		// Stop listening before the device closes, so no frame lands here afterwards
+		m_usbVideoDevice->removeListener(this);
+
 		// Close the USB video device
 		m_usbVideoDevice->close();
-
-		// Remove the listener for the USB video device
-		m_usbVideoDevice->removeListener(this);
 
 		// Clear the USB video device pointer
 		m_usbVideoDevice= nullptr;
@@ -1149,10 +1149,10 @@ void USBVideoSourceComponent::notifyVideoDeviceDisconnected(const IUsbVideoDevic
 {
 	if (device == m_usbVideoDevice)
 	{
-		// The video source is now already invalidated, so we can clear the pointer
-		// but we still want to clean up the video source state
-		m_usbVideoDevice= nullptr;
+		// The device has already closed itself, so closing it again is a no-op,
+		// but the listener still has to come off and the stream state reset
 		closeVideoSource();
+		m_usbVideoDevice= nullptr;
 	}
 }
 

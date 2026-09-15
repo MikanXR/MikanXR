@@ -44,12 +44,12 @@ void ARKitVideoSourceSystem::update(float deltaTime)
 	Super::update(deltaTime);
 }
 
-void ARKitVideoSourceSystem::dispose()
-{
-	m_deviceManagerLoader.dispose();
+// The device manager and its plugin live for the process, not the project:
+// the components close their devices in Super::dispose(), and the loader is
+// torn down with the system at app shutdown, after every device is gone
+void ARKitVideoSourceSystem::dispose() { Super::dispose(); }
 
-	Super::dispose();
-}
+ARKitVideoSourceSystem::~ARKitVideoSourceSystem() { m_deviceManagerLoader.dispose(); }
 
 VideoSourceIdList ARKitVideoSourceSystem::getVideoSourceIdList() const
 {

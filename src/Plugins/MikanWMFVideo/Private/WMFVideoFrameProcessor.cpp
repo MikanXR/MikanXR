@@ -42,17 +42,13 @@ HRESULT WMFVideoFrameProcessor::init(IMFMediaSource* pSource)
 	// This is critical when changing video modes to avoid stuck transforms
 	if (m_pSourceReader)
 	{
-		// Stop any ongoing streaming first
-		if (m_state == State::Running)
-		{
-			stopVideoFrameStream();
-		}
+		// Stop any ongoing streaming first, which flushes the reader and waits
+		// for the flush to land so no sample is still in flight
+		stopVideoFrameStream();
 
-		// Flush the source reader to clear any pending samples and reset transforms
-		m_pSourceReader->Flush((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM);
-
-		// Release the source reader completely
-		MemoryUtils::safeReleaseAllCount(&m_pSourceReader);
+		// Release our reference to the source reader. Anything Media Foundation
+		// still holds is its own to release.
+		MemoryUtils::safeRelease(&m_pSourceReader);
 
 		// Give MFTs time to clean up (workaround for AMD/NVIDIA MFT cleanup issues)
 		Sleep(100);
@@ -377,9 +373,12 @@ void WMFVideoFrameProcessor::dispose()
 {
 	stopVideoFrameStream();
 
-	MemoryUtils::safeReleaseAllCount(&m_pNativeInputType);
-	MemoryUtils::safeReleaseAllCount(&m_pDecoderTransform);
-	MemoryUtils::safeReleaseAllCount(&m_pSourceReader);
+	// One release per reference held here. Driving the reader's count to zero
+	// destroyed it under Media Foundation's own references and the work queue
+	// thread that was still delivering into it.
+	MemoryUtils::safeRelease(&m_pNativeInputType);
+	MemoryUtils::safeRelease(&m_pDecoderTransform);
+	MemoryUtils::safeRelease(&m_pSourceReader);
 
 	MIKAN_LOG_INFO("WMFVideoFrameProcessor::dispose") << "Disposing video frame reader for device: " << m_deviceIndex;
 }
@@ -423,19 +422,55 @@ void WMFVideoFrameProcessor::startVideoFrameStream()
 
 void WMFVideoFrameProcessor::stopVideoFrameStream()
 {
-	if (m_state != State::Stopped)
+	const State state= m_state.load();
+	if (state == State::Stopped)
+		return;
+
+	MIKAN_LOG_INFO("WMFVideoFrameProcessor::stopVideoFrameStream")
+		<< "Stopping video frame reading on device: " << m_deviceIndex;
+
+	// A reader with a sample request outstanding may already be dispatching
+	// OnReadSample on its work queue thread. Flush is asynchronous: it cancels
+	// the pending request and reports back through OnFlush, after which the
+	// reader delivers nothing more for the stream. Waiting for that report is
+	// what makes it safe for the caller to free anything the callback touches.
+	if (m_pSourceReader != nullptr && (state == State::Running || state == State::Starting))
 	{
-		MIKAN_LOG_INFO("WMFVideoFrameProcessor::stopVideoFrameStream")
-			<< "Stopping video frame reading on device: " << m_deviceIndex;
-
-		m_state= State::Stopped;
-
-		// Flush the source reader to stop receiving samples
-		if (m_pSourceReader != nullptr)
+		m_state= State::Stopping;
 		{
-			m_pSourceReader->Flush((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM);
+			std::lock_guard<std::mutex> lock(m_flushMutex);
+			m_bFlushComplete= false;
+		}
+
+		const HRESULT hr= m_pSourceReader->Flush((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM);
+		if (SUCCEEDED(hr))
+		{
+			std::unique_lock<std::mutex> lock(m_flushMutex);
+			if (!m_flushCondVar.wait_for(lock, std::chrono::seconds(2), [this]() { return m_bFlushComplete; }))
+			{
+				MIKAN_LOG_WARNING("WMFVideoFrameProcessor::stopVideoFrameStream")
+					<< "Timed out waiting for the source reader flush on device: " << m_deviceIndex;
+			}
+		}
+		else
+		{
+			MIKAN_LOG_WARNING("WMFVideoFrameProcessor::stopVideoFrameStream")
+				<< "Source reader flush failed on device " << m_deviceIndex << ": " << getHresultMessage(hr);
 		}
 	}
+
+	m_state= State::Stopped;
+}
+
+STDMETHODIMP WMFVideoFrameProcessor::OnFlush(DWORD dwStreamIndex)
+{
+	{
+		std::lock_guard<std::mutex> lock(m_flushMutex);
+		m_bFlushComplete= true;
+	}
+	m_flushCondVar.notify_all();
+
+	return S_OK;
 }
 
 STDMETHODIMP WMFVideoFrameProcessor::OnReadSample(HRESULT hrStatus, DWORD dwStreamIndex, DWORD dwStreamFlags,
@@ -445,7 +480,7 @@ STDMETHODIMP WMFVideoFrameProcessor::OnReadSample(HRESULT hrStatus, DWORD dwStre
 	if (m_state != State::Running)
 	{
 		MIKAN_LOG_INFO("WMFVideoFrameProcessor::OnReadSample")
-			<< "Frame " << m_sampleIndex << ": State is not Running (state=" << (int)m_state << ")";
+			<< "Frame " << m_sampleIndex << ": State is not Running (state=" << (int)m_state.load() << ")";
 		return S_OK;
 	}
 

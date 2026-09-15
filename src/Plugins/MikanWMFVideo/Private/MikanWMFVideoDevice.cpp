@@ -22,9 +22,19 @@ MikanWMFVideoDevice::MikanWMFVideoDevice(MikanWMFVideoDeviceManager* ownerDevice
 MikanWMFVideoDevice::~MikanWMFVideoDevice() { close(); }
 
 // -- Device Listener
-void MikanWMFVideoDevice::addListener(IUsbVideoDeviceListener* listener) { m_listeners.insert(listener); }
+void MikanWMFVideoDevice::addListener(IUsbVideoDeviceListener* listener)
+{
+	std::lock_guard<std::mutex> lock(m_listenerMutex);
+	m_listeners.insert(listener);
+}
 
-void MikanWMFVideoDevice::removeListener(IUsbVideoDeviceListener* listener) { m_listeners.erase(listener); }
+// Takes the same lock the frame fan-out holds, so a listener removed here is
+// never entered by a frame that was already being delivered
+void MikanWMFVideoDevice::removeListener(IUsbVideoDeviceListener* listener)
+{
+	std::lock_guard<std::mutex> lock(m_listenerMutex);
+	m_listeners.erase(listener);
+}
 
 // -- Device Properties
 const char* MikanWMFVideoDevice::getDevicePath() const { return m_deviceInfo.deviceSymbolicLink.c_str(); }
@@ -148,13 +158,21 @@ void MikanWMFVideoDevice::close()
 {
 	if (m_videoFrameProcessor != nullptr)
 	{
-		delete m_videoFrameProcessor;
+		// Stopping waits for the reader's flush, so no callback is in flight by
+		// the time the reader is released. The processor is a COM object the
+		// reader also referenced, so it is released, never deleted.
+		m_videoFrameProcessor->stopVideoFrameStream();
+		m_videoFrameProcessor->dispose();
+		m_videoFrameProcessor->Release();
 		m_videoFrameProcessor= nullptr;
 	}
 
 	if (m_mediaSource != nullptr)
 	{
 		m_mediaSource->Stop();
+		// Shutdown is what actually frees the capture device, so the same camera
+		// can be opened again in this process
+		m_mediaSource->Shutdown();
 		MemoryUtils::safeRelease(&m_mediaSource);
 	}
 }
@@ -747,11 +765,18 @@ bool MikanWMFVideoDevice::getCameraControlRange(CameraControlProperty propId, Vi
 	return SUCCEEDED(hr);
 }
 
+// The main thread notifications walk a copy of the set, since a listener may
+// remove itself in response
 void MikanWMFVideoDevice::notifyVideoDeviceDisconnected()
 {
 	close();
 
-	for (auto listener : m_listeners)
+	std::set<IUsbVideoDeviceListener*> listeners;
+	{
+		std::lock_guard<std::mutex> lock(m_listenerMutex);
+		listeners= m_listeners;
+	}
+	for (auto listener : listeners)
 	{
 		listener->notifyVideoDeviceDisconnected(this);
 	}
@@ -759,7 +784,12 @@ void MikanWMFVideoDevice::notifyVideoDeviceDisconnected()
 
 void MikanWMFVideoDevice::notifyVideoModePropertiesChanged()
 {
-	for (auto listener : m_listeners)
+	std::set<IUsbVideoDeviceListener*> listeners;
+	{
+		std::lock_guard<std::mutex> lock(m_listenerMutex);
+		listeners= m_listeners;
+	}
+	for (auto listener : listeners)
 	{
 		listener->notifyVideoModePropertiesChanged(this);
 	}
@@ -767,6 +797,7 @@ void MikanWMFVideoDevice::notifyVideoModePropertiesChanged()
 
 void MikanWMFVideoDevice::notifyVideoFrameReceived(const UsbVideoFrameBuffer& bufferInfo)
 {
+	std::lock_guard<std::mutex> lock(m_listenerMutex);
 	for (auto listener : m_listeners)
 	{
 		listener->notifyVideoFrameReceived(bufferInfo);

@@ -79,7 +79,14 @@ void USBVideoSourceSystem::update(float deltaTime)
 	Super::update(deltaTime);
 }
 
-void USBVideoSourceSystem::dispose()
+// The device manager and its plugin live for the process, not the project.
+// Disposing them with the project unloaded the DLL under a receive thread and
+// left the loader state at ready with no manager behind it, so the next project
+// could never open a camera. The components close their devices in
+// Super::dispose(); the manager waits for app shutdown.
+void USBVideoSourceSystem::dispose() { Super::dispose(); }
+
+USBVideoSourceSystem::~USBVideoSourceSystem()
 {
 	// If async init is still in-flight, block until it completes so we can safely clean up
 	if (m_usbVideoManagerFuture.valid())
@@ -89,7 +96,6 @@ void USBVideoSourceSystem::dispose()
 		m_usbVideoDeviceManager= result.manager;
 	}
 
-	Super::dispose();
 	disposeUsbVideoDeviceManager();
 }
 

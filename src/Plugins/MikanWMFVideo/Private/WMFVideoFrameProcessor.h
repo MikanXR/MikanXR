@@ -5,6 +5,10 @@
 #include <mfreadwrite.h>
 #include <stdint.h>
 
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
+
 class WMFVideoFrameProcessor : public IMFSourceReaderCallback
 {
 public:
@@ -30,18 +34,19 @@ public:
 	inline State getState() const { return m_state; }
 	inline bool getIsRunning() const { return m_state == State::Running; }
 
-protected:
-	// IUnknown methods
+	// IUnknown methods. The source reader holds a reference for as long as it
+	// lives, so the owner releases its own rather than deleting the object.
 	STDMETHODIMP QueryInterface(REFIID iid, void** ppv);
 	STDMETHODIMP_(ULONG)
 	AddRef();
 	STDMETHODIMP_(ULONG)
 	Release();
 
-	// IMFSourceReaderCallback methods
+protected:
+	// IMFSourceReaderCallback methods, called on a Media Foundation work queue thread
 	STDMETHODIMP OnReadSample(HRESULT hrStatus, DWORD dwStreamIndex, DWORD dwStreamFlags, LONGLONG llTimestamp,
 							  IMFSample* pSample);
-	STDMETHODIMP OnFlush(DWORD dwStreamIndex) { return S_OK; }
+	STDMETHODIMP OnFlush(DWORD dwStreamIndex);
 	STDMETHODIMP OnEvent(DWORD dwStreamIndex, IMFMediaEvent* pEvent) { return S_OK; }
 
 private:
@@ -59,8 +64,15 @@ private:
 	bool m_bNeedsDecoder;
 	MFT_OUTPUT_STREAM_INFO m_decoderOutputInfo;
 
-	State m_state;
+	// Written on the main thread, read on the work queue thread
+	std::atomic<State> m_state;
 	int64_t m_sampleIndex;
+
+	// stopVideoFrameStream waits here for the reader's flush to complete, after
+	// which no further OnReadSample can arrive for the stream
+	std::mutex m_flushMutex;
+	std::condition_variable m_flushCondVar;
+	bool m_bFlushComplete= false;
 	eUSBVideoFrameBufferFormat m_outputFormat;
 	GUID m_wmfOutputFormat;
 

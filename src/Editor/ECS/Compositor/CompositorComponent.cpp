@@ -222,7 +222,9 @@ void CompositorComponent::postInit()
 
 void CompositorComponent::dispose()
 {
-	stopOutputStreaming();
+	// Unsubscribes the distortion view from its video source before the view is
+	// freed, since the source's receive thread writes into it by raw pointer
+	stop();
 
 	getCompositorDefinition()->OnPropertyChanged-= MakeDelegate(this, &CompositorComponent::onDefinitionChanged);
 

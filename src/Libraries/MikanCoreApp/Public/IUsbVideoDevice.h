@@ -51,7 +51,9 @@ public:
 	// Called when the video source has updated its dimensions or other properties
 	virtual void notifyVideoModePropertiesChanged(const class IUsbVideoDevice* device)= 0;
 
-	// Called when new video frame has been received from the video source
+	// Called when new video frame has been received from the video source.
+	// Runs on the device's receive thread, and bufferInfo.data is valid only for
+	// the duration of the call.
 	virtual void notifyVideoFrameReceived(const UsbVideoFrameBuffer& bufferInfo)= 0;
 };
 
@@ -64,6 +66,9 @@ public:
 
 	// -- Device Listener
 	virtual void addListener(IUsbVideoDeviceListener* listener)= 0;
+	// Returns only once no frame is being delivered to the listener, so the
+	// listener may be destroyed as soon as this returns. close() gives the same
+	// guarantee for every listener.
 	virtual void removeListener(IUsbVideoDeviceListener* listener)= 0;
 
 	// -- Device Properties

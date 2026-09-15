@@ -156,7 +156,8 @@ void VideoSourceComponent::stopVideoStream(VideoFrameDistortionView* view)
 		m_bHasAnyActiveViews= !m_activeViews.empty();
 	}
 
-	if (m_bHasAnyActiveViews)
+	// The device stops with the last subscriber, never while one remains
+	if (!m_bHasAnyActiveViews)
 	{
 		const eVideoStreamingStatus status= getVideoStreamingStatus();
 		if (status == eVideoStreamingStatus::started || status == eVideoStreamingStatus::pendingStart)
@@ -273,37 +274,19 @@ void VideoSourceComponent::recomputeCameraProjectionMatrix()
 	}
 }
 
-size_t VideoSourceComponent::getActiveViews(VideoFrameDistortionView** outActiveViewsList,
-											size_t activeViewsMaxListSize)
-{
-	std::lock_guard<std::mutex> lock(m_activeViewMutex);
-
-	size_t resultCount= 0;
-	for (VideoFrameDistortionView* activeView : m_activeViews)
-	{
-		if (resultCount < activeViewsMaxListSize)
-		{
-			outActiveViewsList[resultCount]= activeView;
-			++resultCount;
-		}
-		else
-		{
-			break;
-		}
-	}
-
-	return resultCount;
-}
-
+// The set stays locked while the views are written, rather than copying the
+// pointers out first. A view is a raw pointer owned by a stage or a compositor,
+// and the receive thread has no other way to know it was freed: holding the lock
+// makes stopVideoStream wait out a write in progress, which is at most one frame
+// copy per view.
 void VideoSourceComponent::writeVideoFrame(const unsigned char* videoBuffer, const cv::Size& bufferDimensions,
 										   const bool bIsFlipped)
 {
-	VideoFrameDistortionView* activeViews[k_maxActiveViews];
-	size_t activeViewCount= getActiveViews(activeViews, k_maxActiveViews);
+	std::lock_guard<std::mutex> lock(m_activeViewMutex);
 
-	for (size_t viewIndex= 0; viewIndex < activeViewCount; ++viewIndex)
+	for (VideoFrameDistortionView* activeView : m_activeViews)
 	{
-		activeViews[viewIndex]->writeVideoFrame(videoBuffer, bufferDimensions, bIsFlipped);
+		activeView->writeVideoFrame(videoBuffer, bufferDimensions, bIsFlipped);
 	}
 }
 
@@ -311,15 +294,13 @@ void VideoSourceComponent::writeStereoVideoFrameSection(const unsigned char* vid
 														const cv::Size& bufferDimensions, const bool bIsFlipped,
 														const VideoFrameSection section, const cv::Rect& bufferBounds)
 {
-	VideoFrameDistortionView* activeViews[k_maxActiveViews];
-	size_t activeViewCount= getActiveViews(activeViews, k_maxActiveViews);
+	std::lock_guard<std::mutex> lock(m_activeViewMutex);
 
-	for (size_t viewIndex= 0; viewIndex < activeViewCount; ++viewIndex)
+	for (VideoFrameDistortionView* activeView : m_activeViews)
 	{
-		if (activeViews[viewIndex]->getVideoFrameSection() == section)
+		if (activeView->getVideoFrameSection() == section)
 		{
-			activeViews[viewIndex]->writeStereoVideoFrameSection(videoBuffer, bufferDimensions, bIsFlipped,
-																 bufferBounds);
+			activeView->writeStereoVideoFrameSection(videoBuffer, bufferDimensions, bIsFlipped, bufferBounds);
 		}
 	}
 }

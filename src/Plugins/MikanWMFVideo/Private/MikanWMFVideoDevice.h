@@ -4,6 +4,7 @@
 #include "WMFDeviceInfo.h"
 
 #include <array>
+#include <mutex>
 #include <string>
 #include <set>
 
@@ -99,5 +100,7 @@ private:
 	IMFMediaSource* m_mediaSource= nullptr;
 	class WMFVideoFrameProcessor* m_videoFrameProcessor= nullptr;
 
+	// Mutated on the main thread, walked on the receive thread for every frame
+	std::mutex m_listenerMutex;
 	std::set<IUsbVideoDeviceListener*> m_listeners;
 };
