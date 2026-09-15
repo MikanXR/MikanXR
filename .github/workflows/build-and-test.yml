@@ -330,12 +330,14 @@ jobs:
           for %%K in (access stackoverflow) do (
             if exist build\crash rmdir /s /q build\crash
             build\bin\MikanCmd.exe -crash=%%K -crashReportDir=build\crash
-            if !ERRORLEVEL! EQU 0 (
+            set CRASH_EXIT=!ERRORLEVEL!
+            if !CRASH_EXIT! EQU 0 (
               echo MikanCmd did not crash on kind %%K
               exit /b 1
             )
             if not exist build\crash\*.dmp (
-              echo No minidump written for kind %%K
+              echo No minidump written for kind %%K, exit code !CRASH_EXIT!
+              if exist build\crash dir build\crash
               exit /b 1
             )
             if not exist build\crash\*.txt (

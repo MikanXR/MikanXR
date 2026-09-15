@@ -452,6 +452,14 @@ bool install(const CrashHandlerSettings& settings)
 		stopWriterThread();
 	}
 
+	// After a stack overflow the faulting thread has whatever lies below the guard
+	// page and nothing more, and the OS needs stack of its own to dispatch the
+	// exception to the filter. Without a guarantee that dispatch fails on some
+	// layouts and the process dies with no report at all. Per thread, so this
+	// covers the installing (main) thread, where the deep recursion lives.
+	ULONG stackGuaranteeBytes= 64 * 1024;
+	SetThreadStackGuarantee(&stackGuaranteeBytes);
+
 	installHooks();
 	g_state.bInstalled= true;
 
