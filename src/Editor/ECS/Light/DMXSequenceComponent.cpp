@@ -1,4 +1,5 @@
 #include "DMXSequenceComponent.h"
+#include "PlaybackTime.h"
 #include "ProjectScriptContext.h"
 #include "AssetReferencePropertyMetaData.h"
 #include "DMXFixtureGroupComponent.h"
@@ -517,23 +518,7 @@ void DMXSequenceComponent::stop()
 void DMXSequenceComponent::advanceTime(float& inoutTime, float delta, float duration, bool bLoop, bool& outWrapped,
 									   bool& outFinished)
 {
-	outWrapped= false;
-	outFinished= false;
-
-	inoutTime+= delta;
-	if (duration <= 0.f || inoutTime < duration)
-		return;
-
-	if (bLoop)
-	{
-		inoutTime= std::fmod(inoutTime, duration);
-		outWrapped= true;
-	}
-	else
-	{
-		inoutTime= duration;
-		outFinished= true;
-	}
+	advancePlaybackTime(inoutTime, delta, duration, bLoop, outWrapped, outFinished);
 }
 
 void DMXSequenceComponent::tick(float deltaSeconds)
