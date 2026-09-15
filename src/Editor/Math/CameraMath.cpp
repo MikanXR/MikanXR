@@ -324,6 +324,26 @@ void createDefautMonoIntrinsics(int pixelWidth, int pixelHeight, MikanMonoIntrin
 	outIntrinsics.distorted_camera_matrix= {f_x, 0.0, 0.0, 0.0, f_y, 0.0, c_x, c_y, 1.0};
 	outIntrinsics.undistorted_camera_matrix= outIntrinsics.distorted_camera_matrix;
 }
+
+void createMonoIntrinsicsFromPinhole(int pixelWidth, int pixelHeight, double fx, double fy, double cx, double cy,
+									 MikanMonoIntrinsics& outIntrinsics)
+{
+	createDefautMonoIntrinsics(pixelWidth, pixelHeight, outIntrinsics);
+
+	// MikanMatrix3d is column-major (x/y/z name the columns, the digit the row),
+	// so the principal point lands in z0/z1, never x2/y2.
+	outIntrinsics.undistorted_camera_matrix.x0= fx;
+	outIntrinsics.undistorted_camera_matrix.y1= fy;
+	outIntrinsics.undistorted_camera_matrix.z0= cx;
+	outIntrinsics.undistorted_camera_matrix.z1= cy;
+	outIntrinsics.distorted_camera_matrix= outIntrinsics.undistorted_camera_matrix;
+
+	// The field of view the renderer draws the frustum from has to agree with the
+	// focal lengths the projection is built from
+	outIntrinsics.hfov= glm::degrees(2.0 * atan((double)pixelWidth / (2.0 * fx)));
+	outIntrinsics.vfov= glm::degrees(2.0 * atan((double)pixelHeight / (2.0 * fy)));
+}
+
 // Adapted from https://jamesgregson.blogspot.com/2011/11/matching-calibrated-cameras-with-opengl.html
 // Great articles on the subject:
 //     https://amytabb.com/tips/tutorials/2019/06/28/OpenCV-to-OpenGL-tutorial-essentials/

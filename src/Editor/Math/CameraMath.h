@@ -55,6 +55,11 @@ bool computeOpenCVCameraRectification(VideoSourceComponentPtr videoSource, Video
 									  cv::Matx33d& rotationOut, cv::Matx34d& projectionOut);
 
 void createDefautMonoIntrinsics(int pixelWidth, int pixelHeight, struct MikanMonoIntrinsics& outIntrinsics);
+// Intrinsics for a distortion-free pinhole camera reported as focal lengths and a
+// principal point in pixels (what ARKit and a recorded pose track carry). Fills
+// both camera matrices identically and derives the field of view from them.
+void createMonoIntrinsicsFromPinhole(int pixelWidth, int pixelHeight, double fx, double fy, double cx, double cy,
+									 struct MikanMonoIntrinsics& outIntrinsics);
 
 void computeOpenGLProjMatFromCameraIntrinsics(const struct MikanMonoIntrinsics& intrinsics, glm::mat4& outProjection,
 											  int* outViewport= nullptr);
