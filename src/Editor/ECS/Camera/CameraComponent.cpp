@@ -883,14 +883,17 @@ bool CameraComponent::invokeFunction(const std::string& functionName)
 	if (functionName == CameraComponent::k_alignCameraFunctionId)
 	{
 		alignCamera();
+		return true;
 	}
 	else if (functionName == CameraComponent::k_captureSceneLightingFunctionId)
 	{
 		captureSceneLighting();
+		return true;
 	}
 	else if (functionName == CameraComponent::k_captureDepthMeshFunctionId)
 	{
 		captureDepthMesh();
+		return true;
 	}
 
 	return TransformComponent::invokeFunction(functionName);
