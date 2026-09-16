@@ -7,6 +7,7 @@ const std::string AppSettingsConfig::k_lastProjectPathPropertyId= "lastProjectFi
 const std::string AppSettingsConfig::k_appLanguagePropertyId= "appLanguage";
 const std::string AppSettingsConfig::k_scriptEditorCommandPropertyId= "scriptEditorCommand";
 const std::string AppSettingsConfig::k_httpServerPortPropertyId= "httpServerPort";
+const std::string AppSettingsConfig::k_httpServerAllowRemotePropertyId= "httpServerAllowRemote";
 const std::string AppSettingsConfig::k_automationServerEnabledPropertyId= "automationServerEnabled";
 const std::string AppSettingsConfig::k_automationServerPortPropertyId= "automationServerPort";
 const std::string AppSettingsConfig::k_spoutLogEnabledPropertyId= "spoutLogEnabled";
@@ -26,6 +27,7 @@ configuru::Config AppSettingsConfig::writeToJSON()
 	pt[k_appLanguagePropertyId]= m_appLanguage;
 	pt[k_scriptEditorCommandPropertyId]= m_scriptEditorCommand;
 	pt[k_httpServerPortPropertyId]= m_httpServerPort;
+	pt[k_httpServerAllowRemotePropertyId]= m_bHttpServerAllowRemote;
 	pt[k_automationServerEnabledPropertyId]= m_bAutomationServerEnabled;
 	pt[k_automationServerPortPropertyId]= m_automationServerPort;
 	pt[k_spoutLogEnabledPropertyId]= m_bSpoutLogEnabled;
@@ -45,6 +47,7 @@ void AppSettingsConfig::readFromJSON(const configuru::Config& pt)
 	m_appLanguage= pt.get_or<std::string>(k_appLanguagePropertyId, m_appLanguage);
 	m_scriptEditorCommand= pt.get_or<std::string>(k_scriptEditorCommandPropertyId, m_scriptEditorCommand);
 	m_httpServerPort= pt.get_or<int>(k_httpServerPortPropertyId, m_httpServerPort);
+	m_bHttpServerAllowRemote= pt.get_or<bool>(k_httpServerAllowRemotePropertyId, m_bHttpServerAllowRemote);
 	m_bAutomationServerEnabled= pt.get_or<bool>(k_automationServerEnabledPropertyId, m_bAutomationServerEnabled);
 	m_automationServerPort= pt.get_or<int>(k_automationServerPortPropertyId, m_automationServerPort);
 	m_bSpoutLogEnabled= pt.get_or<bool>(k_spoutLogEnabledPropertyId, m_bSpoutLogEnabled);
@@ -87,6 +90,15 @@ void AppSettingsConfig::setHttpServerPort(int port)
 	{
 		m_httpServerPort= port;
 		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_httpServerPortPropertyId));
+	}
+}
+
+void AppSettingsConfig::setHttpServerAllowRemote(bool bAllow)
+{
+	if (m_bHttpServerAllowRemote != bAllow)
+	{
+		m_bHttpServerAllowRemote= bAllow;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_httpServerAllowRemotePropertyId));
 	}
 }
 

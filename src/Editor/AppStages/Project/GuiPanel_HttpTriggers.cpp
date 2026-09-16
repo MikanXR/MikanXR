@@ -36,7 +36,20 @@ void GuiPanel_HttpTriggers::onGui()
 				[appSettings, httpPort]()
 				{
 					appSettings->setHttpServerPort(httpPort);
-					MikanServer::getInstance()->restartHttpMessageServer(httpPort);
+					MikanServer::getInstance()->restartHttpMessageServer();
+				});
+		}
+
+		// Loopback only until asked, since the trigger routes and the upload endpoint
+		// are then open to the network. The phone's capture upload needs this on.
+		bool bAllowRemote= appSettings->getHttpServerAllowRemote();
+		if (ImGui::Checkbox(locLabel("httpTriggers.allowRemote"), &bAllowRemote))
+		{
+			addDeferredGuiEvent(
+				[appSettings, bAllowRemote]()
+				{
+					appSettings->setHttpServerAllowRemote(bAllowRemote);
+					MikanServer::getInstance()->restartHttpMessageServer();
 				});
 		}
 	}

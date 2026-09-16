@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 940,
-		"translatedCount": 940,
-		"reviewedCount": 940
+		"stringCount": 941,
+		"translatedCount": 941,
+		"reviewedCount": 941
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -323,6 +323,7 @@
 		"variableHeader": "Variable"
 	},
 	"httpTriggers": {
+		"allowRemote": "Allow connections from other machines",
 		"noRoutesRegistered": "No HTTP trigger routes registered",
 		"serverPort": "HTTP Trigger Server Port"
 	},

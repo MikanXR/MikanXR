@@ -12,6 +12,9 @@
 namespace
 {
 constexpr int k_httpRequestTimeoutMs= 1000;
+// ix::HttpServer's deadline for reading one whole request, request line through body. The
+// library default of 30 s would cut a multi-hundred-megabyte upload short over Wi-Fi.
+constexpr int k_httpRequestDeadlineSecs= 300;
 
 std::string stripQueryString(const std::string& uri)
 {
@@ -117,8 +120,16 @@ std::string httpStatusDescription(int statusCode)
 		return "Bad Request";
 	case 404:
 		return "Not Found";
+	case 405:
+		return "Method Not Allowed";
+	case 409:
+		return "Conflict";
 	case 422:
 		return "Unprocessable Entity";
+	case 500:
+		return "Internal Server Error";
+	case 503:
+		return "Service Unavailable";
 	case 504:
 		return "Gateway Timeout";
 	default:
@@ -133,6 +144,12 @@ struct PendingHttpRequest
 	std::shared_ptr<std::promise<HttpRouteResponse>> responsePromise;
 };
 
+struct PendingMainThreadJob
+{
+	std::function<void()> job;
+	std::shared_ptr<std::promise<void>> donePromise;
+};
+
 HttpInterprocessMessageServer::HttpInterprocessMessageServer()
 	: m_server(nullptr)
 {
@@ -140,7 +157,7 @@ HttpInterprocessMessageServer::HttpInterprocessMessageServer()
 
 HttpInterprocessMessageServer::~HttpInterprocessMessageServer() { dispose(); }
 
-bool HttpInterprocessMessageServer::initialize(int port)
+bool HttpInterprocessMessageServer::initialize(int port, bool bAllowRemote)
 {
 	if (!ix::initNetSystem())
 	{
@@ -149,8 +166,12 @@ bool HttpInterprocessMessageServer::initialize(int port)
 	}
 
 	HttpInterprocessMessageServer* ownerServer= this;
+	m_bDisposing= false;
 
-	m_server= std::make_shared<ix::HttpServer>(port);
+	const std::string host= bAllowRemote ? "0.0.0.0" : "127.0.0.1";
+	m_server= std::make_shared<ix::HttpServer>(port, host, ix::SocketServer::kDefaultTcpBacklog,
+											   ix::SocketServer::kDefaultMaxConnections,
+											   ix::SocketServer::kDefaultAddressFamily, k_httpRequestDeadlineSecs);
 	m_server->setOnConnectionCallback(
 		[ownerServer](ix::HttpRequestPtr request,
 					  std::shared_ptr<ix::ConnectionState> connectionState) -> ix::HttpResponsePtr
@@ -164,22 +185,28 @@ bool HttpInterprocessMessageServer::initialize(int port)
 	}
 
 	m_server->start();
+	MIKAN_LOG_INFO("HttpInterprocessMessageServer::initialize()")
+		<< "Listening on " << host << ":" << port << (bAllowRemote ? " (all interfaces)" : " (loopback only)");
 	return true;
 }
 
 void HttpInterprocessMessageServer::dispose()
 {
+	// Parked connection threads are released before stop() joins them. Dropping a
+	// promise raises future_error on its waiter, which answers 503.
+	m_bDisposing= true;
+	{
+		std::lock_guard<std::mutex> lock(m_pendingRequestsMutex);
+		m_pendingRequests.clear();
+		m_pendingJobs.clear();
+	}
+
 	if (m_server)
 	{
 		m_server->stop();
 		m_server= nullptr;
 
 		ix::uninitNetSystem();
-	}
-
-	{
-		std::lock_guard<std::mutex> lock(m_pendingRequestsMutex);
-		m_pendingRequests.clear();
 	}
 }
 
@@ -202,6 +229,64 @@ void HttpInterprocessMessageServer::removeRouteHandler(const std::string& path)
 	std::lock_guard<std::mutex> lock(m_routeHandlersMutex);
 
 	m_routeHandlers.erase(path);
+}
+
+bool HttpInterprocessMessageServer::setBackgroundRouteHandler(const std::string& path, HttpRouteHandler handler)
+{
+	std::lock_guard<std::mutex> lock(m_routeHandlersMutex);
+
+	if (m_routeHandlers.find(path) != m_routeHandlers.end()
+		|| m_backgroundRouteHandlers.find(path) != m_backgroundRouteHandlers.end())
+	{
+		MIKAN_LOG_WARNING("HttpInterprocessMessageServer::setBackgroundRouteHandler")
+			<< "Route already registered: " << path;
+		return false;
+	}
+
+	m_backgroundRouteHandlers[path]= handler;
+	return true;
+}
+
+void HttpInterprocessMessageServer::removeBackgroundRouteHandler(const std::string& path)
+{
+	std::lock_guard<std::mutex> lock(m_routeHandlersMutex);
+
+	m_backgroundRouteHandlers.erase(path);
+}
+
+bool HttpInterprocessMessageServer::runOnMainThread(std::function<void()> job, int timeoutMs)
+{
+	if (m_bDisposing)
+		return false;
+
+	auto pendingJob= std::make_shared<PendingMainThreadJob>();
+	pendingJob->job= std::move(job);
+	pendingJob->donePromise= std::make_shared<std::promise<void>>();
+	std::future<void> future= pendingJob->donePromise->get_future();
+
+	// The queue is the promise's only owner from here, so dispose() clearing the queue
+	// breaks the promise and wakes this thread. The disposing check sits under the same
+	// lock dispose() clears under, so no job lands after the clear.
+	{
+		std::lock_guard<std::mutex> lock(m_pendingRequestsMutex);
+		if (m_bDisposing)
+			return false;
+		m_pendingJobs.push_back(std::move(pendingJob));
+	}
+
+	if (future.wait_for(std::chrono::milliseconds(timeoutMs)) != std::future_status::ready)
+		return false;
+
+	try
+	{
+		// A promise dropped by dispose() also reads as ready, and get() raises its broken_promise
+		future.get();
+		return true;
+	}
+	catch (const std::future_error&)
+	{
+		return false;
+	}
 }
 
 std::vector<std::string> HttpInterprocessMessageServer::getRegisteredRoutePaths() const
@@ -239,18 +324,59 @@ bool HttpInterprocessMessageServer::invokeRouteHandler(const HttpRouteRequest& r
 
 ix::HttpResponsePtr HttpInterprocessMessageServer::handleIncomingRequest(ix::HttpRequestPtr request)
 {
+	const std::string path= stripQueryString(request->uri);
+
+	// A background route answers on this thread. The body is moved rather than copied:
+	// the library holds an upload twice already while reading it.
+	HttpRouteHandler backgroundHandler;
+	{
+		std::lock_guard<std::mutex> lock(m_routeHandlersMutex);
+
+		auto handler_it= m_backgroundRouteHandlers.find(path);
+		if (handler_it != m_backgroundRouteHandlers.end())
+		{
+			backgroundHandler= handler_it->second;
+		}
+	}
+	if (backgroundHandler)
+	{
+		HttpRouteRequest routeRequest;
+		routeRequest.method= request->method;
+		routeRequest.path= path;
+		routeRequest.queryArgs= parseQueryString(request->uri);
+		routeRequest.body= std::move(request->body);
+
+		const HttpRouteResponse routeResponse= backgroundHandler(routeRequest);
+
+		ix::WebSocketHttpHeaders headers;
+		headers["Content-Type"]= routeResponse.contentType;
+
+		return std::make_shared<ix::HttpResponse>(routeResponse.statusCode,
+												  httpStatusDescription(routeResponse.statusCode),
+												  ix::HttpErrorCode::Ok, headers, routeResponse.body);
+	}
+
 	auto pendingRequest= std::make_shared<PendingHttpRequest>();
 	pendingRequest->routeRequest.method= request->method;
-	pendingRequest->routeRequest.path= stripQueryString(request->uri);
+	pendingRequest->routeRequest.path= path;
 	pendingRequest->routeRequest.queryArgs= parseQueryString(request->uri);
-	pendingRequest->routeRequest.body= request->body;
+	pendingRequest->routeRequest.body= std::move(request->body);
 	pendingRequest->responsePromise= std::make_shared<std::promise<HttpRouteResponse>>();
 
 	std::future<HttpRouteResponse> future= pendingRequest->responsePromise->get_future();
+	const std::string pendingPath= pendingRequest->routeRequest.path;
 
+	// The queue is the promise's only owner, so dispose() clearing it wakes this thread
 	{
 		std::lock_guard<std::mutex> lock(m_pendingRequestsMutex);
-		m_pendingRequests.push_back(pendingRequest);
+		if (m_bDisposing)
+		{
+			pendingRequest.reset();
+		}
+		else
+		{
+			m_pendingRequests.push_back(std::move(pendingRequest));
+		}
 	}
 
 	HttpRouteResponse routeResponse;
@@ -265,7 +391,7 @@ ix::HttpResponsePtr HttpInterprocessMessageServer::handleIncomingRequest(ix::Htt
 			// The main thread may still fulfill this promise later; that's harmless since
 			// std::promise::set_value() doesn't require a waiter to still be listening.
 			MIKAN_MT_LOG_WARNING("HttpInterprocessMessageServer::handleIncomingRequest")
-				<< "Timed out waiting for main thread to process request: " << pendingRequest->routeRequest.path;
+				<< "Timed out waiting for main thread to process request: " << pendingPath;
 			routeResponse.statusCode= 504;
 			routeResponse.body= R"({"error":"Timed out waiting for request to be processed"})";
 		}
@@ -274,7 +400,7 @@ ix::HttpResponsePtr HttpInterprocessMessageServer::handleIncomingRequest(ix::Htt
 	{
 		// The promise was dropped (e.g. server shutting down) without being fulfilled.
 		MIKAN_MT_LOG_WARNING("HttpInterprocessMessageServer::handleIncomingRequest")
-			<< "Request abandoned before it could be processed: " << pendingRequest->routeRequest.path;
+			<< "Request abandoned before it could be processed: " << pendingPath;
 		routeResponse.statusCode= 503;
 		routeResponse.body= R"({"error":"Server shutting down"})";
 	}
@@ -289,9 +415,17 @@ ix::HttpResponsePtr HttpInterprocessMessageServer::handleIncomingRequest(ix::Htt
 void HttpInterprocessMessageServer::processRequests()
 {
 	std::vector<PendingHttpRequestPtr> pendingRequests;
+	std::vector<PendingMainThreadJobPtr> pendingJobs;
 	{
 		std::lock_guard<std::mutex> lock(m_pendingRequestsMutex);
 		pendingRequests.swap(m_pendingRequests);
+		pendingJobs.swap(m_pendingJobs);
+	}
+
+	for (const PendingMainThreadJobPtr& pendingJob : pendingJobs)
+	{
+		pendingJob->job();
+		pendingJob->donePromise->set_value();
 	}
 
 	for (const PendingHttpRequestPtr& pendingRequest : pendingRequests)

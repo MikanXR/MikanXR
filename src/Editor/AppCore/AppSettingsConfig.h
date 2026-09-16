@@ -33,6 +33,10 @@ public:
 	inline int getHttpServerPort() const { return m_httpServerPort; }
 	void setHttpServerPort(int port);
 
+	static const std::string k_httpServerAllowRemotePropertyId;
+	inline bool getHttpServerAllowRemote() const { return m_bHttpServerAllowRemote; }
+	void setHttpServerAllowRemote(bool bAllow);
+
 	static const std::string k_automationServerEnabledPropertyId;
 	inline bool getAutomationServerEnabled() const { return m_bAutomationServerEnabled; }
 	void setAutomationServerEnabled(bool bEnabled);
@@ -69,6 +73,10 @@ protected:
 	std::string m_appLanguage;
 	std::string m_scriptEditorCommand= "code --reuse-window";
 	int m_httpServerPort= 8090; // mirrors HTTP_SERVER_PORT in HttpInterprocessMessageServer.h
+	// The HTTP server binds loopback only until this is on, which is what a phone
+	// uploading captures over the LAN needs. Off by default, since the script
+	// trigger routes and the upload endpoint are then reachable by anything on the network.
+	bool m_bHttpServerAllowRemote= false;
 	// The automation channel drives and scripts the editor, so any local process
 	// reaching it owns the session. It stays off until asked for.
 	bool m_bAutomationServerEnabled= false;

@@ -1494,6 +1494,11 @@ msgid "Variable"
 msgstr ""
 
 #. Section: httpTriggers
+msgctxt "httpTriggers.allowRemote"
+msgid "Allow connections from other machines"
+msgstr ""
+
+#. Section: httpTriggers
 msgctxt "httpTriggers.noRoutesRegistered"
 msgid "No HTTP trigger routes registered"
 msgstr ""

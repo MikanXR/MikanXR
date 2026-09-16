@@ -100,8 +100,9 @@ bool MikanServer::startup(MainWindow* mainWindow)
 	// integrations) - failing to bind its port shouldn't prevent the primary websocket RPC server
 	// (and the rest of the app) from starting up.
 	{
-		const int httpPort= App::getInstance()->getAppSettings()->getHttpServerPort();
-		if (!m_httpMessageServer->initialize(httpPort))
+		AppSettingsConfigPtr appSettings= App::getInstance()->getAppSettings();
+		const int httpPort= appSettings->getHttpServerPort();
+		if (!m_httpMessageServer->initialize(httpPort, appSettings->getHttpServerAllowRemote()))
 		{
 			MIKAN_LOG_WARNING("MikanServer::startup()")
 				<< "Failed to initialize HTTP interprocess message server on port " << httpPort;
@@ -226,10 +227,13 @@ void MikanServer::shutdown()
 	m_ownerWindow= nullptr;
 }
 
-void MikanServer::restartHttpMessageServer(int port)
+void MikanServer::restartHttpMessageServer()
 {
+	AppSettingsConfigPtr appSettings= App::getInstance()->getAppSettings();
+	const int port= appSettings->getHttpServerPort();
+
 	m_httpMessageServer->dispose();
-	if (!m_httpMessageServer->initialize(port))
+	if (!m_httpMessageServer->initialize(port, appSettings->getHttpServerAllowRemote()))
 	{
 		MIKAN_LOG_WARNING("MikanServer::restartHttpMessageServer") << "Failed to restart HTTP server on port " << port;
 	}

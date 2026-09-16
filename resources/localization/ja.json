@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 940,
+		"stringCount": 941,
 		"translatedCount": 901,
 		"reviewedCount": 0
 	},
@@ -323,6 +323,7 @@
 		"variableHeader": "変数"
 	},
 	"httpTriggers": {
+		"allowRemote": "Allow connections from other machines",
 		"noRoutesRegistered": "登録されたHTTPトリガールートがありません",
 		"serverPort": "HTTPトリガーサーバーポート"
 	},
