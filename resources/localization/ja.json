@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 941,
+		"stringCount": 956,
 		"translatedCount": 901,
 		"reviewedCount": 0
 	},
@@ -979,7 +979,22 @@
 	},
 	"videoSourceSettings": {
 		"cameraFpsFmt": "カメラ %.1ffps",
-		"return": "戻る"
+		"captureImage": "Capture Image",
+		"markerReference": "Marker reference",
+		"record": "Record",
+		"recordingFinishing": "Finishing...",
+		"recordingIdle": "Idle",
+		"recordingNoCamera": "No camera uses this source, so no pose track is written.",
+		"recordingNoProject": "No project is loaded.",
+		"recordingSavedFmt": "Saved %s (%s)",
+		"recordingSourceNotStreaming": "The source delivered no frames.",
+		"recordingStatusFmt": "Recording %02d:%02d, %d frames, %d dropped",
+		"recordingStereo": "Stereo intrinsics have no pinhole row, so no pose track is written.",
+		"recordingUncalibrated": "The source is not calibrated, so no pose track is written.",
+		"recordingWriteFailed": "Writing the take failed. See the log.",
+		"recordingWriterFailed": "No video writer could open the movie. See the log.",
+		"return": "戻る",
+		"stop": "Stop"
 	},
 	"vrTrackingRecenter": {
 		"begin": "開始",

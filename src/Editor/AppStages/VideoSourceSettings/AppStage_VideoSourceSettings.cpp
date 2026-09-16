@@ -19,9 +19,58 @@
 #include "TextStyle.h"
 #include "VideoSourceComponent.h"
 #include "VideoFrameDistortionView.h"
+#include "VideoSourceSettings/VideoSourceRecorder.h"
 #include "USBVideoSourceComponent.h"
 
 #include "imgui.h"
+
+namespace
+{
+const char* poseTrackSkipReasonKey(ePoseTrackSkipReason reason)
+{
+	switch (reason)
+	{
+	case ePoseTrackSkipReason::noCamera:
+		return "videoSourceSettings.recordingNoCamera";
+	case ePoseTrackSkipReason::uncalibrated:
+		return "videoSourceSettings.recordingUncalibrated";
+	case ePoseTrackSkipReason::stereo:
+		return "videoSourceSettings.recordingStereo";
+	default:
+		return nullptr;
+	}
+}
+
+const char* recorderErrorKey(eVideoRecorderError error)
+{
+	switch (error)
+	{
+	case eVideoRecorderError::noProject:
+		return "videoSourceSettings.recordingNoProject";
+	case eVideoRecorderError::sourceNotStreaming:
+		return "videoSourceSettings.recordingSourceNotStreaming";
+	case eVideoRecorderError::writerOpenFailed:
+		return "videoSourceSettings.recordingWriterFailed";
+	case eVideoRecorderError::writeFailed:
+		return "videoSourceSettings.recordingWriteFailed";
+	default:
+		return nullptr;
+	}
+}
+
+const char* recorderStateName(eVideoRecorderState state)
+{
+	switch (state)
+	{
+	case eVideoRecorderState::recording:
+		return "recording";
+	case eVideoRecorderState::finishing:
+		return "finishing";
+	default:
+		return "idle";
+	}
+}
+} // namespace
 
 //-- statics ----__
 const char* AppStage_VideoSourceSettings::APP_STAGE_NAME= "VideoSourceSettings";
@@ -32,7 +81,11 @@ AppStage_VideoSourceSettings::AppStage_VideoSourceSettings(IEditorWindow* ownerW
 {
 }
 
-AppStage_VideoSourceSettings::~AppStage_VideoSourceSettings() { assert(m_videoBufferView == nullptr); }
+AppStage_VideoSourceSettings::~AppStage_VideoSourceSettings()
+{
+	assert(m_videoBufferView == nullptr);
+	assert(m_recorder == nullptr);
+}
 
 void AppStage_VideoSourceSettings::enter()
 {
@@ -75,18 +128,28 @@ void AppStage_VideoSourceSettings::enter()
 
 	if (videoSourceComponent)
 	{
-		// Create the video buffer view eagerly — it registers itself for OnFrameSizeChanged
+		// The preview view. It reads the source's intrinsics when its buffers are
+		// first sized, so it is created before the stream starts.
 		m_videoBufferView=
 			std::make_shared<VideoFrameDistortionView>(videoSourceComponent, eVideoFrameProcessorMode::COMPOSITOR);
 
 		// Register as a stream consumer (VideoSourceComponent::update() drives the retry loop)
 		videoSourceComponent->startVideoStream(m_videoBufferView.get());
+
+		m_recorder= std::make_unique<VideoSourceRecorder>(getOwnerWindow(), videoSourceComponent);
 	}
 }
 
 void AppStage_VideoSourceSettings::exit()
 {
 	VideoSourceComponentPtr videoSourceComponent= m_videoSourceComponent.lock();
+
+	// A take in progress is closed out before the stage loses its tick
+	if (m_recorder)
+	{
+		m_recorder->finishNow();
+		m_recorder.reset();
+	}
 
 	if (videoSourceComponent && m_videoBufferView)
 	{
@@ -100,6 +163,12 @@ void AppStage_VideoSourceSettings::exit()
 void AppStage_VideoSourceSettings::pause()
 {
 	VideoSourceComponentPtr videoSourceComponent= m_videoSourceComponent.lock();
+
+	// A paused stage gets no update(), so the take cannot finish on its own
+	if (m_recorder)
+	{
+		m_recorder->finishNow();
+	}
 
 	if (videoSourceComponent && m_videoBufferView)
 	{
@@ -130,6 +199,11 @@ void AppStage_VideoSourceSettings::update(float deltaSeconds)
 	{
 		m_videoBufferView->readAndProcessVideoFrame();
 	}
+
+	if (m_recorder)
+	{
+		m_recorder->update();
+	}
 }
 
 void AppStage_VideoSourceSettings::onGui()
@@ -153,8 +227,90 @@ void AppStage_VideoSourceSettings::onGui()
 		onReturnEvent();
 	ImGui::Separator();
 
+	drawRecordingGui();
+
 	for (IGuiPanel* guiPanel : m_guiPanels)
 		guiPanel->onGui();
+}
+
+bool AppStage_VideoSourceSettings::takeMarkerArmed()
+{
+	const bool bMarker= m_bMarkerArmed;
+	m_bMarkerArmed= false;
+	return bMarker;
+}
+
+// Record, Stop, Capture Image, the marker toggle, and a status line. The
+// recorder is main-thread state and onGui runs before update() in the same
+// tick, so the buttons act directly.
+void AppStage_VideoSourceSettings::drawRecordingGui()
+{
+	if (!m_recorder)
+		return;
+
+	const VideoRecorderStatus& status= m_recorder->getStatus();
+	const bool bIdle= (status.state == eVideoRecorderState::idle);
+
+	if (status.state == eVideoRecorderState::recording)
+	{
+		if (ImGui::Button(locLabel("videoSourceSettings.stop")))
+			m_recorder->stopRecording();
+	}
+	else
+	{
+		ImGui::BeginDisabled(!bIdle);
+		if (ImGui::Button(locLabel("videoSourceSettings.record")))
+			m_recorder->startRecording(takeMarkerArmed(), m_videoBufferView ? m_videoBufferView->getFPS() : 0.f);
+		ImGui::EndDisabled();
+	}
+
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!bIdle);
+	if (ImGui::Button(locLabel("videoSourceSettings.captureImage")))
+		m_recorder->captureImage(takeMarkerArmed());
+	ImGui::EndDisabled();
+
+	ImGui::SameLine();
+	ImGui::Checkbox(locLabel("videoSourceSettings.markerReference"), &m_bMarkerArmed);
+
+	switch (status.state)
+	{
+	case eVideoRecorderState::recording:
+	{
+		const int elapsed= static_cast<int>(status.elapsedSeconds);
+		ImGui::Text(locText("videoSourceSettings.recordingStatusFmt"), elapsed / 60, elapsed % 60,
+					static_cast<int>(status.framesWritten), static_cast<int>(status.framesDropped));
+		break;
+	}
+	case eVideoRecorderState::finishing:
+		ImGui::TextUnformatted(locText("videoSourceSettings.recordingFinishing"));
+		break;
+	default:
+		if (status.lastError != eVideoRecorderError::none)
+		{
+			ImGui::TextUnformatted(locText(recorderErrorKey(status.lastError)));
+		}
+		else if (!status.lastStoredPath.empty())
+		{
+			ImGui::Text(locText("videoSourceSettings.recordingSavedFmt"), status.lastStoredPath.c_str(),
+						status.backendName.c_str());
+		}
+		else
+		{
+			ImGui::TextUnformatted(locText("videoSourceSettings.recordingIdle"));
+		}
+		break;
+	}
+
+	if (!bIdle || !status.lastStoredPath.empty())
+	{
+		if (const char* skipKey= poseTrackSkipReasonKey(status.poseTrackSkipReason))
+		{
+			ImGui::TextWrapped("%s", locText(skipKey));
+		}
+	}
+
+	ImGui::Separator();
 }
 
 void AppStage_VideoSourceSettings::render(IMkViewportPtr targetViewport)
@@ -188,8 +344,72 @@ bool AppStage_VideoSourceSettings::handleRemoteControlCommand(const std::string&
 	{
 		return handleReturnRequest(outResults);
 	}
+	else if (command == "record_start")
+	{
+		return handleRecordStart(parameters, outResults);
+	}
+	else if (command == "record_stop")
+	{
+		return handleRecordStop(outResults);
+	}
+	else if (command == "capture_image")
+	{
+		return handleCaptureImage(parameters, outResults);
+	}
+	else if (command == "get_recording_state")
+	{
+		return handleGetRecordingState(outResults);
+	}
 
 	return AppStage::handleRemoteControlCommand(command, parameters, outResults);
+}
+
+bool AppStage_VideoSourceSettings::handleRecordStart(const std::vector<std::string>& parameters,
+													 std::vector<std::string>& outResults)
+{
+	const bool bMarker= !parameters.empty() && parameters[0] == "marker";
+	const bool bStarted=
+		m_recorder && m_recorder->startRecording(bMarker, m_videoBufferView ? m_videoBufferView->getFPS() : 0.f);
+	outResults.push_back(bStarted ? IRemoteControllable::k_success : IRemoteControllable::k_failure);
+	return true;
+}
+
+bool AppStage_VideoSourceSettings::handleRecordStop(std::vector<std::string>& outResults)
+{
+	const bool bStopped= m_recorder && m_recorder->stopRecording();
+	outResults.push_back(bStopped ? IRemoteControllable::k_success : IRemoteControllable::k_failure);
+	return true;
+}
+
+bool AppStage_VideoSourceSettings::handleCaptureImage(const std::vector<std::string>& parameters,
+													  std::vector<std::string>& outResults)
+{
+	const bool bMarker= !parameters.empty() && parameters[0] == "marker";
+	const bool bCapturing= m_recorder && m_recorder->captureImage(bMarker);
+	outResults.push_back(bCapturing ? IRemoteControllable::k_success : IRemoteControllable::k_failure);
+	return true;
+}
+
+bool AppStage_VideoSourceSettings::handleGetRecordingState(std::vector<std::string>& outResults)
+{
+	if (!m_recorder)
+	{
+		outResults.push_back(IRemoteControllable::k_failure);
+		return true;
+	}
+
+	const VideoRecorderStatus& status= m_recorder->getStatus();
+	outResults.push_back(std::string("state ") + recorderStateName(status.state));
+	outResults.push_back("frames " + std::to_string(status.framesWritten));
+	outResults.push_back("dropped " + std::to_string(status.framesDropped));
+	outResults.push_back("last " + (status.lastStoredPath.empty() ? std::string("-") : status.lastStoredPath));
+	outResults.push_back(std::string("sidecar ") + (status.bWritesPoseTrack ? "yes" : "no"));
+	const char* skipKey= poseTrackSkipReasonKey(status.poseTrackSkipReason);
+	outResults.push_back(std::string("sidecar_skip ") + (skipKey ? skipKey : "-"));
+	outResults.push_back(std::string("backend ") + (status.backendName.empty() ? "-" : status.backendName));
+	const char* errorKey= recorderErrorKey(status.lastError);
+	outResults.push_back(std::string("error ") + (errorKey ? errorKey : "-"));
+	return true;
 }
 
 bool AppStage_VideoSourceSettings::handleGetVideoSourceComponentId(std::vector<std::string>& outResults)

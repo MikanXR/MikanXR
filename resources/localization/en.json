@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 941,
-		"translatedCount": 941,
-		"reviewedCount": 941
+		"stringCount": 956,
+		"translatedCount": 956,
+		"reviewedCount": 956
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -979,7 +979,22 @@
 	},
 	"videoSourceSettings": {
 		"cameraFpsFmt": "Camera %.1ffps",
-		"return": "Return"
+		"captureImage": "Capture Image",
+		"markerReference": "Marker reference",
+		"record": "Record",
+		"recordingFinishing": "Finishing...",
+		"recordingIdle": "Idle",
+		"recordingNoCamera": "No camera uses this source, so no pose track is written.",
+		"recordingNoProject": "No project is loaded.",
+		"recordingSavedFmt": "Saved %s (%s)",
+		"recordingSourceNotStreaming": "The source delivered no frames.",
+		"recordingStatusFmt": "Recording %02d:%02d, %d frames, %d dropped",
+		"recordingStereo": "Stereo intrinsics have no pinhole row, so no pose track is written.",
+		"recordingUncalibrated": "The source is not calibrated, so no pose track is written.",
+		"recordingWriteFailed": "Writing the take failed. See the log.",
+		"recordingWriterFailed": "No video writer could open the movie. See the log.",
+		"return": "Return",
+		"stop": "Stop"
 	},
 	"vrTrackingRecenter": {
 		"begin": "Begin",

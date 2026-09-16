@@ -4647,8 +4647,85 @@ msgid "Camera %.1ffps"
 msgstr ""
 
 #. Section: videoSourceSettings
+msgctxt "videoSourceSettings.captureImage"
+msgid "Capture Image"
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.markerReference"
+msgid "Marker reference"
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.record"
+msgid "Record"
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.recordingFinishing"
+msgid "Finishing..."
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.recordingIdle"
+msgid "Idle"
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.recordingNoCamera"
+msgid "No camera uses this source, so no pose track is written."
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.recordingNoProject"
+msgid "No project is loaded."
+msgstr ""
+
+#. Section: videoSourceSettings
+#, c-format
+msgctxt "videoSourceSettings.recordingSavedFmt"
+msgid "Saved %s (%s)"
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.recordingSourceNotStreaming"
+msgid "The source delivered no frames."
+msgstr ""
+
+#. Section: videoSourceSettings
+#, c-format
+msgctxt "videoSourceSettings.recordingStatusFmt"
+msgid "Recording %02d:%02d, %d frames, %d dropped"
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.recordingStereo"
+msgid "Stereo intrinsics have no pinhole row, so no pose track is written."
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.recordingUncalibrated"
+msgid "The source is not calibrated, so no pose track is written."
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.recordingWriteFailed"
+msgid "Writing the take failed. See the log."
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.recordingWriterFailed"
+msgid "No video writer could open the movie. See the log."
+msgstr ""
+
+#. Section: videoSourceSettings
 msgctxt "videoSourceSettings.return"
 msgid "Return"
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.stop"
+msgid "Stop"
 msgstr ""
 
 #. Section: vrTrackingRecenter
