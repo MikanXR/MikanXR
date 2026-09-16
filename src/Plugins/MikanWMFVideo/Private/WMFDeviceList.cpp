@@ -81,10 +81,11 @@ bool WMFDeviceList::rebuild()
 			MemoryUtils::safeRelease(&wmfDeviceList[i]);
 		}
 
-		MemoryUtils::safeReleaseAllCount(wmfDeviceList);
+		// The array itself is task memory owned by the caller
+		CoTaskMemFree(wmfDeviceList);
 	}
 
-	MemoryUtils::safeReleaseAllCount(&wmfAttributeTable);
+	MemoryUtils::safeRelease(&wmfAttributeTable);
 
 	return SUCCEEDED(hr);
 }
