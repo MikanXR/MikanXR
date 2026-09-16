@@ -11,7 +11,12 @@ MikanWMFVideoDeviceManager::MikanWMFVideoDeviceManager()
 {
 }
 
-MikanWMFVideoDeviceManager::~MikanWMFVideoDeviceManager() { delete m_wmfDeviceList; }
+MikanWMFVideoDeviceManager::~MikanWMFVideoDeviceManager()
+{
+	shutdown();
+	delete m_deviceHotplugNotifier;
+	delete m_wmfDeviceList;
+}
 
 void MikanWMFVideoDeviceManager::addListener(IUsbVideoDeviceManagerListener* eventListener)
 {
@@ -33,13 +38,15 @@ void MikanWMFVideoDeviceManager::removeListener(IUsbVideoDeviceManagerListener* 
 
 bool MikanWMFVideoDeviceManager::startup()
 {
+	// Enumeration is what every consumer needs; hotplug is a convenience on top
+	// of it, so losing the notifier leaves a working manager with a static list
+	rebuildDeviceList();
+
 	if (!m_deviceHotplugNotifier->startup(this))
 	{
-		MIKAN_LOG_INFO("MikanWMFVideoDeviceManager::startup") << "Failed to start hotplug listener";
-		return false;
+		MIKAN_LOG_WARNING("MikanWMFVideoDeviceManager::startup")
+			<< "Failed to start hotplug listener, camera arrival and removal will not be noticed";
 	}
-
-	rebuildDeviceList();
 
 	return true;
 }

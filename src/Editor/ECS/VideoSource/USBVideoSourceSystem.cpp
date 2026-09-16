@@ -76,6 +76,12 @@ void USBVideoSourceSystem::update(float deltaTime)
 		}
 	}
 
+	// Pumps the hotplug window, which lives on this thread from its first tick
+	if (m_usbVideoDeviceManager)
+	{
+		m_usbVideoDeviceManager->update(deltaTime);
+	}
+
 	Super::update(deltaTime);
 }
 
@@ -335,6 +341,15 @@ void USBVideoSourceSystem::onConnectedDeviceListChanged()
 	if (OnVideoSourceListChanged)
 	{
 		OnVideoSourceListChanged();
+	}
+
+	// A source whose camera was unplugged closed itself; if the camera is back
+	// in the list, reopen it. A source whose camera is still missing bails out
+	// of openVideoSource without side effects.
+	for (const auto& [id, weakComp] : Super::getComponentMap())
+	{
+		if (auto comp= weakComp.lock(); comp && comp->getDevicePath().empty())
+			comp->openVideoSource();
 	}
 }
 
