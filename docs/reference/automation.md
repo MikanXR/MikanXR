@@ -55,6 +55,16 @@ Stage transitions land on the frame after the command that requested them, so a 
 
 Reach the stage with `function invoke CameraObjectSystem <cameraId> align_camera`, which is what the editor's own Align Camera button calls.
 
+`VideoSourceSettings` records takes from the source it was opened on ([videosources.md](./videosources.md)):
+
+- `get_video_source_component_id` replies the source's component id
+- `record_start [marker]` starts a movie, `record_stop` finishes it
+- `capture_image [marker]` writes the next frame as a still
+- `get_recording_state` replies `state`, `frames`, `dropped`, `last` (the stored path of the last file written), `sidecar`, `sidecar_skip`, `backend`, and `error` lines
+- `return` pops the stage
+
+Reach it with `function invoke <VideoSourceSystem> <componentId> show_video_source_settings`, since `app push VideoSourceSettings` gives the stage no source.
+
 ### Scene introspection (system, component, property, function)
 
 These reach every object system and component through the property and function databases ([objects.md](./objects.md)).

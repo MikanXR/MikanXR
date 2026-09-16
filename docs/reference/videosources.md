@@ -136,6 +136,14 @@ The server binds loopback only until "Allow connections from other machines" is 
 curl -X POST --data-binary @take.mp4 "http://127.0.0.1:8090/assets/upload?folder=movies&name=take.mp4"
 ```
 
+### Recording from the editor
+
+The video source settings stage records the live feed of any source into the same files: Record and Stop write `movies/take_YYYYMMDD_HHMMSS.mp4`, Capture Image writes `textures/take_YYYYMMDD_HHMMSS.jpg`, and each gets a `<stem>.pose.json` sidecar when a camera names the source through `video_source_id`. The Marker reference toggle arms the next capture as `<take>_marker` of the most recent main take, as on the phone, and every take in one stage visit shares a session id. `VideoSourceRecorder` (`src/Editor/AppStages/VideoSourceSettings/VideoSourceRecorder.h`) owns the work, and the stage answers `record_start [marker]`, `record_stop`, `capture_image [marker]`, and `get_recording_state` over the automation channel ([automation.md](./automation.md)).
+
+Frames are recorded undistorted. The recorder owns a second `VideoFrameDistortionView` in calibration mode for the duration of a capture, which undistorts on the CPU into a BGR buffer every tick, and the sidecar carries the source's undistorted camera matrix, so a played take is a pinhole camera exactly as the format assumes. The pose written per frame is the camera's stage-space aperture pose at the moment the frame was taken, whether it comes from a tracking mount, a frame-coupled source, or an authored transform. A track recorded this way therefore plays back with no alignment step and an identity `pose_offset`, unlike a phone take, whose poses live in ARKit world space until the marker alignment solves the offset. Without a camera, with an uncalibrated source, or with stereo intrinsics the media is still written and the status line says why the sidecar was not.
+
+Frames are paired with their pose on the main thread and handed to an encoder thread over a bounded queue. A frame the queue cannot take is dropped together with its pose, so the movie and the sidecar stay in lockstep, and `time_us` is the constant-rate presentation time of each written frame. The movie is written by `MovieWriter` (`src/Editor/ECS/VideoSource/MovieWriter.h`) through `cv::VideoWriter`, trying the Media Foundation plugin's H.264 first (the ffmpeg DLL's own H.264 route needs an OpenH264 DLL that does not ship), then ffmpeg MPEG-4 part 2, then MJPG in an avi. The Media Foundation writer lives in `opencv_videoio_msmf4100_64.dll`, which the Editor's CMake copies beside the executables with the ffmpeg DLL. `PoseTrackWriter` in `PoseTrack.h` writes the sidecar with the phone's keys.
+
 ---
 
 ## Tracking pose association

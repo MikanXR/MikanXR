@@ -93,7 +93,7 @@ Optional backends, each built as a separate `SHARED` DLL and copied next to the 
 
 - `MikanARKitVideo`: iOS ARKit network video source (RTP video + pose, CUDA-GL interop), gated behind `MIKAN_WITH_GSTREAMER` alongside `MikanGStreamerVideo`
 
-File video sources are not a plugin: they decode in-process through OpenCV's ffmpeg videoio backend, whose DLL the Editor's CMake copies beside the executables.
+File video sources are not a plugin: they decode in-process through OpenCV's ffmpeg videoio backend, and takes are recorded through OpenCV's Media Foundation videoio backend, two plugin DLLs the Editor's CMake copies beside the executables.
 
 ### src/Programs
 
