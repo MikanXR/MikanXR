@@ -6,6 +6,8 @@
 const std::string AppSettingsConfig::k_lastProjectPathPropertyId= "lastProjectFilePath";
 const std::string AppSettingsConfig::k_appLanguagePropertyId= "appLanguage";
 const std::string AppSettingsConfig::k_scriptEditorCommandPropertyId= "scriptEditorCommand";
+const std::string AppSettingsConfig::k_defaultScriptEditorCommand= "code --reuse-window {project} --goto {file}:{line}";
+const std::string AppSettingsConfig::k_legacyScriptEditorCommand= "code --reuse-window";
 const std::string AppSettingsConfig::k_httpServerPortPropertyId= "httpServerPort";
 const std::string AppSettingsConfig::k_httpServerAllowRemotePropertyId= "httpServerAllowRemote";
 const std::string AppSettingsConfig::k_automationServerEnabledPropertyId= "automationServerEnabled";
@@ -46,6 +48,10 @@ void AppSettingsConfig::readFromJSON(const configuru::Config& pt)
 	m_lastProjectPath= pt.get_or<std::string>(k_lastProjectPathPropertyId, m_lastProjectPath.string());
 	m_appLanguage= pt.get_or<std::string>(k_appLanguagePropertyId, m_appLanguage);
 	m_scriptEditorCommand= pt.get_or<std::string>(k_scriptEditorCommandPropertyId, m_scriptEditorCommand);
+	// The old default predates the {project}/{file}/{line} placeholders, so a
+	// stored copy of it upgrades to the new default rather than sticking on it
+	if (m_scriptEditorCommand == k_legacyScriptEditorCommand)
+		m_scriptEditorCommand= k_defaultScriptEditorCommand;
 	m_httpServerPort= pt.get_or<int>(k_httpServerPortPropertyId, m_httpServerPort);
 	m_bHttpServerAllowRemote= pt.get_or<bool>(k_httpServerAllowRemotePropertyId, m_bHttpServerAllowRemote);
 	m_bAutomationServerEnabled= pt.get_or<bool>(k_automationServerEnabledPropertyId, m_bAutomationServerEnabled);
@@ -154,6 +160,11 @@ void AppSettingsConfig::setARKitDebugChannelPort(int port)
 		m_arkitDebugChannelPort= port;
 		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_arkitDebugChannelPortPropertyId));
 	}
+}
+
+bool AppSettingsConfig::scriptEditorCommandHasPlaceholders(const std::string& command)
+{
+	return command.find("{file}") != std::string::npos;
 }
 
 std::string AppSettingsConfig::getComponentNamePrefix(const std::string& componentClassName) const

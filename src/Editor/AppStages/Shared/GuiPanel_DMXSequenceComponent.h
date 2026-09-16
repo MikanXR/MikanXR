@@ -3,6 +3,7 @@
 #include "DMXSequenceComponent.h"
 #include "LightSystemFwd.h"
 #include "Shared/GuiDataSource_ComboBox.h"
+#include "Shared/GuiPanel_ScriptComponent.h"
 #include "Shared/GuiPanel_MikanComponent.h"
 
 #include <string>
@@ -32,4 +33,5 @@ private:
 								  const std::vector<eDMXSequenceContentSource>& sources);
 
 	GuiDataSource_ComboBox m_groupDataSource;
+	GuiDataSource_OptionalComponentComboBox m_scriptDataSource;
 };

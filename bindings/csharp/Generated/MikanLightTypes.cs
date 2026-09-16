@@ -81,7 +81,7 @@ namespace MikanXR
 	public class MikanDMXSequenceComponentValues : MikanComponentValues
 	{
 		public int group_id;
-		public string sequence_name;
+		public int script_component_id;
 		public float duration_seconds;
 		public bool loop;
 		public int playback_state;

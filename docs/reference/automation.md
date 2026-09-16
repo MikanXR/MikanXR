@@ -122,10 +122,11 @@ One caveat worth knowing when a click seems to vanish: an ImGui window's capture
 
 ### Lua scripting (script)
 
-- `script list` replies `<scriptId> <path> <loaded|not_loaded> [trigger,trigger]` per project script, in pool order (`-` for a script with no path set)
+- `script list` replies `<scriptId> <path> <loaded|not_loaded> [trigger,trigger] [http=name,name] [params=name,name]` per project script, in pool order (`-` for a script with no path set): the trigger names, the HTTP trigger method names, and the parameter names of the loaded behavior
 - `script eval <lua-code>` runs a statement in the project's script state and replies what it returns (the code is the raw untokenized rest of the line, so Lua quotes pass through verbatim): `script eval return SceneSystem:getSceneByName("MyScene").name`
-- `script trigger <triggerName> [key=value ...]` invokes a script trigger, the same call the HTTP trigger routes make. The trailing tokens become the trigger's argument table, standing in for a route's query string, and a token with no `=` is an error. Quote a value holding spaces: `script trigger new_sub user=bob "message=thanks for the stream"`
-- `script reload` rebuilds the project's script state, re-running every script in pool order
+- `script trigger <triggerName> [script=<scriptName>] [key=value ...]` invokes a script trigger, the same call the client API makes. Without `script=` every script component whose behavior has `Trigger_<triggerName>` fires; with it only the script component of that object name does, and an unknown name is an error. The other trailing tokens become the trigger's argument table, standing in for a route's query string, and a token with no `=` is an error. Quote a value holding spaces: `script trigger NewSub user=bob "message=thanks for the stream"`
+- `script reload` rebuilds the project's script state, re-loading every script in pool order
+- `script routes` replies `<route> <scriptId> <function> <resolved|unresolved>` per HTTP route in the project's route table
 
 ### Log access (log)
 

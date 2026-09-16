@@ -314,6 +314,10 @@ void GuiPanel_ProjectSettings::onGui()
 			const std::string newCmd(editorBuf);
 			addDeferredGuiEvent([appSettings, newCmd]() { appSettings->setScriptEditorCommand(newCmd); });
 		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("%s", locText("projectSettings.scriptEditorCommandTooltip"));
+		}
 	}
 
 	// -- Automation ----

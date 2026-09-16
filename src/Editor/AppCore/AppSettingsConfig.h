@@ -29,6 +29,15 @@ public:
 	inline const std::string& getScriptEditorCommand() const { return m_scriptEditorCommand; }
 	void setScriptEditorCommand(const std::string& command);
 
+	// The current default, carrying {project}/{file}/{line} placeholders, and
+	// the old default that predates them (a stored copy of the legacy default
+	// upgrades to the new one on load).
+	static const std::string k_defaultScriptEditorCommand;
+	static const std::string k_legacyScriptEditorCommand;
+	// True when the command carries {file}, the one placeholder that makes it
+	// self-contained rather than needing paths appended after it.
+	static bool scriptEditorCommandHasPlaceholders(const std::string& command);
+
 	static const std::string k_httpServerPortPropertyId;
 	inline int getHttpServerPort() const { return m_httpServerPort; }
 	void setHttpServerPort(int port);
@@ -71,7 +80,7 @@ public:
 protected:
 	std::filesystem::path m_lastProjectPath;
 	std::string m_appLanguage;
-	std::string m_scriptEditorCommand= "code --reuse-window";
+	std::string m_scriptEditorCommand= k_defaultScriptEditorCommand;
 	int m_httpServerPort= 8090; // mirrors HTTP_SERVER_PORT in HttpInterprocessMessageServer.h
 	// The HTTP server binds loopback only until this is on, which is what a phone
 	// uploading captures over the LAN needs. Off by default, since the script

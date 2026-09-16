@@ -10,14 +10,16 @@
 #include "MikanScriptRequests.rfkh.h"
 #endif
 
-// Triggers are project-wide: every script file runs in the project's one Lua
-// state, so a trigger is addressed by name alone. The arguments arrive at the
-// Lua trigger function as a table, and may be empty.
+// A trigger is a Trigger_<name> method of a script component's behavior. An
+// empty script_name fires the trigger on every script component whose behavior
+// defines it; otherwise it names the one script component to fire. The
+// arguments arrive at the Lua method as a table, and may be empty.
 struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanScriptRequest")) InvokeScriptTrigger : public MikanRequest
 {
 public:
 	InvokeScriptTrigger(){MIKAN_REQUEST_TYPE_INFO_INIT(InvokeScriptTrigger)}
 
+	FIELD() Serialization::String script_name;
 	FIELD() Serialization::String trigger_name;
 	FIELD() Serialization::Map<Serialization::String, Serialization::String> trigger_args;
 

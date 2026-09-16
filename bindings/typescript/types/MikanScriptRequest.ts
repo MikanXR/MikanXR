@@ -18,6 +18,7 @@ export class SendScriptMessage extends MikanRequest {
 }
 
 export class InvokeScriptTrigger extends MikanRequest {
+  script_name: string = '';
   trigger_name: string = '';
   trigger_args: Record<string, string> = {};
 
@@ -27,6 +28,7 @@ export class InvokeScriptTrigger extends MikanRequest {
   }
 
   static __serializationMetadata: SerializationField[] = [
+    { name: 'script_name', type: 'string' },
     { name: 'trigger_name', type: 'string' },
     { name: 'trigger_args', type: 'Map', isMap: true, keyType: 'string', valueType: 'string' }
   ];

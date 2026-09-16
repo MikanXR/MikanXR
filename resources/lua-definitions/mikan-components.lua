@@ -309,14 +309,15 @@ function DMXPresetComponent:capture() end
 -- DMXSequenceComponent : MikanComponent
 ------------------------------------------------------------------------
 
---- An animation of one fixture group. A Script sequence is driven by a handler
---- registered through ScriptContext.registerSequence, which fills the frame
---- buffer itself. The other content sources are rasterized by the editor; a
---- handler is optional there and only its start and stop are called, for
---- picking the content with setText or setContentPath.
+--- An animation of one fixture group. A Script sequence is driven by the
+--- SequenceUpdate method of the script component it names, which fills the
+--- frame buffer itself. The other content sources are rasterized by the
+--- editor; a script is optional there and only its SequenceStart and
+--- SequenceStop are called, for picking the content with setText or
+--- setContentPath.
 ---@class DMXSequenceComponent : MikanComponent
 ---@field groupId integer The DMXFixtureGroupComponent this sequence animates (read-only)
----@field sequenceName string The registered handler name (read-only)
+---@field scriptComponentId integer The ScriptComponent driving the sequence, -1 for none (read-only)
 ---@field timeSinceStart number Seconds since play started, wrapped when looping (read-only)
 ---@field isPlaying boolean
 ---@field contentSource integer 0 script, 1 scroll bitmap, 2 scroll text, 3 play animation (read-only)
@@ -326,7 +327,7 @@ local DMXSequenceComponent = {}
 ---@return DMXFixtureGroupComponent
 function DMXSequenceComponent:getGroup() end
 
---- Start from zero (calling the handler's start) or resume from a pause.
+--- Start from zero (calling the script's SequenceStart) or resume from a pause.
 function DMXSequenceComponent:play() end
 
 function DMXSequenceComponent:pause() end

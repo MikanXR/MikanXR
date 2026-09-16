@@ -10,6 +10,7 @@
 #include "ObjectSystemFwd.h"
 #include "MikanRendererFwd.h"
 #include "SceneFwd.h"
+#include "ScriptError.h"
 
 #include <filesystem>
 #include <memory>
@@ -90,6 +91,12 @@ protected:
 	// Main Compositor UI Events
 	void onReturnEvent();
 
+	// Script errors open one dialog that collects every error reported while
+	// it is open; a successful reload closes one holding only load errors
+	void onScriptError(const ScriptError& error);
+	void onScriptsReloaded(bool bSuccess);
+	void onScriptErrorDialogDismissed();
+
 	// Debug Rendering
 	void debugRenderOrigin() const;
 
@@ -121,6 +128,8 @@ protected:
 	ModelShapeSystemWeakPtr m_modelShapeSystem;
 	RGBPixelGridSystemWeakPtr m_pixelGridLightSystem;
 	RGBSpotLightSystemWeakPtr m_spotLightSystem;
+	ScriptObjectSystemWeakPtr m_scriptObjectSystem;
+	class ModalDialog_ScriptErrors* m_scriptErrorDialog= nullptr;
 
 	// Collision Systems Filters
 	std::set<const MikanObjectSystem*> m_sceneObjectSystemFilter;

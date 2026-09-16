@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 956,
-		"translatedCount": 956,
-		"reviewedCount": 956
+		"stringCount": 978,
+		"translatedCount": 978,
+		"reviewedCount": 978
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -199,12 +199,13 @@
 		"resolution": "Resolution",
 		"rows": "Rows",
 		"script": "Script",
+		"scriptHttpTriggers": "HTTP Triggers",
 		"scriptNotLoaded": "<Not Loaded>",
 		"scriptTriggers": "Script Triggers",
 		"scriptVariables": "Script Variables",
-		"sequenceHandler": "Handler",
-		"sequenceHandlerMissing": "<not registered>",
+		"sequenceHandlerMissing": "<no SequenceUpdate>",
 		"sequenceScript": "Script",
+		"sequenceScriptComponent": "Script",
 		"sequenceStatusFmt": "%s  %.1f s",
 		"shCoefficientTooltipFmt": "%s\n%+.4f  %+.4f  %+.4f\n\nSwatch is |value| relative to the largest coefficient, so it shows magnitude and hue only - the sign is in the numbers. Negative coefficients are normal for the l=1 and l=2 bands.",
 		"skyIrradianceFmt": "Sky irradiance  %.3f %.3f %.3f",
@@ -323,8 +324,18 @@
 		"variableHeader": "Variable"
 	},
 	"httpTriggers": {
+		"addRoute": "Add Route",
 		"allowRemote": "Allow connections from other machines",
-		"noRoutesRegistered": "No HTTP trigger routes registered",
+		"fire": "Fire",
+		"function": "Function",
+		"noFunction": "<no function>",
+		"noRoutes": "No routes. Add one to bind /trigger/<route> to a script HttpTrigger_ function.",
+		"noScript": "<no script>",
+		"removeRoute": "Remove",
+		"route": "Route",
+		"routeUnresolved": "Unresolved: the script or its HttpTrigger_ function is missing",
+		"routes": "Routes",
+		"script": "Script",
 		"serverPort": "HTTP Trigger Server Port"
 	},
 	"lightFixtureCalibration": {
@@ -751,6 +762,7 @@
 		"rulerUnitMillimeters": "Millimeters",
 		"rulerUnits": "Ruler Units",
 		"scriptEditorCommand": "Script Editor Command",
+		"scriptEditorCommandTooltip": "Placeholders: {project} the project folder, {file} the script path, {line} the line to open. A command without placeholders receives the project folder and the file as arguments.",
 		"sectionAssets": "Assets",
 		"sectionAutomation": "Automation",
 		"sectionComponentNaming": "Component Naming",
@@ -957,6 +969,18 @@
 		"stepOfStepsFmt": "Step %d of %d",
 		"videoStreamStartFailed": "Failed to start the video stream.",
 		"working": "Working..."
+	},
+	"scriptErrors": {
+		"close": "Close",
+		"kindCoroutine": "Coroutine error",
+		"kindHttpTrigger": "HTTP trigger error",
+		"kindLoad": "Load error",
+		"kindMessage": "Message handler error",
+		"kindSequence": "Sequence error",
+		"kindTrigger": "Trigger error",
+		"openInEditor": "Open in editor",
+		"title": "Script Errors",
+		"traceback": "Traceback"
 	},
 	"stencilAlignment": {
 		"alignmentComplete": "Stencil alignment complete!",

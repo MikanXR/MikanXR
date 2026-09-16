@@ -14,6 +14,7 @@
 #include "ScriptComponent.h"
 #include "ScriptObjectSystem.h"
 #include "Shared/GuiPanel_DMXSequenceComponent.h"
+#include "Shared/GuiPanel_ScriptComponent.h"
 
 #include "imgui.h"
 
@@ -23,7 +24,16 @@ GuiPanel_DMXSequenceComponent::GuiPanel_DMXSequenceComponent(AppStage* ownerAppS
 	: GuiPanel_MikanComponent(ownerAppStage)
 	, m_groupDataSource(ownerAppStage->getProjectManager(), {{DMXFixtureGroupSystem::k_objectSystemClassName,
 															  DMXFixtureGroupComponent::k_componentClassName}})
+	, m_scriptDataSource(ownerAppStage->getProjectManager(),
+						 {ScriptObjectSystem::k_objectSystemClassName, ScriptComponent::k_componentClassName})
 {
+	// Only a script whose behavior has SequenceUpdate can drive a sequence
+	m_scriptDataSource.setFilter(
+		[](MikanComponentPtr component)
+		{
+			ScriptComponentPtr script= std::dynamic_pointer_cast<ScriptComponent>(component);
+			return script && script->hasBehaviorMethod("SequenceUpdate");
+		});
 }
 
 bool GuiPanel_DMXSequenceComponent::init() { return initTypedPropertyInterface<DMXSequenceComponent>(); }
@@ -64,10 +74,11 @@ void GuiPanel_DMXSequenceComponent::onConstruct()
 			return true;
 		});
 
-	// The registered script sequence handler this component plays, plus a
-	// shortcut to the script that registered it
+	// The script component whose behavior drives this sequence, plus a
+	// shortcut to edit its file. Only scripts with a SequenceUpdate method
+	// are offered.
 	m_entityAccessor->setPropertyRenderer(
-		DMXSequenceDefinition::k_sequenceNamePropertyId,
+		DMXSequenceDefinition::k_scriptComponentIdPropertyId,
 		[this](const PropertyDescriptorConstPtr& /*desc*/) -> bool
 		{
 			DMXSequenceComponentPtr sequenceComp= getDMXSequenceComponent();
@@ -76,62 +87,41 @@ void GuiPanel_DMXSequenceComponent::onConstruct()
 
 			ScriptObjectSystemPtr scriptSystem=
 				getOwnerAppStage()->getProjectManager()->getSystemOfType<ScriptObjectSystem>();
-			CommonScriptContextPtr context= scriptSystem ? scriptSystem->getScriptContext() : nullptr;
-
-			std::vector<std::string> names;
-			if (context)
-				context->getSequenceNames(names);
-
-			std::vector<std::string> choices;
-			choices.push_back(locText("componentPanel.none"));
-			choices.insert(choices.end(), names.begin(), names.end());
+			if (!scriptSystem)
+				return false;
 
 			DMXSequenceDefinitionPtr sequenceDef= sequenceComp->getDMXSequenceDefinition();
-			const std::string& currentName= sequenceDef->getSequenceName();
+			const MikanScriptID currentScriptId= sequenceDef->getScriptComponentId();
 
-			int selectedIndex= 0;
-			for (size_t nameIndex= 0; nameIndex < names.size(); ++nameIndex)
-			{
-				if (names[nameIndex] == currentName)
-				{
-					selectedIndex= (int)nameIndex + 1;
-					break;
-				}
-			}
-
-			if (MkGui::drawEnumComboBoxProperty(
+			m_scriptDataSource.refreshEntries();
+			int selectedIndex= m_scriptDataSource.getEntryIndexByComponentId(currentScriptId);
+			if (MkGui::drawComboBoxProperty(
 					m_defaultGuiStyle,
-					sequenceComp->makePropertyUIIdentifier(DMXSequenceDefinition::k_sequenceNamePropertyId),
-					locText("componentPanel.sequenceHandler"), choices, selectedIndex))
+					sequenceComp->makePropertyUIIdentifier(DMXSequenceDefinition::k_scriptComponentIdPropertyId),
+					locText("componentPanel.sequenceScriptComponent"), &m_scriptDataSource, selectedIndex))
 			{
-				const std::string newName= (selectedIndex == 0) ? "" : names[selectedIndex - 1];
-				addDeferredGuiEvent([sequenceComp, newName]()
-									{ sequenceComp->getDMXSequenceDefinition()->setSequenceName(newName); });
+				const MikanScriptID newScriptId= m_scriptDataSource.getComponentIdAtIndex(selectedIndex);
+				addDeferredGuiEvent([sequenceComp, newScriptId]()
+									{ sequenceComp->getDMXSequenceDefinition()->setScriptComponentId(newScriptId); });
 			}
 
-			if (!currentName.empty())
+			if (currentScriptId != INVALID_MIKAN_ID)
 			{
-				if (context && context->hasSequence(currentName))
+				ScriptComponentPtr script= scriptSystem->getTypedComponentById(currentScriptId);
+				if (script && script->hasBehaviorMethod("SequenceUpdate"))
 				{
-					ScriptComponentPtr script=
-						scriptSystem->getTypedComponentById(context->getSequenceScriptId(currentName));
-					if (script)
+					if (MkGui::drawGlyphButtonWithLabel(sequenceComp->makePropertyUIIdentifier("edit_sequence_script"),
+														ICON_FK_PENCIL, locText("componentPanel.editScript")))
 					{
-						MkGui::drawStaticTextProperty(m_defaultGuiStyle, locText("componentPanel.sequenceScript"),
-													  script->getName());
-
-						if (MkGui::drawGlyphButtonWithLabel(
-								sequenceComp->makePropertyUIIdentifier("edit_sequence_script"), ICON_FK_PENCIL,
-								locText("componentPanel.editScript")))
-						{
-							addDeferredGuiEvent([script]() { script->editScript(); });
-						}
+						addDeferredGuiEvent([script]() { script->editScript(); });
 					}
 				}
 				else
 				{
 					MkGui::drawStaticTextProperty(m_defaultGuiStyle, locText("componentPanel.sequenceScript"),
-												  locText("componentPanel.sequenceHandlerMissing"));
+												  script ? script->getName() + " "
+															   + locText("componentPanel.sequenceHandlerMissing")
+														 : locText("componentPanel.sequenceHandlerMissing"));
 				}
 			}
 

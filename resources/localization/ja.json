@@ -2,8 +2,8 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 956,
-		"translatedCount": 901,
+		"stringCount": 978,
+		"translatedCount": 899,
 		"reviewedCount": 0
 	},
 	"CEFTextureSourceComponent": {
@@ -199,12 +199,13 @@
 		"resolution": "解像度",
 		"rows": "行",
 		"script": "スクリプト",
+		"scriptHttpTriggers": "HTTP Triggers",
 		"scriptNotLoaded": "<未読み込み>",
 		"scriptTriggers": "スクリプトトリガー",
 		"scriptVariables": "スクリプト変数",
-		"sequenceHandler": "ハンドラー",
 		"sequenceHandlerMissing": "<未登録>",
 		"sequenceScript": "スクリプト",
+		"sequenceScriptComponent": "Script",
 		"sequenceStatusFmt": "%s  %.1f 秒",
 		"shCoefficientTooltipFmt": "%s\n%+.4f  %+.4f  %+.4f\n\nスウォッチは最大係数に対する絶対値の相対表示のため、大きさと色相のみを示します。符号は数値側で確認できます。l=1およびl=2帯域では負の係数が生じるのが通常です。",
 		"skyIrradianceFmt": "空の放射照度  %.3f %.3f %.3f",
@@ -323,8 +324,18 @@
 		"variableHeader": "変数"
 	},
 	"httpTriggers": {
+		"addRoute": "Add Route",
 		"allowRemote": "Allow connections from other machines",
-		"noRoutesRegistered": "登録されたHTTPトリガールートがありません",
+		"fire": "Fire",
+		"function": "Function",
+		"noFunction": "<no function>",
+		"noRoutes": "No routes. Add one to bind /trigger/<route> to a script HttpTrigger_ function.",
+		"noScript": "<no script>",
+		"removeRoute": "Remove",
+		"route": "Route",
+		"routeUnresolved": "Unresolved: the script or its HttpTrigger_ function is missing",
+		"routes": "Routes",
+		"script": "Script",
 		"serverPort": "HTTPトリガーサーバーポート"
 	},
 	"lightFixtureCalibration": {
@@ -751,6 +762,7 @@
 		"rulerUnitMillimeters": "ミリメートル",
 		"rulerUnits": "ルーラー単位",
 		"scriptEditorCommand": "スクリプトエディタコマンド",
+		"scriptEditorCommandTooltip": "Placeholders: {project} the project folder, {file} the script path, {line} the line to open. A command without placeholders receives the project folder and the file as arguments.",
 		"sectionAssets": "アセット",
 		"sectionAutomation": "Automation",
 		"sectionComponentNaming": "Component Naming",
@@ -957,6 +969,18 @@
 		"stepOfStepsFmt": "ステップ %d / %d",
 		"videoStreamStartFailed": "ビデオストリームの開始に失敗しました。",
 		"working": "処理中..."
+	},
+	"scriptErrors": {
+		"close": "Close",
+		"kindCoroutine": "Coroutine error",
+		"kindHttpTrigger": "HTTP trigger error",
+		"kindLoad": "Load error",
+		"kindMessage": "Message handler error",
+		"kindSequence": "Sequence error",
+		"kindTrigger": "Trigger error",
+		"openInEditor": "Open in editor",
+		"title": "Script Errors",
+		"traceback": "Traceback"
 	},
 	"stencilAlignment": {
 		"alignmentComplete": "ステンシルの位置合わせが完了しました！",

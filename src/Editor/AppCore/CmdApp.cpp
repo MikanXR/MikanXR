@@ -13,6 +13,7 @@
 #include "ClientApiPropertySchemaTests.h"
 #include "ComponentNamingTests.h"
 #include "DepthMeshGeneratorTests.h"
+#include "DirectoryWatcherTests.h"
 #include "DMXPresetPersistenceTests.h"
 #include "DMXSequenceTests.h"
 #include "DMXUniverseRLETests.h"
@@ -30,6 +31,8 @@
 #include "ProjectAssetCatalogTests.h"
 #include "PropertyNotificationGuardTests.h"
 #include "ScriptContextTests.h"
+#include "ScriptEditorCommandTests.h"
+#include "ScriptHttpRouteTests.h"
 #include "ScriptVariablePersistenceTests.h"
 #include "VideoRecordingTests.h"
 
@@ -55,6 +58,7 @@ bool run_all_editor_unit_tests()
 	success&= run_client_api_property_schema_tests();
 	success&= run_component_naming_tests();
 	success&= run_depth_mesh_generator_unit_tests();
+	success&= run_directory_watcher_tests();
 	success&= run_dmx_preset_persistence_tests();
 	success&= run_dmx_sequence_tests();
 	success&= run_dmx_universe_rle_tests();
@@ -72,6 +76,8 @@ bool run_all_editor_unit_tests()
 	success&= run_project_asset_catalog_tests();
 	success&= run_property_notification_guard_tests();
 	success&= run_script_context_tests();
+	success&= run_script_editor_command_tests();
+	success&= run_script_http_route_tests();
 	success&= run_script_variable_persistence_tests();
 	success&= run_video_recording_tests();
 	// Future: add more test modules here

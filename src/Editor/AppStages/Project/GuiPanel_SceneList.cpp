@@ -1,4 +1,5 @@
 #include "GuiPanel_SceneList.h"
+#include "AppStage.h"
 #include "IconsForkAwesome.h"
 #include "LocText.h"
 #include "MikanCoreTypes.h"

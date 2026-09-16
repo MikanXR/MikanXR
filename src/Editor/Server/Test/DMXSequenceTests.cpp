@@ -68,7 +68,7 @@ bool dmx_sequence_test_json_round_trip()
 
 	DMXSequenceDefinition source;
 	source.setGroupId(1263);
-	source.setSequenceName("chase");
+	source.setScriptComponentId(1234);
 	source.setDurationSeconds(2.5f);
 	source.setLoop(false);
 	source.setContentSource(eDMXSequenceContentSource::scrollText);
@@ -90,7 +90,7 @@ bool dmx_sequence_test_json_round_trip()
 
 	success= (restored.getGroupId() == 1263);
 	assert(success);
-	success&= (restored.getSequenceName() == "chase");
+	success&= (restored.getScriptComponentId() == 1234);
 	assert(success);
 	success&= fabsf(restored.getDurationSeconds() - 2.5f) < 1e-5f;
 	assert(success);
@@ -142,6 +142,16 @@ bool dmx_sequence_test_json_round_trip()
 	assert(success);
 	// A sequence that predates the dimmer plays at full output
 	success&= (migrated.getBrightness() == 1.f);
+	assert(success);
+
+	// A project saved with a handler name has no script to map it to, so the
+	// sequence loads unassigned and is picked again in the panel
+	configuru::Config named= source.writeToJSON();
+	named.erase(DMXSequenceDefinition::k_scriptComponentIdPropertyId);
+	named["sequence_name"]= "chase";
+	DMXSequenceDefinition unassigned;
+	unassigned.readFromJSON(named);
+	success&= (unassigned.getScriptComponentId() == INVALID_MIKAN_ID);
 	assert(success);
 
 	UNIT_TEST_COMPLETE()

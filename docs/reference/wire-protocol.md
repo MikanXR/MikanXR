@@ -113,7 +113,7 @@ Two traps, both real and both verified in code:
 
 ## Server side: MikanServer and request handlers
 
-`src/Editor/Server/MikanServer` owns the `WebsocketInterprocessMessageServer` (plus an `HttpInterprocessMessageServer` for HTTP triggers) and a fixed set of per-domain handlers constructed in its constructor: `CameraRequestHandler`, `FunctionRequestHandler`, `LightRequestHandler`, `PropertyRequestHandler`, `MarkerRequestHandler`, `ScriptRequestHandler`, `ShapeRequestHandler`, `StencilRequestHandler`, `TextureSourceRequestHandler`, `VideoSourceRequestHandler`, and the `RemoteControlManager`. `MikanServer` itself only handles connection lifecycle (`InitClientRequest`/`DisposeClientRequest`).
+`src/Editor/Server/MikanServer` owns the `WebsocketInterprocessMessageServer` (plus an `HttpInterprocessMessageServer` for HTTP triggers) and a fixed set of per-domain handlers constructed in its constructor: `CameraRequestHandler`, `FunctionRequestHandler`, `LightRequestHandler`, `PropertyRequestHandler`, `MarkerRequestHandler`, `ScriptRequestHandler`, `ShapeRequestHandler`, `StencilRequestHandler`, `TextureSourceRequestHandler`, `VideoSourceRequestHandler`, and the `RemoteControlManager`. `MikanServer` itself only handles connection lifecycle (`InitClientRequest`/`DisposeClientRequest`). `ScriptRequestHandler` also installs the project's HTTP trigger routes on the HTTP server from the script system's route table, and `InvokeScriptTrigger` addresses a script component by name or broadcasts (see [scripting.md](./scripting.md)).
 
 Each handler derives from `IServerRequestHandler` (`src/Editor/Server/IServerRequestHandler.h`) and, in its `startup`, registers each request type by reflected name:
 

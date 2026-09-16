@@ -8,6 +8,33 @@
 #include <cstdlib>
 #endif
 
+// -- private helpers -----
+namespace
+{
+// Splits "exe [args]" on the first space, the rule openPathsWithApplication
+// and runCommandLine both split a command line on.
+void splitCommandLine(const std::string& commandLine, std::string& outExe, std::string& outArgs)
+{
+	const size_t spacePos= commandLine.find(' ');
+	outExe= commandLine.substr(0, spacePos);
+	outArgs= (spacePos != std::string::npos) ? commandLine.substr(spacePos + 1) : "";
+}
+
+// Launches an already-split executable and argument string, the shared tail
+// end of openPathsWithApplication and runCommandLine.
+bool launchExeWithArgs(const std::string& exe, const std::string& args)
+{
+#if defined WIN32 || defined _WIN32 || defined WINCE
+	// ShellExecute gets exe and parameters separately (avoids a console window)
+	HINSTANCE result= ShellExecuteA(NULL, "open", exe.c_str(), args.c_str(), NULL, SW_SHOWNORMAL);
+	return reinterpret_cast<intptr_t>(result) > 32;
+#else
+	const std::string cmd= args.empty() ? exe : exe + " " + args;
+	return system(cmd.c_str()) == 0;
+#endif
+}
+} // namespace
+
 // -- public methods -----
 namespace OSUtils
 {
@@ -32,20 +59,19 @@ bool openPathsWithApplication(const std::vector<std::filesystem::path>& paths, c
 		quotedPaths+= "\"" + path.generic_string() + "\"";
 	}
 
-	// Split "exe [args]" on the first space so ShellExecute gets exe and
-	// parameters separately (avoids a console window on Windows).
-	const size_t spacePos= editorCommand.find(' ');
-	const std::string exe= editorCommand.substr(0, spacePos);
-	const std::string existingArgs= (spacePos != std::string::npos) ? editorCommand.substr(spacePos + 1) + " " : "";
-	const std::string fullArgs= existingArgs + quotedPaths;
+	std::string exe, existingArgs;
+	splitCommandLine(editorCommand, exe, existingArgs);
+	const std::string fullArgs= existingArgs.empty() ? quotedPaths : existingArgs + " " + quotedPaths;
 
-#if defined WIN32 || defined _WIN32 || defined WINCE
-	HINSTANCE result= ShellExecuteA(NULL, "open", exe.c_str(), fullArgs.c_str(), NULL, SW_SHOWNORMAL);
-	return reinterpret_cast<intptr_t>(result) > 32;
-#else
-	const std::string cmd= editorCommand + " " + quotedPaths;
-	return system(cmd.c_str()) == 0;
-#endif
+	return launchExeWithArgs(exe, fullArgs);
+}
+
+bool runCommandLine(const std::string& commandLine)
+{
+	std::string exe, args;
+	splitCommandLine(commandLine, exe, args);
+
+	return launchExeWithArgs(exe, args);
 }
 
 bool openFileWithDefaultApplication(const std::filesystem::path& filePath)

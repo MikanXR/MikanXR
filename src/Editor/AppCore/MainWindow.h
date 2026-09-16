@@ -110,6 +110,10 @@ private:
 	// The scanned project asset folders the Assets panels browse
 	class ProjectAssetCatalog* m_assetCatalog= nullptr;
 
+	// Reloads project scripts and refreshes the asset catalog when a .lua file
+	// under the project or bundled scripts folder changes on disk
+	class ScriptFolderWatcher* m_scriptFolderWatcher= nullptr;
+
 	// OpenCV management
 	class OpenCVManager* m_openCVManager;
 

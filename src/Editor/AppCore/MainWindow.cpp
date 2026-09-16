@@ -39,6 +39,7 @@
 #include "ProjectManager.h"
 #include "OpenCVManager.h"
 #include "LuaDebugServer.h"
+#include "ScriptFolderWatcher.h"
 #include "StencilUtils.h"
 #include "StringUtils.h"
 #include "TextStyle.h"
@@ -85,6 +86,7 @@ MainWindow::MainWindow(App* ownerApp)
 	, m_inputManager(new InputManager(this))
 	, m_projectManager(std::make_shared<ProjectManager>(this))
 	, m_assetCatalog(new ProjectAssetCatalog())
+	, m_scriptFolderWatcher(new ScriptFolderWatcher())
 	, m_openCVManager(new OpenCVManager())
 	, m_fontManager(createMkFontManager())
 	, m_appStageFactory(this)
@@ -115,6 +117,7 @@ MainWindow::MainWindow(App* ownerApp)
 
 MainWindow::~MainWindow()
 {
+	delete m_scriptFolderWatcher;
 	delete m_assetCatalog;
 	m_projectManager= nullptr;
 	delete m_openCVManager;
@@ -233,6 +236,7 @@ bool MainWindow::startup()
 		// Scans the initial project's asset folders and follows project switches
 		m_assetCatalog->setBundledResourcesEditable(m_ownerApp->getAppSettings()->getEditBundledResources());
 		m_assetCatalog->startup(this);
+		m_scriptFolderWatcher->startup(this);
 	}
 
 	if (success)
@@ -357,6 +361,9 @@ void MainWindow::update(float deltaSeconds)
 
 	// Service Lua debugger socket I/O (between Lua script updates)
 	LuaDebugServer::getInstance()->poll();
+
+	// Reload project scripts and refresh the asset catalog when a .lua file changes on disk
+	m_scriptFolderWatcher->update(deltaSeconds);
 
 	// Service automation command socket I/O (dispatches commands inline)
 	m_automationServer->poll();
@@ -665,6 +672,9 @@ void MainWindow::shutdown()
 
 	assert(m_assetCatalog != nullptr);
 	m_assetCatalog->shutdown();
+
+	assert(m_scriptFolderWatcher != nullptr);
+	m_scriptFolderWatcher->shutdown();
 
 	// Before the automation server, so an in-flight `arkit send` still gets its
 	// error reply out while the automation socket is alive to carry it

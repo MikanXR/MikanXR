@@ -6,6 +6,7 @@ namespace MikanXR
 {
 	public class InvokeScriptTrigger : MikanRequest
 	{
+		public string script_name;
 		public string trigger_name;
 		public Dictionary<string, string> trigger_args;
 

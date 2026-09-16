@@ -910,6 +910,11 @@ msgid "Script"
 msgstr ""
 
 #. Section: componentPanel
+msgctxt "componentPanel.scriptHttpTriggers"
+msgid "HTTP Triggers"
+msgstr ""
+
+#. Section: componentPanel
 msgctxt "componentPanel.scriptNotLoaded"
 msgid "<Not Loaded>"
 msgstr ""
@@ -925,17 +930,17 @@ msgid "Script Variables"
 msgstr ""
 
 #. Section: componentPanel
-msgctxt "componentPanel.sequenceHandler"
-msgid "Handler"
-msgstr ""
-
-#. Section: componentPanel
 msgctxt "componentPanel.sequenceHandlerMissing"
-msgid "<not registered>"
+msgid "<no SequenceUpdate>"
 msgstr ""
 
 #. Section: componentPanel
 msgctxt "componentPanel.sequenceScript"
+msgid "Script"
+msgstr ""
+
+#. Section: componentPanel
+msgctxt "componentPanel.sequenceScriptComponent"
 msgid "Script"
 msgstr ""
 
@@ -1494,13 +1499,63 @@ msgid "Variable"
 msgstr ""
 
 #. Section: httpTriggers
+msgctxt "httpTriggers.addRoute"
+msgid "Add Route"
+msgstr ""
+
+#. Section: httpTriggers
 msgctxt "httpTriggers.allowRemote"
 msgid "Allow connections from other machines"
 msgstr ""
 
 #. Section: httpTriggers
-msgctxt "httpTriggers.noRoutesRegistered"
-msgid "No HTTP trigger routes registered"
+msgctxt "httpTriggers.fire"
+msgid "Fire"
+msgstr ""
+
+#. Section: httpTriggers
+msgctxt "httpTriggers.function"
+msgid "Function"
+msgstr ""
+
+#. Section: httpTriggers
+msgctxt "httpTriggers.noFunction"
+msgid "<no function>"
+msgstr ""
+
+#. Section: httpTriggers
+msgctxt "httpTriggers.noRoutes"
+msgid "No routes. Add one to bind /trigger/<route> to a script HttpTrigger_ function."
+msgstr ""
+
+#. Section: httpTriggers
+msgctxt "httpTriggers.noScript"
+msgid "<no script>"
+msgstr ""
+
+#. Section: httpTriggers
+msgctxt "httpTriggers.removeRoute"
+msgid "Remove"
+msgstr ""
+
+#. Section: httpTriggers
+msgctxt "httpTriggers.route"
+msgid "Route"
+msgstr ""
+
+#. Section: httpTriggers
+msgctxt "httpTriggers.routeUnresolved"
+msgid "Unresolved: the script or its HttpTrigger_ function is missing"
+msgstr ""
+
+#. Section: httpTriggers
+msgctxt "httpTriggers.routes"
+msgid "Routes"
+msgstr ""
+
+#. Section: httpTriggers
+msgctxt "httpTriggers.script"
+msgid "Script"
 msgstr ""
 
 #. Section: httpTriggers
@@ -3551,6 +3606,11 @@ msgid "Script Editor Command"
 msgstr ""
 
 #. Section: projectSettings
+msgctxt "projectSettings.scriptEditorCommandTooltip"
+msgid "Placeholders: {project} the project folder, {file} the script path, {line} the line to open. A command without placeholders receives the project folder and the file as arguments."
+msgstr ""
+
+#. Section: projectSettings
 msgctxt "projectSettings.sectionAssets"
 msgid "Assets"
 msgstr ""
@@ -4563,6 +4623,56 @@ msgstr ""
 #. Section: sceneLightingCapture
 msgctxt "sceneLightingCapture.working"
 msgid "Working..."
+msgstr ""
+
+#. Section: scriptErrors
+msgctxt "scriptErrors.close"
+msgid "Close"
+msgstr ""
+
+#. Section: scriptErrors
+msgctxt "scriptErrors.kindCoroutine"
+msgid "Coroutine error"
+msgstr ""
+
+#. Section: scriptErrors
+msgctxt "scriptErrors.kindHttpTrigger"
+msgid "HTTP trigger error"
+msgstr ""
+
+#. Section: scriptErrors
+msgctxt "scriptErrors.kindLoad"
+msgid "Load error"
+msgstr ""
+
+#. Section: scriptErrors
+msgctxt "scriptErrors.kindMessage"
+msgid "Message handler error"
+msgstr ""
+
+#. Section: scriptErrors
+msgctxt "scriptErrors.kindSequence"
+msgid "Sequence error"
+msgstr ""
+
+#. Section: scriptErrors
+msgctxt "scriptErrors.kindTrigger"
+msgid "Trigger error"
+msgstr ""
+
+#. Section: scriptErrors
+msgctxt "scriptErrors.openInEditor"
+msgid "Open in editor"
+msgstr ""
+
+#. Section: scriptErrors
+msgctxt "scriptErrors.title"
+msgid "Script Errors"
+msgstr ""
+
+#. Section: scriptErrors
+msgctxt "scriptErrors.traceback"
+msgid "Traceback"
 msgstr ""
 
 #. Section: stencilAlignment

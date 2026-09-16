@@ -30,6 +30,7 @@
 #include "ScriptComponent.h"
 #include "ScriptObjectSystem.h"
 #include "ScriptRequestHandler.h"
+#include "StringUtils.h"
 #include "TransactionHistory.h"
 
 #include "Graphs/MaterialNodeGraph.h"
@@ -463,10 +464,11 @@ void AutomationServer::registerCoreNamespaces()
 		 "input key|keydown|keyup <windowIndex> <keyName> [modifiers...]", "input text <windowIndex> <text...>"},
 		std::bind(&AutomationServer::handleInputCommand, this, _1, _2, _3));
 
-	registerCommandNamespace(
-		"script",
-		{"script list", "script eval <lua-code>", "script trigger <triggerName> [key=value ...]", "script reload"},
-		std::bind(&AutomationServer::handleScriptCommand, this, _1, _2, _3));
+	registerCommandNamespace("script",
+							 {"script list", "script eval <lua-code>",
+							  "script trigger <triggerName> [script=<scriptName>] [key=value ...]", "script reload",
+							  "script routes"},
+							 std::bind(&AutomationServer::handleScriptCommand, this, _1, _2, _3));
 
 	registerCommandNamespace("log", {"log tail <lineCount> [trace|debug|info|warning|error|fatal]"},
 							 std::bind(&AutomationServer::handleLogCommand, this, _1, _2, _3));
@@ -1794,7 +1796,7 @@ bool AutomationServer::handleScriptCommand(const std::vector<std::string>& args,
 {
 	if (args.empty())
 	{
-		outError= "usage: script list|eval|trigger|reload ...";
+		outError= "usage: script list|eval|trigger|reload|routes ...";
 		return false;
 	}
 
@@ -1818,18 +1820,18 @@ bool AutomationServer::handleScriptCommand(const std::vector<std::string>& args,
 
 			std::vector<std::string> triggerNames;
 			script->getTriggerNames(triggerNames);
-			std::string triggers;
-			for (const std::string& trigger : triggerNames)
-			{
-				if (!triggers.empty())
-					triggers+= ",";
-				triggers+= trigger;
-			}
+			std::vector<std::string> httpTriggerNames;
+			script->getHttpTriggerNames(httpTriggerNames);
+			std::vector<std::string> parameterNames;
+			script->getScriptVariableNames(parameterNames);
 
 			const std::string path= definition->getScriptPath().generic_string();
-			outLines.push_back(std::to_string(script->getComponentId()) + " " + (path.empty() ? "-" : path) + " "
-							   + (script->isScriptLoaded() ? "loaded" : "not_loaded")
-							   + (triggers.empty() ? "" : " " + triggers));
+			outLines.push_back(
+				std::to_string(script->getComponentId()) + " " + (path.empty() ? "-" : path) + " "
+				+ (script->isScriptLoaded() ? "loaded" : "not_loaded")
+				+ (triggerNames.empty() ? "" : " " + StringUtils::joinString(triggerNames, ','))
+				+ (httpTriggerNames.empty() ? "" : " http=" + StringUtils::joinString(httpTriggerNames, ','))
+				+ (parameterNames.empty() ? "" : " params=" + StringUtils::joinString(parameterNames, ',')));
 		}
 
 		return true;
@@ -1839,11 +1841,23 @@ bool AutomationServer::handleScriptCommand(const std::vector<std::string>& args,
 		scriptSystem->reloadAllScripts();
 		return true;
 	}
+	else if (verb == "routes")
+	{
+		// One line per HTTP route in table order
+		for (const ScriptHttpRoute& route : scriptSystem->getTypedDefinitionConst()->getHttpRoutes().getRoutes())
+		{
+			outLines.push_back(route.route + " " + std::to_string(route.scriptId) + " "
+							   + (route.functionName.empty() ? "-" : route.functionName) + " "
+							   + (scriptSystem->isHttpRouteResolved(route) ? "resolved" : "unresolved"));
+		}
+		return true;
+	}
 	else if (verb == "eval" || verb == "trigger")
 	{
 		if (args.size() < 2)
 		{
-			outError= "usage: script " + verb + " " + (verb == "eval" ? "<lua-code>" : "<triggerName> [key=value ...]");
+			outError= "usage: script " + verb + " "
+					  + (verb == "eval" ? "<lua-code>" : "<triggerName> [script=<scriptName>] [key=value ...]");
 			return false;
 		}
 
@@ -1874,8 +1888,11 @@ bool AutomationServer::handleScriptCommand(const std::vector<std::string>& args,
 		else
 		{
 			// Trailing "key=value" tokens become the trigger's argument table, the
-			// same table an HTTP route builds from its query string
+			// same table an HTTP route builds from its query string. A "script="
+			// token names the one script component to fire instead; without it
+			// every component that has the trigger fires.
 			const std::string& triggerName= args[1];
+			MikanScriptID targetScriptId= INVALID_MIKAN_ID;
 			std::map<std::string, std::string> triggerArgs;
 			for (size_t argIndex= 2; argIndex < args.size(); ++argIndex)
 			{
@@ -1887,7 +1904,21 @@ bool AutomationServer::handleScriptCommand(const std::vector<std::string>& args,
 					return false;
 				}
 
-				triggerArgs[token.substr(0, equalsPos)]= token.substr(equalsPos + 1);
+				const std::string key= token.substr(0, equalsPos);
+				const std::string value= token.substr(equalsPos + 1);
+				if (key == "script")
+				{
+					ScriptComponentPtr script= scriptSystem->getTypedComponentByName(value);
+					if (!script)
+					{
+						outError= "unknown script '" + value + "'";
+						return false;
+					}
+					targetScriptId= script->getComponentId();
+					continue;
+				}
+
+				triggerArgs[key]= value;
 			}
 
 			// Bracketed like the panel button, so a trigger's property writes
@@ -1895,7 +1926,7 @@ bool AutomationServer::handleScriptCommand(const std::vector<std::string>& args,
 			TransactionHistory* transactionHistory= m_mainWindow->getTransactionHistory();
 			if (transactionHistory != nullptr)
 				transactionHistory->beginGesture("script:" + triggerName);
-			const bool bSuccess= scriptContext->invokeScriptTrigger(triggerName, triggerArgs);
+			const bool bSuccess= scriptContext->invokeScriptTrigger(triggerName, triggerArgs, targetScriptId);
 			if (transactionHistory != nullptr)
 				transactionHistory->endGesture();
 

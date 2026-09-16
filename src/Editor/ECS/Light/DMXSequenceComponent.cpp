@@ -26,6 +26,11 @@
 
 namespace
 {
+// The behavior methods a sequence calls on its script component
+const char* k_sequenceStartMethodName= "SequenceStart";
+const char* k_sequenceUpdateMethodName= "SequenceUpdate";
+const char* k_sequenceStopMethodName= "SequenceStop";
+
 const std::string k_sequenceStateStrings[]= {
 	"propertyValues.sequence_stopped",
 	"propertyValues.sequence_playing",
@@ -67,7 +72,7 @@ const std::string* k_dmxSequenceContentSourceStrings= g_contentSourceStrings;
 
 // -- DMXSequenceDefinition -----
 const std::string DMXSequenceDefinition::k_groupIdPropertyId= "group_id";
-const std::string DMXSequenceDefinition::k_sequenceNamePropertyId= "sequence_name";
+const std::string DMXSequenceDefinition::k_scriptComponentIdPropertyId= "script_component_id";
 const std::string DMXSequenceDefinition::k_durationSecondsPropertyId= "duration_seconds";
 const std::string DMXSequenceDefinition::k_loopPropertyId= "loop";
 const std::string DMXSequenceDefinition::k_contentSourcePropertyId= "content_source";
@@ -104,7 +109,7 @@ configuru::Config DMXSequenceDefinition::writeToJSON()
 	configuru::Config pt= MikanComponentDefinition::writeToJSON();
 
 	pt[k_groupIdPropertyId]= m_groupId;
-	pt[k_sequenceNamePropertyId]= m_sequenceName;
+	pt[k_scriptComponentIdPropertyId]= m_scriptComponentId;
 	pt[k_durationSecondsPropertyId]= m_durationSeconds;
 	pt[k_loopPropertyId]= m_bLoop;
 
@@ -133,7 +138,8 @@ void DMXSequenceDefinition::readFromJSON(const configuru::Config& pt)
 	MikanComponentDefinition::readFromJSON(pt);
 
 	m_groupId= pt.get_or<MikanDMXFixtureGroupID>(k_groupIdPropertyId, m_groupId);
-	m_sequenceName= pt.get_or<std::string>(k_sequenceNamePropertyId, m_sequenceName);
+	// A project saved with a handler name rather than a script id loads unassigned
+	m_scriptComponentId= pt.get_or<MikanScriptID>(k_scriptComponentIdPropertyId, m_scriptComponentId);
 	m_durationSeconds= pt.get_or<float>(k_durationSecondsPropertyId, m_durationSeconds);
 	m_bLoop= pt.get_or<bool>(k_loopPropertyId, m_bLoop);
 
@@ -188,7 +194,7 @@ bool DMXSequenceDefinition::readFromInitParams(MikanObjectSystem* ownerObjectSys
 	if (values)
 	{
 		m_groupId= values->group_id;
-		m_sequenceName= values->sequence_name.getUtf8Value();
+		m_scriptComponentId= values->script_component_id;
 		m_durationSeconds= values->duration_seconds;
 		m_bLoop= values->loop;
 
@@ -228,12 +234,12 @@ void DMXSequenceDefinition::setGroupId(MikanDMXFixtureGroupID groupId)
 	}
 }
 
-void DMXSequenceDefinition::setSequenceName(const std::string& sequenceName)
+void DMXSequenceDefinition::setScriptComponentId(MikanScriptID scriptComponentId)
 {
-	if (sequenceName != m_sequenceName)
+	if (scriptComponentId != m_scriptComponentId)
 	{
-		m_sequenceName= sequenceName;
-		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_sequenceNamePropertyId));
+		m_scriptComponentId= scriptComponentId;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_scriptComponentIdPropertyId));
 	}
 }
 
@@ -438,13 +444,13 @@ CommonScriptContextPtr DMXSequenceComponent::getScriptContext() const
 
 bool DMXSequenceComponent::hasScriptHandler() const
 {
-	const std::string& sequenceName= getDMXSequenceDefinition()->getSequenceName();
-	if (sequenceName.empty())
+	const MikanScriptID scriptId= getDMXSequenceDefinition()->getScriptComponentId();
+	if (scriptId == INVALID_MIKAN_ID)
 		return false;
 
 	CommonScriptContextPtr scriptContext= getScriptContext();
 
-	return scriptContext && scriptContext->hasSequence(sequenceName);
+	return scriptContext && scriptContext->behaviorHasMethod(scriptId, k_sequenceUpdateMethodName);
 }
 
 void DMXSequenceComponent::play()
@@ -465,7 +471,7 @@ void DMXSequenceComponent::play()
 		// by one that is missing or throws.
 		if (hasScriptHandler())
 		{
-			if (!callHandler("start", false, 0.f) && bScriptDriven)
+			if (!callHandler(k_sequenceStartMethodName, false, 0.f) && bScriptDriven)
 				return;
 		}
 		else if (bScriptDriven)
@@ -509,7 +515,7 @@ void DMXSequenceComponent::stop()
 	m_runtimeContentPath.clear();
 	m_bContentDirty= true;
 
-	if (hasScriptHandler() && callHandler("stop", false, 0.f))
+	if (hasScriptHandler() && callHandler(k_sequenceStopMethodName, false, 0.f))
 	{
 		applyFrameBuffer();
 	}
@@ -533,8 +539,7 @@ void DMXSequenceComponent::tick(float deltaSeconds)
 	// sequence. A rasterized one has no handler to lose, so it plays on.
 	if (bScriptDriven)
 	{
-		CommonScriptContextPtr scriptContext= getScriptContext();
-		if (!scriptContext || !scriptContext->hasSequence(definition->getSequenceName()))
+		if (!hasScriptHandler())
 		{
 			m_state= eDMXSequenceState::Stopped;
 			m_timeSinceStart= 0.f;
@@ -554,7 +559,7 @@ void DMXSequenceComponent::tick(float deltaSeconds)
 
 	if (bScriptDriven)
 	{
-		if (!callHandler("update", true, deltaSeconds))
+		if (!callHandler(k_sequenceUpdateMethodName, true, deltaSeconds))
 			return;
 	}
 	else
@@ -799,16 +804,16 @@ void DMXSequenceComponent::onDefinitionMarkedDirty(CommonConfigPtr configPtr,
 	}
 }
 
-bool DMXSequenceComponent::callHandler(const char* field, bool bWithTime, float deltaSeconds)
+bool DMXSequenceComponent::callHandler(const char* methodName, bool bWithTime, float deltaSeconds)
 {
 	CommonScriptContextPtr scriptContext= getScriptContext();
 	if (!scriptContext)
 		return false;
 
-	const std::string& sequenceName= getDMXSequenceDefinition()->getSequenceName();
+	const MikanScriptID scriptId= getDMXSequenceDefinition()->getScriptComponentId();
 	std::string error;
-	const bool bSuccess= scriptContext->callSequenceHandler(
-		sequenceName, field,
+	const bool bSuccess= scriptContext->callBehaviorMethod(
+		scriptId, methodName,
 		[this, bWithTime, deltaSeconds](lua_State* L) -> int
 		{
 			// The count has to match what actually landed on the stack, since
@@ -834,12 +839,12 @@ bool DMXSequenceComponent::callHandler(const char* field, bool bWithTime, float 
 
 			return argCount;
 		},
-		error);
+		error, eScriptErrorKind::sequence);
 
 	if (!bSuccess)
 	{
 		MIKAN_LOG_ERROR("DMXSequenceComponent::callHandler")
-			<< "Sequence " << getName() << " handler " << sequenceName << "." << field << " failed: " << error;
+			<< "Sequence " << getName() << " script " << scriptId << " " << methodName << " failed: " << error;
 		m_state= eDMXSequenceState::Stopped;
 		m_timeSinceStart= 0.f;
 	}
@@ -978,10 +983,10 @@ void DMXSequenceComponent::getPropertyDescriptors(std::vector<PropertyDescriptor
 
 	outDescriptors.push_back(
 		std::make_shared<PropertyDescriptor>(DMXSequenceDefinition::k_groupIdPropertyId, MikanVariantType::INT));
-	// The panel draws the handler picker itself
-	outDescriptors.push_back(
-		std::make_shared<PropertyDescriptor>(DMXSequenceDefinition::k_sequenceNamePropertyId, MikanVariantType::STRING)
-			->setUIHidden());
+	// The panel draws the script picker itself
+	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(DMXSequenceDefinition::k_scriptComponentIdPropertyId,
+																  MikanVariantType::INT)
+								 ->setUIHidden());
 	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(DMXSequenceDefinition::k_durationSecondsPropertyId,
 																  MikanVariantType::FLOAT));
 	outDescriptors.push_back(
@@ -1046,9 +1051,9 @@ bool DMXSequenceComponent::getPropertyValue(const std::string& propertyName, Mik
 		outValue= static_cast<int>(definition->getGroupId());
 		return true;
 	}
-	else if (propertyName == DMXSequenceDefinition::k_sequenceNamePropertyId)
+	else if (propertyName == DMXSequenceDefinition::k_scriptComponentIdPropertyId)
 	{
-		outValue= definition->getSequenceName();
+		outValue= static_cast<int>(definition->getScriptComponentId());
 		return true;
 	}
 	else if (propertyName == DMXSequenceDefinition::k_durationSecondsPropertyId)
@@ -1157,12 +1162,12 @@ bool DMXSequenceComponent::setPropertyValue(const std::string& propertyName, con
 		definition->setGroupId(inValue.getIntValue());
 		return true;
 	}
-	else if (propertyName == DMXSequenceDefinition::k_sequenceNamePropertyId)
+	else if (propertyName == DMXSequenceDefinition::k_scriptComponentIdPropertyId)
 	{
-		if (inValue.value_type != MikanVariantType::STRING)
+		if (inValue.value_type != MikanVariantType::INT)
 			return false;
 
-		definition->setSequenceName(inValue.getUtf8Value());
+		definition->setScriptComponentId(inValue.getIntValue());
 		return true;
 	}
 	else if (propertyName == DMXSequenceDefinition::k_durationSecondsPropertyId)
@@ -1335,8 +1340,8 @@ void DMXSequenceComponent::bindLuaFunctions(lua_State* L)
 		.deriveClass<DMXSequenceComponent, MikanComponent>(DMXSequenceComponent::k_componentClassName.c_str())
 		.addProperty("groupId",
 					 [](DMXSequenceComponent* c) -> int { return c->getDMXSequenceDefinition()->getGroupId(); })
-		.addProperty("sequenceName", [](DMXSequenceComponent* c) -> std::string
-					 { return c->getDMXSequenceDefinition()->getSequenceName(); })
+		.addProperty("scriptComponentId", [](DMXSequenceComponent* c) -> int
+					 { return c->getDMXSequenceDefinition()->getScriptComponentId(); })
 		.addProperty("timeSinceStart", [](DMXSequenceComponent* c) -> float { return c->getTimeSinceStart(); })
 		.addProperty("isPlaying", [](DMXSequenceComponent* c) -> bool { return c->isPlaying(); })
 		.addFunction("getGroup",

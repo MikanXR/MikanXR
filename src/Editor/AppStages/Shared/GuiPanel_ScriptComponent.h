@@ -16,6 +16,7 @@ public:
 	GuiDataSource_OptionalComponentComboBox(ProjectManagerPtr projectManager,
 											const GuiDataSource_ComboBox::SystemComponentPair& systemComponentPair);
 
+	void setFilter(GuiDataSource_ComboBox::ComponentFilter filter);
 	void refreshEntries();
 	// Index 0 is none; an id no entry matches also maps to none
 	int getEntryIndexByComponentId(MikanComponentID componentId) const;

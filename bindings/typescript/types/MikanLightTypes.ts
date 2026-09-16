@@ -186,7 +186,7 @@ export class MikanRGBPixelGridComponentValues extends MikanDMXFixtureComponentVa
 
 export class MikanDMXSequenceComponentValues extends MikanComponentValues {
   group_id: number = -1;
-  sequence_name: string = '';
+  script_component_id: number = -1;
   duration_seconds: number = 10;
   loop: boolean = true;
   playback_state: number = 0;
@@ -208,7 +208,7 @@ export class MikanDMXSequenceComponentValues extends MikanComponentValues {
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'group_id', type: 'int32' },
-    { name: 'sequence_name', type: 'string' },
+    { name: 'script_component_id', type: 'int32' },
     { name: 'duration_seconds', type: 'float' },
     { name: 'loop', type: 'boolean' },
     { name: 'playback_state', type: 'int32' },

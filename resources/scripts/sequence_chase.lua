@@ -1,17 +1,20 @@
 -- A chase: one lit fixture runs along the members of a DMXFixtureGroup.
--- Register it here, then point a DMXSequenceComponent at the "chase" handler
--- and press Play. The handler writes into the sequence's frame buffer; the
--- sequence system pushes that buffer to the fixtures after every update.
+-- Assign this file to a script component, then pick that component as the
+-- script of a DMXSequenceComponent and press Play. SequenceUpdate writes into
+-- the sequence's frame buffer; the sequence system pushes that buffer to the
+-- fixtures after every update.
 
-ScriptContext.registerVariable("chase_speed", 2.0) -- fixtures per second
+local Chase = ScriptBehavior:extend("Chase")
 
-local chase = {}
+function Chase:init()
+	self.chase_speed = 2.0 -- fixtures per second
+end
 
-function chase.start(sequence)
+function Chase:SequenceStart(sequence)
 	sequence:fillGroup(0, 0, 0)
 end
 
-function chase.update(sequence, timeSinceStart, deltaSeconds)
+function Chase:SequenceUpdate(sequence, timeSinceStart, deltaSeconds)
 	local group = sequence:getGroup()
 	if group == nil then
 		return
@@ -22,14 +25,14 @@ function chase.update(sequence, timeSinceStart, deltaSeconds)
 		return
 	end
 
-	local head = math.floor(timeSinceStart * chase_speed) % count
+	local head = math.floor(timeSinceStart * self.chase_speed) % count
 	sequence:fillGroup(0, 0, 0)
 	sequence:setFixtureColor(group:getFixtureAtIndex(head).componentId, 255, 40, 0)
 end
 
--- Optional: Stop leaves the last frame unless the handler writes another
-function chase.stop(sequence)
+-- Optional: Stop leaves the last frame unless the method writes another
+function Chase:SequenceStop(sequence)
 	sequence:fillGroup(0, 0, 0)
 end
 
-ScriptContext.registerSequence("chase", chase)
+return Chase

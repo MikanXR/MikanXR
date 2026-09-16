@@ -25,7 +25,7 @@ Dependency direction below is derived from each target's `target_link_libraries`
 All are `SHARED` DLLs with a `Public/` (installed headers) and `Private/` (implementation) split, unless noted. Each exports through a per-DLL macro pair (`MIKAN_<NAME>_EXPORTS` define, `MIKAN_<NAME>_FUNC(...)` decorated functions).
 
 ### MikanUtility
-Leaf utility DLL (string/path helpers, etc.). No third-party or in-repo dependencies. Linked by nearly everything: `MikanCoreApp`, `MikanClientCore`, `MikanClientAPI`, `MikanRenderer`, `MikanWindow`, `MikanGUI`, every plugin, `MikanEditor`, `MikanClientCodeGen`, both test executables.
+Leaf utility DLL (string/path helpers, a polled directory watcher, process launching, etc.). No third-party or in-repo dependencies. Linked by nearly everything: `MikanCoreApp`, `MikanClientCore`, `MikanClientAPI`, `MikanRenderer`, `MikanWindow`, `MikanGUI`, every plugin, `MikanEditor`, `MikanClientCodeGen`, both test executables.
 
 ### MikanSerialization
 Wire and config (de)serialization layer. Wraps Refureku (runtime reflection, `${RFK_LIBRARIES}`) and uses nlohmann json headers. Runs `RefurekuGenerator` as a pre-build step (`MikanSerializationReflection` target). Built with `CXX_VISIBILITY_PRESET hidden`. `Serialization::String` is deliberately a `const char*`-only type because this DLL crosses the DLL/EXE boundary into client applications built with a different CRT; see [wire-protocol.md](./wire-protocol.md). Linked by `MikanClientCore`, `MikanClientAPI`, `MikanMath`, `MikanEditor`, `MikanClientCodeGen`, tests.

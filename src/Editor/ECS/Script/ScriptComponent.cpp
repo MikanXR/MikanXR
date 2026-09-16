@@ -191,8 +191,27 @@ void ScriptComponent::getTriggerNames(std::vector<std::string>& outNames) const
 
 	if (scriptContext)
 	{
-		scriptContext->getTriggerNamesForScript(getComponentId(), outNames);
+		scriptContext->getBehaviorTriggerNames(getComponentId(), outNames);
 	}
+}
+
+void ScriptComponent::getHttpTriggerNames(std::vector<std::string>& outNames) const
+{
+	ScriptObjectSystemPtr scriptSystem= getOwnerScriptSystem();
+	CommonScriptContextPtr scriptContext= scriptSystem ? scriptSystem->getScriptContext() : nullptr;
+
+	if (scriptContext)
+	{
+		scriptContext->getBehaviorHttpTriggerNames(getComponentId(), outNames);
+	}
+}
+
+bool ScriptComponent::hasBehaviorMethod(const std::string& methodName) const
+{
+	ScriptObjectSystemPtr scriptSystem= getOwnerScriptSystem();
+	CommonScriptContextPtr scriptContext= scriptSystem ? scriptSystem->getScriptContext() : nullptr;
+
+	return scriptContext && scriptContext->behaviorHasMethod(getComponentId(), methodName);
 }
 
 bool ScriptComponent::invokeTrigger(const std::string& triggerName)
@@ -200,7 +219,7 @@ bool ScriptComponent::invokeTrigger(const std::string& triggerName)
 	ScriptObjectSystemPtr scriptSystem= getOwnerScriptSystem();
 	CommonScriptContextPtr scriptContext= scriptSystem ? scriptSystem->getScriptContext() : nullptr;
 
-	return scriptContext && scriptContext->invokeScriptTrigger(triggerName);
+	return scriptContext && scriptContext->invokeScriptTrigger(triggerName, {}, getComponentId());
 }
 
 void ScriptComponent::getScriptVariableNames(std::vector<std::string>& outNames) const
@@ -240,10 +259,10 @@ void ScriptComponent::pushScriptVariablesToContext()
 	if (!scriptContext)
 		return;
 
-	// setVariableValue ignores names this script's chunk did not register
+	// setVariableValue ignores names this script's behavior did not declare
 	for (const auto& [name, entry] : getScriptDefinition()->getScriptVariables().getAll())
 	{
-		scriptContext->setVariableValue(name, entry.value);
+		scriptContext->setVariableValue(getComponentId(), name, entry.value);
 	}
 }
 

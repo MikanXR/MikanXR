@@ -44,9 +44,9 @@ enum class eDMXSequenceContentSource : int
 extern const std::string* k_dmxSequenceContentSourceStrings;
 
 // -- DMXSequenceDefinition -----
-// A Lua-driven animation of one fixture group: the named handler, registered
-// by a project script through ScriptContext.registerSequence, is called every
-// frame while the sequence plays and writes into the sequence's frame buffer.
+// A script-driven animation of one fixture group: the SequenceUpdate method
+// of the named script component's behavior is called every frame while the
+// sequence plays and writes into the sequence's frame buffer.
 class DMXSequenceDefinition : public MikanComponentDefinition
 {
 public:
@@ -64,9 +64,10 @@ public:
 	inline MikanDMXFixtureGroupID getGroupId() const { return m_groupId; }
 	void setGroupId(MikanDMXFixtureGroupID groupId);
 
-	static const std::string k_sequenceNamePropertyId;
-	inline const std::string& getSequenceName() const { return m_sequenceName; }
-	void setSequenceName(const std::string& sequenceName);
+	// The script component whose behavior drives the sequence, INVALID_MIKAN_ID for none
+	static const std::string k_scriptComponentIdPropertyId;
+	inline MikanScriptID getScriptComponentId() const { return m_scriptComponentId; }
+	void setScriptComponentId(MikanScriptID scriptComponentId);
 
 	// Zero or less runs until stopped
 	static const std::string k_durationSecondsPropertyId;
@@ -145,7 +146,7 @@ public:
 
 private:
 	MikanDMXFixtureGroupID m_groupId= INVALID_MIKAN_ID;
-	std::string m_sequenceName;
+	MikanScriptID m_scriptComponentId= INVALID_MIKAN_ID;
 	float m_durationSeconds= 10.f;
 	bool m_bLoop= true;
 
@@ -256,12 +257,13 @@ public:
 
 private:
 	CommonScriptContextPtr getScriptContext() const;
-	// Whether this sequence names a handler that is currently registered.
-	// A rasterized source may name none, which is not an error.
+	// Whether this sequence names a loaded script whose behavior has a
+	// SequenceUpdate method. A rasterized source may name none, which is not
+	// an error.
 	bool hasScriptHandler() const;
-	// Call one handler field with (sequence[, time, delta]); false on a Lua
+	// Call one behavior method with (sequence[, time, delta]); false on a Lua
 	// error, which is logged with the sequence and script names
-	bool callHandler(const char* field, bool bWithTime, float deltaSeconds);
+	bool callHandler(const char* methodName, bool bWithTime, float deltaSeconds);
 	void applyFrameBuffer();
 
 	// The pixel grid a rasterized source draws onto: the group's first grid

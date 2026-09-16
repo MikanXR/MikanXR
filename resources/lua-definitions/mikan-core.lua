@@ -123,85 +123,80 @@ function Quatf:length() end
 function Quatf:normalize() end
 
 ------------------------------------------------------------------------
--- ScriptContext — script lifecycle and messaging helpers
+-- ScriptBehavior : the class every project script defines
+------------------------------------------------------------------------
+
+--- The base class of the one class each project script file defines. All
+--- project scripts share one Lua state, but a script component holds its own
+--- instance of its file's class, so two components can use the same file with
+--- different parameters. The file's class is the value the chunk returns, or
+--- else the last class created while the chunk ran.
+---
+--- Parameters: every field `init` assigns whose name does not start with `_`
+--- and whose value is a boolean, integer (`4`), number (`4.0`), string, Vec3f,
+--- or ComponentRef becomes an editor-editable, persisted parameter, shown in
+--- declaration order. A value stored in the project for that component wins
+--- over the default; otherwise the default is adopted and stored. Every edit in
+--- the script panel rewrites the field on the instance, so read parameters off
+--- `self` inside method bodies rather than caching them in `init`. Fields of
+--- other types stay private to the script.
+---
+--- Methods by naming convention:
+--- - `Trigger_<Name>(self, args)`: a trigger called `<Name>`, shown as a
+---   button in the script panel and reachable through the client API and the
+---   automation server. `args` is a table of string arguments, empty when the
+---   caller supplied none.
+--- - `HttpTrigger_<Name>(self, args)`: bound to an HTTP route in the HTTP
+---   Triggers panel; `args` carries the request's query string, so
+---   `?user=bob&tier=3` arrives as `{ user = "bob", tier = "3" }`.
+--- - `OnMessage(self, message)`: receives a client script message; return
+---   true when handled to stop it reaching later scripts.
+--- - `SequenceStart(self, sequence)`, `SequenceUpdate(self, sequence,
+---   timeSinceStart, deltaSeconds)`, `SequenceStop(self, sequence)`: drive a
+---   DMXSequenceComponent that picked this script component. SequenceUpdate
+---   is what makes the component pickable; the other two are optional.
+---
+--- An error inside a method is reported and leaves the project scripts
+--- running. An error while the file loads or inside `init` unloads them all.
+---@class ScriptBehavior
+---@field super ScriptBehavior The parent class
+ScriptBehavior = {}
+
+--- Create a subclass. `ScriptBehavior()` is shorthand for
+--- `ScriptBehavior:extend()`; an unnamed class takes its file's name.
+---@param name string|nil
+---@return ScriptBehavior
+function ScriptBehavior:extend(name) end
+
+--- Override to declare parameters as `self.<name> = <default>`. Runs once per
+--- script component when the scripts load. Call `MyClass.super.init(self)` to
+--- run a parent class's init.
+function ScriptBehavior:init() end
+
+--- True when this instance's class is cls or derives from it.
+---@param cls ScriptBehavior
+---@return boolean
+function ScriptBehavior:is(cls) end
+
+--- A parameter default that names a scene component of the given class (a
+--- `k_componentClassName` string such as "StageComponent"). The script panel
+--- shows it as a dropdown of that class's live components plus none. After
+--- init the field holds the component handle typed by its class, or nil when
+--- nothing is selected or the selected object no longer exists. Mikan rewrites
+--- the field on every panel edit and on object creation and destruction, so
+--- nil-check it inside method bodies.
+---@param componentClassName string
+---@return ComponentRef
+function ComponentRef(componentClassName) end
+
+---@class ComponentRef
+
+------------------------------------------------------------------------
+-- ScriptContext : messaging helpers and enums
 ------------------------------------------------------------------------
 
 ---@class ScriptContext
---- All project scripts share one Lua state. `registerTrigger`, `registerMessageHandler`,
---- `registerHttpTrigger`, and `registerVariable` attribute the registration to whichever
---- script file is currently being loaded.
 ScriptContext = {}
-
---- Register a global Lua variable as an editor-editable, persisted script parameter.
---- The variable's type is taken from the default: boolean, integer (a Lua integer
---- such as `4`), number (a Lua float such as `4.0`), string, or Vec3f. A value
---- stored in the project for this script wins over the default; otherwise the
---- default is adopted and stored. After the call the global `name` holds the
---- effective value, and every edit in the script panel rewrites that global, so
---- read it inside trigger bodies rather than caching it at chunk scope. A name
---- already registered by any script is rejected.
----@param name string Name of the global variable to register.
----@param defaultValue boolean|integer|number|string|Vec3f
----@return boolean registered
-function ScriptContext.registerVariable(name, defaultValue) end
-
---- Register a global Lua variable that references one scene component of the
---- given class (a `k_componentClassName` string such as "StageComponent"). The
---- script panel shows it as a dropdown of that class's live components plus
---- none. The global holds the component handle typed by its class, or nil when
---- nothing is selected or the selected object no longer exists. Mikan rewrites
---- the global on every panel edit and on object creation and destruction, so
---- read it inside trigger bodies and nil-check it. A stored selection in the
---- project wins; otherwise none is adopted. An unknown class name or a name
---- already registered by any script is rejected.
----@param name string Name of the global variable to register.
----@param componentClassName string Component class the variable may reference.
----@return boolean registered
-function ScriptContext.registerComponent(name, componentClassName) end
-
---- A DMX sequence handler. Only `update` is required. Each callback receives
---- the DMXSequenceComponent that is playing; `update` also receives the time
---- since play started (seconds, wrapped when the sequence loops) and the frame
---- delta. Write into the sequence's frame buffer (setFixtureColor, setPixel,
---- setFixtureChannels, fillGroup); Mikan pushes it to the fixtures after the
---- callback returns.
----@class DMXSequenceHandler
----@field start fun(sequence: DMXSequenceComponent)|nil
----@field update fun(sequence: DMXSequenceComponent, timeSinceStart: number, deltaSeconds: number)
----@field stop fun(sequence: DMXSequenceComponent)|nil
-
---- Register a sequence handler under a name a DMXSequenceComponent can pick.
---- A Lua error inside a callback stops that sequence and logs the error; it
---- does not unload the project scripts. A name already registered by any
---- script, or a table without an update function, is rejected.
----@param name string
----@param handler DMXSequenceHandler
----@return boolean registered
-function ScriptContext.registerSequence(name, handler) end
-
---- Register a global Lua function as a trigger.
---- Triggers are called by Mikan in response to UI Button Events, HTTP routes,
---- the client API's InvokeScriptTrigger request, and the automation server.
---- The function is always called with one table of string arguments, empty
---- when the caller supplied none; a function declared with no parameters
---- simply ignores it.
----@param functionName string Name of the global function to register.
-function ScriptContext.registerTrigger(functionName) end
-
---- Register a global Lua function as a message handler.
---- The handler receives a single string argument and should return true if handled.
----@param functionName string Name of the global function to register.
-function ScriptContext.registerMessageHandler(functionName) end
-
---- Register a global Lua function as a http trigger, served at "/trigger/<routeName>".
---- The request's query string arrives as the trigger's argument table, so
---- "?user=bob&tier=3" reaches the function as { user = "bob", tier = "3" }.
---- Values are always strings. The function must also be registered with
---- registerTrigger, which is what makes it callable.
----@param routeName string HTTP route to register the trigger for.
----@param functionName string Name of the global function to register.
-function ScriptContext.registerHttpTrigger(routeName, functionName) end
-
 
 --- Broadcast a string message to all registered message handlers in all contexts.
 ---@param message string

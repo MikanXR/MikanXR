@@ -224,8 +224,8 @@ enum ENUM(Serialization::CodeGenModule("MikanLightTypes")) MikanDMXScrollDirecti
 	MikanDMXScrollDirection_DOWN ENUMVALUE_STRING("Down"),
 };
 
-/// An animation of one fixture group, driven either by a Lua handler or by one
-/// of the editor's rasterized content sources. playback_state is 0 stopped,
+/// An animation of one fixture group, driven either by a script component's
+/// behavior or by one of the editor's rasterized content sources. playback_state is 0 stopped,
 /// 1 playing, 2 paused.
 struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanDMXSequenceComponentValues
 	: public MikanComponentValues
@@ -235,8 +235,8 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanDM
 
 	FIELD() MikanDMXFixtureGroupID group_id= INVALID_MIKAN_ID;
 
-	/// The handler a project script registered through ScriptContext.registerSequence
-	FIELD() Serialization::String sequence_name;
+	/// The script component whose behavior implements SequenceUpdate, or INVALID_MIKAN_ID
+	FIELD() MikanScriptID script_component_id= INVALID_MIKAN_ID;
 
 	/// Zero or less runs until stopped
 	FIELD() float duration_seconds= 10.f;

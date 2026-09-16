@@ -25,6 +25,11 @@ GuiDataSource_OptionalComponentComboBox::GuiDataSource_OptionalComponentComboBox
 {
 }
 
+void GuiDataSource_OptionalComponentComboBox::setFilter(GuiDataSource_ComboBox::ComponentFilter filter)
+{
+	m_components.setFilter(filter);
+}
+
 void GuiDataSource_OptionalComponentComboBox::refreshEntries()
 {
 	m_components.refreshEntries();
@@ -152,7 +157,19 @@ void GuiPanel_ScriptComponent::onGui()
 		}
 	}
 
-	// Script variables as widgets, labeled by their Lua global name
+	// HTTP triggers are fired through routes, so they are listed, not buttons
+	std::vector<std::string> httpTriggerNames;
+	component->getHttpTriggerNames(httpTriggerNames);
+	if (!httpTriggerNames.empty())
+	{
+		ImGui::TextUnformatted(locText("componentPanel.scriptHttpTriggers"));
+		for (const std::string& httpTriggerName : httpTriggerNames)
+		{
+			ImGui::BulletText("%s", httpTriggerName.c_str());
+		}
+	}
+
+	// Script parameters as widgets, labeled by their field name
 	std::vector<std::string> variableNames;
 	component->getScriptVariableNames(variableNames);
 	if (!variableNames.empty())

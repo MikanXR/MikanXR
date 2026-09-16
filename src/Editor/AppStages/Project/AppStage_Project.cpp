@@ -35,6 +35,7 @@
 #include "MkScene.h"
 #include "MkStateModifiers.h"
 #include "MkStateStack.h"
+#include "ModalMessageBox/ModalDialog_ScriptErrors.h"
 #include "ProjectAssetCatalog.h"
 #include "ProjectConfig.h"
 #include "ProjectManager.h"
@@ -59,6 +60,7 @@
 #include "QuadShapeSystem.h"
 #include "ShapeComponent.h"
 #include "RGBSpotLightSystem.h"
+#include "ScriptObjectSystem.h"
 #include "RGBPixelGridSystem.h"
 #include "SceneComponent.h"
 #include "SceneObjectSystem.h"
@@ -119,6 +121,7 @@ void AppStage_Project::enter()
 	m_modelShapeSystem= objectSystemManager->getSystemOfType<ModelShapeSystem>();
 	m_pixelGridLightSystem= objectSystemManager->getSystemOfType<RGBPixelGridSystem>();
 	m_spotLightSystem= objectSystemManager->getSystemOfType<RGBSpotLightSystem>();
+	m_scriptObjectSystem= objectSystemManager->getSystemOfType<ScriptObjectSystem>();
 
 	// Stage view collision set
 
@@ -182,10 +185,31 @@ void AppStage_Project::enter()
 	}
 
 	setViewMode(eProjectViewMode::scene);
+
+	// The scripts loaded with the project, before this stage existed, so any
+	// load error from then is surfaced now
+	if (ScriptObjectSystemPtr scriptSystem= m_scriptObjectSystem.lock())
+	{
+		scriptSystem->OnScriptError+= MakeDelegate(this, &AppStage_Project::onScriptError);
+		scriptSystem->OnScriptsReloaded+= MakeDelegate(this, &AppStage_Project::onScriptsReloaded);
+
+		for (const ScriptError& error : scriptSystem->getLastLoadErrors())
+		{
+			onScriptError(error);
+		}
+	}
 }
 
 void AppStage_Project::exit()
 {
+	if (ScriptObjectSystemPtr scriptSystem= m_scriptObjectSystem.lock())
+	{
+		scriptSystem->OnScriptError-= MakeDelegate(this, &AppStage_Project::onScriptError);
+		scriptSystem->OnScriptsReloaded-= MakeDelegate(this, &AppStage_Project::onScriptsReloaded);
+	}
+	// AppStage::exit pops the modal stack, which deletes the dialog
+	m_scriptErrorDialog= nullptr;
+
 	// Save where the camera was left before the project goes away, along with
 	// any other editor setting still waiting out the autosave cooldown
 	flushCameraState();
@@ -213,6 +237,34 @@ void AppStage_Project::exit()
 	// GuiPanels are disposed automatically by AppStage::exit()
 	AppStage::exit();
 }
+
+void AppStage_Project::onScriptError(const ScriptError& error)
+{
+	if (m_scriptErrorDialog != nullptr && getCurrentModalDialog() == m_scriptErrorDialog)
+	{
+		m_scriptErrorDialog->addError(error);
+		return;
+	}
+
+	// Another modal on top would hide it, so wait for the stack to clear
+	if (getCurrentModalDialog() != nullptr)
+		return;
+
+	m_scriptErrorDialog= ModalDialog_ScriptErrors::show(this, error, [this]() { onScriptErrorDialogDismissed(); });
+}
+
+void AppStage_Project::onScriptsReloaded(bool bSuccess)
+{
+	// The load errors it listed are gone, so the dialog goes with them
+	if (bSuccess && m_scriptErrorDialog != nullptr && getCurrentModalDialog() == m_scriptErrorDialog
+		&& m_scriptErrorDialog->holdsOnlyLoadErrors())
+	{
+		popModalDialog();
+		m_scriptErrorDialog= nullptr;
+	}
+}
+
+void AppStage_Project::onScriptErrorDialogDismissed() { m_scriptErrorDialog= nullptr; }
 
 void AppStage_Project::pause() { AppStage::pause(); }
 
