@@ -798,6 +798,13 @@ function(copy_mikan_runtime_deps mikan_target)
   add_custom_command(
     TARGET ${mikan_target} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${OpenCV_DIR}/x64/vc16/bin/opencv_videoio_ffmpeg4100_64.dll $<TARGET_FILE_DIR:${mikan_target}>)
+  # The Media Foundation videoio plugin is what writes H.264; opencv_world only carries the loader
+  add_custom_command(
+    TARGET ${mikan_target} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${OpenCV_DIR}/x64/vc16/bin/opencv_videoio_msmf4100_64.dll $<TARGET_FILE_DIR:${mikan_target}>)
+  add_custom_command(
+    TARGET ${mikan_target} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${OpenCV_DIR}/x64/vc16/bin/opencv_videoio_msmf4100_64d.dll $<TARGET_FILE_DIR:${mikan_target}>)
   if(MIKAN_WITH_GSTREAMER)
     add_custom_command(
       TARGET ${mikan_target} POST_BUILD
@@ -891,6 +898,12 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
       CONFIGURATIONS Release RelWithDebInfo MinSizeRel)
   install(FILES "${OpenCV_DIR}/x64/vc16/bin/opencv_videoio_ffmpeg4100_64.dll"
       DESTINATION ${MIKAN_ARCH_INSTALL_PATH})
+  install(FILES "${OpenCV_DIR}/x64/vc16/bin/opencv_videoio_msmf4100_64d.dll"
+      DESTINATION ${MIKAN_ARCH_INSTALL_PATH}
+      CONFIGURATIONS Debug)
+  install(FILES "${OpenCV_DIR}/x64/vc16/bin/opencv_videoio_msmf4100_64.dll"
+      DESTINATION ${MIKAN_ARCH_INSTALL_PATH}
+      CONFIGURATIONS Release RelWithDebInfo MinSizeRel)
 
   install(FILES "${SDL2_DLL}"
       DESTINATION ${MIKAN_ARCH_INSTALL_PATH})

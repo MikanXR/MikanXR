@@ -59,3 +59,30 @@ private:
 	std::vector<PoseTrackFrame> m_frames;
 	bool m_bIsLoaded= false;
 };
+
+// Accumulates frames and writes the sidecar PoseTrack reads, with the same keys
+// the MikanARStreamer app writes. The transform goes out row-major, the reverse
+// of the reader's transpose. Not thread safe: one writer per recording, owned by
+// whichever thread appends.
+class PoseTrackWriter
+{
+public:
+	PoseTrackWriter(const std::string& sessionId, int imageWidth, int imageHeight);
+
+	// timeUs is relative to the first frame and equals the container's
+	// presentation time; captureTimestampUs is the recorder's own clock
+	void append(int64_t timeUs, int64_t captureTimestampUs, const glm::mat4& cameraToWorld, double fx, double fy,
+				double cx, double cy);
+	size_t getFrameCount() const { return m_frames.size(); }
+
+	configuru::Config toConfig() const;
+	// Writes to a sibling temporary file and renames it into place, so a reader
+	// never sees a partial track. Logs and returns false on failure.
+	bool writeToFile(const std::filesystem::path& path) const;
+
+private:
+	std::string m_sessionId;
+	int m_imageWidth;
+	int m_imageHeight;
+	std::vector<PoseTrackFrame> m_frames;
+};

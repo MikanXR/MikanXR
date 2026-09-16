@@ -31,6 +31,7 @@
 #include "PropertyNotificationGuardTests.h"
 #include "ScriptContextTests.h"
 #include "ScriptVariablePersistenceTests.h"
+#include "VideoRecordingTests.h"
 
 #include "Graphs/MaterialNodeGraph.h"
 #include "MaterialCompiler/GlslShaderWriter.h"
@@ -72,6 +73,7 @@ bool run_all_editor_unit_tests()
 	success&= run_property_notification_guard_tests();
 	success&= run_script_context_tests();
 	success&= run_script_variable_persistence_tests();
+	success&= run_video_recording_tests();
 	// Future: add more test modules here
 	return success;
 }

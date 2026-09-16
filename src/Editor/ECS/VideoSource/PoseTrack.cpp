@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <fstream>
+#include <system_error>
 #include <utility>
 
 bool PoseTrack::loadFromFile(const std::filesystem::path& path)
@@ -239,4 +241,102 @@ int64_t PoseTrack::getMedianFramePeriodUs() const
 	const size_t middle= periods.size() / 2;
 	std::nth_element(periods.begin(), periods.begin() + middle, periods.end());
 	return periods[middle];
+}
+
+// -- PoseTrackWriter -----
+PoseTrackWriter::PoseTrackWriter(const std::string& sessionId, int imageWidth, int imageHeight)
+	: m_sessionId(sessionId)
+	, m_imageWidth(imageWidth)
+	, m_imageHeight(imageHeight)
+{
+}
+
+void PoseTrackWriter::append(int64_t timeUs, int64_t captureTimestampUs, const glm::mat4& cameraToWorld, double fx,
+							 double fy, double cx, double cy)
+{
+	PoseTrackFrame frame;
+	frame.timeUs= timeUs;
+	frame.captureTimestampUs= captureTimestampUs;
+	frame.cameraToWorld= cameraToWorld;
+	frame.fx= fx;
+	frame.fy= fy;
+	frame.cx= cx;
+	frame.cy= cy;
+	m_frames.push_back(frame);
+}
+
+configuru::Config PoseTrackWriter::toConfig() const
+{
+	configuru::Config pt= configuru::Config::object();
+	pt["format"]= PoseTrack::k_formatName;
+	pt["version"]= static_cast<int64_t>(PoseTrack::k_supportedVersion);
+	pt["session_id"]= m_sessionId;
+	pt["image_width"]= static_cast<int64_t>(m_imageWidth);
+	pt["image_height"]= static_cast<int64_t>(m_imageHeight);
+	pt["first_capture_timestamp_us"]= static_cast<int64_t>(m_frames.empty() ? 0 : m_frames.front().captureTimestampUs);
+
+	configuru::Config frames= configuru::Config::array();
+	for (const PoseTrackFrame& frame : m_frames)
+	{
+		configuru::Config frameConfig= configuru::Config::object();
+		frameConfig["time_us"]= static_cast<int64_t>(frame.timeUs);
+		frameConfig["capture_timestamp_us"]= static_cast<int64_t>(frame.captureTimestampUs);
+
+		// Row-major: the first four values are the first row, so element [row][column]
+		// is glm's [column][row]
+		configuru::Config transform= configuru::Config::array();
+		for (int row= 0; row < 4; ++row)
+		{
+			for (int column= 0; column < 4; ++column)
+			{
+				transform.push_back(static_cast<double>(frame.cameraToWorld[column][row]));
+			}
+		}
+		frameConfig["transform"]= transform;
+		frameConfig["fx"]= frame.fx;
+		frameConfig["fy"]= frame.fy;
+		frameConfig["cx"]= frame.cx;
+		frameConfig["cy"]= frame.cy;
+		frames.push_back(frameConfig);
+	}
+	pt["frames"]= frames;
+
+	return pt;
+}
+
+bool PoseTrackWriter::writeToFile(const std::filesystem::path& path) const
+{
+	const std::filesystem::path tempPath= path.string() + ".tmp";
+
+	std::error_code ec;
+	std::filesystem::create_directories(path.parent_path(), ec);
+
+	{
+		std::ofstream file(tempPath, std::ios::binary | std::ios::trunc);
+		if (!file.is_open())
+		{
+			MIKAN_LOG_ERROR("PoseTrackWriter::writeToFile") << "Could not open " << tempPath;
+			return false;
+		}
+
+		file << configuru::dump_string(toConfig(), configuru::JSON);
+		file.close();
+		if (!file)
+		{
+			MIKAN_LOG_ERROR("PoseTrackWriter::writeToFile") << "Could not write " << tempPath;
+			std::filesystem::remove(tempPath, ec);
+			return false;
+		}
+	}
+
+	std::filesystem::rename(tempPath, path, ec);
+	if (ec)
+	{
+		MIKAN_LOG_ERROR("PoseTrackWriter::writeToFile")
+			<< "Could not move " << tempPath << " into place: " << ec.message();
+		std::filesystem::remove(tempPath, ec);
+		return false;
+	}
+
+	return true;
 }

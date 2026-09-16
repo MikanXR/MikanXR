@@ -36,6 +36,13 @@ public:
 	{
 		return Super::getTypedComponentByName(cameraName);
 	}
+	// The first camera whose definition names the video source, null when none does
+	inline CameraComponentPtr findCameraForVideoSource(MikanVideoSourceID videoSourceId) const
+	{
+		return Super::getTypedComponentByPredicate(
+			[videoSourceId](CameraComponentConstPtr camera)
+			{ return camera->getCameraDefinition()->getVideoSourceId() == videoSourceId; });
+	}
 
 	// -- Lua Binding ----
 	static void bindLuaFunctions(struct lua_State* L);
