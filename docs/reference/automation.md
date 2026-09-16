@@ -6,7 +6,7 @@ How to drive and inspect a running `Mikan.exe` over the automation server: a loo
 
 ## Enabling and port
 
-The server is off by default. The channel drives, inspects and scripts the editor, so any local process that reaches it owns the session, and a shipped editor has no reason to be listening. It binds 127.0.0.1 only. The default port is 21120 (clear of the websocket 8080, HTTP 8090, and Lua debugger 21110 ports).
+The server is off by default. The channel drives, inspects and scripts the editor, so any local process that reaches it owns the session, and a shipped editor has no reason to be listening. It binds 127.0.0.1 only. The default port is 21120 (clear of the websocket 8080, HTTP 8090, and Lua debugger 21110 ports). Of those, only the HTTP server can be opened to the LAN, by a setting in the HTTP Triggers panel, for the phone's capture upload.
 
 - `automationServerEnabled` in `AppSettingsConfig` turns it on, and the Automation section of the project settings panel is the switch for it. Toggling there opens or closes the listener immediately, with no restart.
 

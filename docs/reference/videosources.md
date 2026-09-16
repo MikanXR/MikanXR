@@ -118,6 +118,24 @@ The component matches each decoded frame to its pose by nearest `time_us` within
 
 Without a track the source offers no pose at all, and `CameraComponent` and the align stages treat it as a fixed camera.
 
+### Uploading takes from the phone
+
+The MikanARStreamer app's Captures panel sends a take and its sidecar to the editor over the HTTP message server, one file per request:
+
+```
+POST /assets/upload?folder=<folderId>&name=<fileName>    body: the raw file bytes
+```
+
+`AssetUploadRequestHandler` (`src/Editor/Server/AssetUploadRequestHandler.h`) owns the route. A movie lands in `movies`, a photo in `textures`, and a `.pose.json` goes to its media's folder, since both folders accept pose tracks. The file type is judged by the name's extension against the folder's asset factories, the same gate the Assets panel's Add button applies. A file of the same name is replaced in place rather than given the numeric suffix `ProjectAssetCatalog::importAsset` applies to a colliding import: the same name is the same take sent again, and a suffix would part a take from its sidecar. Replacing a take a `FileVideoSourceComponent` is playing fails with 409, since the reader holds the file open. The reply is `{"storedPath": "movies/take.mp4", "replaced": false}` on 200 and `{"error": "..."}` otherwise.
+
+The body is read on the connection thread and written to a hidden temporary file beside its destination, and only the validation and the final move into place cross the main thread, so an upload never stalls a frame. The server buffers a body in memory before the route sees it, so one upload transiently costs a few times its size in RAM, and a request has 300 s to arrive in full before the connection is dropped without a reply.
+
+The server binds loopback only until "Allow connections from other machines" is on in the HTTP Triggers panel (`httpServerAllowRemote` in the app settings), which is what a phone on the LAN needs. The first bind on all interfaces prompts Windows Firewall for `Mikan.exe`. A same-machine test needs no setting:
+
+```
+curl -X POST --data-binary @take.mp4 "http://127.0.0.1:8090/assets/upload?folder=movies&name=take.mp4"
+```
+
 ---
 
 ## Tracking pose association
