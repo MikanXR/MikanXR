@@ -43,6 +43,7 @@ public:
 	// Previously registered routes are preserved (dispose() only stops the listener, it
 	// doesn't clear the route table).
 	void restartHttpMessageServer();
+	inline class AssetUploadRequestHandler* getAssetUploadRequestHandler() const { return m_assetUploadRequestHandler; }
 	inline class CameraRequestHandler* getCameraRequestHandler() const { return m_cameraRequestHandler; }
 	inline class FunctionRequestHandler* getFunctionRequestHandler() const { return m_functionRequestHandler; }
 	inline class LightRequestHandler* getLightRequestHandler() const { return m_lightRequestHandler; }
@@ -94,6 +95,7 @@ private:
 	class IInterprocessMessageServer* m_messageServer;
 	class HttpInterprocessMessageServer* m_httpMessageServer;
 
+	class AssetUploadRequestHandler* m_assetUploadRequestHandler;
 	class CameraRequestHandler* m_cameraRequestHandler;
 	class FunctionRequestHandler* m_functionRequestHandler;
 	class LightRequestHandler* m_lightRequestHandler;

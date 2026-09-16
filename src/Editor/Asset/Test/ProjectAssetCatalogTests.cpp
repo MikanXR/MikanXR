@@ -2,6 +2,7 @@
 #include "unit_test.h"
 
 #include "AssetReference.h"
+#include "AssetUploadRequestHandler.h"
 #include "CompositorMaterialAssetReference.h"
 #include "PathUtils.h"
 #include "ProjectAssetCatalog.h"
@@ -33,7 +34,7 @@ struct CatalogTestProject
 		projectDir= root / "project";
 		externalDir= root / "external";
 
-		for (const char* folder : {"compositors", "models", "scripts", "compositor_materials/m", "textures"})
+		for (const char* folder : {"compositors", "models", "movies", "scripts", "compositor_materials/m", "textures"})
 		{
 			std::filesystem::create_directories(projectDir / folder);
 		}
@@ -217,6 +218,75 @@ bool project_asset_catalog_test_import_copies_into_folder()
 	// Unsupported types and read-only folders are refused
 	success&= !catalog.importAsset("textures", project.externalDir / "extra.txt", storedPath, error);
 	success&= !catalog.importAsset("fonts", project.externalDir / "extra.png", storedPath, error);
+
+	UNIT_TEST_COMPLETE()
+}
+
+bool project_asset_catalog_test_upload_replaces_in_place()
+{
+	UNIT_TEST_BEGIN("upload moves into the folder and replaces a file of the same name")
+
+	CatalogTestProject project;
+	ProjectAssetCatalog catalog;
+	catalog.refresh();
+
+	std::string storedPath;
+	std::string error;
+	std::error_code errorCode;
+	bool bReplaced= true;
+
+	// The destination resolves for a movie, its sidecar, and a photo's sidecar in textures
+	std::filesystem::path folderDir;
+	success&= catalog.resolveUploadDestination("movies", "take.mp4", folderDir, error);
+	success&= (folderDir == project.projectDir / "movies");
+	success&= catalog.resolveUploadDestination("movies", "take.pose.json", folderDir, error);
+	success&= catalog.resolveUploadDestination("textures", "photo.pose.json", folderDir, error);
+	// Not for a type the folder does not take, a material folder, or a bundled-only folder
+	success&= !catalog.resolveUploadDestination("movies", "notes.txt", folderDir, error) && !error.empty();
+	success&= !catalog.resolveUploadDestination("compositor_materials", "m.compmat", folderDir, error);
+	success&= !catalog.resolveUploadDestination("fonts", "a.ttf", folderDir, error);
+	success&= !catalog.resolveUploadDestination("nope", "take.mp4", folderDir, error);
+
+	// A new upload is moved into place, listed, and not a replacement
+	const std::filesystem::path temp1= project.projectDir / "movies" / ".mikan_upload_1";
+	CatalogTestProject::writeFile(temp1, "first");
+	success&= catalog.importUploadedAsset("movies", "take.mp4", temp1, storedPath, bReplaced, errorCode, error);
+	success&= (storedPath == "movies/take.mp4");
+	success&= !bReplaced;
+	success&= !std::filesystem::exists(temp1);
+	success&= hasEntry(catalog, "movies", "movies/take.mp4", "MovieAssetReference");
+
+	// The same name again replaces the file, with no numeric suffix
+	const std::filesystem::path temp2= project.projectDir / "movies" / ".mikan_upload_2";
+	CatalogTestProject::writeFile(temp2, "second");
+	success&= catalog.importUploadedAsset("movies", "take.mp4", temp2, storedPath, bReplaced, errorCode, error);
+	success&= (storedPath == "movies/take.mp4");
+	success&= bReplaced;
+	success&= !std::filesystem::exists(project.projectDir / "movies" / "take_2.mp4");
+	{
+		std::ifstream replaced(project.projectDir / "movies" / "take.mp4");
+		std::string content;
+		std::getline(replaced, content);
+		success&= (content == "second");
+	}
+
+	// A missing temp file and a refused type both fail without touching the folder
+	success&= !catalog.importUploadedAsset("movies", "gone.mp4", project.projectDir / "movies" / ".missing", storedPath,
+										   bReplaced, errorCode, error);
+	CatalogTestProject::writeFile(temp1, "text");
+	success&= !catalog.importUploadedAsset("movies", "notes.txt", temp1, storedPath, bReplaced, errorCode, error);
+	success&= !std::filesystem::exists(project.projectDir / "movies" / "notes.txt");
+
+	// The upload name guard
+	success&= AssetUploadRequestHandler::isSafeUploadFileName("take_20260915_161634.mp4");
+	success&= AssetUploadRequestHandler::isSafeUploadFileName("take.pose.json");
+	success&= !AssetUploadRequestHandler::isSafeUploadFileName("");
+	success&= !AssetUploadRequestHandler::isSafeUploadFileName("../take.mp4");
+	success&= !AssetUploadRequestHandler::isSafeUploadFileName("a/b.mp4");
+	success&= !AssetUploadRequestHandler::isSafeUploadFileName("a\\b.mp4");
+	success&= !AssetUploadRequestHandler::isSafeUploadFileName("c:take.mp4");
+	success&= !AssetUploadRequestHandler::isSafeUploadFileName(".hidden.mp4");
+	success&= !AssetUploadRequestHandler::isSafeUploadFileName(std::string(256, 'a'));
 
 	UNIT_TEST_COMPLETE()
 }
@@ -433,6 +503,7 @@ bool run_project_asset_catalog_tests()
 	UNIT_TEST_MODULE_BEGIN("project_asset_catalog")
 	UNIT_TEST_MODULE_CALL_TEST(project_asset_catalog_test_scan_lists_each_folder);
 	UNIT_TEST_MODULE_CALL_TEST(project_asset_catalog_test_import_copies_into_folder);
+	UNIT_TEST_MODULE_CALL_TEST(project_asset_catalog_test_upload_replaces_in_place);
 	UNIT_TEST_MODULE_CALL_TEST(project_asset_catalog_test_material_import_copies_folder);
 	UNIT_TEST_MODULE_CALL_TEST(project_asset_catalog_test_find_references);
 	UNIT_TEST_MODULE_CALL_TEST(project_asset_catalog_test_bundled_overlay);

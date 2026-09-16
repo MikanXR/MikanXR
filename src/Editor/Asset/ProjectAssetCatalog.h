@@ -149,6 +149,23 @@ public:
 	bool importAsset(const std::string& folderId, const std::filesystem::path& sourcePath, std::string& outStoredPath,
 					 std::string& outError);
 
+	// Whether an upload may land in the folder under the file name: a writable folder
+	// of single files (not materials) with a project loaded, and a factory of the
+	// folder accepting the name's extension. Returns the folder's directory, which is
+	// where the upload writes its temporary file so the final move stays on one volume.
+	// Errors are plain text for the HTTP reply and the log, not localized.
+	bool resolveUploadDestination(const std::string& folderId, const std::string& fileName,
+								  std::filesystem::path& outFolderDir, std::string& outError);
+
+	// Moves an uploaded file into the folder under the file name, replacing a file
+	// already there: an upload of the same name is the same take sent again, and the
+	// numeric suffix importAsset applies would part a take from its pose track sidecar.
+	// Rescans on success. A filesystem failure also reports its error code, so a
+	// caller can tell a destination held open by a reader from the rest.
+	bool importUploadedAsset(const std::string& folderId, const std::string& fileName,
+							 const std::filesystem::path& sourcePath, std::string& outStoredPath, bool& outReplaced,
+							 std::error_code& outErrorCode, std::string& outError);
+
 	// Every graph and material under the project or the bundled resources, and
 	// every project component, that names the stored path. Graphs are read as raw
 	// JSON, so no window is needed. When the target is a material, referrers inside
@@ -171,6 +188,9 @@ private:
 					   std::vector<ProjectAssetEntry>& outEntries) const;
 	bool importMaterial(const ProjectAssetFolderDesc& desc, const std::filesystem::path& sourcePath,
 						std::string& outStoredPath, std::string& outError);
+	// The folder's factory whose filter patterns accept the file, null when none does
+	static AssetReferenceFactoryPtr findFactoryForFile(const ProjectAssetFolderDesc& desc,
+													   const std::filesystem::path& path);
 
 	// The roots the reference scans walk: the project directory, then the bundled resources
 	static std::vector<std::filesystem::path> getReferrerScanRoots();

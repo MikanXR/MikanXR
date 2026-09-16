@@ -558,16 +558,7 @@ bool ProjectAssetCatalog::importAsset(const std::string& folderId, const std::fi
 		return false;
 	}
 
-	bool bSupported= false;
-	for (const AssetReferenceFactoryPtr& factory : desc->factories)
-	{
-		if (factory->matchesFilterPatterns(sourcePath))
-		{
-			bSupported= true;
-			break;
-		}
-	}
-	if (!bSupported)
+	if (!findFactoryForFile(*desc, sourcePath))
 	{
 		outError= locFormat("assets.importUnsupportedFileFmt", sourcePath.filename().string().c_str());
 		return false;
@@ -610,6 +601,106 @@ bool ProjectAssetCatalog::importAsset(const std::string& folderId, const std::fi
 
 	if (!std::filesystem::copy_file(absSource, destPath, ec) || ec)
 	{
+		outError= ec.message();
+		return false;
+	}
+
+	outStoredPath= PathUtils::makeStoredProjectPath(destPath);
+	refresh();
+
+	return true;
+}
+
+AssetReferenceFactoryPtr ProjectAssetCatalog::findFactoryForFile(const ProjectAssetFolderDesc& desc,
+																 const std::filesystem::path& path)
+{
+	for (const AssetReferenceFactoryPtr& factory : desc.factories)
+	{
+		if (factory->matchesFilterPatterns(path))
+		{
+			return factory;
+		}
+	}
+
+	return AssetReferenceFactoryPtr();
+}
+
+bool ProjectAssetCatalog::resolveUploadDestination(const std::string& folderId, const std::string& fileName,
+												   std::filesystem::path& outFolderDir, std::string& outError)
+{
+	outFolderDir.clear();
+	outError.clear();
+
+	const ProjectAssetFolderDesc* desc= findFolderDesc(folderId);
+	if (desc == nullptr)
+	{
+		outError= "Unknown asset folder: " + folderId;
+		return false;
+	}
+
+	if (desc->bReadOnly)
+	{
+		outError= "Asset folder is read-only: " + folderId;
+		return false;
+	}
+
+	if (desc->bMaterialFolder)
+	{
+		outError= "Asset folder holds materials, which are folders rather than single files: " + folderId;
+		return false;
+	}
+
+	const std::filesystem::path folderDir= getFolderDirectory(folderId);
+	if (folderDir.empty())
+	{
+		outError= "No project is loaded";
+		return false;
+	}
+
+	if (!findFactoryForFile(*desc, std::filesystem::path(fileName)))
+	{
+		outError= "File type is not accepted by asset folder " + folderId + ": " + fileName;
+		return false;
+	}
+
+	outFolderDir= folderDir;
+	return true;
+}
+
+bool ProjectAssetCatalog::importUploadedAsset(const std::string& folderId, const std::string& fileName,
+											  const std::filesystem::path& sourcePath, std::string& outStoredPath,
+											  bool& outReplaced, std::error_code& outErrorCode, std::string& outError)
+{
+	outStoredPath.clear();
+	outReplaced= false;
+	outErrorCode.clear();
+	outError.clear();
+
+	// Checked again here: the project may have changed since the caller resolved the destination
+	std::filesystem::path folderDir;
+	if (!resolveUploadDestination(folderId, fileName, folderDir, outError))
+	{
+		return false;
+	}
+
+	std::error_code ec;
+	if (!std::filesystem::is_regular_file(sourcePath, ec))
+	{
+		outError= "Uploaded file not found: " + sourcePath.string();
+		return false;
+	}
+
+	std::filesystem::create_directories(folderDir, ec);
+	const std::filesystem::path destPath= folderDir / fileName;
+	outReplaced= std::filesystem::exists(destPath, ec);
+
+	// MSVC's rename is MoveFileExW with replace-existing and copy-allowed, so it
+	// replaces the file already there and survives a move across volumes
+	ec.clear();
+	std::filesystem::rename(sourcePath, destPath, ec);
+	if (ec)
+	{
+		outErrorCode= ec;
 		outError= ec.message();
 		return false;
 	}

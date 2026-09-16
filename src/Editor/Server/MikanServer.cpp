@@ -1,6 +1,7 @@
 //-- includes -----
 #include "App.h"
 #include "AppSettingsConfig.h"
+#include "AssetUploadRequestHandler.h"
 #include "CameraRequestHandler.h"
 #include "FunctionRequestHandler.h"
 #include "LightRequestHandler.h"
@@ -50,6 +51,7 @@ MikanServer* MikanServer::m_instance= nullptr;
 MikanServer::MikanServer()
 	: m_messageServer(new WebsocketInterprocessMessageServer())
 	, m_httpMessageServer(new HttpInterprocessMessageServer())
+	, m_assetUploadRequestHandler(new AssetUploadRequestHandler(this))
 	, m_cameraRequestHandler(new CameraRequestHandler(this))
 	, m_functionRequestHandler(new FunctionRequestHandler(this))
 	, m_lightRequestHandler(new LightRequestHandler(this))
@@ -78,6 +80,7 @@ MikanServer::~MikanServer()
 	delete m_lightRequestHandler;
 	delete m_functionRequestHandler;
 	delete m_cameraRequestHandler;
+	delete m_assetUploadRequestHandler;
 	delete m_httpMessageServer;
 	delete m_messageServer;
 	m_instance= nullptr;
@@ -107,6 +110,12 @@ bool MikanServer::startup(MainWindow* mainWindow)
 			MIKAN_LOG_WARNING("MikanServer::startup()")
 				<< "Failed to initialize HTTP interprocess message server on port " << httpPort;
 		}
+	}
+
+	if (!m_assetUploadRequestHandler->startup(mainWindow))
+	{
+		MIKAN_LOG_ERROR("MikanServer::startup()") << "Failed to bind asset upload request handler";
+		return false;
 	}
 
 	if (!m_cameraRequestHandler->startup(mainWindow))
@@ -212,6 +221,7 @@ void MikanServer::shutdown()
 	m_messageServer->dispose();
 	m_httpMessageServer->dispose();
 
+	m_assetUploadRequestHandler->shutdown();
 	m_cameraRequestHandler->shutdown();
 	m_functionRequestHandler->shutdown();
 	m_lightRequestHandler->shutdown();
