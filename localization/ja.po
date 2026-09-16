@@ -1080,7 +1080,6 @@ msgstr "スクリプト変数"
 
 #. Section: componentPanel
 #, fuzzy
-#| msgid "<not registered>"
 msgctxt "componentPanel.sequenceHandlerMissing"
 msgid "<no SequenceUpdate>"
 msgstr "<未登録>"
