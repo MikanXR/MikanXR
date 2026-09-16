@@ -222,20 +222,39 @@ bool ProjectManager::newProject(const std::string& projectFilePath)
 		std::filesystem::create_directories(projectDir);
 	}
 
-	// The asset folders start empty: the bundled resources show through behind
-	// them as read-only entries, and a project shadows one by copying it in
-	for (const ProjectAssetFolderDesc& folderDesc : ProjectAssetCatalog::getFolderDescs())
-	{
-		if (!folderDesc.projectSubfolder.empty())
-		{
-			std::filesystem::create_directories(projectDir / folderDesc.projectSubfolder);
-		}
-	}
-
 	auto newProjectConfig= createEmptyProjectConfig();
 	newProjectConfig->save(projectFilePath);
 
 	return loadProject(projectFilePath);
+}
+
+// Every asset folder the catalog knows exists in a loaded project, empty when the
+// project has nothing of that kind: the bundled resources show through behind it
+// as read-only entries, and the Add button's file dialog opens in it, which a
+// missing folder silently prevents. A project saved before a folder kind existed
+// gains it here.
+static void ensureAssetFolders(const std::filesystem::path& projectDir)
+{
+	for (const ProjectAssetFolderDesc& folderDesc : ProjectAssetCatalog::getFolderDescs())
+	{
+		if (folderDesc.projectSubfolder.empty())
+			continue;
+
+		const std::filesystem::path folderPath= projectDir / folderDesc.projectSubfolder;
+		if (std::filesystem::is_directory(folderPath))
+			continue;
+
+		std::error_code errorCode;
+		if (std::filesystem::create_directories(folderPath, errorCode))
+		{
+			MIKAN_LOG_INFO("ProjectManager::loadProject") << "Created missing asset folder " << folderPath;
+		}
+		else
+		{
+			MIKAN_LOG_WARNING("ProjectManager::loadProject")
+				<< "Failed to create asset folder " << folderPath << ": " << errorCode.message();
+		}
+	}
 }
 
 // Writes a file once; a project that already has its own copy keeps it
@@ -321,6 +340,7 @@ bool ProjectManager::loadProject(const std::string& projectFilePath)
 	// A project saved before graph and material kinds had their own folders and
 	// extensions is moved onto the current layout before its file is read
 	LegacyContentMigration::migrateProject(projectDir, projectFilePath);
+	ensureAssetFolders(projectDir);
 
 	// create an empty project config
 	m_projectConfig= createEmptyProjectConfig();
