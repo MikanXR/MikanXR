@@ -25,7 +25,7 @@ Dependency direction below is derived from each target's `target_link_libraries`
 All are `SHARED` DLLs with a `Public/` (installed headers) and `Private/` (implementation) split, unless noted. Each exports through a per-DLL macro pair (`MIKAN_<NAME>_EXPORTS` define, `MIKAN_<NAME>_FUNC(...)` decorated functions).
 
 ### MikanUtility
-Leaf utility DLL (string/path helpers, a polled directory watcher, process launching, etc.). No third-party or in-repo dependencies. Linked by nearly everything: `MikanCoreApp`, `MikanClientCore`, `MikanClientAPI`, `MikanRenderer`, `MikanWindow`, `MikanGUI`, every plugin, `MikanEditor`, `MikanClientCodeGen`, both test executables.
+Leaf utility DLL (string/path helpers, a polled directory watcher, process launching, etc.). No third-party or in-repo dependencies, though on Windows it links two system libraries: `winhttp` behind `HttpDownloader` (streaming HTTPS GET to a file, with progress and cancel, used for the ML model downloads) and `bcrypt` behind `HashUtils::sha256File`. Linked by nearly everything: `MikanCoreApp`, `MikanClientCore`, `MikanClientAPI`, `MikanRenderer`, `MikanWindow`, `MikanGUI`, every plugin, `MikanEditor`, `MikanClientCodeGen`, both test executables.
 
 ### MikanSerialization
 Wire and config (de)serialization layer. Wraps Refureku (runtime reflection, `${RFK_LIBRARIES}`) and uses nlohmann json headers. Runs `RefurekuGenerator` as a pre-build step (`MikanSerializationReflection` target). Built with `CXX_VISIBILITY_PRESET hidden`. `Serialization::String` is deliberately a `const char*`-only type because this DLL crosses the DLL/EXE boundary into client applications built with a different CRT; see [wire-protocol.md](./wire-protocol.md). Linked by `MikanClientCore`, `MikanClientAPI`, `MikanMath`, `MikanEditor`, `MikanClientCodeGen`, tests.
@@ -120,6 +120,8 @@ Subdirectories (each is a source group, not a separate target):
 - `Localization`: `LocalizationManager` (JSON string tables under `resources/localization`, one file per language, generated from the gettext catalogs in `localization/`), the `LocText.h` call-site helpers, the remote fetcher that overlays community translations from the CDN, and `LocDebugUI` (the show-keys mode and the ID Stack Tool item every View menu carries). See [localization.md](./localization.md).
 
 - `Math`: editor-side math helpers (`CameraMath`, `MathTypeConversion` between glm/OpenCV/Mikan types).
+
+- `Models`: where the ML models come from. `ModelCatalog` is the table of what exists (required files, size, license, download source), `ModelRepository` answers where one is installed and whether it is complete, and `ModelDownloadTask` installs one on a worker thread. Nothing here knows about inference; the capture stages and `MikanCmd -fetchModels` are the callers. See [commands.md](./commands.md).
 
 - `NodeEditors` holds the node graph visual scripting: `Graphs`, `Nodes`, `Pins`, `Properties`, `DataSources`, `Windows`. See [scripting.md](./scripting.md).
 

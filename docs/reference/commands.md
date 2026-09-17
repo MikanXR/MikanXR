@@ -106,14 +106,13 @@ MikanClientTestCPP.exe -vk
 
 ## ML models and headless capture
 
-The scene lighting estimator and the depth proxy mesh capture run ONNX models out of a gitignored `models/` at the repo root. `InitialSetup_x64.bat` does not fetch them; they are produced once per developer machine by the Python tools in `tools/`, which need `diffusers` pinned to 0.34.0 under torch 2.4.1:
+The scene lighting estimator and the depth proxy mesh capture run ONNX models that no build ships: about 5GB together, past what a release can carry. The editor offers to download them the first time a capture needs one. The same download runs headlessly:
 
 ```
-python tools/fetch_moge2_onnx.py
-python tools/export_marigold_onnx.py
+MikanCmd.exe -fetchModels [-model=moge2|marigold]
 ```
 
-`fetch_moge2_onnx.py` downloads the authors' official MoGe-2 export into `models/moge2` (1.3GB, no local export step). `export_marigold_onnx.py` converts the Marigold checkpoints into `models/marigold` (~6.8GB). Details in [scene-lighting.md](./scene-lighting.md) and [depth-proxy-mesh.md](./depth-proxy-mesh.md).
+Models land in `%LOCALAPPDATA%\MikanXR\models\<name>`, and a copy under `models/<name>` in the working directory is used ahead of that, which is what a developer checkout gets by building one locally. Passing `-fetchModels` accepts the model licenses, which the editor presents in its prompt instead. The license text is saved beside the weights either way. `moge2` comes from Hugging Face, `marigold` from the releases of [MikanXR/MikanMarigoldOnnx](https://github.com/MikanXR/MikanMarigoldOnnx), which is also where the Marigold ONNX export is produced. Details in [scene-lighting.md](./scene-lighting.md) and [depth-proxy-mesh.md](./depth-proxy-mesh.md).
 
 Both capture pipelines have a headless entry point that runs the same C++ code the editor stages do, which is how they are validated against the Python references:
 
@@ -126,7 +125,7 @@ MikanCmd.exe -depthMesh -image=<path> -fov=<degrees> [-obj=<path>] [-stride=<n>]
 
 - `-depthMesh` prints the mesh statistics and writes the OBJ (plus the source frame as a sibling `.png` for the projected texture).
 
-- `-cpu` forces the CPU execution provider instead of DirectML. Both commands take `-models=<dir>` / `-mogeModels=<dir>` to override the default `models/marigold` and `models/moge2` paths.
+- `-cpu` forces the CPU execution provider instead of DirectML. Both commands take `-models=<dir>` / `-mogeModels=<dir>` to point at a model directory explicitly; an override is used exactly as given rather than searched past, and either command stops with a message naming `-fetchModels` when a model it needs is not installed.
 
 ---
 

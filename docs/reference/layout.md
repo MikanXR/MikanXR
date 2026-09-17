@@ -61,6 +61,7 @@ The editor/server application itself. All editor code compiles once into the `Mi
 - `Interprocess`: websocket/http message servers, shared-texture reader
 - `Server`: `MikanServer` and per-domain RPC request handlers (see [wire-protocol.md](./wire-protocol.md))
 - `Localization`, `Math`, `OpenCV`: support code
+- `Models`: the catalog, install locations and downloader for the ML capture models, which no build ships (see [commands.md](./commands.md))
 - `NodeEditors`, `Scripting`: node graph editors and Lua scripting (see [scripting.md](./scripting.md))
 - `Renderer`: editor viewport and compositor rendering (see [compositor.md](./compositor.md))
 

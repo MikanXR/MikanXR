@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 980,
-		"translatedCount": 980,
-		"reviewedCount": 980
+		"stringCount": 1006,
+		"translatedCount": 1006,
+		"reviewedCount": 1006
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -252,7 +252,8 @@
 		"meshGenerationFailed": "Mesh generation produced no usable geometry.",
 		"meshSummaryFmt": "Proxy mesh: %d vertices, %d triangles.",
 		"meshWriteFailedFmt": "Failed to write the mesh to '%s'.",
-		"modelLoadFailedFmt": "Could not load the MoGe-2 model from '%s'. Run tools/fetch_moge2_onnx.py to download it. See MikanCmd.log for details.",
+		"modelLoadFailedFmt": "Could not load the MoGe-2 model from '%s'. See MikanCmd.log for details.",
+		"modelNotInstalled": "The depth model is not installed, so the capture did not run.",
 		"noProjectLoaded": "No project is loaded, so there is nowhere to save the mesh.",
 		"noScaleCalibration": "No scale calibration",
 		"noScaleCalibrationExplanation": "Metric scale is the model's raw guess and can be off by a large factor. Place an ArUco marker of known size in view and redo to calibrate.",
@@ -406,6 +407,32 @@
 	"modals": {
 		"no": "No",
 		"yes": "Yes"
+	},
+	"modelDownload": {
+		"acceptLicenseFmt": "I accept the terms of the %s license",
+		"cancel": "Cancel",
+		"cancelled": "Download cancelled. Nothing was installed.",
+		"close": "Close",
+		"currentFileFmt": "%s  (%.2f / %.2f GB)",
+		"destinationFmt": "Installs to: %s",
+		"download": "Download",
+		"failed": "The download did not finish.",
+		"intro": "This capture needs models that are not installed yet. They are downloaded once and reused.",
+		"licenseFmt": "License: %s",
+		"marigoldDescription": "Diffuse shading for the scene lighting estimate.",
+		"marigoldName": "Marigold IID lighting",
+		"moge2Description": "Scene geometry and surface normals, used by both captures.",
+		"moge2Name": "MoGe-2 depth and normals",
+		"overallFmt": "%.2f of %.2f GB",
+		"phaseAssembling": "Assembling the downloaded parts...",
+		"phaseCheckingDisk": "Checking free disk space...",
+		"phaseDownloading": "Downloading...",
+		"phaseFetchingManifest": "Reading the release manifest...",
+		"phaseVerifying": "Verifying...",
+		"restrictionsNotice": "This license restricts how the model may be used. The full text is saved beside the model files.",
+		"sizeFmt": "Download size: %.1f GB",
+		"title": "Download Models",
+		"viewLicense": "View License"
 	},
 	"monoLensCalibration": {
 		"calibrationComplete": "Calibration complete!",
@@ -949,7 +976,8 @@
 		"keyLightDirectionFmt": "Key light direction: %s",
 		"lightingAppliedFmt": "Lighting applied to probe '%s'.",
 		"loadingModels": "Loading the lighting and geometry models...",
-		"modelLoadFailedFmt": "Could not load the models from '%s' and '%s'. Run tools/export_marigold_onnx.py and tools/fetch_moge2_onnx.py to produce them. See MikanCmd.log for details.",
+		"modelLoadFailedFmt": "Could not load the models from '%s' and '%s'. See MikanCmd.log for details.",
+		"modelNotInstalled": "The lighting and geometry models are not installed, so the capture did not run.",
 		"nearAmbientExplanation": "This scene is close to uniformly lit. The ambient term is usable, but the key light direction is not meaningful and should not be used to place a directional light.",
 		"negativeRadianceFmt": "Negative radiance over %.0f%% of the sphere. This is expected for directional scenes - order-2 spherical harmonics cannot represent a sharp light - and is clamped when the environment is used.",
 		"noCastShadowsNote": "Cast shadows are absent by construction - an environment probe has no visibility term. Judge the direction and color of the shading, not the shadows.",

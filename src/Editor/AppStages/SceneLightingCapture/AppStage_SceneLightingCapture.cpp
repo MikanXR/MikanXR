@@ -18,8 +18,12 @@
 #include "LightEnvironmentComponent.h"
 #include "LocText.h"
 #include "Logger.h"
+#include "ModalModelDownload/ModalDialog_ModelDownload.h"
+
 #include "MikanCamera.h"
 #include "MikanViewport.h"
+
+#include "ModelRepository.h"
 #include "PathUtils.h"
 #include "StringUtils.h"
 #include "TransformComponent.h"
@@ -31,11 +35,6 @@
 #include <filesystem>
 
 const char* AppStage_SceneLightingCapture::APP_STAGE_NAME= "SceneLightingCapture";
-
-// Model directories relative to the working directory, matching the convention
-// used elsewhere in the Mikan family.
-static const char* k_defaultModelSubdirectory= "models/marigold";
-static const char* k_defaultMoGeModelSubdirectory= "models/moge2";
 
 /// Where each step sits in the progress bar, weighted by how long it actually
 /// takes. The diffusion decomposition dominates and is the only step that
@@ -235,6 +234,20 @@ void AppStage_SceneLightingCapture::onGui()
 
 void AppStage_SceneLightingCapture::onCaptureEvent()
 {
+	// Neither model ships with the editor, and this capture needs both: the
+	// shading from Marigold and the normals from MoGe-2. The dialog re-runs
+	// this handler once whatever was missing has been downloaded.
+	if (ModalDialog_ModelDownload::requestModels(
+			this, {eModelId::marigold, eModelId::moge2}, [this]() { onCaptureEvent(); },
+			[this]()
+			{
+				m_capturePanel->setFailureReason(locText("sceneLightingCapture.modelNotInstalled"));
+				setMenuState(eSceneLightingCaptureMenuState::failedInference);
+			}))
+	{
+		return;
+	}
+
 	// Gather everything the worker needs here: the video buffers and the
 	// tracked camera pose belong to the UI thread.
 	m_monoDistortionView->readAndProcessVideoFrame();
@@ -383,9 +396,8 @@ void AppStage_SceneLightingCapture::runEstimateRequest(const EstimateRequest& re
 
 	if (estimator == nullptr)
 	{
-		const std::filesystem::path modelDirectory= std::filesystem::current_path() / k_defaultModelSubdirectory;
-		const std::filesystem::path mogeModelDirectory=
-			std::filesystem::current_path() / k_defaultMoGeModelSubdirectory;
+		const std::filesystem::path modelDirectory= ModelRepository::resolveDirectory(eModelId::marigold);
+		const std::filesystem::path mogeModelDirectory= ModelRepository::resolveDirectory(eModelId::moge2);
 
 		SceneLightingEstimator::Config config;
 		config.modelDirectory= modelDirectory.string();

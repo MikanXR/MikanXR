@@ -1358,9 +1358,15 @@ msgstr "メッシュを「%s」に書き込めませんでした。"
 
 #. Section: depthMeshCapture
 #, fuzzy, c-format
+#| msgid "Could not load the MoGe-2 model from '%s'. Run tools/fetch_moge2_onnx.py to download it. See MikanCmd.log for details."
 msgctxt "depthMeshCapture.modelLoadFailedFmt"
-msgid "Could not load the MoGe-2 model from '%s'. Run tools/fetch_moge2_onnx.py to download it. See MikanCmd.log for details."
+msgid "Could not load the MoGe-2 model from '%s'. See MikanCmd.log for details."
 msgstr "「%s」からMoGe-2モデルを読み込めませんでした。tools/fetch_moge2_onnx.pyを実行してダウンロードしてください。詳細はMikanCmd.logを参照してください。"
+
+#. Section: depthMeshCapture
+msgctxt "depthMeshCapture.modelNotInstalled"
+msgid "The depth model is not installed, so the capture did not run."
+msgstr ""
 
 #. Section: depthMeshCapture
 #, fuzzy
@@ -2142,6 +2148,132 @@ msgstr "いいえ"
 msgctxt "modals.yes"
 msgid "Yes"
 msgstr "はい"
+
+#. Section: modelDownload
+#, c-format
+msgctxt "modelDownload.acceptLicenseFmt"
+msgid "I accept the terms of the %s license"
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.cancel"
+msgid "Cancel"
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.cancelled"
+msgid "Download cancelled. Nothing was installed."
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.close"
+msgid "Close"
+msgstr ""
+
+#. Section: modelDownload
+#, c-format
+msgctxt "modelDownload.currentFileFmt"
+msgid "%s  (%.2f / %.2f GB)"
+msgstr ""
+
+#. Section: modelDownload
+#, c-format
+msgctxt "modelDownload.destinationFmt"
+msgid "Installs to: %s"
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.download"
+msgid "Download"
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.failed"
+msgid "The download did not finish."
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.intro"
+msgid "This capture needs models that are not installed yet. They are downloaded once and reused."
+msgstr ""
+
+#. Section: modelDownload
+#, c-format
+msgctxt "modelDownload.licenseFmt"
+msgid "License: %s"
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.marigoldDescription"
+msgid "Diffuse shading for the scene lighting estimate."
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.marigoldName"
+msgid "Marigold IID lighting"
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.moge2Description"
+msgid "Scene geometry and surface normals, used by both captures."
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.moge2Name"
+msgid "MoGe-2 depth and normals"
+msgstr ""
+
+#. Section: modelDownload
+#, c-format
+msgctxt "modelDownload.overallFmt"
+msgid "%.2f of %.2f GB"
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.phaseAssembling"
+msgid "Assembling the downloaded parts..."
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.phaseCheckingDisk"
+msgid "Checking free disk space..."
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.phaseDownloading"
+msgid "Downloading..."
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.phaseFetchingManifest"
+msgid "Reading the release manifest..."
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.phaseVerifying"
+msgid "Verifying..."
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.restrictionsNotice"
+msgid "This license restricts how the model may be used. The full text is saved beside the model files."
+msgstr ""
+
+#. Section: modelDownload
+#, c-format
+msgctxt "modelDownload.sizeFmt"
+msgid "Download size: %.1f GB"
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.title"
+msgid "Download Models"
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.viewLicense"
+msgid "View License"
+msgstr ""
 
 #. Section: monoLensCalibration
 #, fuzzy
@@ -5288,9 +5420,15 @@ msgstr "ライティングとジオメトリのモデルを読み込んでいま
 
 #. Section: sceneLightingCapture
 #, fuzzy, c-format
+#| msgid "Could not load the models from '%s' and '%s'. Run tools/export_marigold_onnx.py and tools/fetch_moge2_onnx.py to produce them. See MikanCmd.log for details."
 msgctxt "sceneLightingCapture.modelLoadFailedFmt"
-msgid "Could not load the models from '%s' and '%s'. Run tools/export_marigold_onnx.py and tools/fetch_moge2_onnx.py to produce them. See MikanCmd.log for details."
+msgid "Could not load the models from '%s' and '%s'. See MikanCmd.log for details."
 msgstr "「%s」と「%s」からモデルを読み込めませんでした。tools/export_marigold_onnx.pyとtools/fetch_moge2_onnx.pyを実行して生成してください。詳細はMikanCmd.logを参照してください。"
+
+#. Section: sceneLightingCapture
+msgctxt "sceneLightingCapture.modelNotInstalled"
+msgid "The lighting and geometry models are not installed, so the capture did not run."
+msgstr ""
 
 #. Section: sceneLightingCapture
 #, fuzzy

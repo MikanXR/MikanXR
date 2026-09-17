@@ -2,6 +2,9 @@
 #include "CrashHandler.h"
 #include "DepthMeshGenerator.h"
 #include "Logger.h"
+#include "ModelCatalog.h"
+#include "ModelDownloadTask.h"
+#include "ModelRepository.h"
 #include "PathUtils.h"
 #include "SceneLightingEstimator.h"
 #include "TypeRegistry.h"
@@ -23,6 +26,8 @@
 #include "LightEnvironmentPersistenceTests.h"
 #include "LocalizationTests.h"
 #include "MaterialCompilerTests.h"
+
+#include "ModelRepositoryTests.h"
 #include "ModelGeometryPayloadTests.h"
 #include "NodeGraphHistoryTests.h"
 #include "NodeGraphPropertyNameTests.h"
@@ -42,9 +47,13 @@
 
 #include <opencv2/opencv.hpp>
 
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <thread>
+#include <utility>
+#include <vector>
 
 namespace
 {
@@ -69,6 +78,8 @@ bool run_all_editor_unit_tests()
 	success&= run_localization_unit_tests();
 	success&= run_material_compiler_tests();
 	success&= run_model_geometry_payload_tests();
+
+	success&= run_model_repository_tests();
 	success&= run_node_graph_history_tests();
 	success&= run_node_graph_property_name_tests();
 	success&= run_node_link_direction_tests();
@@ -129,6 +140,10 @@ int CmdApp::exec(int argc, char** argv)
 	else if (hasCommandLineFlag("depthMesh"))
 	{
 		result= generateDepthMesh();
+	}
+	else if (hasCommandLineFlag("fetchModels"))
+	{
+		result= fetchModels();
 	}
 	else if (!getCommandLineStringArg("compileMaterial").empty())
 	{
@@ -192,12 +207,17 @@ void CmdApp::printUsage() const
 			"               [-stride=<n>] [-maxDepth=<metres>] [-cpu]\n"
 			"               Generate a camera-space depth proxy mesh from a single frame\n"
 			"               and write it as an OBJ.\n"
+			"  -fetchModels [-model=<name>]\n"
+			"               Download the ML capture models into the per-user model\n"
+			"               directory. Without -model every model is fetched. Passing\n"
+			"               the flag accepts the model licenses, which the editor's own\n"
+			"               download prompt presents instead. Models: %s\n"
 			"  -compileMaterial=<graph>\n"
 			"               Compile a material graph (.matgraph) and write its .vert, .frag\n"
 			"               and .compmat or .shapemat beside the graph file.\n"
 			"  -crash=<kind> [-crashReportDir=<dir>]\n"
 			"               Crash on purpose to exercise the crash reporter. Kinds: %s\n",
-			CrashHandler::getTestCrashKinds());
+			ModelCatalog::getEntryNameList().c_str(), CrashHandler::getTestCrashKinds());
 }
 
 int CmdApp::triggerCrash() const
@@ -212,6 +232,127 @@ int CmdApp::triggerCrash() const
 	}
 
 	return EXIT_SUCCESS;
+}
+
+/// Human readable byte count for console progress. Decimal GB, matching how
+/// the download sizes are quoted everywhere else in this feature.
+static std::string formatGigabytes(uint64_t bytes)
+{
+	char buffer[32];
+	snprintf(buffer, sizeof(buffer), "%.2f GB", (double)bytes / 1.0e9);
+
+	return std::string(buffer);
+}
+
+/// Reports any model a command needs but cannot find, and says how to get it.
+/// The editor asks and downloads; a console run is told what to type.
+static bool ensureModelsInstalled(const std::vector<std::pair<eModelId, std::string>>& models)
+{
+	bool bAllInstalled= true;
+
+	for (const std::pair<eModelId, std::string>& entry : models)
+	{
+		if (ModelRepository::isModelInstalled(entry.first, entry.second))
+			continue;
+
+		const ModelCatalogEntry* catalogEntry= ModelCatalog::findEntry(entry.first);
+		fprintf(stdout, "error: the %s model is not installed (looked in %s)\n", catalogEntry->name.c_str(),
+				ModelRepository::resolveDirectory(entry.first, entry.second).string().c_str());
+		bAllInstalled= false;
+	}
+
+	if (!bAllInstalled)
+		fprintf(stdout, "Run 'MikanCmd -fetchModels' to download the models.\n");
+
+	return bAllInstalled;
+}
+
+int CmdApp::fetchModels() const
+{
+	const std::string modelName= getCommandLineStringArg("model");
+
+	std::vector<eModelId> requested;
+	if (modelName.empty())
+	{
+		for (const ModelCatalogEntry& entry : ModelCatalog::getEntries())
+			requested.push_back(entry.id);
+	}
+	else
+	{
+		const ModelCatalogEntry* entry= ModelCatalog::findEntryByName(modelName);
+		if (entry == nullptr)
+		{
+			fprintf(stdout, "error: unknown model '%s'. Known models: %s\n", modelName.c_str(),
+					ModelCatalog::getEntryNameList().c_str());
+			return EXIT_FAILURE;
+		}
+		requested.push_back(entry->id);
+	}
+
+	std::vector<eModelId> toInstall;
+	for (const eModelId id : requested)
+	{
+		const ModelCatalogEntry* entry= ModelCatalog::findEntry(id);
+		if (ModelRepository::isModelInstalled(id))
+		{
+			fprintf(stdout, "%-9s already installed at %s\n", entry->name.c_str(),
+					ModelRepository::findInstalledDirectory(id).string().c_str());
+			continue;
+		}
+
+		fprintf(stdout, "%-9s %s, %s license -> %s\n", entry->name.c_str(),
+				formatGigabytes(entry->approxDownloadBytes).c_str(), entry->licenseName.c_str(),
+				ModelRepository::getDownloadDirectory(id).string().c_str());
+		toInstall.push_back(id);
+	}
+
+	if (toInstall.empty())
+	{
+		fprintf(stdout, "nothing to do\n");
+		return EXIT_SUCCESS;
+	}
+
+	// The editor presents these licenses in a prompt before it downloads
+	// anything. There is no prompt here, so say plainly what the flag means.
+	fprintf(stdout, "\nRunning -fetchModels accepts the licenses above. Their terms are saved beside the models.\n\n");
+
+	ModelDownloadTask task;
+	task.start(toInstall);
+
+	std::string lastLine;
+	for (;;)
+	{
+		const ModelDownloadTask::Status status= task.getStatus();
+
+		if (!status.currentFile.empty())
+		{
+			const std::string line= status.currentFile + "  " + formatGigabytes(status.currentFileReceivedBytes) + " / "
+									+ formatGigabytes(status.currentFileTotalBytes);
+			if (line != lastLine)
+			{
+				fprintf(stdout, "  %s\n", line.c_str());
+				lastLine= line;
+			}
+		}
+
+		if (status.bFinished)
+		{
+			if (status.bSucceeded)
+			{
+				fprintf(stdout, "\ninstalled %s\n", formatGigabytes(status.overallReceivedBytes).c_str());
+				return EXIT_SUCCESS;
+			}
+
+			if (status.bCancelled)
+				fprintf(stdout, "\ncancelled\n");
+			else
+				fprintf(stdout, "\nerror: %s\n", status.errorDetail.c_str());
+
+			return EXIT_FAILURE;
+		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	}
 }
 
 int CmdApp::compileMaterial() const
@@ -259,7 +400,10 @@ int CmdApp::compileMaterial() const
 int CmdApp::estimateLighting() const
 {
 	const std::string imagePath= getCommandLineStringArg("image");
-	const std::string modelDirectory= getCommandLineStringArg("models", "models/marigold");
+	// An explicit -models wins; otherwise the repository finds an installed
+	// copy in the working directory or the per-user location.
+	const std::string modelDirectory=
+		ModelRepository::resolveDirectory(eModelId::marigold, getCommandLineStringArg("models")).string();
 	const std::string dumpDirectory= getCommandLineStringArg("dump");
 
 	if (imagePath.empty())
@@ -276,9 +420,16 @@ int CmdApp::estimateLighting() const
 	}
 	fprintf(stdout, "image  : %s (%dx%d)\n", imagePath.c_str(), bgrImage.cols, bgrImage.rows);
 
+	if (!ensureModelsInstalled({{eModelId::marigold, getCommandLineStringArg("models")},
+								{eModelId::moge2, getCommandLineStringArg("mogeModels")}}))
+	{
+		return EXIT_FAILURE;
+	}
+
 	SceneLightingEstimator::Config config;
 	config.modelDirectory= modelDirectory;
-	config.mogeModelDirectory= getCommandLineStringArg("mogeModels", "models/moge2");
+	config.mogeModelDirectory=
+		ModelRepository::resolveDirectory(eModelId::moge2, getCommandLineStringArg("mogeModels")).string();
 	config.preferGpu= !hasCommandLineFlag("cpu");
 
 	// The denoise loop starts from random latents, so the seed changes the
@@ -395,7 +546,11 @@ int CmdApp::generateDepthMesh() const
 	fprintf(stdout, "image  : %s (%dx%d)\n", imagePath.c_str(), bgrImage.cols, bgrImage.rows);
 
 	MoGeInference::Config config;
-	config.modelDirectory= getCommandLineStringArg("mogeModels", "models/moge2");
+	if (!ensureModelsInstalled({{eModelId::moge2, getCommandLineStringArg("mogeModels")}}))
+		return EXIT_FAILURE;
+
+	config.modelDirectory=
+		ModelRepository::resolveDirectory(eModelId::moge2, getCommandLineStringArg("mogeModels")).string();
 	config.preferGpu= !hasCommandLineFlag("cpu");
 
 	MoGeInference inference;

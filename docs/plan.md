@@ -19,6 +19,8 @@ The living plan: what is in flight now, what comes next, and the open questions.
 - [ ] `ARKitVideoSourceComponent::notifyFrameBundleReceived` overwrites fx/fy/cx/cy but never recomputes `hfov`/`vfov`, so the camera frustum the editor draws for a phone comes from the default field of view. `createMonoIntrinsicsFromPinhole` (used by the file source) does both and the ARKit path should adopt it.
 - [ ] Delete `tools/export_marigold_onnx.py` and repoint scene-lighting.md at MikanXR/MikanMarigoldOnnx, which owns the export now. Once that repo has published its first release.
 - [ ] Python tooling split. Delete `tools/fetch_moge2_onnx.py` (the MoGe-2 fetch becomes a plain download, no `huggingface_hub`), move the torch-dependent scripts into their own subfolder, add a light `requirements.txt` and a pinned ML one, an install batch file at the repo root, and a table in commands.md saying which scripts need which.
+- [ ] Byte-range resume for a model download. A failed or cancelled transfer restarts the file it was on, which for the 1.75GB Marigold parts is a real cost; `HttpDownloader` would need a Range request and an append-mode `.part`. File-level resume already exists, so only the file in flight is lost.
+- [ ] Port `LocalizationRemoteFetcher` onto `HttpDownloader` so there is one WinHTTP implementation rather than two. The fetcher predates it and buffers whole responses into a string, which is fine for its kilobyte JSON but means the retry, redirect and truncation handling live in only one of the two.
 
 
 ## Later

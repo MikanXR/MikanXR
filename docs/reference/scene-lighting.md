@@ -380,7 +380,7 @@ Developer-only. Neither ships with Mikan nor is invoked at runtime.
 
 - `tools/compare_normal_sources.py`: runs the SH fit once per normal source with the shading held fixed, which is how any candidate normal model gets judged.
 
-- `tools/fetch_moge2_onnx.py`: downloads the official MoGe-2 ONNX export into `models/moge2`. There is no local export step for this model.
+- The MoGe-2 ONNX export needs no local export step: the editor downloads the authors' published file on first use, and `MikanCmd.exe -fetchModels` does the same headlessly.
 
 - `tools/moge2_onnx_pipeline.py`: MoGe-2 inference in ONNX Runtime + numpy only, no torch. **This is the executable specification for the C++ `MoGeInference`**: preprocessing, the forward pass, and the shift/scale recovery map 1:1. Validated against the PyTorch reference (depth within 0.04%, normals within 0.03°); the C++ port matches it per-vertex to 0.001% at p99.
 

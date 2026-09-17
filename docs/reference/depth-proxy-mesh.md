@@ -8,7 +8,7 @@ The model measurements that justify this design (silhouette alignment, FOV sensi
 
 ## The model
 
-One checkpoint: **MoGe-2 ViT-L with the normal head** (`Ruicheng/moge-2-vitl-normal`), run in-process through ONNX Runtime. MIT licensed, code and weights. Unlike Marigold there is no local export step - the authors publish an official ONNX export (`Ruicheng/moge-2-vitl-normal-onnx`, opset 14, single 1.3GB `model.onnx`), fetched by `tools/fetch_moge2_onnx.py` into `models/moge2/`.
+One checkpoint: **MoGe-2 ViT-L with the normal head** (`Ruicheng/moge-2-vitl-normal`), run in-process through ONNX Runtime. MIT licensed, code and weights. Unlike Marigold there is no local export step - the authors publish an official ONNX export (`Ruicheng/moge-2-vitl-normal-onnx`, opset 14, single 1.3GB `model.onnx`), downloaded on first use into `models/moge2/` (see [commands.md](./commands.md) for where that resolves to).
 
 The graph takes plain RGB in [0,1] at **native resolution** (ImageNet normalization is baked in) plus a scalar `num_tokens` (1200..3600), and returns:
 
@@ -63,7 +63,7 @@ Everything the worker needs is gathered on the UI thread before dispatch - the f
 
 **Cancel is immediate rather than between steps.** `OnnxSession::requestTerminate()` sets ONNX Runtime's terminate flag, which aborts a `Run` already in flight; that is the one method on `OnnxSession` safe to call from another thread, and it is why cancel works during the step the operator is most likely waiting out (~10s on the CPU fallback). A terminated run throws, so `run()`/`runOutputs()` catch and return empty - callers already treat empty as failure - and the cancel flag is what distinguishes a cancelled run from a broken one. The flag is sticky, so `run()` clears it on entry. Cancelling returns to framing rather than closing the tool, keeping the loaded model and the framing.
 
-Failure modes are loud and specific, in the order they are checked: model missing from `models/moge2` (fetch tool named in the message), no video frame, no calibrated intrinsics, and - only at Create Stencil time - no tracked camera pose and no loaded project.
+Failure modes are loud and specific, in the order they are checked: model not installed (Capture offers to download it rather than failing), no video frame, no calibrated intrinsics, and - only at Create Stencil time - no tracked camera pose and no loaded project.
 
 What Create Stencil does:
 

@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 980,
+		"stringCount": 1006,
 		"translatedCount": 899,
 		"reviewedCount": 0
 	},
@@ -253,6 +253,7 @@
 		"meshSummaryFmt": "プロキシメッシュ: 頂点 %d、三角形 %d。",
 		"meshWriteFailedFmt": "メッシュを「%s」に書き込めませんでした。",
 		"modelLoadFailedFmt": "「%s」からMoGe-2モデルを読み込めませんでした。tools/fetch_moge2_onnx.pyを実行してダウンロードしてください。詳細はMikanCmd.logを参照してください。",
+		"modelNotInstalled": "The depth model is not installed, so the capture did not run.",
 		"noProjectLoaded": "プロジェクトが読み込まれていないため、メッシュを保存する場所がありません。",
 		"noScaleCalibration": "スケールキャリブレーションなし",
 		"noScaleCalibrationExplanation": "メートル法のスケールはモデルの推測値であり、大きくずれている可能性があります。既知のサイズのArUcoマーカーを視野内に置いてやり直し、キャリブレーションしてください。",
@@ -406,6 +407,32 @@
 	"modals": {
 		"no": "いいえ",
 		"yes": "はい"
+	},
+	"modelDownload": {
+		"acceptLicenseFmt": "I accept the terms of the %s license",
+		"cancel": "Cancel",
+		"cancelled": "Download cancelled. Nothing was installed.",
+		"close": "Close",
+		"currentFileFmt": "%s  (%.2f / %.2f GB)",
+		"destinationFmt": "Installs to: %s",
+		"download": "Download",
+		"failed": "The download did not finish.",
+		"intro": "This capture needs models that are not installed yet. They are downloaded once and reused.",
+		"licenseFmt": "License: %s",
+		"marigoldDescription": "Diffuse shading for the scene lighting estimate.",
+		"marigoldName": "Marigold IID lighting",
+		"moge2Description": "Scene geometry and surface normals, used by both captures.",
+		"moge2Name": "MoGe-2 depth and normals",
+		"overallFmt": "%.2f of %.2f GB",
+		"phaseAssembling": "Assembling the downloaded parts...",
+		"phaseCheckingDisk": "Checking free disk space...",
+		"phaseDownloading": "Downloading...",
+		"phaseFetchingManifest": "Reading the release manifest...",
+		"phaseVerifying": "Verifying...",
+		"restrictionsNotice": "This license restricts how the model may be used. The full text is saved beside the model files.",
+		"sizeFmt": "Download size: %.1f GB",
+		"title": "Download Models",
+		"viewLicense": "View License"
 	},
 	"monoLensCalibration": {
 		"calibrationComplete": "キャリブレーション完了！",
@@ -950,6 +977,7 @@
 		"lightingAppliedFmt": "プローブ「%s」にライティングを適用しました。",
 		"loadingModels": "ライティングとジオメトリのモデルを読み込んでいます...",
 		"modelLoadFailedFmt": "「%s」と「%s」からモデルを読み込めませんでした。tools/export_marigold_onnx.pyとtools/fetch_moge2_onnx.pyを実行して生成してください。詳細はMikanCmd.logを参照してください。",
+		"modelNotInstalled": "The lighting and geometry models are not installed, so the capture did not run.",
 		"nearAmbientExplanation": "このシーンはほぼ均一に照らされています。環境光項は使用できますが、キーライトの方向には意味がなく、指向性ライトの配置には使用しないでください。",
 		"negativeRadianceFmt": "球面の%.0f%%で放射輝度が負になっています。指向性のあるシーンでは想定内の現象です - 2次球面調和関数は鋭い光源を表現できないため、環境を使用する際にクランプされます。",
 		"noCastShadowsNote": "構造上、キャストシャドウは含まれません - 環境プローブには可視性項がありません。シャドウではなく、シェーディングの方向と色で判断してください。",

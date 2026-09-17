@@ -17,6 +17,8 @@
 #include "Logger.h"
 #include "MikanCamera.h"
 #include "MikanViewport.h"
+#include "ModalModelDownload/ModalDialog_ModelDownload.h"
+#include "ModelRepository.h"
 #include "ModelStencilComponent.h"
 #include "ModelStencilSystem.h"
 #include "PathUtils.h"
@@ -68,11 +70,6 @@ static float sampleMedianDepth(const MoGeInference::Result& geometry, float pixe
 	std::nth_element(samples.begin(), samples.begin() + samples.size() / 2, samples.end());
 	return samples[samples.size() / 2];
 }
-
-// Model directory relative to the working directory, same convention as the
-// Marigold models. Uniquely named because the unity build merges this file
-// with the other stages' .cpps.
-static const char* k_depthMeshMoGeModelSubdirectory= "models/moge2";
 
 AppStage_DepthMeshCapture::AppStage_DepthMeshCapture(IEditorWindow* ownerWindow)
 	: AppStage(ownerWindow, APP_STAGE_NAME)
@@ -223,6 +220,20 @@ void AppStage_DepthMeshCapture::onGui()
 
 void AppStage_DepthMeshCapture::onCaptureEvent()
 {
+	// The model is over a gigabyte and is not shipped, so the first capture on
+	// a machine offers to fetch it. The dialog re-runs this handler once the
+	// download lands, and does nothing at all when the model is already there.
+	if (ModalDialog_ModelDownload::requestModels(
+			this, {eModelId::moge2}, [this]() { onCaptureEvent(); },
+			[this]()
+			{
+				m_capturePanel->setFailureReason(locText("depthMeshCapture.modelNotInstalled"));
+				setMenuState(eDepthMeshCaptureMenuState::failedInference);
+			}))
+	{
+		return;
+	}
+
 	// Gather everything the worker needs here: the video buffers and the
 	// distortion view the marker detector reads belong to the UI thread.
 	m_monoDistortionView->readAndProcessVideoFrame();
@@ -369,7 +380,7 @@ void AppStage_DepthMeshCapture::runCaptureRequest(const CaptureRequest& request,
 
 	if (inference == nullptr)
 	{
-		const std::filesystem::path modelDirectory= std::filesystem::current_path() / k_depthMeshMoGeModelSubdirectory;
+		const std::filesystem::path modelDirectory= ModelRepository::resolveDirectory(eModelId::moge2);
 
 		MoGeInference::Config config;
 		config.modelDirectory= modelDirectory.string();

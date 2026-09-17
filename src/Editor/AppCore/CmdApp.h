@@ -30,6 +30,7 @@ private:
 	int estimateLighting() const;
 	int generateDepthMesh() const;
 	int compileMaterial() const;
+	int fetchModels() const;
 
 	// Command line arguments parsed at startup
 	std::map<std::string, std::string> m_commandLineParams;
