@@ -36,7 +36,9 @@ __pycache__/
 # Weights of models too large for the 2GB protobuf limit live in a sidecar
 # next to the .onnx graph (unet_*.onnx.data is ~3.4GB each).
 *.onnx.data
-models/
+# Anchored: an unanchored pattern also matches source directories named
+# Models, which git ignores case-insensitively on Windows.
+/models/
 
 # Executables
 *.exe
