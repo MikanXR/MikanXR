@@ -17,6 +17,8 @@ The living plan: what is in flight now, what comes next, and the open questions.
 - [ ] `MikanARKitVideoSourceValues::k_ownerSystemName` ("ARKitVideoSourceSystem") and `MikanNetworkVideoSourceValues::k_ownerSystemName` ("NetworkVideoSourceSystem") do not match their systems' `k_objectSystemClassName` ("ARKitVideoObjectSystem", "NetworkVideoObjectSystem"), so a client listing components by the constant (`TestMikanClient.cpp`) finds nothing. Fixing either side is a bindings regeneration.
 - [ ] `FileVideoSourceComponent` keeps the previous media's duration and a `playing` state when a new `media_path` fails to resolve, and logs nothing. Seen when a take was deleted under a component: the stage showed `Playing (0.00 / 6.37 s)` for a path that no longer existed. The open failure should surface in the log and the status.
 - [ ] `ARKitVideoSourceComponent::notifyFrameBundleReceived` overwrites fx/fy/cx/cy but never recomputes `hfov`/`vfov`, so the camera frustum the editor draws for a phone comes from the default field of view. `createMonoIntrinsicsFromPinhole` (used by the file source) does both and the ARKit path should adopt it.
+- [ ] Delete `tools/export_marigold_onnx.py` and repoint scene-lighting.md at MikanXR/MikanMarigoldOnnx, which owns the export now. Once that repo has published its first release.
+- [ ] Python tooling split. Delete `tools/fetch_moge2_onnx.py` (the MoGe-2 fetch becomes a plain download, no `huggingface_hub`), move the torch-dependent scripts into their own subfolder, add a light `requirements.txt` and a pinned ML one, an install batch file at the repo root, and a table in commands.md saying which scripts need which.
 
 
 ## Later
@@ -28,6 +30,7 @@ The living plan: what is in flight now, what comes next, and the open questions.
 - [ ] Material graph: further shader writers (Vulkan GLSL dialect, HLSL, MSL) behind `IShaderWriter`.
 - [ ] Material graph: shared function assets. A `MaterialFunctionPage` saved to its own `.matgraph` and referenced by path from several materials, as a second function source behind the existing call node and `callMaterialFunction`; the Functions panel would import one and the Assets panel would list the type. Worth doing once a second material wants a function another already defines.
 - [ ] Material graph: multiple function outputs, which means `out` parameters on the writer seam beside the single return value.
+- [ ] An fp16 Marigold export would halve the 3.5GB model download and drop every asset under GitHub's 2 GiB cap, so nothing would need splitting. Gated on re-validating accuracy against the reference: scene-lighting.md records fp32 as deliberate because fp16 constant folding loses precision.
 - [ ] Node graphs: prune `assetReferences` entries no property binds to on save. Nothing shows the per-graph list any more, so a reference whose material or texture property was deleted stays in the file unused. Harmless until a graph accumulates many.
 - [ ] Node editors: named reroutes for the compositor and shape graphs. The material graph has them (`ShaderRerouteDeclarationNode`, `ShaderRerouteUsageNode`); the evaluated graphs would need a usage node that copies a typed pin value per pin class at evaluation time.
 - [ ] Material graph: more than one material editor window at a time. One instance today, matching the compositor and shape editors.
