@@ -1358,7 +1358,6 @@ msgstr "メッシュを「%s」に書き込めませんでした。"
 
 #. Section: depthMeshCapture
 #, fuzzy, c-format
-#| msgid "Could not load the MoGe-2 model from '%s'. Run tools/fetch_moge2_onnx.py to download it. See MikanCmd.log for details."
 msgctxt "depthMeshCapture.modelLoadFailedFmt"
 msgid "Could not load the MoGe-2 model from '%s'. See MikanCmd.log for details."
 msgstr "「%s」からMoGe-2モデルを読み込めませんでした。tools/fetch_moge2_onnx.pyを実行してダウンロードしてください。詳細はMikanCmd.logを参照してください。"
@@ -5420,7 +5419,6 @@ msgstr "ライティングとジオメトリのモデルを読み込んでいま
 
 #. Section: sceneLightingCapture
 #, fuzzy, c-format
-#| msgid "Could not load the models from '%s' and '%s'. Run tools/export_marigold_onnx.py and tools/fetch_moge2_onnx.py to produce them. See MikanCmd.log for details."
 msgctxt "sceneLightingCapture.modelLoadFailedFmt"
 msgid "Could not load the models from '%s' and '%s'. See MikanCmd.log for details."
 msgstr "「%s」と「%s」からモデルを読み込めませんでした。tools/export_marigold_onnx.pyとtools/fetch_moge2_onnx.pyを実行して生成してください。詳細はMikanCmd.logを参照してください。"
