@@ -27,6 +27,10 @@ list(APPEND MIKAN_UTILITY_INCL_DIRS
 
 add_library(MikanUtility SHARED ${MIKAN_UTILITY_SRC})
 target_include_directories(MikanUtility PRIVATE ${MIKAN_UTILITY_INCL_DIRS})
+IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+  # winhttp backs HttpDownloader, bcrypt backs HashUtils::sha256File.
+  target_link_libraries(MikanUtility PRIVATE winhttp bcrypt)
+ENDIF()
 target_compile_definitions(MikanUtility PRIVATE MIKAN_UTILITY_EXPORTS)
 set_target_properties(MikanUtility PROPERTIES FOLDER MikanLibraries)
 set_target_properties(MikanUtility PROPERTIES PUBLIC_HEADER "${MIKAN_UTILITY_HEADER}")

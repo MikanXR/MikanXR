@@ -92,4 +92,25 @@ bool openFileWithDefaultApplication(const std::filesystem::path& filePath)
 	return system(command.c_str()) == 0;
 #endif
 }
+
+bool openUrl(const std::string& url)
+{
+	// The shell treats whatever it is handed as something to launch, so only
+	// the two schemes that mean "show a web page" are passed through.
+	const bool bIsWebUrl= url.rfind("https://", 0) == 0 || url.rfind("http://", 0) == 0;
+	if (!bIsWebUrl)
+		return false;
+
+#if defined WIN32 || defined _WIN32 || defined WINCE
+	HINSTANCE result= ShellExecuteA(NULL, "open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
+
+	return reinterpret_cast<intptr_t>(result) > 32;
+#elif defined(__APPLE__)
+	const std::string command= "open \"" + url + "\"";
+	return system(command.c_str()) == 0;
+#else
+	const std::string command= "xdg-open \"" + url + "\"";
+	return system(command.c_str()) == 0;
+#endif
+}
 }; // namespace OSUtils

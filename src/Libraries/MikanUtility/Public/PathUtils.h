@@ -26,6 +26,12 @@ MIKAN_UTILITY_FUNC(std::filesystem::path) makeAbsoluteResourceFilePath(const std
 /// Get the "home" location where config files can be stored
 MIKAN_UTILITY_FUNC(std::filesystem::path) getHomeDirectory();
 
+/// Get the per-machine location for large generated or downloaded data
+/// (%LOCALAPPDATA% on Windows). Deliberately not getHomeDirectory(), which is
+/// %APPDATA% and roams: several gigabytes of ML models must not follow a
+/// roaming profile between machines.
+MIKAN_UTILITY_FUNC(std::filesystem::path) getLocalDataDirectory();
+
 /// Get the directory of the currently loaded project (empty if no project is loaded)
 MIKAN_UTILITY_FUNC(std::filesystem::path) getProjectDirectory();
 

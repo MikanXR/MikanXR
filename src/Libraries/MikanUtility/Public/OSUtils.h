@@ -14,6 +14,11 @@ namespace OSUtils
 /// On macOS/Linux: can be extended to use open/xdg-open
 MIKAN_UTILITY_FUNC(bool) openFileWithDefaultApplication(const std::filesystem::path& filePath);
 
+/// Open an http or https URL in the default browser. Only those two schemes
+/// are accepted: this hands a string to the shell, and anything else there is
+/// a way to launch a program rather than show a page.
+MIKAN_UTILITY_FUNC(bool) openUrl(const std::string& url);
+
 /// Open a file with a specific editor command (e.g. "code --reuse-window").
 /// The file path is appended as a quoted argument after the command.
 /// Falls back to openFileWithDefaultApplication when editorCommand is empty.

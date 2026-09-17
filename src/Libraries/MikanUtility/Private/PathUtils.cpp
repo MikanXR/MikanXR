@@ -108,6 +108,36 @@ std::filesystem::path getHomeDirectory()
 	return home_dir;
 }
 
+std::filesystem::path getLocalDataDirectory()
+{
+	std::filesystem::path local_dir;
+
+#if defined WIN32 || defined _WIN32 || defined WINCE
+	size_t buffer_req_size= 0;
+	char buffer[512];
+	getenv_s(&buffer_req_size, buffer, "LOCALAPPDATA");
+	assert(buffer_req_size <= sizeof(buffer));
+	local_dir= buffer;
+
+	// A machine with no LOCALAPPDATA is not one this runs on, but falling back
+	// to the roaming location beats returning an empty path to a caller about
+	// to create directories under it.
+	if (local_dir.empty())
+		local_dir= getHomeDirectory();
+#else
+	const char* xdgCacheHome= getenv("XDG_CACHE_HOME");
+	if (xdgCacheHome != nullptr && xdgCacheHome[0] != '\0')
+	{
+		local_dir= xdgCacheHome;
+	}
+	else
+	{
+		local_dir= getHomeDirectory() / ".cache";
+	}
+#endif
+	return local_dir;
+}
+
 // Static variable to track the current project directory
 static std::filesystem::path g_projectDirectory;
 
