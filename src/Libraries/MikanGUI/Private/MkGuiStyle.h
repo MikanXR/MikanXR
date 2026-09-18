@@ -11,8 +11,10 @@ class MkGuiStyle : public IMkGuiStyle
 public:
 	// -- IMkGuiStyle
 	const std::string& getName() const override { return m_name; }
-	int getLabelWidth() const override { return m_labelWidth; }
-	int getValueWidth() const override { return m_valueWidth; }
+	// The authored widths are pixels, so both come back scaled for the display
+	// the current window is on
+	int getLabelWidth() const override;
+	int getValueWidth() const override;
 	struct ImFont* getFont() const override { return m_font; }
 	float getFontSize() const override { return m_fontSize; }
 

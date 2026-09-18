@@ -147,6 +147,20 @@ void SdlWindowContextManager::pollEvents()
 	}
 }
 
+float SdlWindowContextManager::getPrimaryDisplayContentScale() const
+{
+	// SDL reports the display's effective DPI, which is the Windows scale factor
+	// against 96. It is only meaningful because the process declares DPI awareness
+	// in its manifest.
+	float ddpi= 0.f;
+	if (SDL_GetDisplayDPI(0, &ddpi, nullptr, nullptr) != 0 || ddpi < 96.f)
+	{
+		return 1.f;
+	}
+
+	return ddpi / 96.f;
+}
+
 void SdlWindowContextManager::setMouseCursor(const std::string& cursor_name)
 {
 	SDL_Cursor* cursor= nullptr;

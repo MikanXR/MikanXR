@@ -25,6 +25,14 @@ public:
 	inline const std::string& getAppLanguage() const { return m_appLanguage; }
 	void setAppLanguage(const std::string& appLanguage);
 
+	// A multiplier the user applies on top of the display's own content scale, for
+	// when the scale Windows reports is not the size they want to work at.
+	static const std::string k_uiScalePropertyId;
+	static constexpr float k_minUiScale= 0.5f;
+	static constexpr float k_maxUiScale= 3.0f;
+	inline float getUiScale() const { return m_uiScale; }
+	void setUiScale(float scale);
+
 	static const std::string k_scriptEditorCommandPropertyId;
 	inline const std::string& getScriptEditorCommand() const { return m_scriptEditorCommand; }
 	void setScriptEditorCommand(const std::string& command);
@@ -80,6 +88,7 @@ public:
 protected:
 	std::filesystem::path m_lastProjectPath;
 	std::string m_appLanguage;
+	float m_uiScale= 1.f;
 	std::string m_scriptEditorCommand= k_defaultScriptEditorCommand;
 	int m_httpServerPort= 8090; // mirrors HTTP_SERVER_PORT in HttpInterprocessMessageServer.h
 	// The HTTP server binds loopback only until this is on, which is what a phone

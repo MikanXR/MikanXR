@@ -15,6 +15,8 @@ public:
 	virtual ~IMkGuiStyle()= default;
 
 	virtual const std::string& getName() const= 0;
+	// Both widths come back scaled for the display the current window is on, so
+	// they can be used as pixel positions directly
 	virtual int getLabelWidth() const= 0;
 	// The value column's minimum width. A property sheet grows its value column
 	// to fill the remaining panel width and falls back to this when the panel is

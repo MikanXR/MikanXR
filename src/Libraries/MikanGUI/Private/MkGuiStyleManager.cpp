@@ -23,37 +23,46 @@ MkGuiStyleManager::MkGuiStyleManager()
 
 MkGuiStyleManager::~MkGuiStyleManager() { delete m_impl; }
 
-// Maps JSON var name to ImGuiStyleVar enum
-static const std::unordered_map<std::string, ImGuiStyleVar> k_styleFloatTable= {
-	{"Alpha", ImGuiStyleVar_Alpha},
-	{"DisabledAlpha", ImGuiStyleVar_DisabledAlpha},
-	{"WindowRounding", ImGuiStyleVar_WindowRounding},
-	{"WindowBorderSize", ImGuiStyleVar_WindowBorderSize},
-	{"ChildRounding", ImGuiStyleVar_ChildRounding},
-	{"ChildBorderSize", ImGuiStyleVar_ChildBorderSize},
-	{"PopupRounding", ImGuiStyleVar_PopupRounding},
-	{"PopupBorderSize", ImGuiStyleVar_PopupBorderSize},
-	{"FrameRounding", ImGuiStyleVar_FrameRounding},
-	{"FrameBorderSize", ImGuiStyleVar_FrameBorderSize},
-	{"IndentSpacing", ImGuiStyleVar_IndentSpacing},
-	{"ScrollbarSize", ImGuiStyleVar_ScrollbarSize},
-	{"ScrollbarRounding", ImGuiStyleVar_ScrollbarRounding},
-	{"GrabMinSize", ImGuiStyleVar_GrabMinSize},
-	{"GrabRounding", ImGuiStyleVar_GrabRounding},
-	{"TabRounding", ImGuiStyleVar_TabRounding},
+// A style var's ImGui enum plus whether its value is a pixel size, which decides
+// if it takes the UI scale when pushed. The sizes are the ones
+// ImGuiStyle::ScaleAllSizes scales; alpha and text alignment are ratios.
+struct MkGuiStyleVarEntry
+{
+	ImGuiStyleVar var;
+	bool bScalesWithDpi= true;
 };
 
 // Maps JSON var name to ImGuiStyleVar enum
-static const std::unordered_map<std::string, ImGuiStyleVar> k_styleVec2Table= {
-	{"WindowPadding", ImGuiStyleVar_WindowPadding},
-	{"WindowMinSize", ImGuiStyleVar_WindowMinSize},
-	{"WindowTitleAlign", ImGuiStyleVar_WindowTitleAlign},
-	{"FramePadding", ImGuiStyleVar_FramePadding},
-	{"ItemSpacing", ImGuiStyleVar_ItemSpacing},
-	{"ItemInnerSpacing", ImGuiStyleVar_ItemInnerSpacing},
-	{"CellPadding", ImGuiStyleVar_CellPadding},
-	{"ButtonTextAlign", ImGuiStyleVar_ButtonTextAlign},
-	{"SelectableTextAlign", ImGuiStyleVar_SelectableTextAlign},
+static const std::unordered_map<std::string, MkGuiStyleVarEntry> k_styleFloatTable= {
+	{"Alpha", {ImGuiStyleVar_Alpha, false}},
+	{"DisabledAlpha", {ImGuiStyleVar_DisabledAlpha, false}},
+	{"WindowRounding", {ImGuiStyleVar_WindowRounding}},
+	{"WindowBorderSize", {ImGuiStyleVar_WindowBorderSize}},
+	{"ChildRounding", {ImGuiStyleVar_ChildRounding}},
+	{"ChildBorderSize", {ImGuiStyleVar_ChildBorderSize}},
+	{"PopupRounding", {ImGuiStyleVar_PopupRounding}},
+	{"PopupBorderSize", {ImGuiStyleVar_PopupBorderSize}},
+	{"FrameRounding", {ImGuiStyleVar_FrameRounding}},
+	{"FrameBorderSize", {ImGuiStyleVar_FrameBorderSize}},
+	{"IndentSpacing", {ImGuiStyleVar_IndentSpacing}},
+	{"ScrollbarSize", {ImGuiStyleVar_ScrollbarSize}},
+	{"ScrollbarRounding", {ImGuiStyleVar_ScrollbarRounding}},
+	{"GrabMinSize", {ImGuiStyleVar_GrabMinSize}},
+	{"GrabRounding", {ImGuiStyleVar_GrabRounding}},
+	{"TabRounding", {ImGuiStyleVar_TabRounding}},
+};
+
+// Maps JSON var name to ImGuiStyleVar enum
+static const std::unordered_map<std::string, MkGuiStyleVarEntry> k_styleVec2Table= {
+	{"WindowPadding", {ImGuiStyleVar_WindowPadding}},
+	{"WindowMinSize", {ImGuiStyleVar_WindowMinSize}},
+	{"WindowTitleAlign", {ImGuiStyleVar_WindowTitleAlign, false}},
+	{"FramePadding", {ImGuiStyleVar_FramePadding}},
+	{"ItemSpacing", {ImGuiStyleVar_ItemSpacing}},
+	{"ItemInnerSpacing", {ImGuiStyleVar_ItemInnerSpacing}},
+	{"CellPadding", {ImGuiStyleVar_CellPadding}},
+	{"ButtonTextAlign", {ImGuiStyleVar_ButtonTextAlign, false}},
+	{"SelectableTextAlign", {ImGuiStyleVar_SelectableTextAlign, false}},
 };
 
 // Maps JSON color name to ImGuiCol enum
@@ -244,7 +253,8 @@ bool MkGuiStyleManager::loadStyleFile(const std::filesystem::path& filePath)
 				if (floatStyleIt != k_styleFloatTable.end())
 				{
 					MkGuiStyleFloatEntry entry;
-					entry.var= floatStyleIt->second;
+					entry.var= floatStyleIt->second.var;
+					entry.bScalesWithDpi= floatStyleIt->second.bScalesWithDpi;
 
 					if (varJson["value"].is_number())
 					{
@@ -260,7 +270,8 @@ bool MkGuiStyleManager::loadStyleFile(const std::filesystem::path& filePath)
 				else if (vec2StyleIt != k_styleVec2Table.end())
 				{
 					MkGuiStyleVec2Entry entry;
-					entry.var= vec2StyleIt->second;
+					entry.var= vec2StyleIt->second.var;
+					entry.bScalesWithDpi= vec2StyleIt->second.bScalesWithDpi;
 
 					if (varJson["value"].is_array() && varJson["value"].size() == 2)
 					{

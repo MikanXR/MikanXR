@@ -1976,6 +1976,11 @@ msgctxt "mainMenu.title"
 msgid "Main Menu"
 msgstr "メインメニュー"
 
+#. Section: mainMenu
+msgctxt "mainMenu.uiScale"
+msgid "UI Scale"
+msgstr ""
+
 #. Section: mainWindow
 #, fuzzy
 msgctxt "mainWindow.closeProject"
@@ -4379,6 +4384,11 @@ msgid "DMX"
 msgstr "DMX"
 
 #. Section: projectSettings
+msgctxt "projectSettings.sectionInterface"
+msgid "Interface"
+msgstr ""
+
+#. Section: projectSettings
 #, fuzzy
 msgctxt "projectSettings.sectionLocalization"
 msgid "Localization"
@@ -4458,6 +4468,16 @@ msgstr "ワイヤーフレーム"
 #, c-format
 msgctxt "projectSettings.translationReviewNoticeFmt"
 msgid "%d%% of this translation has been reviewed by a person. The rest is machine generated."
+msgstr ""
+
+#. Section: projectSettings
+msgctxt "projectSettings.uiScale"
+msgid "UI Scale"
+msgstr ""
+
+#. Section: projectSettings
+msgctxt "projectSettings.uiScaleTooltip"
+msgid "Scales the editor UI on top of the scale the display already reports. Leave it at 100 to use the display scale as-is."
 msgstr ""
 
 #. Section: properties

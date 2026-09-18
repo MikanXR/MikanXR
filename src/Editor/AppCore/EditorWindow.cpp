@@ -5,6 +5,7 @@
 #include "App.h"
 #include "AutomationServer.h"
 #include "IMkWindowContext.h"
+#include "IMkWindowContextManager.h"
 #include "IMkGraphicsContext.h"
 #include "MainWindow.h"
 #include "MikanModelResourceManager.h"
@@ -136,8 +137,13 @@ bool EditorWindow::startupWindow(const std::string& title, int width, int height
 {
 	EASY_FUNCTION();
 
+	// The size each window asks for is authored against a 96 DPI display, and SDL
+	// creates windows in physical pixels, so it takes the display's content scale
+	// the same way the UI inside the window does
+	const float displayScale= m_ownerApp->getWindowManager()->getPrimaryDisplayContentScale();
+
 	m_mkWindowContext->setTitle(title);
-	m_mkWindowContext->setSize(width, height);
+	m_mkWindowContext->setSize((int)(width * displayScale), (int)(height * displayScale));
 	if (!m_mkWindowContext->startup())
 	{
 		MIKAN_LOG_ERROR("EditorWindow::startupWindow") << "Unable to initialize window: " << title;

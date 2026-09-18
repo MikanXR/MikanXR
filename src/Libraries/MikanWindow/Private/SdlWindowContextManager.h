@@ -21,6 +21,7 @@ public:
 
 	virtual bool getIsInitialized() const override { return m_sdlInitialized; }
 	virtual const std::string& getGlslVersion() const override { return m_glslVersion; }
+	virtual float getPrimaryDisplayContentScale() const override;
 	virtual void setMouseCursor(const std::string& cursorName) override;
 
 	virtual void pushCurrentWindowContext(IMkWindowContext* window) override;

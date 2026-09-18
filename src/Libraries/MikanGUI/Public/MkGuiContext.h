@@ -6,6 +6,7 @@
 #include "IMkWindowEventListener.h"
 #include "IMkGraphicsContext.h"
 
+#include <memory>
 #include <string>
 
 class MIKAN_GUI_CLASS MkGuiContext : public IMkWindowEventListener
@@ -23,6 +24,17 @@ public:
 	void shutdown();
 	void makeCurrent();
 	void submitDrawData();
+
+	// An app-wide multiplier the user sets on top of the monitor's own content
+	// scale. Static because it is one preference shared by every window, and
+	// windows come and go while the preference stands.
+	static void setUserUiScale(float scale);
+	static float getUserUiScale();
+
+	// Re-derives the ImGui style from the monitor's content scale and the user
+	// scale. Called at the top of each frame, so dragging the window to a
+	// display with a different scale re-sizes the UI on the next frame.
+	void refreshUiScale();
 
 	struct ImFont* getNormalIconFont() const { return m_NormalIconFont; }
 	struct ImFont* getBigIconFont() const { return m_BigIconFont; }
@@ -47,6 +59,10 @@ private:
 	std::string m_iniFilePath;
 	bool m_bEnableDocking= false;
 	struct ImGuiContext* m_imguiContext= nullptr;
+	// The unscaled style the theme authored, kept so each scale change re-derives
+	// from it rather than compounding ScaleAllSizes onto the live style
+	std::unique_ptr<struct ImGuiStyle> m_baseStyle;
+	float m_appliedUiScale= 0.f;
 	struct ImFont* m_NormalIconFont= nullptr;
 	struct ImFont* m_BigIconFont= nullptr;
 	eWindowAPI m_imguiWindowAPI= eWindowAPI::INVALID;

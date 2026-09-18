@@ -10,6 +10,7 @@
 #include "LocText.h"
 #include "LocalizationManager.h"
 #include "MainWindow.h"
+#include "MkGuiContext.h"
 #include "MkGuiDrawUtils.h"
 #include "MkGuiStyleManager.h"
 #include "Project/AppStage_Project.h"
@@ -85,6 +86,32 @@ void GuiPanel_ProjectSettings::onGui()
 			ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
 			ImGui::TextWrapped(locText("projectSettings.translationReviewNoticeFmt"), reviewedPercent);
 			ImGui::PopStyleColor();
+		}
+	}
+
+	// -- Interface ----
+	if (MkGui::drawPropertySheetHeader(m_defaultGuiStyle, locText("projectSettings.sectionInterface")))
+	{
+		auto appSettings= App::getInstance()->getAppSettings();
+
+		// Shown as a percentage, stored as the multiplier the GUI contexts apply
+		// on top of each display's own content scale
+		float uiScale= appSettings->getUiScale();
+		if (MkGui::drawFloatSliderProperty(m_defaultGuiStyle, "uiScale", locText("projectSettings.uiScale"), uiScale,
+										   AppSettingsConfig::k_minUiScale, AppSettingsConfig::k_maxUiScale,
+										   AppSettingsConfig::k_minUiScale * 100.f,
+										   AppSettingsConfig::k_maxUiScale * 100.f, "%.0f%%"))
+		{
+			addDeferredGuiEvent(
+				[appSettings, uiScale]()
+				{
+					appSettings->setUiScale(uiScale);
+					MkGuiContext::setUserUiScale(appSettings->getUiScale());
+				});
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("%s", locText("projectSettings.uiScaleTooltip"));
 		}
 	}
 

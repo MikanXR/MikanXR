@@ -12,6 +12,13 @@
 
 namespace MkGui
 {
+float getUiScale()
+{
+	const ImGuiStyle& style= ImGui::GetStyle();
+
+	return style.FontScaleMain * style.FontScaleDpi;
+}
+
 static std::string makeImGuiElementName(const std::string& name) { return StringUtils::stringify("##", name); }
 
 // Moves the cursor to the value column and returns the width the value should
@@ -65,7 +72,8 @@ bool drawFloatProperty(MkGuiStyleConstPtr style, const std::string fieldName, co
 }
 
 bool drawFloatSliderProperty(MkGuiStyleConstPtr style, const std::string fieldName, const std::string label,
-							 float& inout_value, float srcMin, float srcMax, float displayMin, float displayMax)
+							 float& inout_value, float srcMin, float srcMax, float displayMin, float displayMax,
+							 const char* displayFormat)
 {
 	const float srcRange= srcMax - srcMin;
 	float displayValue=
@@ -74,7 +82,7 @@ bool drawFloatSliderProperty(MkGuiStyleConstPtr style, const std::string fieldNa
 	ImGui::TextUnformatted(label.c_str());
 	ImGui::SetNextItemWidth(beginValueColumn(style));
 	const std::string imguiElementName= makeImGuiElementName(fieldName);
-	if (ImGui::SliderFloat(imguiElementName.c_str(), &displayValue, displayMin, displayMax))
+	if (ImGui::SliderFloat(imguiElementName.c_str(), &displayValue, displayMin, displayMax, displayFormat))
 	{
 		const float displayRange= displayMax - displayMin;
 		inout_value=
@@ -245,13 +253,15 @@ void drawImageProperty(MkGuiStyleConstPtr style, const std::string label, IMkTex
 	ImGui::SetNextItemWidth(beginValueColumn(style));
 	ImGui::Dummy(ImVec2(1.0f, 0.5f));
 	uint32_t glTextureId= image ? image->getGlTextureId() : 0;
-	ImGui::Image((ImTextureID)(intptr_t)glTextureId, ImVec2(100, 100));
+	const float previewSize= 100.f * getUiScale();
+	ImGui::Image((ImTextureID)(intptr_t)glTextureId, ImVec2(previewSize, previewSize));
 }
 
 void drawImage(IMkTextureConstPtr image, float width, float height)
 {
 	uint32_t glTextureId= image ? image->getGlTextureId() : 0;
-	ImGui::Image((ImTextureID)(intptr_t)glTextureId, ImVec2(width, height));
+	const float uiScale= getUiScale();
+	ImGui::Image((ImTextureID)(intptr_t)glTextureId, ImVec2(width * uiScale, height * uiScale));
 }
 
 bool drawImageButton(MkGuiStyleConstPtr style, const std::string& fieldName, const std::string& imageName)
@@ -261,7 +271,9 @@ bool drawImageButton(MkGuiStyleConstPtr style, const std::string& fieldName, con
 		return false;
 	uint32_t glTextureId= entry->texture ? entry->texture->getGlTextureId() : 0;
 	const std::string imguiElementName= makeImGuiElementName(fieldName);
-	return ImGui::ImageButton(imguiElementName.c_str(), (ImTextureID)(intptr_t)glTextureId, ImVec2(entry->x, entry->y));
+	const float uiScale= getUiScale();
+	return ImGui::ImageButton(imguiElementName.c_str(), (ImTextureID)(intptr_t)glTextureId,
+							  ImVec2(entry->x * uiScale, entry->y * uiScale));
 }
 
 void sameLineIfFits(float itemWidth)
@@ -278,7 +290,9 @@ void sameLineIfFits(float itemWidth)
 bool drawGlyphButtonWithLabel(const std::string& fieldName, const std::string& glyph, const std::string& label,
 							  float buttonSize, float glyphSize)
 {
-	const float resolvedButtonSize= (buttonSize > 0.f) ? buttonSize : ImGui::GetFrameHeight();
+	// The caller's button size is authored in pixels and takes the scale. The glyph
+	// size does not: it feeds a font push, which ImGui scales on its own.
+	const float resolvedButtonSize= (buttonSize > 0.f) ? buttonSize * getUiScale() : ImGui::GetFrameHeight();
 	const std::string buttonLabel= glyph + makeImGuiElementName(fieldName);
 
 	bool bClicked= false;

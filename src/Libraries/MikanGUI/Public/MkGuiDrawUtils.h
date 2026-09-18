@@ -13,6 +13,12 @@ using IMkTextureConstPtr= std::shared_ptr<const IMkTexture>;
 
 namespace MkGui
 {
+// The factor between an authored pixel size and what the current window should
+// draw: the monitor's content scale times the user's scale preference. Multiply
+// pixel geometry (button sizes, image sizes, fixed panel widths) by it. Font
+// sizes need no multiply, since ImGui already applies both factors to them.
+MIKAN_GUI_FUNC(float) getUiScale();
+
 MIKAN_GUI_FUNC(bool) drawPropertySheetHeader(MkGuiStyleConstPtr style, const std::string headerText);
 MIKAN_GUI_FUNC(void) drawStaticTextProperty(MkGuiStyleConstPtr style, const std::string label, const std::string text);
 MIKAN_GUI_FUNC(bool) drawCheckBoxProperty(MkGuiStyleConstPtr style, const std::string fieldName,
@@ -23,7 +29,7 @@ MIKAN_GUI_FUNC(bool) drawFloatProperty(MkGuiStyleConstPtr style, const std::stri
 									   float& inout_value);
 MIKAN_GUI_FUNC(bool) drawFloatSliderProperty(MkGuiStyleConstPtr style, const std::string fieldName,
 											 const std::string label, float& inout_value, float srcMin, float srcMax,
-											 float displayMin, float displayMax);
+											 float displayMin, float displayMax, const char* displayFormat= "%.3f");
 MIKAN_GUI_FUNC(bool) drawFloat2Property(MkGuiStyleConstPtr style, const std::string fieldName, const std::string label,
 										float* inout_v);
 MIKAN_GUI_FUNC(bool) drawFloat3Property(MkGuiStyleConstPtr style, const std::string fieldName, const std::string label,
@@ -35,12 +41,14 @@ MIKAN_GUI_FUNC(bool) drawStringProperty(MkGuiStyleConstPtr style, const std::str
 MIKAN_GUI_FUNC(bool) drawSimpleComboBoxProperty(MkGuiStyleConstPtr style, const std::string fieldName,
 												const std::string label, const char* items, int& inout_selectedIdex);
 MIKAN_GUI_FUNC(void) drawImageProperty(MkGuiStyleConstPtr style, const std::string label, IMkTextureConstPtr image);
+// The size is an authored pixel size and is scaled here
 MIKAN_GUI_FUNC(void) drawImage(IMkTextureConstPtr image, float width, float height);
 MIKAN_GUI_FUNC(bool) drawImageButton(MkGuiStyleConstPtr style, const std::string& fieldName,
 									 const std::string& imageName);
 // A square icon-font button with its action named alongside it. A button or
 // glyph size <= 0 falls back to the current row height and font size, which is
 // what a property panel wants; callers pass explicit sizes for larger buttons.
+// An explicit button size is an authored pixel size and is scaled here.
 MIKAN_GUI_FUNC(bool)
 drawGlyphButtonWithLabel(const std::string& fieldName, const std::string& glyph, const std::string& label,
 						 float buttonSize= 0.f, float glyphSize= 0.f);

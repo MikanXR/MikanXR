@@ -2,9 +2,12 @@
 #include "AppSettingsConfig.h"
 #include "ComponentNaming.h"
 
+#include <algorithm>
+
 // -- Profile Config
 const std::string AppSettingsConfig::k_lastProjectPathPropertyId= "lastProjectFilePath";
 const std::string AppSettingsConfig::k_appLanguagePropertyId= "appLanguage";
+const std::string AppSettingsConfig::k_uiScalePropertyId= "uiScale";
 const std::string AppSettingsConfig::k_scriptEditorCommandPropertyId= "scriptEditorCommand";
 const std::string AppSettingsConfig::k_defaultScriptEditorCommand= "code --reuse-window {project} --goto {file}:{line}";
 const std::string AppSettingsConfig::k_legacyScriptEditorCommand= "code --reuse-window";
@@ -27,6 +30,7 @@ configuru::Config AppSettingsConfig::writeToJSON()
 
 	pt[k_lastProjectPathPropertyId]= m_lastProjectPath.string();
 	pt[k_appLanguagePropertyId]= m_appLanguage;
+	pt[k_uiScalePropertyId]= m_uiScale;
 	pt[k_scriptEditorCommandPropertyId]= m_scriptEditorCommand;
 	pt[k_httpServerPortPropertyId]= m_httpServerPort;
 	pt[k_httpServerAllowRemotePropertyId]= m_bHttpServerAllowRemote;
@@ -47,6 +51,7 @@ void AppSettingsConfig::readFromJSON(const configuru::Config& pt)
 
 	m_lastProjectPath= pt.get_or<std::string>(k_lastProjectPathPropertyId, m_lastProjectPath.string());
 	m_appLanguage= pt.get_or<std::string>(k_appLanguagePropertyId, m_appLanguage);
+	m_uiScale= std::clamp(pt.get_or<float>(k_uiScalePropertyId, m_uiScale), k_minUiScale, k_maxUiScale);
 	m_scriptEditorCommand= pt.get_or<std::string>(k_scriptEditorCommandPropertyId, m_scriptEditorCommand);
 	// The old default predates the {project}/{file}/{line} placeholders, so a
 	// stored copy of it upgrades to the new default rather than sticking on it
@@ -78,6 +83,17 @@ void AppSettingsConfig::setAppLanguage(const std::string& appLanguage)
 	{
 		m_appLanguage= appLanguage;
 		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_appLanguagePropertyId));
+	}
+}
+
+void AppSettingsConfig::setUiScale(float scale)
+{
+	const float clampedScale= std::clamp(scale, k_minUiScale, k_maxUiScale);
+
+	if (m_uiScale != clampedScale)
+	{
+		m_uiScale= clampedScale;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_uiScalePropertyId));
 	}
 }
 

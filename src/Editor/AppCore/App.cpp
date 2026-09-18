@@ -13,6 +13,7 @@
 #include "IMkGraphicsContext.h"
 #include "IMkWindowContext.h"
 #include "MkError.h"
+#include "MkGuiContext.h"
 #include "MkStateStack.h"
 #include "LocalizationManager.h"
 #include "Logger.h"
@@ -189,6 +190,9 @@ bool App::startup(int argc, char** argv)
 
 	// Enable auto-save on a cooldown when settings are changed
 	m_appSettings->setAutoSaveCooldownDuration(SETTINGS_SAVE_COOLDOWN);
+
+	// The user's scale preference, in place before any window builds its GUI context
+	MkGuiContext::setUserUiScale(m_appSettings->getUiScale());
 
 	// Configure Spout's own logging before anything opens a Spout sender or receiver
 	m_spoutLogRelay->setEnabled(m_appSettings->getSpoutLogEnabled());

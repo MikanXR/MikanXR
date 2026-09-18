@@ -11,6 +11,8 @@
 #include "Project/AppStage_Project.h"
 #include "MainMenu/AppStage_MainMenu.h"
 #include "ModalConfirm/ModalDialog_Confirm.h"
+#include "MkGuiContext.h"
+#include "MkGuiDrawUtils.h"
 #include "MkGuiScopedWindow.h"
 #include "ProjectFileDialogs.h"
 #include "ProjectManager.h"
@@ -135,10 +137,10 @@ void AppStage_MainMenu::onGui()
 		showPendingCrashReport();
 	}
 
-	constexpr float k_panelWidth= 300.f;
+	const float panelWidth= 300.f * MkGui::getUiScale();
 	const ImVec2 center= ImGui::GetMainViewport()->GetCenter();
 	ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-	ImGui::SetNextWindowSize(ImVec2(k_panelWidth, 0), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(panelWidth, 0), ImGuiCond_Always);
 
 	constexpr ImGuiWindowFlags k_flags=
 		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
@@ -147,25 +149,25 @@ void AppStage_MainMenu::onGui()
 	if (!panel)
 		return;
 
-	const float buttonWidth= k_panelWidth - 40.f;
-	ImGui::SetCursorPosX((k_panelWidth - buttonWidth) * 0.5f);
+	const float buttonWidth= panelWidth - 40.f * MkGui::getUiScale();
+	ImGui::SetCursorPosX((panelWidth - buttonWidth) * 0.5f);
 	ImGui::TextUnformatted(locText("mainMenu.title"));
 	ImGui::Separator();
 	ImGui::Spacing();
 
 	if (m_appSettingsConfig->hasLastProjectPath())
 	{
-		ImGui::SetCursorPosX((k_panelWidth - buttonWidth) * 0.5f);
+		ImGui::SetCursorPosX((panelWidth - buttonWidth) * 0.5f);
 		if (ImGui::Button(locLabel("mainMenu.resumeProject"), ImVec2(buttonWidth, 0)))
 			onResumeProject();
 	}
-	ImGui::SetCursorPosX((k_panelWidth - buttonWidth) * 0.5f);
+	ImGui::SetCursorPosX((panelWidth - buttonWidth) * 0.5f);
 	if (ImGui::Button(locLabel("mainMenu.openProject"), ImVec2(buttonWidth, 0)))
 		onOpenProject();
-	ImGui::SetCursorPosX((k_panelWidth - buttonWidth) * 0.5f);
+	ImGui::SetCursorPosX((panelWidth - buttonWidth) * 0.5f);
 	if (ImGui::Button(locLabel("mainMenu.newProject"), ImVec2(buttonWidth, 0)))
 		onNewProject();
-	ImGui::SetCursorPosX((k_panelWidth - buttonWidth) * 0.5f);
+	ImGui::SetCursorPosX((panelWidth - buttonWidth) * 0.5f);
 	if (ImGui::Button(locLabel("mainMenu.exit"), ImVec2(buttonWidth, 0)))
 		onExit();
 
@@ -181,7 +183,7 @@ void AppStage_MainMenu::onGui()
 	const auto selectedIt= std::find(m_languageIdList.begin(), m_languageIdList.end(), m_selectedLanguageId);
 	int selectedIndex= selectedIt != m_languageIdList.end() ? (int)(selectedIt - m_languageIdList.begin()) : -1;
 
-	ImGui::SetCursorPosX((k_panelWidth - buttonWidth) * 0.5f);
+	ImGui::SetCursorPosX((panelWidth - buttonWidth) * 0.5f);
 	ImGui::SetNextItemWidth(buttonWidth);
 	if (ImGui::Combo("##mainMenuLanguage", &selectedIndex, &MkGui::ComboBoxDataSource::itemGetter,
 					 &m_languageDataSource, m_languageDataSource.getEntryCount()))
@@ -190,6 +192,23 @@ void AppStage_MainMenu::onGui()
 		{
 			locManager->setLanguage(m_languageIdList[selectedIndex]);
 		}
+	}
+
+	// UI scale, reachable before a project is open so a display the editor reads
+	// too small on can be fixed from the first screen. Same reasoning as the
+	// language combo above for drawing it without a property row.
+	ImGui::Spacing();
+	ImGui::SetCursorPosX((panelWidth - buttonWidth) * 0.5f);
+	ImGui::TextUnformatted(locText("mainMenu.uiScale"));
+
+	float uiScalePercent= m_appSettingsConfig->getUiScale() * 100.f;
+	ImGui::SetCursorPosX((panelWidth - buttonWidth) * 0.5f);
+	ImGui::SetNextItemWidth(buttonWidth);
+	if (ImGui::SliderFloat("##mainMenuUiScale", &uiScalePercent, AppSettingsConfig::k_minUiScale * 100.f,
+						   AppSettingsConfig::k_maxUiScale * 100.f, "%.0f%%"))
+	{
+		m_appSettingsConfig->setUiScale(uiScalePercent / 100.f);
+		MkGuiContext::setUserUiScale(m_appSettingsConfig->getUiScale());
 	}
 }
 

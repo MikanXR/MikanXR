@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1006,
+		"stringCount": 1010,
 		"translatedCount": 899,
 		"reviewedCount": 0
 	},
@@ -371,7 +371,8 @@
 		"openProjectDialogTitle": "プロジェクトを開く",
 		"projectFilesFilter": "プロジェクトファイル (*.mikanproj)",
 		"resumeProject": "プロジェクトを再開",
-		"title": "メインメニュー"
+		"title": "メインメニュー",
+		"uiScale": "UI Scale"
 	},
 	"mainWindow": {
 		"closeProject": "プロジェクトを閉じる",
@@ -796,6 +797,7 @@
 		"sectionAutomation": "Automation",
 		"sectionComponentNaming": "Component Naming",
 		"sectionDMX": "DMX",
+		"sectionInterface": "Interface",
 		"sectionLocalization": "ローカライズ",
 		"sectionLogging": "ログ",
 		"sectionMarker": "マーカー",
@@ -808,7 +810,9 @@
 		"stencilDisplaySolid": "ソリッド",
 		"stencilDisplayTooltip": "ワイヤーフレームは不透明メッシュを隠すので、映像内の実際のモデルが透けて見えます。",
 		"stencilDisplayWireframe": "ワイヤーフレーム",
-		"translationReviewNoticeFmt": "%d%% of this translation has been reviewed by a person. The rest is machine generated."
+		"translationReviewNoticeFmt": "%d%% of this translation has been reviewed by a person. The rest is machine generated.",
+		"uiScale": "UI Scale",
+		"uiScaleTooltip": "Scales the editor UI on top of the scale the display already reports. Leave it at 100 to use the display scale as-is."
 	},
 	"properties": {
 		"aruco_dictionary_type": "ArUco 辞書タイプ",
