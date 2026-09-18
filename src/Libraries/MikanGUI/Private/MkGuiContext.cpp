@@ -128,7 +128,7 @@ void MkGuiContext::setUserUiScale(float scale) { g_userUiScale= scale > 0.f ? sc
 
 float MkGuiContext::getUserUiScale() { return g_userUiScale; }
 
-void MkGuiContext::refreshDockLayoutScale()
+void MkGuiContext::refreshLayoutScale()
 {
 	MkGuiScopedContext scopedContext(*this);
 
@@ -136,17 +136,17 @@ void MkGuiContext::refreshDockLayoutScale()
 
 	// An ini with no reference (and a layout built fresh this run) is already
 	// proportioned for the scale it was laid out at
-	if (m_dockLayoutRefScale <= 0.f)
+	if (m_layoutRefScale <= 0.f)
 	{
-		m_dockLayoutRefScale= uiScale;
+		m_layoutRefScale= uiScale;
 		return;
 	}
 
-	if (uiScale == m_dockLayoutRefScale)
+	if (uiScale == m_layoutRefScale)
 		return;
 
-	MkGui::scaleDockLayout(uiScale / m_dockLayoutRefScale);
-	m_dockLayoutRefScale= uiScale;
+	MkGui::scaleWindowLayout(uiScale / m_layoutRefScale);
+	m_layoutRefScale= uiScale;
 }
 
 void MkGuiContext::refreshUiScale()
@@ -347,7 +347,7 @@ void MkGuiContext::configImGui()
 
 		// Registered before the first frame loads the ini, so the scale the saved
 		// layout was arranged at is in hand when the dock nodes come back
-		MkGui::installDockLayoutSettings(&m_dockLayoutRefScale);
+		MkGui::installLayoutSettings(&m_layoutRefScale);
 	}
 
 	MkGuiTheme::applyStyle();

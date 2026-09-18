@@ -65,16 +65,16 @@ bool getDockspaceCentralRect(const char* dockspaceId, ImVec2& outPos, ImVec2& ou
 	return true;
 }
 
-// -- Dock layout reference scale ----
+// -- Layout reference scale ----
 // The ini entry is written and read through ImGui's own settings machinery, so
 // the scale a layout was arranged at stays with that layout in the same file.
-static void* dockLayoutSettingsReadOpen(ImGuiContext*, ImGuiSettingsHandler* handler, const char* name)
+static void* layoutSettingsReadOpen(ImGuiContext*, ImGuiSettingsHandler* handler, const char* name)
 {
-	// One entry, so any name opens the same storage
-	return strcmp(name, "Dock") == 0 ? handler->UserData : nullptr;
+	// The one entry this handler owns; anything else is not ours to read
+	return strcmp(name, "Layout") == 0 ? handler->UserData : nullptr;
 }
 
-static void dockLayoutSettingsReadLine(ImGuiContext*, ImGuiSettingsHandler*, void* entry, const char* line)
+static void layoutSettingsReadLine(ImGuiContext*, ImGuiSettingsHandler*, void* entry, const char* line)
 {
 	float refScale= 0.f;
 	if (entry != nullptr && sscanf(line, "RefScale=%f", &refScale) == 1)
@@ -83,31 +83,31 @@ static void dockLayoutSettingsReadLine(ImGuiContext*, ImGuiSettingsHandler*, voi
 	}
 }
 
-static void dockLayoutSettingsWriteAll(ImGuiContext*, ImGuiSettingsHandler* handler, ImGuiTextBuffer* outBuffer)
+static void layoutSettingsWriteAll(ImGuiContext*, ImGuiSettingsHandler* handler, ImGuiTextBuffer* outBuffer)
 {
 	const float* refScale= (const float*)handler->UserData;
 	if (refScale == nullptr || *refScale <= 0.f)
 		return;
 
-	outBuffer->appendf("[%s][Dock]\n", handler->TypeName);
+	outBuffer->appendf("[%s][Layout]\n", handler->TypeName);
 	outBuffer->appendf("RefScale=%g\n", *refScale);
 	outBuffer->append("\n");
 }
 
-void installDockLayoutSettings(float* refScaleStorage)
+void installLayoutSettings(float* refScaleStorage)
 {
 	ImGuiSettingsHandler handler;
 	handler.TypeName= "MikanLayout";
 	handler.TypeHash= ImHashStr("MikanLayout");
-	handler.ReadOpenFn= dockLayoutSettingsReadOpen;
-	handler.ReadLineFn= dockLayoutSettingsReadLine;
-	handler.WriteAllFn= dockLayoutSettingsWriteAll;
+	handler.ReadOpenFn= layoutSettingsReadOpen;
+	handler.ReadLineFn= layoutSettingsReadLine;
+	handler.WriteAllFn= layoutSettingsWriteAll;
 	handler.UserData= refScaleStorage;
 
 	ImGui::AddSettingsHandler(&handler);
 }
 
-void scaleDockLayout(float factor)
+void scaleWindowLayout(float factor)
 {
 	ImGuiContext* context= ImGui::GetCurrentContext();
 	if (context == nullptr || factor <= 0.f)
@@ -123,6 +123,24 @@ void scaleDockLayout(float factor)
 			node->Size= ImTrunc(node->Size * factor);
 			node->SizeRef= ImTrunc(node->SizeRef * factor);
 		}
+	}
+
+	// The floating windows that are already live. A docked window takes its size
+	// from its node instead, and a child from its parent, so scaling those is
+	// overwritten rather than wrong.
+	ImGui::ScaleWindowsInViewport((ImGuiViewportP*)ImGui::GetMainViewport(), factor);
+
+	// The stored settings, which is where a window that has not been created yet
+	// gets its size from. Without this, a panel closed when the scale changed
+	// would come back at the size it had on the other display.
+	for (ImGuiWindowSettings* settings= context->SettingsWindows.begin(); settings != nullptr;
+		 settings= context->SettingsWindows.next_chunk(settings))
+	{
+		if (settings->WantDelete)
+			continue;
+
+		settings->Pos= ImVec2ih((short)(settings->Pos.x * factor), (short)(settings->Pos.y * factor));
+		settings->Size= ImVec2ih((short)(settings->Size.x * factor), (short)(settings->Size.y * factor));
 	}
 }
 
