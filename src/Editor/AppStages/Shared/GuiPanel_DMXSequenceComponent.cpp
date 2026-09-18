@@ -6,6 +6,7 @@
 #include "DMXSequenceSystem.h"
 #include "IconsForkAwesome.h"
 #include "LocText.h"
+#include "Shared/PickerPropertyGui.h"
 #include "MkGuiDrawUtils.h"
 #include "ProjectManager.h"
 #include "ProjectScriptContext.h"
@@ -52,8 +53,9 @@ void GuiPanel_DMXSequenceComponent::onConstruct()
 				return false;
 
 			m_groupDataSource.refreshEntries();
-			if (m_groupDataSource.getEntryCount() == 0)
-				return false;
+			if (PickerPropertyGui::drawEmptyPlaceholder(m_defaultGuiStyle, m_groupDataSource,
+														"componentPanel.presetGroup", "componentPanel.noFixtureGroups"))
+				return true;
 
 			DMXSequenceDefinitionPtr sequenceDef= sequenceComp->getDMXSequenceDefinition();
 			int selectedIndex= m_groupDataSource.getEntryIndexByComponentId(sequenceDef->getGroupId());

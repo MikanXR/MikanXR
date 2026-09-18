@@ -6,6 +6,7 @@
 #include "DMXPresetSystem.h"
 #include "IEditorWindow.h"
 #include "LocText.h"
+#include "Shared/PickerPropertyGui.h"
 #include "MkGuiDrawUtils.h"
 #include "RGBPixelGridComponent.h"
 #include "RGBSpotLightComponent.h"
@@ -40,8 +41,9 @@ void GuiPanel_DMXPresetComponent::onConstruct()
 				return false;
 
 			m_groupDataSource.refreshEntries();
-			if (m_groupDataSource.getEntryCount() == 0)
-				return false;
+			if (PickerPropertyGui::drawEmptyPlaceholder(m_defaultGuiStyle, m_groupDataSource,
+														"componentPanel.presetGroup", "componentPanel.noFixtureGroups"))
+				return true;
 
 			DMXPresetDefinitionPtr presetDef= presetComp->getDMXPresetDefinition();
 			int selectedIndex= m_groupDataSource.getEntryIndexByComponentId(presetDef->getGroupId());

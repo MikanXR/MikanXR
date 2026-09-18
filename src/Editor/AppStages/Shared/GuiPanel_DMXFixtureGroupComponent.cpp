@@ -3,6 +3,7 @@
 #include "DMXFixtureGroupComponent.h"
 #include "IconsForkAwesome.h"
 #include "LocText.h"
+#include "Shared/PickerPropertyGui.h"
 #include "MkGuiDrawUtils.h"
 #include "RGBPixelGridComponent.h"
 #include "RGBPixelGridSystem.h"
@@ -42,8 +43,9 @@ void GuiPanel_DMXFixtureGroupComponent::onConstruct()
 				return false;
 
 			m_stageDataSource.refreshEntries();
-			if (m_stageDataSource.getEntryCount() == 0)
-				return false;
+			if (PickerPropertyGui::drawEmptyPlaceholder(m_defaultGuiStyle, m_stageDataSource, "componentPanel.stage",
+														"componentPanel.noStages"))
+				return true;
 
 			DMXFixtureGroupDefinitionPtr groupDef= groupComp->getDMXFixtureGroupDefinition();
 			int selectedIndex= m_stageDataSource.getEntryIndexByComponentId(groupDef->getOwnerStageId());

@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1010,
-		"translatedCount": 1010,
-		"reviewedCount": 1010
+		"stringCount": 1013,
+		"translatedCount": 1013,
+		"reviewedCount": 1013
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -189,6 +189,13 @@
 		"intrinsicsResolutionMismatchFmt": "Calibrated at %dx%d but running at %dx%d. Recalibrate or return to the calibrated video mode.",
 		"intrinsicsUncalibrated": "Not calibrated. Run lens calibration before using this source for alignment or compositing.",
 		"noAsset": "<None>",
+		"noCompositors": "No Compositors",
+		"noFixtureGroups": "No Fixture Groups",
+		"noParents": "No Parents",
+		"noStages": "No Stages",
+		"noTrackingMounts": "No Tracking Mounts",
+		"noTrackingVolumes": "No Tracking Volumes",
+		"noVideoSources": "No Video Sources",
 		"none": "<none>",
 		"originMarker": "Origin Marker",
 		"parent": "Parent",

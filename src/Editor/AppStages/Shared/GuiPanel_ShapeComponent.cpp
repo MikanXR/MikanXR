@@ -8,6 +8,7 @@
 #include "GuiDataSource_ComboBox.h"
 #include "IconsForkAwesome.h"
 #include "LocText.h"
+#include "Shared/PickerPropertyGui.h"
 #include "MikanCoreTypes.h"
 #include "QuadShapeComponent.h"
 #include "QuadShapeSystem.h"
@@ -49,8 +50,9 @@ void GuiPanel_ShapeComponent::onConstruct()
 				return false;
 
 			m_parentTransformDataSource.refreshEntries();
-			if (m_parentTransformDataSource.getEntryCount() == 0)
-				return false;
+			if (PickerPropertyGui::drawEmptyPlaceholder(m_defaultGuiStyle, m_parentTransformDataSource,
+														"componentPanel.parent", "componentPanel.noParents"))
+				return true;
 
 			const MikanTransformID parentTransformId=
 				shapeComponent->getShapeComponentDefinition()->getParentTransformId();

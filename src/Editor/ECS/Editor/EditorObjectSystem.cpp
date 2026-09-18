@@ -1036,8 +1036,9 @@ void EditorObjectSystem::onSelectionChanged(SelectionComponentPtr oldSelectedCom
 		// Tell the new selection that it's getting selected
 		newSelectedComponentPtr->notifySelected();
 
-		// Is the component selected not owned by the gizmo object?
-		if (newSelectedComponentPtr->getOwnerObject() != gizmoComponentPtr->getOwnerObject())
+		// The gizmo is built per activated scene, so a project with no scene yet
+		// has none. Is the component selected not owned by the gizmo object?
+		if (gizmoComponentPtr && newSelectedComponentPtr->getOwnerObject() != gizmoComponentPtr->getOwnerObject())
 		{
 			SelectionComponentPtr oldGizmoTargetPtr= gizmoComponentPtr->getSelectionTarget();
 			SelectionComponentPtr newGizmoTargetPtr= newSelectedComponentPtr;
@@ -1050,13 +1051,14 @@ void EditorObjectSystem::onSelectionChanged(SelectionComponentPtr oldSelectedCom
 			}
 		}
 	}
-	else
+	else if (gizmoComponentPtr)
 	{
 		// Clean up the gizmo
 		gizmoComponentPtr->clearSelectionTarget();
 	}
 
-	// Send an event for the selection changing
+	// Sent whether or not there is a gizmo: the outliner binds its component
+	// panels off this, and a project with no scene still has a selection
 	if (OnSelectionChanged)
 		OnSelectionChanged();
 }

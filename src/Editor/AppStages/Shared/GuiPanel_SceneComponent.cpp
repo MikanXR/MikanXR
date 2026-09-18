@@ -4,6 +4,7 @@
 #include "CompositorObjectSystem.h"
 #include "LocText.h"
 #include "MkGuiDrawUtils.h"
+#include "Shared/PickerPropertyGui.h"
 
 GuiPanel_SceneComponent::GuiPanel_SceneComponent(AppStage* ownerAppStage)
 	: GuiPanel_MikanComponent(ownerAppStage)
@@ -37,8 +38,10 @@ void GuiPanel_SceneComponent::onConstruct()
 				return false;
 
 			m_compositorDataSource.refreshEntries();
-			if (m_compositorDataSource.getEntryCount() == 0)
-				return false;
+			if (PickerPropertyGui::drawEmptyPlaceholder(m_defaultGuiStyle, m_compositorDataSource,
+														"componentPanel.displayCompositor",
+														"componentPanel.noCompositors"))
+				return true;
 
 			const MikanCompositorID currentCompositorId=
 				sceneComp->getSceneComponentDefinition()->getDisplayCompositorId();

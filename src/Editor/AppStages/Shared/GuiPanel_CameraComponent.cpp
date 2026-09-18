@@ -1,6 +1,7 @@
 #include "AppStage.h"
 #include "Shared/GuiPanel_CameraComponent.h"
 #include "LocText.h"
+#include "Shared/PickerPropertyGui.h"
 #include "MkGuiDrawUtils.h"
 #include "ARKitVideoSourceComponent.h"
 #include "ARKitVideoSourceSystem.h"
@@ -42,8 +43,9 @@ void GuiPanel_CameraComponent::onConstruct()
 				return false;
 
 			m_videoSourceDataSource.refreshEntries();
-			if (m_videoSourceDataSource.getEntryCount() == 0)
-				return false;
+			if (PickerPropertyGui::drawEmptyPlaceholder(m_defaultGuiStyle, m_videoSourceDataSource,
+														"componentPanel.videoSource", "componentPanel.noVideoSources"))
+				return true;
 
 			const MikanVideoSourceID currentVideoSourceId= cameraComp->getCameraDefinition()->getVideoSourceId();
 			int selectedIndex= m_videoSourceDataSource.getEntryIndexByComponentId(currentVideoSourceId);
@@ -73,8 +75,10 @@ void GuiPanel_CameraComponent::onConstruct()
 				return false;
 
 			m_trackingMountDataSource.refreshEntries();
-			if (m_trackingMountDataSource.getEntryCount() == 0)
-				return false;
+			if (PickerPropertyGui::drawEmptyPlaceholder(m_defaultGuiStyle, m_trackingMountDataSource,
+														"componentPanel.trackingMount",
+														"componentPanel.noTrackingMounts"))
+				return true;
 
 			const MikanTrackingMountID currentMountId= cameraComp->getCameraDefinition()->getTrackingMountId();
 			int selectedIndex= m_trackingMountDataSource.getEntryIndexByComponentId(currentMountId);

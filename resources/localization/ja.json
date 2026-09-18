@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1010,
+		"stringCount": 1013,
 		"translatedCount": 899,
 		"reviewedCount": 0
 	},
@@ -189,6 +189,13 @@
 		"intrinsicsResolutionMismatchFmt": "Calibrated at %dx%d but running at %dx%d. Recalibrate or return to the calibrated video mode.",
 		"intrinsicsUncalibrated": "Not calibrated. Run lens calibration before using this source for alignment or compositing.",
 		"noAsset": "<なし>",
+		"noCompositors": "No Compositors",
+		"noFixtureGroups": "No Fixture Groups",
+		"noParents": "No Parents",
+		"noStages": "No Stages",
+		"noTrackingMounts": "No Tracking Mounts",
+		"noTrackingVolumes": "No Tracking Volumes",
+		"noVideoSources": "No Video Sources",
 		"none": "<なし>",
 		"originMarker": "原点マーカー",
 		"parent": "親",

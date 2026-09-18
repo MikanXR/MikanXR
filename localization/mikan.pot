@@ -861,6 +861,41 @@ msgid "<None>"
 msgstr ""
 
 #. Section: componentPanel
+msgctxt "componentPanel.noCompositors"
+msgid "No Compositors"
+msgstr ""
+
+#. Section: componentPanel
+msgctxt "componentPanel.noFixtureGroups"
+msgid "No Fixture Groups"
+msgstr ""
+
+#. Section: componentPanel
+msgctxt "componentPanel.noParents"
+msgid "No Parents"
+msgstr ""
+
+#. Section: componentPanel
+msgctxt "componentPanel.noStages"
+msgid "No Stages"
+msgstr ""
+
+#. Section: componentPanel
+msgctxt "componentPanel.noTrackingMounts"
+msgid "No Tracking Mounts"
+msgstr ""
+
+#. Section: componentPanel
+msgctxt "componentPanel.noTrackingVolumes"
+msgid "No Tracking Volumes"
+msgstr ""
+
+#. Section: componentPanel
+msgctxt "componentPanel.noVideoSources"
+msgid "No Video Sources"
+msgstr ""
+
+#. Section: componentPanel
 msgctxt "componentPanel.none"
 msgid "<none>"
 msgstr ""

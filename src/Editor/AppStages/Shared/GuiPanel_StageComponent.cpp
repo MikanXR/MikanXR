@@ -1,6 +1,7 @@
 #include "AppStage.h"
 #include "Shared/GuiPanel_StageComponent.h"
 #include "LocText.h"
+#include "Shared/PickerPropertyGui.h"
 #include "MarkerTrackingVolumeComponent.h"
 #include "MarkerTrackingVolumeSystem.h"
 #include "MkGuiDrawUtils.h"
@@ -31,8 +32,10 @@ void GuiPanel_StageComponent::onConstruct()
 				return false;
 
 			m_trackingVolumeDataSource.refreshEntries();
-			if (m_trackingVolumeDataSource.getEntryCount() == 0)
-				return false;
+			if (PickerPropertyGui::drawEmptyPlaceholder(m_defaultGuiStyle, m_trackingVolumeDataSource,
+														"componentPanel.trackingVolume",
+														"componentPanel.noTrackingVolumes"))
+				return true;
 
 			const MikanTrackingVolumeID currentVolumeId=
 				stageComp->getStageComponentDefinition()->getTrackingVolumeId();
