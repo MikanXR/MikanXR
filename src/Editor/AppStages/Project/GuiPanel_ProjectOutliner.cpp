@@ -77,6 +77,7 @@
 #include "VRTrackingVolumeComponent.h"
 
 #include "imgui.h"
+#include "MkGuiDrawUtils.h"
 
 #include <algorithm>
 
@@ -185,13 +186,19 @@ void GuiPanel_ProjectOutliner::drawTree()
 	// A fixed height the splitter below adjusts, clamped so the tree never
 	// collapses and the action strip under it always keeps some room
 	EditorObjectSystemDefinitionPtr editorConfig= getEditorConfig();
+	const float uiScale= MkGui::getUiScale();
 	if (!m_bTreeHeightDragging && editorConfig)
 	{
-		m_treeHeight= editorConfig->getOutlinerTreeHeight();
+		// The project stores the height in logical units so a layout opens the
+		// same on any display; the live height is in scaled pixels like the
+		// child region it sizes
+		m_treeHeight= editorConfig->getOutlinerTreeHeight() * uiScale;
 	}
+	const float minOutlinerTreeHeight= k_minOutlinerTreeHeight * uiScale;
+	const float minOutlinerActionsHeight= k_minOutlinerActionsHeight * uiScale;
 	const float maxTreeHeight=
-		std::max(k_minOutlinerTreeHeight, ImGui::GetContentRegionAvail().y - k_minOutlinerActionsHeight);
-	m_treeHeight= std::clamp(m_treeHeight, k_minOutlinerTreeHeight, maxTreeHeight);
+		std::max(minOutlinerTreeHeight, ImGui::GetContentRegionAvail().y - minOutlinerActionsHeight);
+	m_treeHeight= std::clamp(m_treeHeight, minOutlinerTreeHeight, maxTreeHeight);
 
 	if (ImGui::BeginChild("##OutlinerTree", ImVec2(0.f, m_treeHeight)))
 	{
@@ -208,7 +215,7 @@ void GuiPanel_ProjectOutliner::drawTree()
 void GuiPanel_ProjectOutliner::drawTreeSplitter(EditorObjectSystemDefinitionPtr editorConfig, float maxTreeHeight)
 {
 	const float width= std::max(ImGui::GetContentRegionAvail().x, 1.f);
-	ImGui::InvisibleButton("##OutlinerSplitter", ImVec2(width, k_outlinerSplitterHeight));
+	ImGui::InvisibleButton("##OutlinerSplitter", ImVec2(width, k_outlinerSplitterHeight * MkGui::getUiScale()));
 	const bool bHovered= ImGui::IsItemHovered();
 	const bool bActive= ImGui::IsItemActive();
 
@@ -227,7 +234,9 @@ void GuiPanel_ProjectOutliner::drawTreeSplitter(EditorObjectSystemDefinitionPtr 
 	else if (m_bTreeHeightDragging)
 	{
 		m_bTreeHeightDragging= false;
-		const float treeHeight= std::clamp(m_treeHeight, k_minOutlinerTreeHeight, maxTreeHeight);
+		// Committed in logical units, the way the project stores it
+		const float uiScale= MkGui::getUiScale();
+		const float treeHeight= std::clamp(m_treeHeight, k_minOutlinerTreeHeight * uiScale, maxTreeHeight) / uiScale;
 		if (editorConfig)
 		{
 			addDeferredGuiEvent([editorConfig, treeHeight]() { editorConfig->setOutlinerTreeHeight(treeHeight); });

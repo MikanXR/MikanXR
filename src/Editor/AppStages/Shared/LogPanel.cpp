@@ -4,6 +4,7 @@
 #include "Logger.h"
 
 #include "imgui.h"
+#include "MkGuiDrawUtils.h"
 
 #include <vector>
 
@@ -32,7 +33,7 @@ void LogPanel::draw(bool* pOpen)
 	const char* levelLabels[]= {locText("logPanel.levelTrace"), locText("logPanel.levelDebug"),
 								locText("logPanel.levelInfo"),  locText("logPanel.levelWarning"),
 								locText("logPanel.levelError"), locText("logPanel.levelFatal")};
-	ImGui::SetNextItemWidth(140.f);
+	ImGui::SetNextItemWidth(140.f * MkGui::getUiScale());
 	ImGui::Combo(locLabel("logPanel.minLevel"), &m_minLevel, levelLabels, IM_ARRAYSIZE(levelLabels));
 
 	ImGui::Separator();

@@ -1344,7 +1344,8 @@ void NodeGraph::editorRender(const NodeEditorState& editorState)
 
 		// Write the canvas position back so drags land in the definition the
 		// undo snapshots and graph file serialize
-		const ImVec2 nodePos= ax::NodeEditor::GetNodePosition(MkCanvas::toCanvasId(node->getId()));
+		const ImVec2 nodePos=
+			MkCanvas::fromCanvasSpace(ax::NodeEditor::GetNodePosition(MkCanvas::toCanvasId(node->getId())));
 		node->setNodePos({nodePos.x, nodePos.y});
 	}
 

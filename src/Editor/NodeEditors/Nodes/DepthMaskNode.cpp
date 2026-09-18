@@ -261,8 +261,7 @@ void DepthMaskNode::editorRenderNode(const NodeEditorState& editorState)
 	ImGui::Dummy(ImVec2(1.0f, 0.5f));
 	IMkTexturePtr colorTexture=
 		m_linearDepthFrameBuffer ? m_linearDepthFrameBuffer->getColorTexture() : IMkTexturePtr();
-	uint32_t glTextureId= colorTexture ? colorTexture->getGlTextureId() : 0;
-	ImGui::Image((void*)(intptr_t)glTextureId, ImVec2(100, 100));
+	MkGui::drawImage(colorTexture, 100.f, 100.f);
 	ImGui::SameLine();
 
 	// Outputs

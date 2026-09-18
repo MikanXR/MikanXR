@@ -40,6 +40,7 @@
 #include "glm/gtc/quaternion.hpp"
 
 #include "imgui.h"
+#include "MkGuiDrawUtils.h"
 
 //-- statics ----
 const char* AppStage_AlignCameraByUtilityMarker::APP_STAGE_NAME= "AlignCameraByUtilityMarker";
@@ -253,8 +254,8 @@ void AppStage_AlignCameraByUtilityMarker::onGui()
 	if (bShowVideo)
 	{
 		const ImVec2 displaySize= ImGui::GetMainViewport()->Size;
-		constexpr float k_panelWidth= 415.f;
-		const float videoAreaWidth= displaySize.x - k_panelWidth;
+		const float panelWidth= 415.f * MkGui::getUiScale();
+		const float videoAreaWidth= displaySize.x - panelWidth;
 		const float halfH= displaySize.y * 0.5f;
 		constexpr ImGuiWindowFlags k_bgFlags= ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs
 											  | ImGuiWindowFlags_NoBringToFrontOnFocus
@@ -292,11 +293,11 @@ void AppStage_AlignCameraByUtilityMarker::onGui()
 	}
 
 	// Side panel with calibration controls
-	constexpr float k_panelWidth= 415.f;
+	const float panelWidth= 415.f * MkGui::getUiScale();
 	const float displayWidth= m_ownerWindow->getWidth();
 
-	ImGui::SetNextWindowPos(ImVec2(displayWidth - k_panelWidth, 0.f), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(k_panelWidth, 0), ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(displayWidth - panelWidth, 0.f), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(panelWidth, 0), ImGuiCond_Always);
 	constexpr ImGuiWindowFlags k_flags=
 		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
 	MkGuiScopedWindow panel("##AlignCameraByUtilityMarker", nullptr, k_flags);

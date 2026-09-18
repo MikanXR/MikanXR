@@ -315,9 +315,9 @@ void Node::editorComputeNodeDimensions(NodeDimensions& outDims) const
 	{
 		// Pins that hide their name contribute only their icon footprint
 		const float nameWidth= pin->editorShowPinName()
-								   ? ImGui::CalcTextSize(pin->getName().c_str()).x + NodePin::k_editorPinIconSpacing
+								   ? ImGui::CalcTextSize(pin->getName().c_str()).x + NodePin::getEditorPinIconSpacing()
 								   : 0.f;
-		const float textWidth= NodePin::k_editorPinIconSize + NodePin::k_editorPinIconSpacing + nameWidth;
+		const float textWidth= NodePin::getEditorPinIconSize() + NodePin::getEditorPinIconSpacing() + nameWidth;
 		const float inputWidth= pin->editorComputeInputWidth();
 
 		outDims.inputColomnWidth= std::max(outDims.inputColomnWidth, std::max(textWidth, inputWidth));
@@ -326,10 +326,10 @@ void Node::editorComputeNodeDimensions(NodeDimensions& outDims) const
 	for (auto& pin : m_pinsOut)
 	{
 		const float nameWidth= pin->editorShowPinName()
-								   ? ImGui::CalcTextSize(pin->getName().c_str()).x + NodePin::k_editorPinIconSpacing
+								   ? ImGui::CalcTextSize(pin->getName().c_str()).x + NodePin::getEditorPinIconSpacing()
 								   : 0.f;
 
-		outDims.outputColomnWidth= std::max(outDims.outputColomnWidth, nameWidth + NodePin::k_editorPinIconSize);
+		outDims.outputColomnWidth= std::max(outDims.outputColomnWidth, nameWidth + NodePin::getEditorPinIconSize());
 	}
 
 	outDims.totalNodeWidth= std::max(outDims.totalNodeWidth, outDims.inputColomnWidth + outDims.outputColomnWidth);
@@ -387,9 +387,9 @@ void Node::editorRenderOutputPins(const NodeEditorState& editorState) const
 	for (auto& pin : m_pinsOut)
 	{
 		const float nameWidth= pin->editorShowPinName()
-								   ? ImGui::CalcTextSize(pin->getName().c_str()).x + NodePin::k_editorPinIconSpacing
+								   ? ImGui::CalcTextSize(pin->getName().c_str()).x + NodePin::getEditorPinIconSpacing()
 								   : 0.f;
-		const float prefixWidth= rowRightEdgeX - ImGui::GetCursorPosX() - nameWidth - NodePin::k_editorPinIconSize;
+		const float prefixWidth= rowRightEdgeX - ImGui::GetCursorPosX() - nameWidth - NodePin::getEditorPinIconSize();
 
 		pin->editorRenderOutputPin(editorState, std::max(prefixWidth, 0.f));
 	}

@@ -1,5 +1,6 @@
 #include "MkCanvasScopedNode.h"
 #include "MkCanvasWidgets.h"
+#include "MkGuiDrawUtils.h"
 
 #include "imgui.h"
 #include "imgui_node_editor.h"
@@ -12,7 +13,8 @@ MkCanvasScopedNode::MkCanvasScopedNode(int nodeId, const ImVec4& headerColor)
 	: m_nodeId(MkCanvas::toCanvasId(nodeId))
 	, m_headerColor(ImColor(headerColor))
 {
-	ed::PushStyleVar(ed::StyleVar_NodePadding, ImVec4(8.f, 4.f, 8.f, 8.f));
+	const float uiScale= MkGui::getUiScale();
+	ed::PushStyleVar(ed::StyleVar_NodePadding, ImVec4(8.f * uiScale, 4.f * uiScale, 8.f * uiScale, 8.f * uiScale));
 	ed::BeginNode(m_nodeId);
 	ImGui::PushID(m_nodeId);
 
@@ -43,8 +45,9 @@ MkCanvasScopedNode::~MkCanvasScopedNode()
 		const float rounding= ed::GetStyle().NodeRounding;
 
 		ImDrawList* drawList= ed::GetNodeBackgroundDrawList(m_nodeId);
+		const float uiScale= MkGui::getUiScale();
 		const ImVec2 headerBandMin(nodeMin.x + halfBorder, nodeMin.y + halfBorder);
-		const ImVec2 headerBandMax(nodeMax.x - halfBorder, m_headerMax.y + 2.f);
+		const ImVec2 headerBandMax(nodeMax.x - halfBorder, m_headerMax.y + 2.f * uiScale);
 
 		if (headerBandMax.y > headerBandMin.y)
 		{
@@ -63,9 +66,9 @@ MkCanvasScopedNode::~MkCanvasScopedNode()
 			}
 
 			// Thin separator between the header band and the node body
-			drawList->AddLine(ImVec2(headerBandMin.x, headerBandMax.y - 0.5f),
-							  ImVec2(headerBandMax.x, headerBandMax.y - 0.5f),
-							  IM_COL32(255, 255, 255, 32 * alpha / 255), 1.f);
+			drawList->AddLine(ImVec2(headerBandMin.x, headerBandMax.y - 0.5f * uiScale),
+							  ImVec2(headerBandMax.x, headerBandMax.y - 0.5f * uiScale),
+							  IM_COL32(255, 255, 255, 32 * alpha / 255), 1.f * uiScale);
 		}
 	}
 
@@ -84,5 +87,5 @@ void MkCanvasScopedNode::endHeader()
 	m_bHasHeader= true;
 
 	// Breathing room between the header band and the first content row
-	ImGui::Dummy(ImVec2(0.f, 4.f));
+	ImGui::Dummy(ImVec2(0.f, 4.f * MkGui::getUiScale()));
 }

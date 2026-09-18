@@ -1,6 +1,7 @@
 #include "MkCanvasScopedEditor.h"
 #include "MkCanvasWidgets.h"
 #include "MkGuiDockspace.h"
+#include "MkGuiDrawUtils.h"
 
 #include "imgui.h"
 #include "imgui_node_editor.h"
@@ -28,16 +29,26 @@ int getDoubleClickedNodeId()
 	return nodeId ? fromCanvasId((int)nodeId.Get()) : -1;
 }
 
+// The node metrics that are authored in pixels. Refreshed every frame from the
+// canvas scope as well, so a window moved to a display with a different scale
+// redraws its nodes at the new one.
+static void applyScaledEditorMetrics(ed::Style& style)
+{
+	const float uiScale= MkGui::getUiScale();
+
+	style.NodeRounding= 6.f * uiScale;
+	style.NodeBorderWidth= 1.5f * uiScale;
+	style.HoveredNodeBorderWidth= 2.5f * uiScale;
+	style.SelectedNodeBorderWidth= 3.f * uiScale;
+}
+
 void applyEditorStyle(ax::NodeEditor::EditorContext* editorContext)
 {
 	ax::NodeEditor::EditorContext* prevContext= ed::GetCurrentEditor();
 	ed::SetCurrentEditor(editorContext);
 
 	ed::Style& style= ed::GetStyle();
-	style.NodeRounding= 6.f;
-	style.NodeBorderWidth= 1.5f;
-	style.HoveredNodeBorderWidth= 2.5f;
-	style.SelectedNodeBorderWidth= 3.f;
+	applyScaledEditorMetrics(style);
 	style.PinRadius= 0.f;
 
 	style.Colors[ed::StyleColor_NodeBg]= ImColor(30, 30, 34, 240);
@@ -54,6 +65,7 @@ void applyEditorStyle(ax::NodeEditor::EditorContext* editorContext)
 MkCanvasScopedEditor::MkCanvasScopedEditor(ax::NodeEditor::EditorContext* editorContext, const char* canvasId)
 {
 	ed::SetCurrentEditor(editorContext);
+	MkCanvas::applyScaledEditorMetrics(ed::GetStyle());
 	ed::Begin(canvasId, ImVec2(0.f, 0.f));
 
 	// GetCurrentZoom() is the view's InvScale; its reciprocal is the on-screen

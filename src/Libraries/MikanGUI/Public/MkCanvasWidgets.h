@@ -17,6 +17,15 @@ constexpr int k_canvasIdOffset= 1;
 inline int toCanvasId(int graphId) { return graphId + k_canvasIdOffset; }
 inline int fromCanvasId(int canvasId) { return canvasId - k_canvasIdOffset; }
 
+// Node positions and comment box sizes persist as 96 DPI logical units, so a
+// graph laid out on one display opens the same on another. The canvas itself
+// works in the scaled pixels the rest of the UI draws in, since its contents
+// are measured ImGui items. Every position and size crossing the canvas
+// boundary converts here, in both directions. Positions convert like sizes
+// because canvas space shares its origin with the logical space.
+MIKAN_GUI_FUNC(ImVec2) toCanvasSpace(const ImVec2& logical);
+MIKAN_GUI_FUNC(ImVec2) fromCanvasSpace(const ImVec2& canvas);
+
 enum class PinIcon : int
 {
 	Flow,
@@ -39,8 +48,9 @@ drawPinIcon(const ImVec2& size, PinIcon icon, bool bFilled, MkCanvasPinDirection
 // a translucent, resizable region that drags the nodes inside it along, plus a
 // floating title hint once the canvas is zoomed out too far to read the band.
 // inoutGroupSize seeds the region on the first draw and comes back holding the
-// size the user has resized it to; bApplyGroupSize pushes it to the canvas
-// again (after a load or an edit), since the canvas otherwise owns the size.
+// size the user has resized it to, in logical units both ways; bApplyGroupSize
+// pushes it to the canvas again (after a load or an edit), since the canvas
+// otherwise owns the size.
 MIKAN_GUI_FUNC(void)
 drawCommentNode(int nodeId, const char* title, const ImVec4& color, ImVec2& inoutGroupSize, bool bApplyGroupSize);
 } // namespace MkCanvas

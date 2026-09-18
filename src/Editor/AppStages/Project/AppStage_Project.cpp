@@ -32,6 +32,7 @@
 #include "MikanLineRenderer.h"
 #include "MikanTextRenderer.h"
 #include "MikanObject.h"
+#include "MkGuiDrawUtils.h"
 #include "MkScene.h"
 #include "MkStateModifiers.h"
 #include "MkStateStack.h"
@@ -325,7 +326,9 @@ void AppStage_Project::onGui()
 		if (camera)
 		{
 			const glm::i32vec2 vpOrigin= m_viewport->getViewportOrigin();
-			ImGui::SetNextWindowPos(ImVec2((float)vpOrigin.x + 8, (float)vpOrigin.y + 8), ImGuiCond_Always);
+			ImGui::SetNextWindowPos(
+				ImVec2((float)vpOrigin.x + 8 * MkGui::getUiScale(), (float)vpOrigin.y + 8 * MkGui::getUiScale()),
+				ImGuiCond_Always);
 
 			constexpr ImGuiWindowFlags k_overlayFlags= ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
 													   | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar
@@ -341,7 +344,7 @@ void AppStage_Project::onGui()
 
 				int currentIndex= getCurrentCameraViewIndex();
 
-				ImGui::SetNextItemWidth(110.f);
+				ImGui::SetNextItemWidth(110.f * MkGui::getUiScale());
 				if (ImGui::Combo("##ViewMode", &currentIndex, k_viewLabels, IM_ARRAYSIZE(k_viewLabels)))
 				{
 					applyCameraView(currentIndex);
@@ -1166,8 +1169,10 @@ void AppStage_Project::renderCameraAlignmentDebug(IMkGraphicsContext* graphicsCo
 void AppStage_Project::renderCameraAlignmentGui()
 {
 	const glm::i32vec2 vpOrigin= m_viewport ? m_viewport->getViewportOrigin() : glm::i32vec2(0, 45);
-	ImGui::SetNextWindowPos(ImVec2((float)vpOrigin.x + 8, (float)vpOrigin.y + 44), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(340.f, 0.f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowPos(
+		ImVec2((float)vpOrigin.x + 8 * MkGui::getUiScale(), (float)vpOrigin.y + 44 * MkGui::getUiScale()),
+		ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(340.f * MkGui::getUiScale(), 0.f), ImGuiCond_FirstUseEver);
 
 	if (ImGui::Begin(locWindowTitle("windows.cameraAlignmentDebug")))
 	{

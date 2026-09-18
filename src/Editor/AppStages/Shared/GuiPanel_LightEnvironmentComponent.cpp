@@ -4,6 +4,7 @@
 #include "Shared/GuiPanel_LightEnvironmentComponent.h"
 
 #include "imgui.h"
+#include "MkGuiDrawUtils.h"
 
 #include <cmath>
 
@@ -39,7 +40,7 @@ void GuiPanel_LightEnvironmentComponent::onConstruct()
 				ImVec4(std::fmin(std::fmax(ambient.r, 0.f), 1.f), std::fmin(std::fmax(ambient.g, 0.f), 1.f),
 					   std::fmin(std::fmax(ambient.b, 0.f), 1.f), 1.f),
 				ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_NoTooltip,
-				ImVec2(24.f, 24.f));
+				ImVec2(24.f * MkGui::getUiScale(), 24.f * MkGui::getUiScale()));
 			ImGui::SameLine();
 			ImGui::Text(locText("componentPanel.skyIrradianceFmt"), ambient.r, ambient.g, ambient.b);
 
@@ -68,7 +69,7 @@ void GuiPanel_LightEnvironmentComponent::onConstruct()
 				ImGui::ColorButton("##shCoefficient", swatch,
 								   ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoPicker
 									   | ImGuiColorEditFlags_NoTooltip,
-								   ImVec2(18.f, 18.f));
+								   ImVec2(18.f * MkGui::getUiScale(), 18.f * MkGui::getUiScale()));
 				if (ImGui::IsItemHovered())
 				{
 					ImGui::SetTooltip(locText("componentPanel.shCoefficientTooltipFmt"), k_shCoefficientLabels[i],

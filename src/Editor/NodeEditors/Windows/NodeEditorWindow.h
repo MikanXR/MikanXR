@@ -112,6 +112,10 @@ protected:
 	// The create-node list of the background context menu: a filter box over
 	// the valid factories, grouped by category when the filter is empty
 	void renderCreateNodeMenu(const class NodeEditorState& editorState);
+	// The canvas holds node positions and comment box sizes in scaled pixels, so
+	// a UI scale change (the window moved to a display with a different scale, or
+	// the scale preference) has to push every stored one again
+	void refreshCanvasUiScale();
 	void renderMenuBar();
 	// Extra menus appended after File/Edit/View (the compositor window's Compositor menu)
 	virtual void renderMenuBarExtras() {}
@@ -202,6 +206,8 @@ protected:
 
 	// The canvas view state (pan/zoom/selection) for this window's graph
 	ax::NodeEditor::EditorContext* m_canvasContext= nullptr;
+	// The UI scale the canvas positions were last pushed at
+	float m_appliedCanvasUiScale= 0.f;
 	// Frame the current page's nodes on the next canvas frame (navigation needs
 	// the editor current and the page's nodes submitted)
 	bool m_bNavigateToContentPending= false;

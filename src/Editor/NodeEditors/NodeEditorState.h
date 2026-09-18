@@ -19,6 +19,8 @@ public:
 	// rewired when the drag ends
 	t_node_link_id detachedLinkId= -1;
 	bool bLinkHanged= false;
+	// Where the next node lands, in the same logical units node positions persist
+	// in rather than canvas pixels (see MkCanvas::toCanvasSpace)
 	ImVec2 hangPosGridSpace= {};
 	class MkGuiStyleManager* styleManager= nullptr;
 };

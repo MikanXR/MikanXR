@@ -22,7 +22,7 @@ bool drawAssetReferenceProperty(MkGuiStyleConstPtr style, const std::string& fie
 	// An asset name earns more of the row than the label column would leave it,
 	// so the field starts right after the label text. These labels are much
 	// shorter than the column offset and the reclaimed space is often a whole name.
-	const float labelGap= 8.f;
+	const float labelGap= 8.f * MkGui::getUiScale();
 	ImGui::SameLine(0.f, labelGap);
 
 	AssetReferencePtr defaultAssetRef= factory.getDefaultAssetReference();

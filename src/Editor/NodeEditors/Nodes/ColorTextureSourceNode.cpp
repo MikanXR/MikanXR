@@ -330,8 +330,7 @@ void ColorTextureSourceNode::editorRenderNode(const NodeEditorState& editorState
 	// Texture Preview
 	ImGui::Dummy(ImVec2(1.0f, 0.5f));
 	IMkTexturePtr textureResource= getTextureResource();
-	uint32_t glTextureId= textureResource ? textureResource->getGlTextureId() : 0;
-	ImGui::Image((void*)(intptr_t)glTextureId, ImVec2(100, 100));
+	MkGui::drawImage(textureResource, 100.f, 100.f);
 	ImGui::SameLine();
 
 	// Outputs

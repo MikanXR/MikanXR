@@ -4,6 +4,7 @@
 #include "Graphs/NodeGraph.h"
 #include "Pins/NodeLink.h"
 #include "MkCanvasScopedPin.h"
+#include "MkGuiDrawUtils.h"
 #include "MkGuiScopedStyleColor.h"
 #include "StringUtils.h"
 #include "Logger.h"
@@ -12,6 +13,14 @@
 
 const float k_pin_alpha_default= 1.f;
 const float k_pin_alpha_invalid= 0.2f;
+
+// Authored against a 96 DPI display; reached through the scaled accessors below
+static constexpr float k_editorPinIconSize= 16.f;
+static constexpr float k_editorPinIconSpacing= 8.f;
+
+float NodePin::getEditorPinIconSize() { return k_editorPinIconSize * MkGui::getUiScale(); }
+
+float NodePin::getEditorPinIconSpacing() { return k_editorPinIconSpacing * MkGui::getUiScale(); }
 
 // -- NodePinConfig -----
 configuru::Config NodePinConfig::writeToJSON()
@@ -112,7 +121,7 @@ void NodePin::saveToConfig(NodePinConfigPtr config) const
 float NodePin::editorComputeInputWidth() const
 {
 	// Default input width
-	return 11.f;
+	return 11.f * MkGui::getUiScale();
 }
 
 bool NodePin::canPinsBeConnected(NodePinPtr otherPinPtr) const
@@ -269,8 +278,9 @@ void NodePin::editorRenderInputPin(const NodeEditorState& editorState)
 
 	{
 		MkCanvasScopedPin pin(m_id, MkCanvasPinDirection::Input);
-		MkCanvas::drawPinIcon(ImVec2(k_editorPinIconSize, k_editorPinIconSize), editorGetPinIcon(),
-							  hasAnyConnectedLinks(), MkCanvasPinDirection::Input, pinColor);
+		const float iconSize= getEditorPinIconSize();
+		MkCanvas::drawPinIcon(ImVec2(iconSize, iconSize), editorGetPinIcon(), hasAnyConnectedLinks(),
+							  MkCanvasPinDirection::Input, pinColor);
 		ImGui::SameLine();
 		if (editorShowPinName())
 		{
@@ -302,8 +312,9 @@ void NodePin::editorRenderOutputPin(const NodeEditorState& editorState, float pr
 			ImGui::TextUnformatted(m_name.c_str());
 			ImGui::SameLine();
 		}
-		MkCanvas::drawPinIcon(ImVec2(k_editorPinIconSize, k_editorPinIconSize), editorGetPinIcon(),
-							  hasAnyConnectedLinks(), MkCanvasPinDirection::Output, pinColor);
+		const float iconSize= getEditorPinIconSize();
+		MkCanvas::drawPinIcon(ImVec2(iconSize, iconSize), editorGetPinIcon(), hasAnyConnectedLinks(),
+							  MkCanvasPinDirection::Output, pinColor);
 	}
 }
 

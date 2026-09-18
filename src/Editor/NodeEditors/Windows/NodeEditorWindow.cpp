@@ -31,6 +31,7 @@
 #include "IMkTexture.h"
 #include "Graphs/NodeGraph.h"
 #include "Graphs/NodeEvaluator.h"
+#include "Nodes/CommentNode.h"
 #include "Nodes/Node.h"
 #include "LocDebugUI.h"
 #include "LocText.h"
@@ -179,6 +180,10 @@ void NodeEditorWindow::update(float deltaSeconds)
 
 	// Push the ImGui Update scope
 	MkGuiScopedUpdate scopedCtx(*m_guiContext);
+
+	// The scope above refreshed the UI scale, so the canvas can be brought along
+	// before anything reads a node position this frame
+	refreshCanvasUiScale();
 
 	// Process most recent SDL events (keyboard, mouse, etc)
 	m_mkWindowContext->handleEvents(this);
@@ -459,14 +464,15 @@ void NodeEditorWindow::renderMainFrame()
 		}
 
 		// Inside Begin/End the canvas remaps io.MousePos into canvas space, so
-		// the raw mouse position is already the node-placement position
-		const ImVec2 mouseCanvasPos= ImGui::GetMousePos();
+		// the raw mouse position is already the node-placement position, carried
+		// back to the logical units node positions are stored in
+		const ImVec2 mouseGraphPos= MkCanvas::fromCanvasSpace(ImGui::GetMousePos());
 
 		// Track the drop position while an asset/variable drag is in flight
 		// (onNodeCreated places new nodes from hangPosGridSpace)
 		if (ImGui::GetDragDropPayload() != nullptr)
 		{
-			m_editorState.hangPosGridSpace= mouseCanvasPos;
+			m_editorState.hangPosGridSpace= mouseGraphPos;
 		}
 
 		// Link creation, with live accept/reject feedback from pin compatibility.
@@ -562,7 +568,7 @@ void NodeEditorWindow::renderMainFrame()
 				{
 					// Link dropped on empty canvas: offer node creation there
 					m_editorState.bLinkHanged= true;
-					m_editorState.hangPosGridSpace= mouseCanvasPos;
+					m_editorState.hangPosGridSpace= mouseGraphPos;
 					bOpenBackgroundMenu= true;
 				}
 			}
@@ -669,7 +675,7 @@ void NodeEditorWindow::renderMainFrame()
 		}
 		else if (ed::ShowBackgroundContextMenu())
 		{
-			m_editorState.hangPosGridSpace= mouseCanvasPos;
+			m_editorState.hangPosGridSpace= mouseGraphPos;
 			bOpenBackgroundMenu= true;
 		}
 
@@ -1528,7 +1534,8 @@ void NodeEditorWindow::setCurrentPage(t_graph_page_id pageId)
 		for (NodePtr pageNode : nodeGraph->getNodesOnPage(pageId))
 		{
 			const glm::vec2& nodePos= pageNode->getNodePos();
-			ed::SetNodePosition(MkCanvas::toCanvasId(pageNode->getId()), ImVec2(nodePos.x, nodePos.y));
+			ed::SetNodePosition(MkCanvas::toCanvasId(pageNode->getId()),
+								MkCanvas::toCanvasSpace(ImVec2(nodePos.x, nodePos.y)));
 		}
 		ed::SetCurrentEditor(prevContext);
 	}
@@ -1749,6 +1756,38 @@ void NodeEditorWindow::updateHistoryCapture()
 		}
 		m_bCheckpointPending= false;
 	}
+}
+
+void NodeEditorWindow::refreshCanvasUiScale()
+{
+	const float uiScale= MkGui::getUiScale();
+	if (uiScale == m_appliedCanvasUiScale)
+	{
+		return;
+	}
+	m_appliedCanvasUiScale= uiScale;
+
+	NodeGraphPtr nodeGraph= getNodeGraph();
+	if (!nodeGraph || m_canvasContext == nullptr)
+	{
+		return;
+	}
+
+	ax::NodeEditor::EditorContext* prevContext= ed::GetCurrentEditor();
+	ed::SetCurrentEditor(m_canvasContext);
+	for (auto iter= nodeGraph->getNodesMap().begin(); iter != nodeGraph->getNodesMap().end(); iter++)
+	{
+		NodePtr node= iter->second;
+		const glm::vec2& nodePos= node->getNodePos();
+		ed::SetNodePosition(MkCanvas::toCanvasId(iter->first), MkCanvas::toCanvasSpace(ImVec2(nodePos.x, nodePos.y)));
+
+		// A comment box owns its size in the canvas, so it needs the same nudge
+		if (auto commentNode= std::dynamic_pointer_cast<CommentNode>(node))
+		{
+			commentNode->applySizeOnNextDraw();
+		}
+	}
+	ed::SetCurrentEditor(prevContext);
 }
 
 void NodeEditorWindow::clearCanvasSelection()
@@ -2104,7 +2143,7 @@ void NodeEditorWindow::onNodeGraphCreated()
 			NodePtr node= iter->second;
 
 			const glm::vec2& nodePos= node->getNodePos();
-			ed::SetNodePosition(MkCanvas::toCanvasId(nodeId), ImVec2(nodePos.x, nodePos.y));
+			ed::SetNodePosition(MkCanvas::toCanvasId(nodeId), MkCanvas::toCanvasSpace(ImVec2(nodePos.x, nodePos.y)));
 		}
 		ed::SetCurrentEditor(prevContext);
 	}
@@ -2148,7 +2187,7 @@ void NodeEditorWindow::onNodeCreated(t_node_id id)
 
 		ax::NodeEditor::EditorContext* prevContext= ed::GetCurrentEditor();
 		ed::SetCurrentEditor(m_canvasContext);
-		ed::SetNodePosition(MkCanvas::toCanvasId(id), ImVec2(nodePos.x, nodePos.y));
+		ed::SetNodePosition(MkCanvas::toCanvasId(id), MkCanvas::toCanvasSpace(ImVec2(nodePos.x, nodePos.y)));
 		if (bOnCurrentPage)
 		{
 			ed::ClearSelection();

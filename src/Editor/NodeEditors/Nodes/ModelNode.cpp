@@ -3,6 +3,7 @@
 #include "MkMaterial.h"
 #include "IMkTexture.h"
 #include "Logger.h"
+#include "MkGuiDrawUtils.h"
 #include "ModelAssetReference.h"
 #include "NodeEditorState.h"
 #include "Graphs/NodeGraph.h"
@@ -149,8 +150,7 @@ void ModelNode::editorRenderNode(const NodeEditorState& editorState)
 	ModelAssetReferencePtr modelAssetRef=
 		m_sourceProperty ? m_sourceProperty->getModelAssetReference() : ModelAssetReferencePtr();
 	IMkTexturePtr textureResource= modelAssetRef ? modelAssetRef->getPreviewTexture() : IMkTexturePtr();
-	uint32_t glTextureId= textureResource ? textureResource->getGlTextureId() : 0;
-	ImGui::Image((void*)(intptr_t)glTextureId, ImVec2(100, 100));
+	MkGui::drawImage(textureResource, 100.f, 100.f);
 	ImGui::SameLine();
 
 	// Outputs

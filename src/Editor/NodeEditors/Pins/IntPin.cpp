@@ -1,4 +1,5 @@
 #include "IntPin.h"
+#include "MkGuiDrawUtils.h"
 
 // -- IntPin -----
 IntPinBase::IntPinBase()
@@ -11,7 +12,7 @@ float IntPinBase::editorComputeInputWidth() const
 {
 	if (m_connectedLinks.size() == 0)
 	{
-		return ImGui::CalcTextSize(m_name.c_str()).x + 50.f + 11.f;
+		return ImGui::CalcTextSize(m_name.c_str()).x + (50.f + 11.f) * MkGui::getUiScale();
 	}
 
 	return NodePin::editorComputeInputWidth();

@@ -183,7 +183,8 @@ void GuiPanel_Assets::onGui()
 
 void GuiPanel_Assets::renderFolderList()
 {
-	MkGuiScopedChild folderList("AssetFolderList", ImVec2(k_folderListWidth, 0), ImGuiChildFlags_Borders);
+	MkGuiScopedChild folderList("AssetFolderList", ImVec2(k_folderListWidth * MkGui::getUiScale(), 0),
+								ImGuiChildFlags_Borders);
 
 	for (const ProjectAssetFolderDesc& desc : ProjectAssetCatalog::getFolderDescs())
 	{
@@ -277,7 +278,7 @@ void GuiPanel_Assets::renderTileGrid(const ProjectAssetFolderDesc& desc)
 
 	if (desc.bPreviewTiles)
 	{
-		ImGui::Dummy(ImVec2(1, 10));
+		ImGui::Dummy(ImVec2(1, 10 * MkGui::getUiScale()));
 		for (const ProjectAssetEntry& entry : entries)
 		{
 			const std::string entryKey= entry.key();

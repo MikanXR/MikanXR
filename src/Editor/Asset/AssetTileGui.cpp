@@ -1,6 +1,7 @@
 #include "AssetTileGui.h"
 #include "AssetReference.h"
 #include "IMkTexture.h"
+#include "MkGuiDrawUtils.h"
 
 #include "imgui.h"
 
@@ -43,29 +44,32 @@ std::string truncateTextWithEllipsis(const std::string& text, float maxWidth)
 
 float getTileHeight()
 {
+	const float uiScale= MkGui::getUiScale();
+
 	// Preview, a gap, one text row, and the inset above and below
-	return k_previewInset + k_previewSize + ImGui::GetStyle().ItemSpacing.y + ImGui::GetTextLineHeight()
-		   + k_previewInset;
+	return k_previewInset * uiScale + k_previewSize * uiScale + ImGui::GetStyle().ItemSpacing.y
+		   + ImGui::GetTextLineHeight() + k_previewInset * uiScale;
 }
 
 ItemResult beginTile(const std::string& idStr, bool bSelected)
 {
 	ItemResult result;
+	const float uiScale= MkGui::getUiScale();
 	const float tileHeight= getTileHeight();
 
-	ImGui::Dummy(ImVec2(k_tileGap, tileHeight));
+	ImGui::Dummy(ImVec2(k_tileGap * uiScale, tileHeight));
 	ImGui::SameLine();
 	ImGui::BeginGroup();
 
 	// The frame is the same in every window, so the tile reads the same in the
 	// project panel and the editors. A selected tile keeps the active tint at rest.
-	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, k_tileBorderSize);
-	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, k_tileRounding);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, k_tileBorderSize * uiScale);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, k_tileRounding * uiScale);
 	if (bSelected)
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 	}
-	result.bClicked= ImGui::Button(idStr.c_str(), ImVec2(k_tileWidth, tileHeight));
+	result.bClicked= ImGui::Button(idStr.c_str(), ImVec2(k_tileWidth * uiScale, tileHeight));
 	if (bSelected)
 	{
 		ImGui::PopStyleColor();
@@ -82,34 +86,37 @@ ItemResult beginTile(const std::string& idStr, bool bSelected)
 void endTile(AssetReferencePtr assetRef, const std::string& displayName)
 {
 	IMkTexturePtr texture= assetRef ? assetRef->getPreviewTexture() : IMkTexturePtr();
+	const float uiScale= MkGui::getUiScale();
 	const float tileHeight= getTileHeight();
+	const float previewSize= k_previewSize * uiScale;
+	const float previewInset= k_previewInset * uiScale;
 
 	// Back up into the frame: the preview sits inset from its top left corner
-	ImGui::SetCursorPosX(ImGui::GetCursorPosX() + k_previewInset);
-	ImGui::SetCursorPosY(ImGui::GetCursorPosY() - (tileHeight - k_previewInset) - ImGui::GetStyle().ItemSpacing.y);
+	ImGui::SetCursorPosX(ImGui::GetCursorPosX() + previewInset);
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() - (tileHeight - previewInset) - ImGui::GetStyle().ItemSpacing.y);
 
 	if (texture && texture->getGlTextureId() != 0)
 	{
-		ImGui::Image((ImTextureID)(intptr_t)texture->getGlTextureId(), ImVec2(k_previewSize, k_previewSize));
+		ImGui::Image((ImTextureID)(intptr_t)texture->getGlTextureId(), ImVec2(previewSize, previewSize));
 	}
 	else
 	{
 		// Type icon stand-in for assets with no preview image
 		const ImVec2 tileMin= ImGui::GetCursorScreenPos();
-		ImGui::Dummy(ImVec2(k_previewSize, k_previewSize));
+		ImGui::Dummy(ImVec2(previewSize, previewSize));
 
 		const char* icon= assetRef ? assetRef->editorGetIcon() : "";
 		ImFont* font= ImGui::GetFont();
 		const float iconFontSize= ImGui::GetFontSize() * 3.f;
 		const ImVec2 iconSize= font->CalcTextSizeA(iconFontSize, FLT_MAX, 0.f, icon);
-		const ImVec2 iconPos(tileMin.x + (k_previewSize - iconSize.x) * 0.5f,
-							 tileMin.y + (k_previewSize - iconSize.y) * 0.5f);
+		const ImVec2 iconPos(tileMin.x + (previewSize - iconSize.x) * 0.5f,
+							 tileMin.y + (previewSize - iconSize.y) * 0.5f);
 		ImGui::GetWindowDrawList()->AddText(font, iconFontSize, iconPos, ImGui::GetColorU32(ImGuiCol_Text), icon);
 	}
 
 	// The name row, clipped to the preview width so it stays inside the frame
-	ImGui::SetCursorPosX(ImGui::GetCursorPosX() + k_previewInset);
-	const std::string clippedName= truncateTextWithEllipsis(displayName, k_previewSize);
+	ImGui::SetCursorPosX(ImGui::GetCursorPosX() + previewInset);
+	const std::string clippedName= truncateTextWithEllipsis(displayName, previewSize);
 	ImGui::TextUnformatted(clippedName.c_str());
 	if (ImGui::IsItemHovered() && clippedName != displayName)
 	{
@@ -120,7 +127,7 @@ void endTile(AssetReferencePtr assetRef, const std::string& displayName)
 
 	// Tiles flow left to right and wrap when the next one would not fit
 	ImGui::SameLine();
-	if (ImGui::GetContentRegionAvail().x < k_tileWidth + k_tileGap)
+	if (ImGui::GetContentRegionAvail().x < k_tileWidth * uiScale + k_tileGap * uiScale)
 	{
 		ImGui::NewLine();
 		ImGui::NewLine();
@@ -129,7 +136,8 @@ void endTile(AssetReferencePtr assetRef, const std::string& displayName)
 
 bool beginList(const char* id)
 {
-	const int columnCount= std::max(1, (int)(ImGui::GetContentRegionAvail().x / k_listColumnWidth));
+	const float columnWidth= k_listColumnWidth * MkGui::getUiScale();
+	const int columnCount= std::max(1, (int)(ImGui::GetContentRegionAvail().x / columnWidth));
 
 	return ImGui::BeginTable(id, columnCount, ImGuiTableFlags_SizingStretchSame);
 }

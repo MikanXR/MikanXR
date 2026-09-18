@@ -5,6 +5,7 @@
 #include "ScriptAssetReference.h"
 
 #include "imgui.h"
+#include "MkGuiDrawUtils.h"
 
 #include <algorithm>
 #include <assert.h>
@@ -100,7 +101,8 @@ void ModalDialog_ScriptErrors::onGui()
 	m_pendingOpenIndex= -1;
 
 	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-	ImGui::SetNextWindowSizeConstraints(ImVec2(480.f, 0.f), ImVec2(900.f, 600.f));
+	ImGui::SetNextWindowSizeConstraints(ImVec2(480.f * MkGui::getUiScale(), 0.f),
+										ImVec2(900.f * MkGui::getUiScale(), 600.f * MkGui::getUiScale()));
 	if (ImGui::BeginPopupModal(k_popupId, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::TextUnformatted(locText("scriptErrors.title"));

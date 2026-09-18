@@ -40,6 +40,9 @@ public:
 	inline const std::array<float, 2>& getSize() const { return m_size; }
 	// Sets the box size and pushes it to the canvas on the next draw
 	void setSize(const std::array<float, 2>& size);
+	// Pushes the size the box already has again, for when the canvas scale
+	// changed underneath it
+	inline void applySizeOnNextDraw() { m_bApplySizeOnDraw= true; }
 
 	// Never reached: a comment has no pins for a walk to arrive through
 	virtual bool evaluateNode(NodeEvaluator& evaluator) override { return true; }

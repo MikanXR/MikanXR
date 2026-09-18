@@ -388,8 +388,7 @@ void ApplyMaterialNode::editorRenderNode(const NodeEditorState& editorState)
 	// Texture Preview
 	ImGui::Dummy(ImVec2(1.0f, 0.5f));
 	IMkTexturePtr colorTexture= m_outputFrameBuffer ? m_outputFrameBuffer->getColorTexture() : IMkTexturePtr();
-	uint32_t glTextureId= colorTexture ? colorTexture->getGlTextureId() : 0;
-	ImGui::Image((void*)(intptr_t)glTextureId, ImVec2(100, 100));
+	MkGui::drawImage(colorTexture, 100.f, 100.f);
 	ImGui::SameLine();
 
 	// Outputs

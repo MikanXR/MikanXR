@@ -24,6 +24,7 @@
 #include "TextureSourceComponent.h"
 
 #include "imgui.h"
+#include "MkGuiDrawUtils.h"
 
 //-- statics ----__
 const char* AppStage_TextureSourceSettings::APP_STAGE_NAME= "TextureSourceSettings";
@@ -108,11 +109,11 @@ void AppStage_TextureSourceSettings::onGui()
 {
 	AppStage::onGui();
 
-	constexpr float k_panelWidth= 415.f;
+	const float panelWidth= 415.f * MkGui::getUiScale();
 	const float displayWidth= m_ownerWindow->getWidth();
 	const float displayHeight= m_ownerWindow->getHeight();
-	ImGui::SetNextWindowPos(ImVec2(displayWidth - k_panelWidth, 0.f), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(k_panelWidth, displayHeight), ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(displayWidth - panelWidth, 0.f), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(panelWidth, displayHeight), ImGuiCond_Always);
 
 	constexpr ImGuiWindowFlags k_flags=
 		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;

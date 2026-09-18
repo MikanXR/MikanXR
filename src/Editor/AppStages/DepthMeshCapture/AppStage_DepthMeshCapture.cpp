@@ -2,6 +2,7 @@
 #include "DepthMeshCapture/GuiPanel_DepthMeshCapture.h"
 
 #include "imgui.h"
+#include "MkGuiDrawUtils.h"
 #include "MkGuiScopedWindow.h"
 
 #include "CalibrationPatternFinder_Aruco.h"
@@ -202,12 +203,12 @@ void AppStage_DepthMeshCapture::onGui()
 {
 	AppStage::onGui();
 
-	constexpr float k_panelWidth= 415.f;
+	const float panelWidth= 415.f * MkGui::getUiScale();
 	const float displayWidth= m_ownerWindow->getWidth();
 	const float displayHeight= m_ownerWindow->getHeight();
 
-	ImGui::SetNextWindowPos(ImVec2(displayWidth - k_panelWidth, 0.f), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(k_panelWidth, displayHeight), ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(displayWidth - panelWidth, 0.f), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(panelWidth, displayHeight), ImGuiCond_Always);
 	constexpr ImGuiWindowFlags k_flags=
 		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
 	MkGuiScopedWindow panel("##DepthMeshCapture", nullptr, k_flags);

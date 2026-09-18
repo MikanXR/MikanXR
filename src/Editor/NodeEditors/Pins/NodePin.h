@@ -43,10 +43,12 @@ public:
 
 	inline static const std::string k_pinClassName= "NodePin";
 
-	// Canvas footprint of the pin icon plus its trailing spacing, shared by
-	// the node width/alignment math in Node::editorComputeNodeDimensions
-	static constexpr float k_editorPinIconSize= 16.f;
-	static constexpr float k_editorPinIconSpacing= 8.f;
+	// Canvas footprint of the pin icon plus its trailing spacing, shared by the
+	// node width/alignment math in Node::editorComputeNodeDimensions. Both come
+	// back scaled for the current display, since that math adds them to measured
+	// text widths.
+	static float getEditorPinIconSize();
+	static float getEditorPinIconSpacing();
 	virtual std::string getClassName() const { return k_pinClassName; }
 
 	virtual bool loadFromConfig(NodeGraphPtr ownerGraph, NodePinConfigConstPtr config);

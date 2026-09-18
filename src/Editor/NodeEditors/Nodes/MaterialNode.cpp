@@ -4,6 +4,7 @@
 #include "IMkTexture.h"
 #include "Logger.h"
 #include "MaterialAssetReference.h"
+#include "MkGuiDrawUtils.h"
 #include "NodeEditorState.h"
 #include "Graphs/NodeGraph.h"
 #include "Pins/NodePin.h"
@@ -160,14 +161,10 @@ void MaterialNode::editorRenderNode(const NodeEditorState& editorState)
 	{
 		auto previewTexture= materialAssetRef->getPreviewTexture();
 
-		if (previewTexture)
+		if (previewTexture && previewTexture->getGlTextureId() != 0)
 		{
-			uint32_t glTextureId= previewTexture->getGlTextureId();
-			if (glTextureId != 0)
-			{
-				ImGui::Image((void*)(intptr_t)glTextureId, ImVec2(100, 100));
-				ImGui::SameLine();
-			}
+			MkGui::drawImage(previewTexture, 100.f, 100.f);
+			ImGui::SameLine();
 		}
 	}
 

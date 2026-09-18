@@ -6,6 +6,7 @@
 #include "OSUtils.h"
 
 #include "imgui.h"
+#include "MkGuiDrawUtils.h"
 
 #include <assert.h>
 
@@ -202,7 +203,7 @@ void ModalDialog_ModelDownload::drawProgress()
 	const float fraction= status.overallTotalBytes > 0
 							  ? (float)((double)status.overallReceivedBytes / (double)status.overallTotalBytes)
 							  : 0.f;
-	ImGui::ProgressBar(fraction, ImVec2(360.f, 0.f));
+	ImGui::ProgressBar(fraction, ImVec2(360.f * MkGui::getUiScale(), 0.f));
 	ImGui::TextUnformatted(locFormat("modelDownload.overallFmt", toGigabytes(status.overallReceivedBytes),
 									 toGigabytes(status.overallTotalBytes))
 							   .c_str());

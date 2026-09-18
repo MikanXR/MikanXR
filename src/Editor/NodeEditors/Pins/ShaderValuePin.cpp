@@ -1,4 +1,5 @@
 #include "ShaderValuePin.h"
+#include "MkGuiDrawUtils.h"
 #include "NodeEditorState.h"
 
 #include "imgui.h"
@@ -97,11 +98,11 @@ float ShaderValuePin::editorComputeInputWidth() const
 		const int componentCount= ShaderValueTypeUtils::getComponentCount(m_declaredType);
 		if (componentCount > 0)
 		{
-			return ImGui::CalcTextSize(m_name.c_str()).x + 11.f + 50.f * (float)componentCount;
+			return ImGui::CalcTextSize(m_name.c_str()).x + (11.f + 50.f * (float)componentCount) * MkGui::getUiScale();
 		}
 		if (m_declaredType == eShaderValueType::wildcard)
 		{
-			return ImGui::CalcTextSize(m_name.c_str()).x + 11.f + 50.f;
+			return ImGui::CalcTextSize(m_name.c_str()).x + (11.f + 50.f) * MkGui::getUiScale();
 		}
 	}
 

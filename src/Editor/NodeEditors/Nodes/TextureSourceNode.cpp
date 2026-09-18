@@ -2,6 +2,7 @@
 #include "IconsForkAwesome.h"
 #include "TextureSourceNode.h"
 #include "Logger.h"
+#include "MkGuiDrawUtils.h"
 #include "NodeEditorState.h"
 #include "TextureSourceComponent.h"
 
@@ -153,8 +154,7 @@ void TextureSourceNode::editorRenderNode(const NodeEditorState& textureSourcePro
 	// Texture
 	ImGui::Dummy(ImVec2(1.0f, 0.5f));
 	IMkTexturePtr textureResource= getTextureResource();
-	uint32_t glTextureId= textureResource ? textureResource->getGlTextureId() : 0;
-	ImGui::Image((void*)(intptr_t)glTextureId, ImVec2(100, 100));
+	MkGui::drawImage(textureResource, 100.f, 100.f);
 	ImGui::SameLine();
 
 	// Outputs
