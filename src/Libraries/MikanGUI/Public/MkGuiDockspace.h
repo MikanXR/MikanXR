@@ -36,6 +36,22 @@ MIKAN_GUI_FUNC(void) dockBuilderFinish(ImGuiID dockspaceId);
 // resolves against the current window's id stack.
 MIKAN_GUI_FUNC(bool) getDockspaceCentralRect(const char* dockspaceId, ImVec2& outPos, ImVec2& outSize);
 
+// The dock layout is measured in the same scaled pixels its panels draw in, so
+// a layout arranged at one UI scale is wrong at another. These carry a reference
+// scale with the layout the way ImGui carries one with a table's column widths.
+//
+// installDockLayoutSettings registers the ini entry carrying the reference
+// scale, read into and written from the float the caller owns, which must
+// outlive the ImGui context. Call it on a context before its settings load.
+// The value stays 0 when the ini carries no entry, which means a layout with
+// no reference yet rather than one of scale zero.
+MIKAN_GUI_FUNC(void) installDockLayoutSettings(float* refScaleStorage);
+
+// Multiplies every dock node's size by the factor, which re-proportions the
+// splits against content that just changed size. Call after ImGui::NewFrame, so
+// the nodes a settings load creates are there to walk.
+MIKAN_GUI_FUNC(void) scaleDockLayout(float factor);
+
 // Sets ImGui's font rasterizer density (an imgui_internal state), returning
 // the previous value. Glyphs bake at density x resolution while keeping
 // logical metrics, so geometry scaled up by a canvas transform samples a

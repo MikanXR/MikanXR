@@ -36,6 +36,12 @@ public:
 	// display with a different scale re-sizes the UI on the next frame.
 	void refreshUiScale();
 
+	// Re-proportions the dock splits when the UI scale no longer matches the one
+	// the layout was arranged at, whether that layout came from an ini written on
+	// another display or from the scale changing under this one. Runs after
+	// ImGui::NewFrame, since a settings load builds the nodes there.
+	void refreshDockLayoutScale();
+
 	struct ImFont* getNormalIconFont() const { return m_NormalIconFont; }
 	struct ImFont* getBigIconFont() const { return m_BigIconFont; }
 	class IMkTextureCache* getTextureCache() const;
@@ -63,6 +69,10 @@ private:
 	// from it rather than compounding ScaleAllSizes onto the live style
 	std::unique_ptr<struct ImGuiStyle> m_baseStyle;
 	float m_appliedUiScale= 0.f;
+	// The UI scale the dock layout is proportioned for. Owned here rather than in
+	// the dockspace wrapper because the ini settings handler reads into it, and
+	// each window's context has its own layout and its own ini.
+	float m_dockLayoutRefScale= 0.f;
 	struct ImFont* m_NormalIconFont= nullptr;
 	struct ImFont* m_BigIconFont= nullptr;
 	eWindowAPI m_imguiWindowAPI= eWindowAPI::INVALID;

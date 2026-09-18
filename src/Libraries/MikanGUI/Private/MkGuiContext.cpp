@@ -1,5 +1,7 @@
 #include "MkGuiContext.h"
 #include "MkGuiScopedContext.h"
+#include "MkGuiDockspace.h"
+#include "MkGuiDrawUtils.h"
 #include "MkGuiTheme.h"
 #include "Logger.h"
 #include "IMkWindowContext.h"
@@ -125,6 +127,27 @@ bool MkGuiContext::startup()
 void MkGuiContext::setUserUiScale(float scale) { g_userUiScale= scale > 0.f ? scale : 1.f; }
 
 float MkGuiContext::getUserUiScale() { return g_userUiScale; }
+
+void MkGuiContext::refreshDockLayoutScale()
+{
+	MkGuiScopedContext scopedContext(*this);
+
+	const float uiScale= MkGui::getUiScale();
+
+	// An ini with no reference (and a layout built fresh this run) is already
+	// proportioned for the scale it was laid out at
+	if (m_dockLayoutRefScale <= 0.f)
+	{
+		m_dockLayoutRefScale= uiScale;
+		return;
+	}
+
+	if (uiScale == m_dockLayoutRefScale)
+		return;
+
+	MkGui::scaleDockLayout(uiScale / m_dockLayoutRefScale);
+	m_dockLayoutRefScale= uiScale;
+}
 
 void MkGuiContext::refreshUiScale()
 {
@@ -321,6 +344,10 @@ void MkGuiContext::configImGui()
 	if (m_bEnableDocking)
 	{
 		io.ConfigFlags|= ImGuiConfigFlags_DockingEnable;
+
+		// Registered before the first frame loads the ini, so the scale the saved
+		// layout was arranged at is in hand when the dock nodes come back
+		MkGui::installDockLayoutSettings(&m_dockLayoutRefScale);
 	}
 
 	MkGuiTheme::applyStyle();

@@ -1,6 +1,10 @@
 #include "MkGuiDockspace.h"
 
+// IMGUI_DEFINE_MATH_OPERATORS comes from the MikanGUI target definitions
 #include "imgui_internal.h"
+
+#include <cstdio>
+#include <cstring>
 
 namespace MkGui
 {
@@ -59,6 +63,67 @@ bool getDockspaceCentralRect(const char* dockspaceId, ImVec2& outPos, ImVec2& ou
 	outPos= centralNode->Pos;
 	outSize= centralNode->Size;
 	return true;
+}
+
+// -- Dock layout reference scale ----
+// The ini entry is written and read through ImGui's own settings machinery, so
+// the scale a layout was arranged at stays with that layout in the same file.
+static void* dockLayoutSettingsReadOpen(ImGuiContext*, ImGuiSettingsHandler* handler, const char* name)
+{
+	// One entry, so any name opens the same storage
+	return strcmp(name, "Dock") == 0 ? handler->UserData : nullptr;
+}
+
+static void dockLayoutSettingsReadLine(ImGuiContext*, ImGuiSettingsHandler*, void* entry, const char* line)
+{
+	float refScale= 0.f;
+	if (entry != nullptr && sscanf(line, "RefScale=%f", &refScale) == 1)
+	{
+		*(float*)entry= refScale;
+	}
+}
+
+static void dockLayoutSettingsWriteAll(ImGuiContext*, ImGuiSettingsHandler* handler, ImGuiTextBuffer* outBuffer)
+{
+	const float* refScale= (const float*)handler->UserData;
+	if (refScale == nullptr || *refScale <= 0.f)
+		return;
+
+	outBuffer->appendf("[%s][Dock]\n", handler->TypeName);
+	outBuffer->appendf("RefScale=%g\n", *refScale);
+	outBuffer->append("\n");
+}
+
+void installDockLayoutSettings(float* refScaleStorage)
+{
+	ImGuiSettingsHandler handler;
+	handler.TypeName= "MikanLayout";
+	handler.TypeHash= ImHashStr("MikanLayout");
+	handler.ReadOpenFn= dockLayoutSettingsReadOpen;
+	handler.ReadLineFn= dockLayoutSettingsReadLine;
+	handler.WriteAllFn= dockLayoutSettingsWriteAll;
+	handler.UserData= refScaleStorage;
+
+	ImGui::AddSettingsHandler(&handler);
+}
+
+void scaleDockLayout(float factor)
+{
+	ImGuiContext* context= ImGui::GetCurrentContext();
+	if (context == nullptr || factor <= 0.f)
+		return;
+
+	// Every node, rather than the tree under one dockspace id, because that id
+	// only resolves while its host window is current
+	ImGuiDockContext* dockContext= &context->DockContext;
+	for (int nodeIndex= 0; nodeIndex < dockContext->Nodes.Data.Size; nodeIndex++)
+	{
+		if (ImGuiDockNode* node= (ImGuiDockNode*)dockContext->Nodes.Data[nodeIndex].val_p)
+		{
+			node->Size= ImTrunc(node->Size * factor);
+			node->SizeRef= ImTrunc(node->SizeRef * factor);
+		}
+	}
 }
 
 float setFontRasterizerDensity(float density)

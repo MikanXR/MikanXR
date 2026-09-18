@@ -15,6 +15,10 @@ MkGuiScopedUpdate::MkGuiScopedUpdate(MkGuiContext& context)
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplSDL2_NewFrame();
 	ImGui::NewFrame();
+
+	// After NewFrame, which is where a settings load builds the dock nodes this
+	// re-proportions
+	context.refreshDockLayoutScale();
 }
 
 MkGuiScopedUpdate::~MkGuiScopedUpdate()
