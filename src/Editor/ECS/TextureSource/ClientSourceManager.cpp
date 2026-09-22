@@ -7,6 +7,8 @@
 #include "CameraRequestHandler.h"
 #include "StringUtils.h"
 
+#include <algorithm>
+
 ClientSourceManager::ClientSourceManager(int textureQueueSize)
 	: m_textureQueueSize(textureQueueSize)
 {
@@ -197,8 +199,14 @@ bool ClientSourceManager::addClientSource(const char* clientId, const MikanClien
 	clientSource->readAccessor= readAccessor;
 	clientSource->frameIndex= 0;
 
-	// Create the circular texture frame queue
-	clientSource->textureQueue= new ClientTextureFrameQueue(m_textureQueueSize);
+	// Create the circular texture frame queue, at least as deep as the compositor's
+	// own frame event queue for this camera
+	int textureQueueSize= m_textureQueueSize;
+	if (m_queueSizeResolver)
+	{
+		textureQueueSize= std::max(textureQueueSize, m_queueSizeResolver(cameraId));
+	}
+	clientSource->textureQueue= new ClientTextureFrameQueue(textureQueueSize);
 	bSuccess= clientSource->textureQueue->initialize(desc);
 
 	if (bSuccess)
@@ -304,6 +312,7 @@ void ClientSourceManager::onClientRenderTargetUpdated(const char* clientId, Mika
 		// Stamp the frame index on the current slot and advance to the next
 		clientSource->textureQueue->advanceWriteIndex(frameIndex);
 		clientSource->frameIndex= frameIndex;
+
 
 		// Re-point the accessor at the new pending write slot
 		if (clientSource->readAccessor != nullptr)

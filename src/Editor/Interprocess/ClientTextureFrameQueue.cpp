@@ -1,5 +1,6 @@
 #include "ClientTextureFrameQueue.h"
 #include "IMkTexture.h"
+#include "Logger.h"
 
 ClientTextureFrameQueue::ClientTextureFrameQueue(int queueSize)
 	: m_queueSize(queueSize)
@@ -185,6 +186,21 @@ void ClientTextureFrameQueue::advanceWriteIndex(int64_t frameIndex)
 	}
 }
 
+void ClientTextureFrameQueue::noteFrameIndexMiss(int64_t requestedFrameIndex) const
+{
+	// A client running behind the compositor shows up here and nowhere else, since
+	// the fallback composites without complaint. Log the first miss and then every
+	// hundredth so a steady miss rate stays visible without flooding.
+	m_frameIndexMissCount++;
+	if (m_frameIndexMissCount == 1 || (m_frameIndexMissCount % 100) == 0)
+	{
+		const int64_t servedFrameIndex= m_lastWriteIndex >= 0 ? m_entries[m_lastWriteIndex].frameIndex : -1;
+		MIKAN_LOG_WARNING("ClientTextureFrameQueue::getColorTexture")
+			<< "Client frame " << requestedFrameIndex << " not in texture ring, serving newest frame "
+			<< servedFrameIndex << " (" << m_frameIndexMissCount << " misses so far)";
+	}
+}
+
 IMkTexturePtr ClientTextureFrameQueue::getColorTexture(int64_t frameIndex) const
 {
 	if (m_entries != nullptr)
@@ -198,6 +214,12 @@ IMkTexturePtr ClientTextureFrameQueue::getColorTexture(int64_t frameIndex) const
 				{
 					return m_entries[i].colorTexture;
 				}
+			}
+
+			// A free-running client stamps -1 on every slot and is never a miss
+			if (m_lastWriteIndex >= 0 && m_entries[m_lastWriteIndex].frameIndex != -1)
+			{
+				noteFrameIndexMiss(frameIndex);
 			}
 		}
 

@@ -8,6 +8,7 @@
 #include "MikanRendererFwd.h"
 #include "NamedValueTable.h"
 
+#include <functional>
 #include <string>
 
 class ClientSourceManager
@@ -25,6 +26,12 @@ public:
 
 	explicit ClientSourceManager(int textureQueueSize= 3);
 	virtual ~ClientSourceManager()= default;
+
+	// Answers the frame queue depth the camera's video source runs the compositor
+	// at, or 0 when unknown. A client's texture ring must hold at least that many
+	// frames or the compositor can never find the frame it is about to composite.
+	using TextureQueueSizeResolver= std::function<int(MikanCameraID cameraId)>;
+	void setTextureQueueSizeResolver(TextureQueueSizeResolver resolver) { m_queueSizeResolver= resolver; }
 
 	bool startup();
 	void shutdown();
@@ -59,6 +66,7 @@ protected:
 
 private:
 	int m_textureQueueSize= 3;
+	TextureQueueSizeResolver m_queueSizeResolver;
 
 	// Data sources used by the compositor layers
 	NamedValueTable<ClientSource*> m_clientSources;

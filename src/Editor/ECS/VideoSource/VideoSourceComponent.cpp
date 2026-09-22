@@ -59,7 +59,7 @@ void VideoSourceDefinition::readFromJSON(const configuru::Config& pt)
 
 	m_bIsFrameMirrored= pt.get_or<bool>("is_frame_mirrored", false);
 	m_bIsBufferMirrored= pt.get_or<bool>("is_buffer_mirrored", false);
-	m_videoFrameQueueSize= pt.get_or<int>("video_frame_queue_size", 10);
+	m_videoFrameQueueSize= pt.get_or<int>("video_frame_queue_size", m_videoFrameQueueSize);
 
 	std::string intrinsics_type= pt.get_or<std::string>("intrinsics_type", "");
 	if (intrinsics_type == "mono")

@@ -11,7 +11,10 @@
 #include "AutomationServer.h"
 #include "TransactionHistory.h"
 #include "ProjectAssetCatalog.h"
+#include "CameraComponent.h"
+#include "CameraObjectSystem.h"
 #include "ClientSourceManager.h"
+#include "VideoSourceComponent.h"
 #include "EditorObjectSystem.h"
 #include "InputManager.h"
 #include "IMkGraphicsContext.h"
@@ -113,6 +116,18 @@ MainWindow::MainWindow(App* ownerApp)
 	m_appStageFactory.addAppStageConstructor<AppStage_TextureSourceSettings>();
 	m_appStageFactory.addAppStageConstructor<AppStage_VideoSourceSettings>();
 	m_appStageFactory.addAppStageConstructor<AppStage_VRTrackingRecenter>();
+
+	m_clientSourceManager->setTextureQueueSizeResolver(
+		[this](MikanCameraID cameraId) -> int
+		{
+			ProjectManagerPtr projectManager= getProjectManager();
+			CameraObjectSystemPtr cameraSystem=
+				projectManager ? projectManager->getSystemOfType<CameraObjectSystem>() : nullptr;
+			CameraComponentPtr camera= cameraSystem ? cameraSystem->getCameraById(cameraId) : nullptr;
+			VideoSourceComponentPtr videoSource= camera ? camera->getVideoSourceComponent() : nullptr;
+
+			return videoSource ? videoSource->getVideoSourceDefinition()->getVideoFrameQueueSize() : 0;
+		});
 }
 
 MainWindow::~MainWindow()
