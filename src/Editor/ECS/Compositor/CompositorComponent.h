@@ -98,8 +98,13 @@ public:
 	virtual std::string getComponentClassName() const override { return k_componentClassName; }
 
 	CompositorObjectSystemPtr getOwnerObjectSystem() const;
+	SceneComponentPtr getOwnerSceneComponent() const;
+	// The stage the owner scene sits on
 	MikanStageID getOwnerStageId() const;
 	StageComponentPtr getOwnerStageComponent() const;
+	// Whether an object takes part in this compositor's composite: it hangs under the owner
+	// scene, or it is a stage-level object on that scene's stage, which every scene there shares
+	bool ownsSceneObject(MikanObjectConstPtr objectPtr) const;
 	VideoSourceComponentPtr getVideoSourceComponent() const;
 
 	CameraComponentPtr getCameraComponent() const;

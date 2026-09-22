@@ -137,9 +137,9 @@ std::vector<MikanCompositorID> SceneComponent::getOutputCompositorIDs() const
 	auto& componentMap= getObjectSystemOfType<CompositorObjectSystem>()->getComponentMap();
 	for (const auto& pair : componentMap)
 	{
-		const CompositorComponentWeakPtr& sceneComponentWeakPtr= pair.second;
+		CompositorComponentPtr compositor= pair.second.lock();
 
-		if (sceneComponentWeakPtr.lock()->getOwnerStageId() == getComponentId())
+		if (compositor && compositor->getCompositorDefinition()->getOwnerSceneId() == getSceneId())
 		{
 			compositorIDs.push_back(pair.first);
 		}
@@ -372,4 +372,34 @@ bool isSceneGeometryRendered(MikanObjectConstPtr objectPtr)
 
 	// Stage level and unparented geometry belongs to no scene, so no scene gates it
 	return true;
+}
+
+MikanSceneID findOwnerSceneId(MikanObjectConstPtr objectPtr)
+{
+	TransformComponentPtr transformComponent= objectPtr ? objectPtr->getRootComponent() : nullptr;
+	while (transformComponent)
+	{
+		auto sceneComponent= std::dynamic_pointer_cast<SceneComponent>(transformComponent);
+		if (sceneComponent)
+			return sceneComponent->getSceneId();
+
+		transformComponent= transformComponent->getParentTransformComponent();
+	}
+
+	return INVALID_MIKAN_ID;
+}
+
+MikanStageID findOwnerStageId(MikanObjectConstPtr objectPtr)
+{
+	TransformComponentPtr transformComponent= objectPtr ? objectPtr->getRootComponent() : nullptr;
+	while (transformComponent)
+	{
+		auto stageComponent= std::dynamic_pointer_cast<StageComponent>(transformComponent);
+		if (stageComponent)
+			return stageComponent->getStageId();
+
+		transformComponent= transformComponent->getParentTransformComponent();
+	}
+
+	return INVALID_MIKAN_ID;
 }

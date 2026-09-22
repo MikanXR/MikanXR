@@ -23,6 +23,7 @@
 #include "CompositorGraphAssetReference.h"
 #include "ProjectConfig.h"
 #include "ProjectConfigConstants.h"
+#include "SceneComponent.h"
 #include "SceneObjectSystem.h"
 #include "SharedTextureWriter.h"
 #include "StageComponent.h"
@@ -766,11 +767,32 @@ CompositorObjectSystemPtr CompositorComponent::getOwnerObjectSystem() const
 	return std::static_pointer_cast<CompositorObjectSystem>(getOwnerObject()->getOwnerSystem());
 }
 
-MikanStageID CompositorComponent::getOwnerStageId() const { return getCompositorDefinition()->getOwnerSceneId(); }
+SceneComponentPtr CompositorComponent::getOwnerSceneComponent() const
+{
+	return getObjectSystemOfType<SceneObjectSystem>()->getSceneById(getCompositorDefinition()->getOwnerSceneId());
+}
+
+MikanStageID CompositorComponent::getOwnerStageId() const
+{
+	SceneComponentPtr ownerScene= getOwnerSceneComponent();
+
+	return ownerScene ? ownerScene->getParentStageId() : INVALID_MIKAN_ID;
+}
 
 StageComponentPtr CompositorComponent::getOwnerStageComponent() const
 {
 	return getObjectSystemOfType<StageObjectSystem>()->getStageById(getOwnerStageId());
+}
+
+bool CompositorComponent::ownsSceneObject(MikanObjectConstPtr objectPtr) const
+{
+	const MikanSceneID objectSceneId= findOwnerSceneId(objectPtr);
+	if (objectSceneId != INVALID_MIKAN_ID)
+		return objectSceneId == getCompositorDefinition()->getOwnerSceneId();
+
+	const MikanStageID ownerStageId= getOwnerStageId();
+
+	return ownerStageId != INVALID_MIKAN_ID && findOwnerStageId(objectPtr) == ownerStageId;
 }
 
 CameraComponentPtr CompositorComponent::getCameraComponent() const

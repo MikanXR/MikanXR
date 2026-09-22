@@ -4,7 +4,6 @@ The living plan: what is in flight now, what comes next, and the open questions.
 
 ## Now
 - [ ] Node editor snapshot history commits a step on nearly every mouse release while the compositor runs, because a node's live `float_defaults/time` value serializes into the graph snapshot and the commit dedup sees a changed graph. A plain click on empty canvas after an undo adds a step. Keep runtime-fed values out of the snapshot, or dedup on the persisted fields only.
-- [ ] `ShapeSelectNode` gathers every quad, box and model shape in the project rather than only those in the compositor's own scene, so a shape belonging to one scene draws into another scene's composite.
 - [ ] Cursor feedback in the interactive browser window: `CefDisplayHandler::OnCursorChange` fires but nothing consumes it, so the pointer stays an arrow over links and text fields. Deferred because it needs a new `IMkWindowContext::setCursor` plus an SDL system-cursor cache, and because ImGui's SDL2 backend calls `SDL_SetCursor` from `ImGui_ImplSDL2_UpdateMouseCursor` every `NewFrame` and would immediately overwrite it. Doing it means toggling `ImGuiConfigFlags_NoMouseCursorChange` on that window's io while the pointer is over the page area.
 
 ## Next
