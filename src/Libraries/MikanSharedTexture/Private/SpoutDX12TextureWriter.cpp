@@ -6,6 +6,7 @@
 
 #include <sstream>
 #include <string>
+#include <vector>
 
 class SpoutDX12TextureWriter : public ISharedTextureWriterBackend
 {
@@ -143,14 +144,17 @@ public:
 			m_depthTexturePacker= nullptr;
 		}
 
+		releaseWrappedResources(m_colorWrappedResources);
 		m_spoutColorFrame.ReleaseSender();
 		m_spoutColorFrame.CloseDirectX12();
 		m_bIsColorFrameInitialized= false;
 
+		releaseWrappedResources(m_depthWrappedResources);
 		m_spoutDepthFrame.ReleaseSender();
 		m_spoutDepthFrame.CloseDirectX12();
 		m_bIsDepthFrameInitialized= false;
 
+		releaseWrappedResources(m_shadowWrappedResources);
 		m_spoutShadowFrame.ReleaseSender();
 		m_spoutShadowFrame.CloseDirectX12();
 		m_bIsShadowFrameInitialized= false;
@@ -166,28 +170,11 @@ public:
 
 		if (m_bIsColorFrameInitialized)
 		{
-			if (m_spoutDX12ColorTexture != dx12TextureResource)
+			ID3D11Resource* wrappedTexture=
+				getOrWrapResource(m_spoutColorFrame, m_colorWrappedResources, dx12TextureResource);
+			if (wrappedTexture != nullptr)
 			{
-				if (m_spoutDX11ColorTexture != nullptr)
-				{
-					m_spoutDX11ColorTexture->Release();
-					m_spoutDX11ColorTexture= nullptr;
-				}
-
-				// Wrap as GENERIC_READ to match the rest state (SRVMask) the client leaves the
-				// staging texture in. Combined with InState == OutState in WrapDX12Resource, this
-				// keeps 11on12 from issuing barriers that conflict with the client's state tracker.
-				if (dx12TextureResource != nullptr
-					&& m_spoutColorFrame.WrapDX12Resource(dx12TextureResource, &m_spoutDX11ColorTexture,
-														  D3D12_RESOURCE_STATE_GENERIC_READ))
-				{
-					m_spoutDX12ColorTexture= dx12TextureResource;
-				}
-			}
-
-			if (m_spoutDX11ColorTexture != nullptr)
-			{
-				bSuccess= m_spoutColorFrame.SendDX11Resource(m_spoutDX11ColorTexture);
+				bSuccess= m_spoutColorFrame.SendDX11Resource(wrappedTexture);
 			}
 		}
 
@@ -202,31 +189,15 @@ public:
 
 		if (m_bIsDepthFrameInitialized)
 		{
-			if (m_spoutDX12DepthTexture != dx12TextureResource)
-			{
-				if (m_spoutDX11DepthTexture != nullptr)
-				{
-					m_spoutDX11DepthTexture->Release();
-					m_spoutDX11DepthTexture= nullptr;
-				}
-
-				// See note in writeColorFrameTexture: GENERIC_READ matches the staging texture's
-				// SRVMask rest state so 11on12 never conflicts with the client's state tracker.
-				if (dx12TextureResource != nullptr
-					&& m_spoutDepthFrame.WrapDX12Resource(dx12TextureResource, &m_spoutDX11DepthTexture,
-														  D3D12_RESOURCE_STATE_GENERIC_READ))
-				{
-					m_spoutDX12DepthTexture= dx12TextureResource;
-				}
-			}
-
-			if (m_spoutDX11DepthTexture != nullptr)
+			ID3D11Resource* wrappedTexture=
+				getOrWrapResource(m_spoutDepthFrame, m_depthWrappedResources, dx12TextureResource);
+			if (wrappedTexture != nullptr)
 			{
 				if (m_depthTexturePacker != nullptr)
 				{
 					// Convert the float depth texture to a RGBA8 texture using a shader
 					// (Spout can only send RGBA8 textures)
-					ID3D11Texture2D* pTexture11= (ID3D11Texture2D*)m_spoutDX11DepthTexture;
+					ID3D11Texture2D* pTexture11= (ID3D11Texture2D*)wrappedTexture;
 					ID3D11Texture2D* packedDepthTexture=
 						m_depthTexturePacker->packDepthTexture(pTexture11, zNear, zFar);
 
@@ -237,7 +208,7 @@ public:
 				}
 				else
 				{
-					bSuccess= m_spoutDepthFrame.SendDX11Resource(m_spoutDX11DepthTexture);
+					bSuccess= m_spoutDepthFrame.SendDX11Resource(wrappedTexture);
 				}
 			}
 		}
@@ -253,27 +224,11 @@ public:
 
 		if (m_bIsShadowFrameInitialized)
 		{
-			if (m_spoutDX12ShadowTexture != dx12TextureResource)
+			ID3D11Resource* wrappedTexture=
+				getOrWrapResource(m_spoutShadowFrame, m_shadowWrappedResources, dx12TextureResource);
+			if (wrappedTexture != nullptr)
 			{
-				if (m_spoutDX11ShadowTexture != nullptr)
-				{
-					m_spoutDX11ShadowTexture->Release();
-					m_spoutDX11ShadowTexture= nullptr;
-				}
-
-				// See note in writeColorFrameTexture: GENERIC_READ matches the staging texture's
-				// SRVMask rest state so 11on12 never conflicts with the client's state tracker.
-				if (dx12TextureResource != nullptr
-					&& m_spoutShadowFrame.WrapDX12Resource(dx12TextureResource, &m_spoutDX11ShadowTexture,
-														   D3D12_RESOURCE_STATE_GENERIC_READ))
-				{
-					m_spoutDX12ShadowTexture= dx12TextureResource;
-				}
-			}
-
-			if (m_spoutDX11ShadowTexture != nullptr)
-			{
-				bSuccess= m_spoutShadowFrame.SendDX11Resource(m_spoutDX11ShadowTexture);
+				bSuccess= m_spoutShadowFrame.SendDX11Resource(wrappedTexture);
 			}
 		}
 
@@ -286,17 +241,67 @@ public:
 	}
 
 private:
+	// A client that pipelines its captures hands over a different staging texture each
+	// publish, so the 11on12 wrap of each one is kept rather than recreated per frame
+	struct WrappedResource
+	{
+		ID3D12Resource* dx12Resource= nullptr;
+		ID3D11Resource* dx11Resource= nullptr;
+	};
+	using WrappedResourceCache= std::vector<WrappedResource>;
+	static constexpr size_t k_maxWrappedResources= 8;
+
+	ID3D11Resource* getOrWrapResource(spoutDX12& spoutFrame, WrappedResourceCache& cache,
+									  ID3D12Resource* dx12TextureResource)
+	{
+		if (dx12TextureResource == nullptr)
+			return nullptr;
+
+		for (const WrappedResource& entry : cache)
+		{
+			if (entry.dx12Resource == dx12TextureResource)
+				return entry.dx11Resource;
+		}
+
+		// The oldest wrap goes when the cache is full, since a client rotating through
+		// more staging textures than this is not one that reuses them
+		if (cache.size() >= k_maxWrappedResources)
+		{
+			cache.front().dx11Resource->Release();
+			cache.erase(cache.begin());
+		}
+
+		// Wrap as GENERIC_READ to match the rest state (SRVMask) the client leaves the
+		// staging texture in. Combined with InState == OutState in WrapDX12Resource, this
+		// keeps 11on12 from issuing barriers that conflict with the client's state tracker.
+		WrappedResource entry;
+		if (!spoutFrame.WrapDX12Resource(dx12TextureResource, &entry.dx11Resource, D3D12_RESOURCE_STATE_GENERIC_READ))
+			return nullptr;
+
+		entry.dx12Resource= dx12TextureResource;
+		cache.push_back(entry);
+
+		return entry.dx11Resource;
+	}
+
+	static void releaseWrappedResources(WrappedResourceCache& cache)
+	{
+		for (WrappedResource& entry : cache)
+		{
+			if (entry.dx11Resource != nullptr)
+				entry.dx11Resource->Release();
+		}
+		cache.clear();
+	}
+
 	const SharedTextureWriterContext& m_context;
 	SharedTextureLogger& m_logger;
 	spoutDX12 m_spoutColorFrame;
-	ID3D12Resource* m_spoutDX12ColorTexture= nullptr;
-	ID3D11Resource* m_spoutDX11ColorTexture= nullptr;
+	WrappedResourceCache m_colorWrappedResources;
 	spoutDX12 m_spoutDepthFrame;
-	ID3D12Resource* m_spoutDX12DepthTexture= nullptr;
-	ID3D11Resource* m_spoutDX11DepthTexture= nullptr;
+	WrappedResourceCache m_depthWrappedResources;
 	spoutDX12 m_spoutShadowFrame;
-	ID3D12Resource* m_spoutDX12ShadowTexture= nullptr;
-	ID3D11Resource* m_spoutDX11ShadowTexture= nullptr;
+	WrappedResourceCache m_shadowWrappedResources;
 	SpoutDXDepthTexturePacker* m_depthTexturePacker= nullptr;
 	bool m_bIsColorFrameInitialized= false;
 	bool m_bIsDepthFrameInitialized= false;
