@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1031,
-		"translatedCount": 1031,
-		"reviewedCount": 1031
+		"stringCount": 1036,
+		"translatedCount": 1036,
+		"reviewedCount": 1036
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -871,6 +871,7 @@
 		"font_path": "Font",
 		"force_render": "Force Render",
 		"foreground_color": "Foreground Color",
+		"frame_sync_mode": "Frame Sync Mode",
 		"green": "Green",
 		"grid_columns": "Grid Columns",
 		"grid_rows": "Grid Rows",
@@ -900,6 +901,7 @@
 		"playback_state": "Playback",
 		"playback_time": "Time",
 		"port": "Port",
+		"pose_driven_per_frame": "Pose Driven Per Frame",
 		"pose_track_path": "Pose Track",
 		"protocol": "Protocol",
 		"quad_height": "Quad Height",
@@ -957,6 +959,9 @@
 		"zig_zag": "Zig-Zag"
 	},
 	"propertyValues": {
+		"frame_sync_auto": "Auto",
+		"frame_sync_free_running": "Free Running",
+		"frame_sync_video_frame": "Video Frame",
 		"pixel_origin_lower_left": "Lower Left",
 		"pixel_origin_lower_right": "Lower Right",
 		"pixel_origin_upper_left": "Upper Left",

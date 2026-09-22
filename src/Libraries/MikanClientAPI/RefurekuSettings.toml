@@ -18,6 +18,7 @@ toProcessFiles = [
 	'''./Public/MikanClientTypes.h''',
 	'''./Public/MikanClientRequests.h''',
 	'''./Public/MikanComponentTypes.h''',
+	'''./Public/MikanCompositorEvents.h''',
 	'''./Public/MikanCompositorTypes.h''',
 	'''./Public/MikanEditorTypes.h''',
 	'''./Public/MikanFunctionTypes.h''',

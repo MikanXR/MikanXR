@@ -24,6 +24,8 @@ Compositing is driven by a `CompositorNodeGraph` (`src/Editor/NodeEditors/Graphs
 
 So each frame makes a round trip: the editor announces frame N with a camera pose, clients render their scene from that pose and submit textures, and the editor composites frame N several ticks later when the queue cycles around. `getPendingCompositedFrameIndex()` is the frame currently awaiting composite; `OnNewFrameComposited` fires after each composite. If the queue overflows, oldest frames are dropped with an error log.
 
+The announcement takes the form the camera's frame sync mode asks for (`CameraComponent::getEffectiveFrameSyncMode`, see [wire-protocol.md](./wire-protocol.md)). A video-frame synced camera gets the frame event per video frame. A free-running camera gets a `MikanCameraNewPropertiesEvent` from `publishCameraPropertiesIfChanged` only when the camera state differs from the last one published, with a forced publish when the compositor starts and when the mode flips to free running. A client that joins between changes pulls the same state through `GetCameraProperties`, answered by `CameraRequestHandler` from the camera and the running compositors. `start()` and `stop()` also publish the compositor started and stopped events. The local frame event queue is filled either way, since it also paces the video texture the composite reads.
+
 Video always comes through a `VideoFrameDistortionView` in `eVideoFrameProcessorMode::COMPOSITOR` mode with `eVideoDisplayMode::mode_undistored`. Compositing always uses the undistorted frame (see [videosources.md](./videosources.md)).
 
 ---

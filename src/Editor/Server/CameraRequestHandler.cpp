@@ -1,10 +1,16 @@
 #include "App.h"
 #include "AppStage.h"
+#include "CameraComponent.h"
+#include "CameraObjectSystem.h"
 #include "CameraRequestHandler.h"
+#include "CompositorComponent.h"
+#include "CompositorObjectSystem.h"
+#include "MikanCameraEvents.h"
 #include "MainWindow.h"
 #include "MikanClientConnectionState.h"
 #include "MikanServer.h"
 #include "MikanCameraRequests.h"
+#include "MikanCompositorEvents.h"
 #include "ServerResponseHelpers.h"
 #include "SharedTextureReader.h"
 
@@ -162,6 +168,10 @@ bool CameraRequestHandler::startup(MainWindow* mainWindow)
 	messageServer->setRequestHandler(PublishCameraRenderTargetTextures::staticGetArchetype().getName(),
 									 std::bind(&CameraRequestHandler::frameRenderedHandler, this, _1, _2));
 
+	// Camera State Requests
+	messageServer->setRequestHandler(GetCameraProperties::staticGetArchetype().getName(),
+									 std::bind(&CameraRequestHandler::getCameraPropertiesHandler, this, _1, _2));
+
 	return true;
 }
 
@@ -251,8 +261,84 @@ void CameraRequestHandler::frameRenderedHandler(const ClientRequest& request, Cl
 	}
 }
 
+void CameraRequestHandler::getCameraPropertiesHandler(const ClientRequest& request, ClientResponse& response)
+{
+	GetCameraProperties propertiesRequest;
+	if (!readTypedRequest(request.utf8RequestString, propertiesRequest))
+	{
+		writeSimpleJsonResponse(request.requestId, MikanAPIResult::MalformedParameters, response);
+		return;
+	}
+
+	ProjectManagerPtr projectManager= getProjectManager();
+	auto cameraSystem= projectManager ? projectManager->getSystemOfType<CameraObjectSystem>() : nullptr;
+	CameraComponentPtr camera= cameraSystem ? cameraSystem->getCameraById(propertiesRequest.camera_id) : nullptr;
+	if (!camera)
+	{
+		writeSimpleJsonResponse(request.requestId, MikanAPIResult::InvalidCameraID, response);
+		return;
+	}
+
+	// The state a frame event would carry, minus the frame index
+	MikanCameraNewPropertiesEvent properties;
+	if (!camera->makeCameraPropertiesEvent(0, 0, properties))
+	{
+		writeSimpleJsonResponse(request.requestId, MikanAPIResult::NoVideoSource, response);
+		return;
+	}
+
+	MikanCameraPropertiesResponse propertiesResponse;
+	propertiesResponse.camera_id= properties.camera_id;
+	propertiesResponse.camera_forward= properties.camera_forward;
+	propertiesResponse.camera_up= properties.camera_up;
+	propertiesResponse.camera_position= properties.camera_position;
+	propertiesResponse.pixel_size= properties.pixel_size;
+	propertiesResponse.focal_length= properties.focal_length;
+	propertiesResponse.principal_point= properties.principal_point;
+	propertiesResponse.z_bounds= properties.z_bounds;
+
+	// Running means any compositor bound to the camera, the scene's display one or an editor-held one
+	auto compositorSystem= projectManager->getSystemOfType<CompositorObjectSystem>();
+	for (const auto& compositorPair : compositorSystem->getComponentMap())
+	{
+		CompositorComponentPtr compositor= compositorPair.second.lock();
+		if (compositor && compositor->getIsRunning()
+			&& compositor->getCompositorDefinition()->getCameraId() == propertiesRequest.camera_id)
+		{
+			propertiesResponse.compositor_running= true;
+			break;
+		}
+	}
+
+	writeTypedJsonResponse(request.requestId, propertiesResponse, response);
+}
+
 // -- Camera Events -----
 void CameraRequestHandler::publishCameraNewFrameEvent(const MikanCameraNewFrameEvent& newFrameEvent)
 {
 	m_owner->publishMikanJsonEvent(mikanTypeToJsonString(newFrameEvent));
+}
+
+void CameraRequestHandler::publishCameraNewPropertiesEvent(const MikanCameraNewPropertiesEvent& propertiesEvent)
+{
+	m_owner->publishMikanJsonEvent(mikanTypeToJsonString(propertiesEvent));
+}
+
+// -- Compositor Events -----
+void CameraRequestHandler::publishCompositorStartedEvent(MikanCompositorID compositorId, MikanCameraID cameraId)
+{
+	MikanCompositorStartedEvent startedEvent;
+	startedEvent.compositor_id= compositorId;
+	startedEvent.camera_id= cameraId;
+
+	m_owner->publishMikanJsonEvent(mikanTypeToJsonString(startedEvent));
+}
+
+void CameraRequestHandler::publishCompositorStoppedEvent(MikanCompositorID compositorId, MikanCameraID cameraId)
+{
+	MikanCompositorStoppedEvent stoppedEvent;
+	stoppedEvent.compositor_id= compositorId;
+	stoppedEvent.camera_id= cameraId;
+
+	m_owner->publishMikanJsonEvent(mikanTypeToJsonString(stoppedEvent));
 }

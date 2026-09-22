@@ -3,6 +3,7 @@
 #include "MikanAPIExport.h"
 #include "MikanAPITypes.h"
 #include "MikanCameraTypes.h"
+#include "MikanMathTypes.h"
 
 #ifdef MIKANAPI_REFLECTION_ENABLED
 #include "MikanCameraRequests.rfkh.h"
@@ -99,6 +100,43 @@ public:
 
 #ifdef MIKANAPI_REFLECTION_ENABLED
 	FreeCameraRenderTargetTextures_GENERATED
+#endif
+};
+
+/// Pulls the camera state a client renders from. A client that starts, or binds a
+/// camera, after the last MikanCameraNewPropertiesEvent went out asks for it here
+/// rather than waiting for the state to change.
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanCameraRequests")) GetCameraProperties : public MikanRequest
+{
+public:
+	GetCameraProperties(){MIKAN_REQUEST_TYPE_INFO_INIT(GetCameraProperties)}
+
+	FIELD() MikanCameraID camera_id= INVALID_MIKAN_ID;
+
+#ifdef MIKANAPI_REFLECTION_ENABLED
+	GetCameraProperties_GENERATED
+#endif
+};
+
+/// The same fields as MikanCameraNewPropertiesEvent, plus whether a compositor is
+/// running for the camera and so consuming what a client publishes for it.
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanCameraRequests")) MikanCameraPropertiesResponse
+	: public MikanResponse
+{
+	MikanCameraPropertiesResponse(){MIKAN_RESPONSE_TYPE_INFO_INIT(MikanCameraPropertiesResponse)}
+
+	FIELD() MikanCameraID camera_id= INVALID_MIKAN_ID;
+	FIELD() bool compositor_running= false;
+	FIELD() MikanVector3f camera_forward;
+	FIELD() MikanVector3f camera_up;
+	FIELD() MikanVector3f camera_position;
+	FIELD() MikanVector2i pixel_size;
+	FIELD() MikanVector2d focal_length;
+	FIELD() MikanVector2d principal_point;
+	FIELD() MikanVector2d z_bounds;
+
+#ifdef MIKANAPI_REFLECTION_ENABLED
+	MikanCameraPropertiesResponse_GENERATED
 #endif
 };
 

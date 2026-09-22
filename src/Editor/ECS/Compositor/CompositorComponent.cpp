@@ -325,14 +325,11 @@ void CompositorComponent::tryEnqueueNewFrame(CameraComponentPtr cameraComponent)
 				m_lastReadVideoFrameIndex, 0, 0, // no fallback render target size in this case
 				newFrameEvent))
 		{
-			MikanServer* mikanServer= getOwnerEditorWindow()->getMikanServer();
-			CameraRequestHandler* cameraRequestHandler= mikanServer->getCameraRequestHandler();
-
 			MIKAN_LOG_TRACE("CompositorComponent::tryEnqueueNewFrame") << "Enqueue frame " << newFrameEvent.frame;
 			m_frameEventQueue.push(newFrameEvent);
 
-			// Tell all clients that we have a new frame to render
-			cameraRequestHandler->publishCameraNewFrameEvent(newFrameEvent);
+			// Tell clients what to render, in the form the camera's sync mode wants
+			publishClientFrameNotification(cameraComponent, newFrameEvent);
 		}
 		else
 		{
@@ -661,6 +658,17 @@ bool CompositorComponent::start()
 		m_timeSinceLastFrameComposited= 0.f;
 
 		updateVideoSourceStreaming();
+
+		// A free-running client needs the camera state before its first frame
+		// event would have carried it, and needs to know a compositor is consuming
+		m_lastPublishedCameraProperties.reset();
+		publishCompositorLifecycleEvent(true);
+		if (CameraComponentPtr cameraComponent= getCameraComponent())
+		{
+			m_lastFrameSyncMode= cameraComponent->getEffectiveFrameSyncMode();
+			if (m_lastFrameSyncMode == MikanCameraFrameSyncMode_FreeRunning)
+				publishCameraPropertiesIfChanged(cameraComponent, true);
+		}
 	}
 
 	return true;
@@ -668,10 +676,89 @@ bool CompositorComponent::start()
 
 void CompositorComponent::stop()
 {
+	const bool bWasRunning= m_bIsRunning;
+
 	m_bIsRunning= false;
 
 	stopVideoSourceStreaming();
 	stopOutputStreaming();
+
+	m_lastPublishedCameraProperties.reset();
+	if (bWasRunning)
+		publishCompositorLifecycleEvent(false);
+}
+
+// -- Client notification ----
+static bool cameraPropertiesEqual(const MikanCameraNewPropertiesEvent& a, const MikanCameraNewPropertiesEvent& b)
+{
+	auto equal3f= [](const MikanVector3f& u, const MikanVector3f& v) { return u.x == v.x && u.y == v.y && u.z == v.z; };
+	auto equal2i= [](const MikanVector2i& u, const MikanVector2i& v) { return u.x == v.x && u.y == v.y; };
+	auto equal2d= [](const MikanVector2d& u, const MikanVector2d& v) { return u.x == v.x && u.y == v.y; };
+
+	return a.camera_id == b.camera_id && equal3f(a.camera_forward, b.camera_forward)
+		   && equal3f(a.camera_up, b.camera_up) && equal3f(a.camera_position, b.camera_position)
+		   && equal2i(a.pixel_size, b.pixel_size) && equal2d(a.focal_length, b.focal_length)
+		   && equal2d(a.principal_point, b.principal_point) && equal2d(a.z_bounds, b.z_bounds);
+}
+
+void CompositorComponent::publishClientFrameNotification(CameraComponentPtr cameraComponent,
+														 const MikanCameraNewFrameEvent& newFrameEvent)
+{
+	const MikanCameraFrameSyncMode syncMode= cameraComponent->getEffectiveFrameSyncMode();
+	const bool bModeChanged= syncMode != m_lastFrameSyncMode;
+	m_lastFrameSyncMode= syncMode;
+
+	if (syncMode == MikanCameraFrameSyncMode_VideoFrame)
+	{
+		MikanServer* mikanServer= getOwnerEditorWindow()->getMikanServer();
+		if (mikanServer)
+		{
+			// Tell all clients that we have a new frame to render
+			mikanServer->getCameraRequestHandler()->publishCameraNewFrameEvent(newFrameEvent);
+		}
+	}
+	else
+	{
+		// A client rendering on its own clock only needs to hear about changes.
+		// Entering free running republishes so the client is not left on a state it
+		// last saw in a frame event.
+		publishCameraPropertiesIfChanged(cameraComponent, bModeChanged);
+	}
+}
+
+void CompositorComponent::publishCameraPropertiesIfChanged(CameraComponentPtr cameraComponent, bool bForce)
+{
+	MikanServer* mikanServer= getOwnerEditorWindow()->getMikanServer();
+	if (!mikanServer)
+		return;
+
+	MikanCameraNewPropertiesEvent propertiesEvent;
+	if (!cameraComponent->makeCameraPropertiesEvent(0, 0, propertiesEvent))
+		return;
+
+	if (!bForce && m_lastPublishedCameraProperties.has_value()
+		&& cameraPropertiesEqual(*m_lastPublishedCameraProperties, propertiesEvent))
+	{
+		return;
+	}
+
+	mikanServer->getCameraRequestHandler()->publishCameraNewPropertiesEvent(propertiesEvent);
+	m_lastPublishedCameraProperties= propertiesEvent;
+}
+
+void CompositorComponent::publishCompositorLifecycleEvent(bool bStarted)
+{
+	IEditorWindow* editorWindow= getOwnerEditorWindow();
+	MikanServer* mikanServer= editorWindow ? editorWindow->getMikanServer() : nullptr;
+	if (!mikanServer)
+		return;
+
+	CameraRequestHandler* cameraRequestHandler= mikanServer->getCameraRequestHandler();
+	const MikanCameraID cameraId= getCompositorDefinition()->getCameraId();
+	if (bStarted)
+		cameraRequestHandler->publishCompositorStartedEvent(getCompositorId(), cameraId);
+	else
+		cameraRequestHandler->publishCompositorStoppedEvent(getCompositorId(), cameraId);
 }
 
 CompositorObjectSystemPtr CompositorComponent::getOwnerObjectSystem() const

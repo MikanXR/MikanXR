@@ -10,6 +10,7 @@ export * from './MikanClientEvents.js';
 export * from './MikanClientRequests.js';
 export * from './MikanClientTypes.js';
 export * from './MikanComponentTypes.js';
+export * from './MikanCompositorEvents.js';
 export * from './MikanCompositorTypes.js';
 export * from './MikanCoreConstants.js';
 export * from './MikanCoreTypes.js';

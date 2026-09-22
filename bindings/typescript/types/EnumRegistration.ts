@@ -2,6 +2,7 @@
 
 import { EnumRegistry } from '../Serialization/EnumRegistry.js';
 import { MikanAPIResult } from './MikanAPITypes.js';
+import { MikanCameraFrameSyncMode } from './MikanCameraTypes.js';
 import { MikanClientGraphicsApi, MikanColorBufferType, MikanConstants, MikanCoreResult, MikanDepthBufferType, MikanDisconnectCode, MikanLogLevel, MikanShadowBufferType } from './MikanCoreConstants.js';
 import { MikanDMXBufferFormat, MikanDMXScrollDirection, MikanDMXSequenceContentSource, MikanPixelGridOrigin } from './MikanLightTypes.js';
 import { MikanMarkerDictionaryType } from './MikanMarkerTypes.js';
@@ -15,6 +16,7 @@ import { MikanIntrinsicsType, MikanVideoSettingType, MikanVideoSourceType } from
 
 export function registerAllEnums(): void {
   EnumRegistry.register('MikanAPIResult', MikanAPIResult);
+  EnumRegistry.register('MikanCameraFrameSyncMode', MikanCameraFrameSyncMode);
   EnumRegistry.register('MikanClientGraphicsApi', MikanClientGraphicsApi);
   EnumRegistry.register('MikanColorBufferType', MikanColorBufferType);
   EnumRegistry.register('MikanConstants', MikanConstants);

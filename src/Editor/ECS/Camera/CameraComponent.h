@@ -51,6 +51,13 @@ public:
 	inline int getTrackingFrameDelay() const { return m_trackingFrameDelay; }
 	void setTrackingFrameDelay(int trackingFrameDelay);
 
+	/// How a client paces its renders for this camera. Auto follows
+	/// getIsPoseDrivenPerFrame(): a per-frame pose wants a render per video
+	/// frame, a static pose lets the client run on its own clock.
+	static const std::string k_frameSyncModePropertyId;
+	inline MikanCameraFrameSyncMode getFrameSyncMode() const { return m_frameSyncMode; }
+	void setFrameSyncMode(MikanCameraFrameSyncMode syncMode);
+
 	static const std::string k_apertureOrientationOffsetPropertyId;
 	static const std::string k_aperturePositionOffsetPropertyId;
 	inline MikanQuatd getApertureOffsetOrientation() const { return m_apertureOrientationOffset; }
@@ -76,7 +83,10 @@ public:
 	/// being driven right now, and CameraComponent::update sets it from what it
 	/// actually finds. A tracking mount is known from the definition alone, but a
 	/// frame-coupled video source is not, so the component reports that in.
-	inline void setPoseDrivenPerFrame(bool bDriven) { m_bPoseDrivenPerFrame= bDriven; }
+	/// The effective value is a read-only property so a client can resolve the
+	/// auto frame sync mode the same way the editor does.
+	static const std::string k_poseDrivenPerFramePropertyId;
+	void setPoseDrivenPerFrame(bool bDriven);
 	inline bool getIsPoseDrivenPerFrame() const
 	{
 		return m_bPoseDrivenPerFrame || m_trackingMountId != INVALID_MIKAN_ID;
@@ -98,6 +108,14 @@ public:
 			return false;
 		}
 
+		// The pose-driven flag is runtime state that is never written to the
+		// project file, so its notification exists only to reach clients
+		if (changedPropertySet.getSet().size() == 1
+			&& changedPropertySet.hasPropertyName(k_poseDrivenPerFramePropertyId))
+		{
+			return false;
+		}
+
 		return TransformComponentDefinition::wantsSaveForPropertyChange(changedPropertySet);
 	}
 
@@ -107,6 +125,7 @@ private:
 	MikanTrackingMountID m_trackingMountId= INVALID_MIKAN_ID;
 	MikanVideoSourceID m_videoSourceId= INVALID_MIKAN_ID;
 	int m_trackingFrameDelay= 0;
+	MikanCameraFrameSyncMode m_frameSyncMode= MikanCameraFrameSyncMode_Auto;
 	float m_depthMeshScaleCorrection= 1.f;
 	MikanQuatd m_apertureOrientationOffset;
 	MikanVector3d m_aperturePositionOffset;
@@ -163,7 +182,13 @@ public:
 	bool getApertureViewMatrix(glm::mat4& outViewMatrix) const;
 	bool getApertureViewProjectionMatrix(glm::mat4& outVPMatrix, bool bVerticalFlip= false) const;
 
-	// Helper function to populate a new frame event with the current camera properties
+	// The frame sync mode with Auto resolved against the pose-driven state
+	MikanCameraFrameSyncMode getEffectiveFrameSyncMode() const;
+
+	// Helper functions to populate a camera event with the current camera properties.
+	// The frame event is the properties event plus the frame index.
+	bool makeCameraPropertiesEvent(int defaultWidth, int defaultHeight,
+								   struct MikanCameraNewPropertiesEvent& outPropertiesEvent) const;
 	bool makeNewCameraFrameEvent(int64_t frameIndex, int defaultWidth, int defaultHeight,
 								 struct MikanCameraNewFrameEvent& newFrameEvent) const;
 

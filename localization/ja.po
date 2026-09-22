@@ -4799,6 +4799,11 @@ msgid "Foreground Color"
 msgstr "前景色"
 
 #. Section: properties
+msgctxt "properties.frame_sync_mode"
+msgid "Frame Sync Mode"
+msgstr ""
+
+#. Section: properties
 #, fuzzy
 msgctxt "properties.green"
 msgid "Green"
@@ -4964,6 +4969,11 @@ msgstr ""
 msgctxt "properties.port"
 msgid "Port"
 msgstr "ポート"
+
+#. Section: properties
+msgctxt "properties.pose_driven_per_frame"
+msgid "Pose Driven Per Frame"
+msgstr ""
 
 #. Section: properties
 msgctxt "properties.pose_track_path"
@@ -5293,6 +5303,21 @@ msgstr "幅"
 msgctxt "properties.zig_zag"
 msgid "Zig-Zag"
 msgstr "ジグザグ"
+
+#. Section: propertyValues
+msgctxt "propertyValues.frame_sync_auto"
+msgid "Auto"
+msgstr ""
+
+#. Section: propertyValues
+msgctxt "propertyValues.frame_sync_free_running"
+msgid "Free Running"
+msgstr ""
+
+#. Section: propertyValues
+msgctxt "propertyValues.frame_sync_video_frame"
+msgid "Video Frame"
+msgstr ""
 
 #. Section: propertyValues
 #, fuzzy

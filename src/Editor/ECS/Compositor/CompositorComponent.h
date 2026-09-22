@@ -6,6 +6,7 @@
 #include "CompositorConstants.h"
 #include "Graphs/NodeError.h"
 #include "MikanCameraEvents.h"
+#include "MikanCameraTypes.h"
 #include "MikanComponent.h"
 #include "MikanCoreTypes.h"
 #include "MikanRendererFwd.h"
@@ -20,6 +21,7 @@
 #include "VideoDisplayConstants.h"
 
 #include <memory>
+#include <optional>
 #include <queue>
 #include <string>
 
@@ -169,6 +171,15 @@ protected:
 	void tryEnqueueNewFrame(CameraComponentPtr cameraComponent);
 	void evaluateCompositorNodeGraph(CompositorNodeGraphPtr nodeGraph);
 
+	// Client notification. A video-frame synced camera gets a frame event per video
+	// frame; a free-running camera gets a properties event only when the camera
+	// state changes, or when forced (compositor start, mode change). A client that
+	// joins between changes pulls the state with GetCameraProperties instead.
+	void publishClientFrameNotification(CameraComponentPtr cameraComponent,
+										const MikanCameraNewFrameEvent& newFrameEvent);
+	void publishCameraPropertiesIfChanged(CameraComponentPtr cameraComponent, bool bForce);
+	void publishCompositorLifecycleEvent(bool bStarted);
+
 private:
 	// Compositor Rendering
 	IMkTriangulatedMeshPtr m_viewportQuadMesh;
@@ -195,6 +206,10 @@ private:
 	bool m_bIsRunning= false;
 	bool m_bEditorHeld= false;
 	bool m_bOutputStreamingAllowed= true;
+
+	// Free-running client notification state
+	std::optional<MikanCameraNewPropertiesEvent> m_lastPublishedCameraProperties;
+	MikanCameraFrameSyncMode m_lastFrameSyncMode= MikanCameraFrameSyncMode_Auto;
 	int64_t m_lastReadVideoFrameIndex= 0;
 	int64_t m_lastCompositedFrameIndex= 0;
 	float m_timeSinceLastFrameComposited= 0.f;

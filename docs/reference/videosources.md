@@ -212,7 +212,7 @@ The consistency matters as much as the magnitude. Before the rewrite only 48.6 p
 
 Pixel data never travels over the websocket; only events and requests do (see [wire-protocol.md](./wire-protocol.md)).
 
-- Editor to client: when the compositor processes a new video frame, `CompositorComponent` builds a `MikanCameraNewFrameEvent` via `CameraComponent::makeNewCameraFrameEvent()` (camera pose, frame index, dimensions) and `CameraRequestHandler::publishCameraNewFrameEvent()` broadcasts it as JSON. Clients use it to render their scene for that frame.
+- Editor to client: when the compositor processes a new video frame, `CompositorComponent` builds a `MikanCameraNewFrameEvent` via `CameraComponent::makeNewCameraFrameEvent()` (camera pose, frame index, dimensions) and `CameraRequestHandler::publishCameraNewFrameEvent()` broadcasts it as JSON. Clients use it to render their scene for that frame. A camera whose frame sync mode resolves to free running gets a `MikanCameraNewPropertiesEvent` on change instead, and its clients render on their own clock and publish with frame index -1 ([wire-protocol.md](./wire-protocol.md)).
 
 - Client to editor: clients allocate a shared render target through `MikanClientCore` using `createSharedTextureWriteAccessor` (`src/Libraries/MikanSharedTexture/Public/SharedTextureWriter.h`; color, optional depth and shadow buffers per `SharedTextureDescriptor`, OpenGL, D3D11, D3D12, and Vulkan writers, D3D9 and Metal being enum values with no writer behind them). On a `PublishCameraRenderTargetTextures` request, `CameraRequestHandler::frameRenderedHandler` reads the textures through a per-client, per-camera `SharedTextureReadAccessor` (`src/Editor/Interprocess/SharedTextureReader.h`) and hands them to the compositor.
 

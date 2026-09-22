@@ -153,13 +153,27 @@ Note also that a property the editor panels show needs a localization key, or `r
 
 ---
 
+## Camera frame pacing
+
+A client renders for a camera in one of two ways, chosen by the camera's `frame_sync_mode` property (`MikanCameraFrameSyncMode` in `MikanCameraTypes.h`).
+
+- `VideoFrame`: the editor publishes a `MikanCameraNewFrameEvent` per video frame, carrying the camera state and the frame index, and the client renders each one from that state and publishes with that index. This is the pairing a moving camera needs, since a render from a stale pose composites against the wrong video frame.
+- `FreeRunning`: the editor publishes a `MikanCameraNewPropertiesEvent` (the same fields without `frame`) only when the camera state changes, and the client renders on its own clock, capped to the video source frame rate it reads through `GetVideoSourceMode`, publishing with `frame_index` of -1. The compositor serves its newest texture for that client. A static camera loses nothing to this, and the wire carries no per-frame traffic for it.
+- `Auto`, the default, resolves at runtime from `pose_driven_per_frame`, a read-only camera property that is true when a tracking mount or a frame-coupled video source (ARKit, or a take with a pose track) drives the pose. A marker-aligned camera is static and resolves to free running.
+
+The properties event is published on change while the compositor runs, and is republished regardless of change when the compositor starts and when the camera's effective mode becomes free running. A client that starts or binds a camera between changes hears nothing, so it pulls the state with `GetCameraProperties` (`MikanCameraRequests.h`), whose `MikanCameraPropertiesResponse` carries the same fields plus `compositor_running`. `MikanCompositorStartedEvent` and `MikanCompositorStoppedEvent` (`MikanCompositorEvents.h`, `compositor_id` plus `camera_id`) bracket the run, which is what a free-running client has in place of the frame events as its signal that something consumes what it publishes. The Unreal plugin pulls when its camera data binds, which covers a play-in-editor session starting against an editor whose compositor has been running all along.
+
+Only the Unreal plugin implements the free-running side today. A client that ignores the mode and renders per frame event keeps working for a video-frame synced camera, and simply never renders for a free-running one.
+
+---
+
 ## Which space a client receives
 
 The component values a client mirrors are relative, never absolute. `MikanTransformComponentValues` (`MikanTransformTypes.h`) carries `parent_transform_id` plus a relative scale, quaternion and position, and nothing else. A client rebuilds a world transform by walking the parent chain itself, which is what lets it anchor a whole stage wherever it likes in its own scene. The Unreal plugin does exactly this, and deliberately lets the artist place the stage actor freely and pin it there, so the editor's own stage transform is not the client's.
 
 Two things on the wire are absolute, and both are therefore stage-relative rather than world-relative:
 
-- `MikanCameraNewFrameEvent` (`MikanCameraEvents.h`) carries `camera_position` / `camera_forward` / `camera_up` from `CameraComponent::getStageSpaceAperturePose`. A world-space pose here would be applied a second time by the client's own stage anchor, putting the composited CG off by the stage transform.
+- `MikanCameraNewFrameEvent` and `MikanCameraNewPropertiesEvent` (`MikanCameraEvents.h`) carry `camera_position` / `camera_forward` / `camera_up` from `CameraComponent::getStageSpaceAperturePose`. A world-space pose here would be applied a second time by the client's own stage anchor, putting the composited CG off by the stage transform.
 - `MikanLightEnvironmentComponentValues`' `sh_coefficients` and `key_light_direction` (`MikanLightTypes.h`) are in the stage space of the capturing camera's stage, so a stage's lighting travels with the stage. Spherical harmonics do not transform like vectors. See [conventions.md](./conventions.md) and [scene-lighting.md](./scene-lighting.md) for why a client evaluates them in Mikan space rather than converting them.
 
 ---

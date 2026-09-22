@@ -25,6 +25,34 @@ namespace MikanXR
 		}
 	};
 
+	public class GetCameraProperties : MikanRequest
+	{
+		public int camera_id;
+
+		public GetCameraProperties()
+		{
+			requestTypeName = "GetCameraProperties";
+		}
+	};
+
+	public class MikanCameraPropertiesResponse : MikanResponse
+	{
+		public int camera_id;
+		public bool compositor_running;
+		public MikanVector3f camera_forward;
+		public MikanVector3f camera_up;
+		public MikanVector3f camera_position;
+		public MikanVector2i pixel_size;
+		public MikanVector2d focal_length;
+		public MikanVector2d principal_point;
+		public MikanVector2d z_bounds;
+
+		public MikanCameraPropertiesResponse()
+		{
+			responseTypeName = "MikanCameraPropertiesResponse";
+		}
+	};
+
 	public class PublishCameraRenderTargetTextures : MikanRequest
 	{
 		public int camera_id;

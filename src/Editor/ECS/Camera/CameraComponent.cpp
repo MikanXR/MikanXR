@@ -11,6 +11,7 @@
 #include "DepthMeshCapture/AppStage_DepthMeshCapture.h"
 #include "ModalMessageBox/ModalDialog_MessageBox.h"
 #include "Colors.h"
+#include "EnumPropertyMetaData.h"
 #include "IEditorWindow.h"
 #include "LightEnvironmentSystem.h"
 #include "LightEnvironmentComponent.h"
@@ -46,10 +47,39 @@ const std::string CameraDefinition::k_trackingMountIdPropertyId= "tracking_mount
 const std::string CameraDefinition::k_videoSourceIdPropertyId= "video_source_id";
 const std::string CameraDefinition::k_lightEnvironmentIdPropertyId= "light_environment_id";
 const std::string CameraDefinition::k_trackingFrameDelayPropertyId= "tracking_frame_delay";
+const std::string CameraDefinition::k_frameSyncModePropertyId= "frame_sync_mode";
+const std::string CameraDefinition::k_poseDrivenPerFramePropertyId= "pose_driven_per_frame";
 const std::string CameraDefinition::k_depthMeshScaleCorrectionPropertyId= "depth_mesh_scale_correction";
 const std::string CameraDefinition::k_apertureOrientationOffsetPropertyId= "aperture_orientation_offset";
 const std::string CameraDefinition::k_aperturePositionOffsetPropertyId= "aperture_position_offset";
 const std::string CameraDefinition::k_hasValidApertureOffsetPropertyId= "has_valid_aperture_offset";
+
+// JSON persistence spellings, indexed by MikanCameraFrameSyncMode
+static const char* k_frameSyncModeJsonStrings[]= {"auto", "video_frame", "free_running"};
+static const int k_frameSyncModeCount= 3;
+// Localization keys, not display text (see EnumPropertyMetaData)
+static const std::string k_frameSyncModeLocKeys[]= {
+	"propertyValues.frame_sync_auto",
+	"propertyValues.frame_sync_video_frame",
+	"propertyValues.frame_sync_free_running",
+};
+
+static MikanCameraFrameSyncMode frameSyncModeFromJsonString(const std::string& value)
+{
+	for (int index= 0; index < k_frameSyncModeCount; ++index)
+	{
+		if (value == k_frameSyncModeJsonStrings[index])
+			return static_cast<MikanCameraFrameSyncMode>(index);
+	}
+
+	return MikanCameraFrameSyncMode_Auto;
+}
+
+static MikanCameraFrameSyncMode frameSyncModeFromInt(int value)
+{
+	return (value >= 0 && value < k_frameSyncModeCount) ? static_cast<MikanCameraFrameSyncMode>(value)
+														: MikanCameraFrameSyncMode_Auto;
+}
 
 CameraDefinition::CameraDefinition()
 	: TransformComponentDefinition()
@@ -80,6 +110,7 @@ configuru::Config CameraDefinition::writeToJSON()
 	pt["video_source_id"]= m_videoSourceId;
 	pt["light_environment_id"]= m_lightEnvionmentId;
 	pt["tracking_frame_delay"]= m_trackingFrameDelay;
+	pt[k_frameSyncModePropertyId]= k_frameSyncModeJsonStrings[(int)m_frameSyncMode];
 	pt["depth_mesh_scale_correction"]= m_depthMeshScaleCorrection;
 
 	writeQuaderntiond(pt, "aperture_orientation_offset", m_apertureOrientationOffset);
@@ -98,6 +129,8 @@ void CameraDefinition::readFromJSON(const configuru::Config& pt)
 	m_videoSourceId= pt.get_or<int>("video_source_id", m_videoSourceId);
 	m_lightEnvionmentId= pt.get_or<int>("light_environment_id", m_lightEnvionmentId);
 	m_trackingFrameDelay= pt.get_or<int>("tracking_frame_delay", m_trackingFrameDelay);
+	m_frameSyncMode= frameSyncModeFromJsonString(
+		pt.get_or<std::string>(k_frameSyncModePropertyId.c_str(), k_frameSyncModeJsonStrings[(int)m_frameSyncMode]));
 	m_depthMeshScaleCorrection= pt.get_or<float>("depth_mesh_scale_correction", m_depthMeshScaleCorrection);
 
 	readQuaterniond(pt, "aperture_orientation_offset", m_apertureOrientationOffset);
@@ -119,6 +152,7 @@ bool CameraDefinition::readFromInitParams(MikanObjectSystem* ownerObjectSystem,
 		m_lightEnvionmentId= componentValues->light_environment_id;
 		m_videoSourceId= componentValues->video_source_id;
 		m_trackingFrameDelay= componentValues->tracking_frame_delay;
+		m_frameSyncMode= frameSyncModeFromInt((int)componentValues->frame_sync_mode);
 		m_apertureOrientationOffset= componentValues->aperture_orientation_offset;
 		m_aperturePositionOffset= componentValues->aperture_position_offset;
 
@@ -153,9 +187,31 @@ void CameraDefinition::setTrackingMountId(MikanTrackingMountID trackingMountId)
 {
 	if (trackingMountId != m_trackingMountId)
 	{
+		const bool bWasPoseDriven= getIsPoseDrivenPerFrame();
+
 		m_trackingMountId= trackingMountId;
-		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_trackingMountIdPropertyId));
+
+		// The mount id is one input to the pose-driven flag, so a change here can
+		// flip the effective value clients see
+		ConfigPropertyChangeSet changeSet;
+		changeSet.addPropertyName(k_trackingMountIdPropertyId);
+		if (getIsPoseDrivenPerFrame() != bWasPoseDriven)
+			changeSet.addPropertyName(k_poseDrivenPerFramePropertyId);
+		notifyPropertyChanged(changeSet);
 	}
+}
+
+void CameraDefinition::setPoseDrivenPerFrame(bool bDriven)
+{
+	// Called every tick from CameraComponent::update, so only an effective
+	// change notifies (a tracking mount keeps the effective value true whatever
+	// the frame-coupled source reports)
+	const bool bWasPoseDriven= getIsPoseDrivenPerFrame();
+
+	m_bPoseDrivenPerFrame= bDriven;
+
+	if (getIsPoseDrivenPerFrame() != bWasPoseDriven)
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_poseDrivenPerFramePropertyId));
 }
 
 void CameraDefinition::setVideoSourceId(MikanVideoSourceID videoSourceId)
@@ -191,6 +247,15 @@ void CameraDefinition::setTrackingFrameDelay(int trackingFrameDelay)
 	{
 		m_trackingFrameDelay= trackingFrameDelay;
 		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_trackingFrameDelayPropertyId));
+	}
+}
+
+void CameraDefinition::setFrameSyncMode(MikanCameraFrameSyncMode syncMode)
+{
+	if (syncMode != m_frameSyncMode)
+	{
+		m_frameSyncMode= syncMode;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_frameSyncModePropertyId));
 	}
 }
 
@@ -687,12 +752,25 @@ bool CameraComponent::getApertureViewProjectionMatrix(glm::mat4& outVPMatrix, bo
 	return false;
 }
 
-bool CameraComponent::makeNewCameraFrameEvent(int64_t frameIndex, int defaultWidth, int defaultHeight,
-											  MikanCameraNewFrameEvent& outNewFrameEvent) const
+MikanCameraFrameSyncMode CameraComponent::getEffectiveFrameSyncMode() const
 {
-	outNewFrameEvent= {};
-	outNewFrameEvent.camera_id= getCameraId();
-	outNewFrameEvent.frame= frameIndex;
+	CameraDefinitionPtr cameraDefinition= getCameraDefinition();
+	const MikanCameraFrameSyncMode syncMode= cameraDefinition->getFrameSyncMode();
+
+	if (syncMode == MikanCameraFrameSyncMode_Auto)
+	{
+		return cameraDefinition->getIsPoseDrivenPerFrame() ? MikanCameraFrameSyncMode_VideoFrame
+														   : MikanCameraFrameSyncMode_FreeRunning;
+	}
+
+	return syncMode;
+}
+
+bool CameraComponent::makeCameraPropertiesEvent(int defaultWidth, int defaultHeight,
+												MikanCameraNewPropertiesEvent& outPropertiesEvent) const
+{
+	outPropertiesEvent= {};
+	outPropertiesEvent.camera_id= getCameraId();
 
 	// Assign Camera Extrinsic values.
 	// Stage space, not world space: a client anchors the scene it renders at the stage,
@@ -703,9 +781,9 @@ bool CameraComponent::makeNewCameraFrameEvent(int64_t frameIndex, int defaultWid
 	const glm::vec3 cameraUp(cameraXform[1]);             // Camera up is along the y-axis
 	const glm::vec3 cameraForward(cameraXform[2] * -1.f); // Camera forward is along negative z-axis
 	const glm::vec3 cameraPosition(cameraXform[3]);       // Camera up is along the y-axis
-	outNewFrameEvent.camera_forward= glm_vec3_to_MikanVector3f(cameraForward);
-	outNewFrameEvent.camera_up= glm_vec3_to_MikanVector3f(cameraUp);
-	outNewFrameEvent.camera_position= glm_vec3_to_MikanVector3f(cameraPosition);
+	outPropertiesEvent.camera_forward= glm_vec3_to_MikanVector3f(cameraForward);
+	outPropertiesEvent.camera_up= glm_vec3_to_MikanVector3f(cameraUp);
+	outPropertiesEvent.camera_position= glm_vec3_to_MikanVector3f(cameraPosition);
 
 	// Assign Camera Intrinsic values
 	MikanVideoSourceIntrinsics intrinsics= {};
@@ -718,10 +796,10 @@ bool CameraComponent::makeNewCameraFrameEvent(int64_t frameIndex, int defaultWid
 			const MikanMonoIntrinsics& monoIntrinsics= intrinsics.getMonoIntrinsics();
 			const MikanMatrix3d& cameraMatrix= monoIntrinsics.undistorted_camera_matrix;
 
-			outNewFrameEvent.focal_length= {cameraMatrix.x0, cameraMatrix.y1};
-			outNewFrameEvent.principal_point= {cameraMatrix.z0, cameraMatrix.z1};
-			outNewFrameEvent.pixel_size= {(int)monoIntrinsics.pixel_width, (int)monoIntrinsics.pixel_height};
-			outNewFrameEvent.z_bounds= {monoIntrinsics.znear, monoIntrinsics.zfar};
+			outPropertiesEvent.focal_length= {cameraMatrix.x0, cameraMatrix.y1};
+			outPropertiesEvent.principal_point= {cameraMatrix.z0, cameraMatrix.z1};
+			outPropertiesEvent.pixel_size= {(int)monoIntrinsics.pixel_width, (int)monoIntrinsics.pixel_height};
+			outPropertiesEvent.z_bounds= {monoIntrinsics.znear, monoIntrinsics.zfar};
 
 			return true;
 		}
@@ -731,10 +809,10 @@ bool CameraComponent::makeNewCameraFrameEvent(int64_t frameIndex, int defaultWid
 			const MikanStereoIntrinsics& stereoIntrinsics= intrinsics.getStereoIntrinsics();
 			const MikanMatrix3d& cameraMatrix= stereoIntrinsics.left_camera_matrix;
 
-			outNewFrameEvent.focal_length= {cameraMatrix.x0, cameraMatrix.y1};
-			outNewFrameEvent.principal_point= {cameraMatrix.z0, cameraMatrix.z1};
-			outNewFrameEvent.pixel_size= {(int)stereoIntrinsics.pixel_width, (int)stereoIntrinsics.pixel_height};
-			outNewFrameEvent.z_bounds= {stereoIntrinsics.znear, stereoIntrinsics.zfar};
+			outPropertiesEvent.focal_length= {cameraMatrix.x0, cameraMatrix.y1};
+			outPropertiesEvent.principal_point= {cameraMatrix.z0, cameraMatrix.z1};
+			outPropertiesEvent.pixel_size= {(int)stereoIntrinsics.pixel_width, (int)stereoIntrinsics.pixel_height};
+			outPropertiesEvent.z_bounds= {stereoIntrinsics.znear, stereoIntrinsics.zfar};
 
 			return true;
 		}
@@ -756,16 +834,37 @@ bool CameraComponent::makeNewCameraFrameEvent(int64_t frameIndex, int defaultWid
 			createDefautMonoIntrinsics(pixelWidth, pixelHeight, fakeIntrinsics);
 			const MikanMatrix3d& cameraMatrix= fakeIntrinsics.undistorted_camera_matrix;
 
-			outNewFrameEvent.focal_length= {cameraMatrix.x0, cameraMatrix.y1};
-			outNewFrameEvent.principal_point= {cameraMatrix.z0, cameraMatrix.z1};
-			outNewFrameEvent.pixel_size= {pixelWidth, pixelHeight};
-			outNewFrameEvent.z_bounds= {fakeIntrinsics.znear, fakeIntrinsics.zfar};
+			outPropertiesEvent.focal_length= {cameraMatrix.x0, cameraMatrix.y1};
+			outPropertiesEvent.principal_point= {cameraMatrix.z0, cameraMatrix.z1};
+			outPropertiesEvent.pixel_size= {pixelWidth, pixelHeight};
+			outPropertiesEvent.z_bounds= {fakeIntrinsics.znear, fakeIntrinsics.zfar};
 
 			return true;
 		}
 	}
 
 	return false;
+}
+
+bool CameraComponent::makeNewCameraFrameEvent(int64_t frameIndex, int defaultWidth, int defaultHeight,
+											  MikanCameraNewFrameEvent& outNewFrameEvent) const
+{
+	MikanCameraNewPropertiesEvent propertiesEvent;
+	if (!makeCameraPropertiesEvent(defaultWidth, defaultHeight, propertiesEvent))
+		return false;
+
+	outNewFrameEvent= {};
+	outNewFrameEvent.camera_id= propertiesEvent.camera_id;
+	outNewFrameEvent.camera_forward= propertiesEvent.camera_forward;
+	outNewFrameEvent.camera_up= propertiesEvent.camera_up;
+	outNewFrameEvent.camera_position= propertiesEvent.camera_position;
+	outNewFrameEvent.pixel_size= propertiesEvent.pixel_size;
+	outNewFrameEvent.focal_length= propertiesEvent.focal_length;
+	outNewFrameEvent.principal_point= propertiesEvent.principal_point;
+	outNewFrameEvent.z_bounds= propertiesEvent.z_bounds;
+	outNewFrameEvent.frame= frameIndex;
+
+	return true;
 }
 
 void CameraComponent::onDefinitionChanged(CommonConfigPtr configPtr, const ConfigPropertyChangeSet& changedPropertySet)
@@ -827,6 +926,14 @@ void CameraComponent::getPropertyDescriptors(std::vector<PropertyDescriptorConst
 	outDescriptors.push_back(
 		std::make_shared<PropertyDescriptor>(CameraDefinition::k_trackingFrameDelayPropertyId, MikanVariantType::INT)
 			->setDefaultValue(0));
+	outDescriptors.push_back(
+		std::make_shared<PropertyDescriptor>(CameraDefinition::k_frameSyncModePropertyId, MikanVariantType::INT)
+			->setDefaultValue((int)MikanCameraFrameSyncMode_Auto)
+			->addMetaData(std::make_shared<EnumPropertyMetaData>(k_frameSyncModeLocKeys, k_frameSyncModeCount)));
+	outDescriptors.push_back(
+		std::make_shared<PropertyDescriptor>(CameraDefinition::k_poseDrivenPerFramePropertyId, MikanVariantType::BOOL)
+			->setDefaultValue(false)
+			->setReadOnly());
 	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(
 								 CameraDefinition::k_apertureOrientationOffsetPropertyId, MikanVariantType::QUATERNIOND)
 								 ->setDefaultValue(MikanQuatd())
@@ -871,6 +978,16 @@ bool CameraComponent::getPropertyValue(const std::string& propertyName, MikanVar
 		outValue= getCameraDefinition()->getTrackingFrameDelay();
 		return true;
 	}
+	else if (propertyName == CameraDefinition::k_frameSyncModePropertyId)
+	{
+		outValue= (int)getCameraDefinition()->getFrameSyncMode();
+		return true;
+	}
+	else if (propertyName == CameraDefinition::k_poseDrivenPerFramePropertyId)
+	{
+		outValue= getCameraDefinition()->getIsPoseDrivenPerFrame();
+		return true;
+	}
 	else if (propertyName == CameraDefinition::k_apertureOrientationOffsetPropertyId)
 	{
 		outValue= getCameraDefinition()->getApertureOffsetOrientation();
@@ -908,6 +1025,11 @@ bool CameraComponent::setPropertyValue(const std::string& propertyName, const Mi
 	{
 		int trackingFrameDelay= inValue.getIntValue();
 		getCameraDefinition()->setTrackingFrameDelay(trackingFrameDelay);
+		return true;
+	}
+	else if (propertyName == CameraDefinition::k_frameSyncModePropertyId)
+	{
+		getCameraDefinition()->setFrameSyncMode(frameSyncModeFromInt(inValue.getIntValue()));
 		return true;
 	}
 

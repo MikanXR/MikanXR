@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1031,
+		"stringCount": 1036,
 		"translatedCount": 899,
 		"reviewedCount": 0
 	},
@@ -871,6 +871,7 @@
 		"font_path": "フォント",
 		"force_render": "Force Render",
 		"foreground_color": "前景色",
+		"frame_sync_mode": "Frame Sync Mode",
 		"green": "緑",
 		"grid_columns": "グリッド列数",
 		"grid_rows": "グリッド行数",
@@ -900,6 +901,7 @@
 		"playback_state": "Playback",
 		"playback_time": "Time",
 		"port": "ポート",
+		"pose_driven_per_frame": "Pose Driven Per Frame",
 		"pose_track_path": "Pose Track",
 		"protocol": "プロトコル",
 		"quad_height": "クアッドの高さ",
@@ -957,6 +959,9 @@
 		"zig_zag": "ジグザグ"
 	},
 	"propertyValues": {
+		"frame_sync_auto": "Auto",
+		"frame_sync_free_running": "Free Running",
+		"frame_sync_video_frame": "Video Frame",
 		"pixel_origin_lower_left": "左下",
 		"pixel_origin_lower_right": "右下",
 		"pixel_origin_upper_left": "左上",
