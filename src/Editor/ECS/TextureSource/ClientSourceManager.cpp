@@ -313,6 +313,19 @@ void ClientSourceManager::onClientRenderTargetUpdated(const char* clientId, Mika
 		clientSource->textureQueue->advanceWriteIndex(frameIndex);
 		clientSource->frameIndex= frameIndex;
 
+		// Publish rate over a one second window
+		const auto now= std::chrono::steady_clock::now();
+		if (clientSource->publishCount == 0)
+			clientSource->rateWindowStart= now;
+		clientSource->publishCount++;
+		clientSource->rateWindowCount++;
+		const float windowSeconds= std::chrono::duration<float>(now - clientSource->rateWindowStart).count();
+		if (windowSeconds >= 1.f)
+		{
+			clientSource->publishRateHz= (float)clientSource->rateWindowCount / windowSeconds;
+			clientSource->rateWindowStart= now;
+			clientSource->rateWindowCount= 0;
+		}
 
 		// Re-point the accessor at the new pending write slot
 		if (clientSource->readAccessor != nullptr)

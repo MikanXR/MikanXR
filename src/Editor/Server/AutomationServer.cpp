@@ -5,6 +5,7 @@
 #include "AutomationProtocol.h"
 #include "AutomationSocket.h"
 #include "AutomationVariantText.h"
+#include "ClientSourceManager.h"
 #include "CrashHandler.h"
 #include "ProjectAssetCatalog.h"
 #include "ProjectScriptContext.h"
@@ -30,6 +31,7 @@
 #include "ScriptComponent.h"
 #include "ScriptObjectSystem.h"
 #include "ScriptRequestHandler.h"
+#include "SharedTextureReader.h"
 #include "StringUtils.h"
 #include "TransactionHistory.h"
 
@@ -472,6 +474,9 @@ void AutomationServer::registerCoreNamespaces()
 
 	registerCommandNamespace("log", {"log tail <lineCount> [trace|debug|info|warning|error|fatal]"},
 							 std::bind(&AutomationServer::handleLogCommand, this, _1, _2, _3));
+
+	registerCommandNamespace("client", {"client stats"},
+							 std::bind(&AutomationServer::handleClientCommand, this, _1, _2, _3));
 
 	registerCommandNamespace("nodegraph",
 							 {"nodegraph open [compositorComponentId]", "nodegraph open material <graphPath>",
@@ -1942,6 +1947,32 @@ bool AutomationServer::handleScriptCommand(const std::vector<std::string>& args,
 
 	outError= "unknown verb '" + verb + "'";
 	return false;
+}
+
+bool AutomationServer::handleClientCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,
+										   std::string& outError)
+{
+	if (args.empty() || args[0] != "stats")
+	{
+		outError= "usage: client stats";
+		return false;
+	}
+
+	ClientSourceManager* clientSourceManager= m_mainWindow->getClientSourceManager();
+	for (const auto& [tableKey, clientSource] : clientSourceManager->getClientSources().getMap())
+	{
+		const uint64_t ringMisses=
+			clientSource->textureQueue != nullptr ? clientSource->textureQueue->getFrameIndexMissCount() : 0;
+		const MikanCameraID cameraId=
+			clientSource->readAccessor != nullptr ? clientSource->readAccessor->getCameraId() : INVALID_MIKAN_ID;
+
+		outLines.push_back(StringUtils::stringify(clientSource->clientId, " camera=", cameraId,
+												  " publishes_per_sec=", clientSource->publishRateHz,
+												  " last_frame=", clientSource->frameIndex, " ring_misses=", ringMisses,
+												  " publishes=", clientSource->publishCount));
+	}
+
+	return true;
 }
 
 bool AutomationServer::handleLogCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,

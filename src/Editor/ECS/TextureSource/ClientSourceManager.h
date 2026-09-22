@@ -8,6 +8,7 @@
 #include "MikanRendererFwd.h"
 #include "NamedValueTable.h"
 
+#include <chrono>
 #include <functional>
 #include <string>
 
@@ -22,6 +23,13 @@ public:
 		class SharedTextureReadAccessor* readAccessor= nullptr;
 		ClientTextureFrameQueue* textureQueue= nullptr;
 		int64_t frameIndex= 0;
+
+		// Publish statistics, so the rate a client actually delivers frames at can be
+		// read rather than guessed from the composite
+		uint64_t publishCount= 0;
+		float publishRateHz= 0.f; // publishes per second over the last completed window
+		std::chrono::steady_clock::time_point rateWindowStart;
+		int rateWindowCount= 0;
 	};
 
 	explicit ClientSourceManager(int textureQueueSize= 3);

@@ -129,6 +129,10 @@ One caveat worth knowing when a click seems to vanish: an ImGui window's capture
 - `script reload` rebuilds the project's script state, re-loading every script in pool order
 - `script routes` replies `<route> <scriptId> <function> <resolved|unresolved>` per HTTP route in the project's route table
 
+### Client sources (client)
+
+`client stats` replies one line per connected client render target, `<clientId> camera=<id> publishes_per_sec=<rate> last_frame=<index> ring_misses=<count> publishes=<total>`. The rate is measured over the last completed one second window of `PublishCameraRenderTargetTextures` requests, so it reads the rate a client actually delivers frames at rather than the rate the composite appears to run at. Ring misses count composites that found no texture for their frame index ([compositor.md](./compositor.md)).
+
 ### Log access (log)
 
 `log tail <lineCount> [minLevel]` replies the most recent log lines at or above the level, oldest first, from an in-process ring of the last 2000 lines. Levels are the logger's names:
