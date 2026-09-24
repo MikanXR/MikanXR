@@ -117,6 +117,7 @@ export class MikanCameraPropertiesResponse extends MikanResponse {
   camera_up: MikanVector3f = new MikanVector3f();
   camera_position: MikanVector3f = new MikanVector3f();
   pixel_size: MikanVector2i = new MikanVector2i();
+  aux_pixel_size: MikanVector2i = new MikanVector2i();
   focal_length: MikanVector2d = new MikanVector2d();
   principal_point: MikanVector2d = new MikanVector2d();
   z_bounds: MikanVector2d = new MikanVector2d();
@@ -133,6 +134,7 @@ export class MikanCameraPropertiesResponse extends MikanResponse {
     { name: 'camera_up', type: 'MikanVector3f' },
     { name: 'camera_position', type: 'MikanVector3f' },
     { name: 'pixel_size', type: 'MikanVector2i' },
+    { name: 'aux_pixel_size', type: 'MikanVector2i' },
     { name: 'focal_length', type: 'MikanVector2d' },
     { name: 'principal_point', type: 'MikanVector2d' },
     { name: 'z_bounds', type: 'MikanVector2d' }

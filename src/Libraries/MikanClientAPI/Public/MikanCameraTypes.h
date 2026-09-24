@@ -39,6 +39,13 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanCameraTypes")) MikanC
 	FIELD() int tracking_frame_delay= 0;
 	FIELD() MikanCameraFrameSyncMode frame_sync_mode= MikanCameraFrameSyncMode_Auto;
 	FIELD() bool pose_driven_per_frame= false; ///< read only: a tracking mount or frame-coupled source drives the pose
+	/// Multiplier on the video source resolution for the color buffer a client renders.
+	/// Above 1 the client supersamples: the composite stays at video resolution and
+	/// downsamples what arrives, which is what smooths a rendered silhouette.
+	FIELD() float client_color_render_scale= 1.f;
+	/// The same multiplier for the depth and shadow buffers, which rarely need the
+	/// color buffer's resolution and cost a full render pass each.
+	FIELD() float client_aux_render_scale= 1.f;
 	FIELD() MikanQuatd aperture_orientation_offset;
 	FIELD() MikanVector3d aperture_position_offset;
 	FIELD() bool has_valid_aperture_offset= false;

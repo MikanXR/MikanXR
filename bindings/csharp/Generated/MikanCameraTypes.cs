@@ -20,6 +20,8 @@ namespace MikanXR
 		public int tracking_frame_delay;
 		public MikanCameraFrameSyncMode frame_sync_mode;
 		public bool pose_driven_per_frame;
+		public float client_color_render_scale;
+		public float client_aux_render_scale;
 		public MikanQuatd aperture_orientation_offset;
 		public MikanVector3d aperture_position_offset;
 		public bool has_valid_aperture_offset;

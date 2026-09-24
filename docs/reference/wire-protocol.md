@@ -167,6 +167,21 @@ Only the Unreal plugin implements the free-running side today. A client that ign
 
 ---
 
+## The resolution a client renders at
+
+`pixel_size` on the camera events is not the video resolution. It is the size the camera asks a client to render its color buffer at, and the resolution `focal_length` and `principal_point` are expressed in. Two camera properties scale it off the video resolution, both defaulting to 1 and both held to [0.25, 4]:
+
+- `client_color_render_scale` for the color buffer
+- `client_aux_render_scale` for the depth and shadow buffers, whose size travels separately as `aux_pixel_size`
+
+A scale above 1 is a supersample. The composite is always built at video resolution ([compositor.md](./compositor.md)), so extra client pixels buy edge coverage that survives the downsample rather than a larger output. The depth and shadow buffers get their own scale because each is a full render pass on the client and neither usually needs the color buffer's resolution.
+
+`CameraComponent::applyClientRenderScales` is the single place the scale is applied, and it multiplies `pixel_size`, `focal_length` and `principal_point` by the same factor. A client builds its projection from those values only as ratios against the pixel size, so the projection matrix comes out unchanged and a scale cannot move where anything lands in frame. The depth and shadow passes share that projection and differ only in target size. `CameraComponent::getAperturePixelDimensions` remains the video resolution and is what the calibration tools and `DepthMaskNode` read.
+
+`MikanRenderTargetDescriptor` carries `aux_width` and `aux_height` beside `width` and `height` so the editor allocates its texture ring to match. Zero in either means the depth and shadow buffers are the color size. A client that ignores `aux_pixel_size` renders all three buffers at `pixel_size` and keeps working, since `SharedTextureReadAccessor` sizes each texture from its own Spout sender.
+
+---
+
 ## Which space a client receives
 
 The component values a client mirrors are relative, never absolute. `MikanTransformComponentValues` (`MikanTransformTypes.h`) carries `parent_transform_id` plus a relative scale, quaternion and position, and nothing else. A client rebuilds a world transform by walking the parent chain itself, which is what lets it anchor a whole stage wherever it likes in its own scene. The Unreal plugin does exactly this, and deliberately lets the artist place the stage actor freely and pin it there, so the editor's own stage transform is not the client's.

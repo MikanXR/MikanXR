@@ -17,6 +17,8 @@ export class MikanRenderTargetDescriptor {
   shadow_buffer_type: MikanShadowBufferType = MikanShadowBufferType.NOSHADOW;
   width: number = 0;
   height: number = 0;
+  aux_width: number = 0;
+  aux_height: number = 0;
   graphicsAPI: MikanClientGraphicsApi = MikanClientGraphicsApi.UNKNOWN;
 
   static __serializationMetadata: SerializationField[] = [
@@ -25,6 +27,8 @@ export class MikanRenderTargetDescriptor {
     { name: 'shadow_buffer_type', type: 'enum:MikanShadowBufferType' },
     { name: 'width', type: 'uint32' },
     { name: 'height', type: 'uint32' },
+    { name: 'aux_width', type: 'uint32' },
+    { name: 'aux_height', type: 'uint32' },
     { name: 'graphicsAPI', type: 'enum:MikanClientGraphicsApi' }
   ];
 }

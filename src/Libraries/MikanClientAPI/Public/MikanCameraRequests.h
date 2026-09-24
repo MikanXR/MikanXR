@@ -131,6 +131,7 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanCameraRequests")) Mik
 	FIELD() MikanVector3f camera_up;
 	FIELD() MikanVector3f camera_position;
 	FIELD() MikanVector2i pixel_size;
+	FIELD() MikanVector2i aux_pixel_size;
 	FIELD() MikanVector2d focal_length;
 	FIELD() MikanVector2d principal_point;
 	FIELD() MikanVector2d z_bounds;

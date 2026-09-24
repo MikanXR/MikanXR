@@ -43,6 +43,7 @@ namespace MikanXR
 		public MikanVector3f camera_up;
 		public MikanVector3f camera_position;
 		public MikanVector2i pixel_size;
+		public MikanVector2i aux_pixel_size;
 		public MikanVector2d focal_length;
 		public MikanVector2d principal_point;
 		public MikanVector2d z_bounds;

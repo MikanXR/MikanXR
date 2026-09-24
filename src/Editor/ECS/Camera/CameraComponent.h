@@ -58,6 +58,28 @@ public:
 	inline MikanCameraFrameSyncMode getFrameSyncMode() const { return m_frameSyncMode; }
 	void setFrameSyncMode(MikanCameraFrameSyncMode syncMode);
 
+	/// Multiplier on the video source resolution for the color buffer a client
+	/// renders for this camera. The composite stays at video resolution, so a
+	/// scale above 1 is a supersample: the client rasterizes the silhouette
+	/// finer than the composite consumes it and the extra coverage survives the
+	/// downsample. Scaling the published pixel size with the focal length and
+	/// principal point leaves the client's projection matrix unchanged, so this
+	/// cannot move where anything lands in frame.
+	static const std::string k_clientColorRenderScalePropertyId;
+	inline float getClientColorRenderScale() const { return m_clientColorRenderScale; }
+	void setClientColorRenderScale(float scale);
+
+	/// The same multiplier for the depth and shadow buffers. They are a render
+	/// pass each on the client and rarely need the color buffer's resolution.
+	static const std::string k_clientAuxRenderScalePropertyId;
+	inline float getClientAuxRenderScale() const { return m_clientAuxRenderScale; }
+	void setClientAuxRenderScale(float scale);
+
+	/// Range a client render scale is held to. The editor allocates a texture ring
+	/// this size per buffer, so an unbounded scale is a VRAM hazard.
+	static const float k_minClientRenderScale;
+	static const float k_maxClientRenderScale;
+
 	static const std::string k_apertureOrientationOffsetPropertyId;
 	static const std::string k_aperturePositionOffsetPropertyId;
 	inline MikanQuatd getApertureOffsetOrientation() const { return m_apertureOrientationOffset; }
@@ -126,6 +148,8 @@ private:
 	MikanVideoSourceID m_videoSourceId= INVALID_MIKAN_ID;
 	int m_trackingFrameDelay= 0;
 	MikanCameraFrameSyncMode m_frameSyncMode= MikanCameraFrameSyncMode_Auto;
+	float m_clientColorRenderScale= 1.f;
+	float m_clientAuxRenderScale= 1.f;
 	float m_depthMeshScaleCorrection= 1.f;
 	MikanQuatd m_apertureOrientationOffset;
 	MikanVector3d m_aperturePositionOffset;
@@ -187,6 +211,9 @@ public:
 
 	// Helper functions to populate a camera event with the current camera properties.
 	// The frame event is the properties event plus the frame index.
+	// The event carries the size a client renders at, which is the video resolution
+	// times the camera's client render scales, never the video resolution itself.
+	// getAperturePixelDimensions stays the video resolution for everything else.
 	bool makeCameraPropertiesEvent(int defaultWidth, int defaultHeight,
 								   struct MikanCameraNewPropertiesEvent& outPropertiesEvent) const;
 	bool makeNewCameraFrameEvent(int64_t frameIndex, int defaultWidth, int defaultHeight,
@@ -226,6 +253,10 @@ protected:
 	// expected) ARKit's reported intrinsics are essentially constant frame to frame.
 	void maybeUpdateFrameCoupledIntrinsics(VideoSourceComponentPtr videoSourceComponent,
 										   const struct MikanVideoSourceIntrinsics& newIntrinsics);
+
+	// Turns an event holding the video resolution and its matching intrinsics into one
+	// holding the sizes a client should actually render at
+	void applyClientRenderScales(struct MikanCameraNewPropertiesEvent& inOutPropertiesEvent) const;
 
 private:
 	SelectionComponentWeakPtr m_selectionComponent;

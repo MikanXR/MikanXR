@@ -3,6 +3,7 @@
 #include "CameraObjectSystem.h"
 #include "CameraMath.h"
 
+#include <algorithm>
 #include <cmath>
 #include "App.h"
 #include "AlignmentCalibration/AppStage_AlignmentCalibration.h"
@@ -49,10 +50,21 @@ const std::string CameraDefinition::k_lightEnvironmentIdPropertyId= "light_envir
 const std::string CameraDefinition::k_trackingFrameDelayPropertyId= "tracking_frame_delay";
 const std::string CameraDefinition::k_frameSyncModePropertyId= "frame_sync_mode";
 const std::string CameraDefinition::k_poseDrivenPerFramePropertyId= "pose_driven_per_frame";
+const std::string CameraDefinition::k_clientColorRenderScalePropertyId= "client_color_render_scale";
+const std::string CameraDefinition::k_clientAuxRenderScalePropertyId= "client_aux_render_scale";
 const std::string CameraDefinition::k_depthMeshScaleCorrectionPropertyId= "depth_mesh_scale_correction";
 const std::string CameraDefinition::k_apertureOrientationOffsetPropertyId= "aperture_orientation_offset";
 const std::string CameraDefinition::k_aperturePositionOffsetPropertyId= "aperture_position_offset";
 const std::string CameraDefinition::k_hasValidApertureOffsetPropertyId= "has_valid_aperture_offset";
+
+const float CameraDefinition::k_minClientRenderScale= 0.25f;
+const float CameraDefinition::k_maxClientRenderScale= 4.f;
+
+static float clampClientRenderScale(float scale)
+{
+	return std::min(std::max(scale, CameraDefinition::k_minClientRenderScale),
+					CameraDefinition::k_maxClientRenderScale);
+}
 
 // JSON persistence spellings, indexed by MikanCameraFrameSyncMode
 static const char* k_frameSyncModeJsonStrings[]= {"auto", "video_frame", "free_running"};
@@ -111,6 +123,8 @@ configuru::Config CameraDefinition::writeToJSON()
 	pt["light_environment_id"]= m_lightEnvionmentId;
 	pt["tracking_frame_delay"]= m_trackingFrameDelay;
 	pt[k_frameSyncModePropertyId]= k_frameSyncModeJsonStrings[(int)m_frameSyncMode];
+	pt[k_clientColorRenderScalePropertyId]= m_clientColorRenderScale;
+	pt[k_clientAuxRenderScalePropertyId]= m_clientAuxRenderScale;
 	pt["depth_mesh_scale_correction"]= m_depthMeshScaleCorrection;
 
 	writeQuaderntiond(pt, "aperture_orientation_offset", m_apertureOrientationOffset);
@@ -131,6 +145,10 @@ void CameraDefinition::readFromJSON(const configuru::Config& pt)
 	m_trackingFrameDelay= pt.get_or<int>("tracking_frame_delay", m_trackingFrameDelay);
 	m_frameSyncMode= frameSyncModeFromJsonString(
 		pt.get_or<std::string>(k_frameSyncModePropertyId.c_str(), k_frameSyncModeJsonStrings[(int)m_frameSyncMode]));
+	m_clientColorRenderScale=
+		clampClientRenderScale(pt.get_or<float>(k_clientColorRenderScalePropertyId.c_str(), m_clientColorRenderScale));
+	m_clientAuxRenderScale=
+		clampClientRenderScale(pt.get_or<float>(k_clientAuxRenderScalePropertyId.c_str(), m_clientAuxRenderScale));
 	m_depthMeshScaleCorrection= pt.get_or<float>("depth_mesh_scale_correction", m_depthMeshScaleCorrection);
 
 	readQuaterniond(pt, "aperture_orientation_offset", m_apertureOrientationOffset);
@@ -153,6 +171,8 @@ bool CameraDefinition::readFromInitParams(MikanObjectSystem* ownerObjectSystem,
 		m_videoSourceId= componentValues->video_source_id;
 		m_trackingFrameDelay= componentValues->tracking_frame_delay;
 		m_frameSyncMode= frameSyncModeFromInt((int)componentValues->frame_sync_mode);
+		m_clientColorRenderScale= clampClientRenderScale(componentValues->client_color_render_scale);
+		m_clientAuxRenderScale= clampClientRenderScale(componentValues->client_aux_render_scale);
 		m_apertureOrientationOffset= componentValues->aperture_orientation_offset;
 		m_aperturePositionOffset= componentValues->aperture_position_offset;
 
@@ -229,6 +249,28 @@ void CameraDefinition::setLightEnvironmentId(MikanLightID lightEnvironmentId)
 	{
 		m_lightEnvionmentId= lightEnvironmentId;
 		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_lightEnvironmentIdPropertyId));
+	}
+}
+
+void CameraDefinition::setClientColorRenderScale(float scale)
+{
+	const float clampedScale= clampClientRenderScale(scale);
+
+	if (clampedScale != m_clientColorRenderScale)
+	{
+		m_clientColorRenderScale= clampedScale;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_clientColorRenderScalePropertyId));
+	}
+}
+
+void CameraDefinition::setClientAuxRenderScale(float scale)
+{
+	const float clampedScale= clampClientRenderScale(scale);
+
+	if (clampedScale != m_clientAuxRenderScale)
+	{
+		m_clientAuxRenderScale= clampedScale;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_clientAuxRenderScalePropertyId));
 	}
 }
 
@@ -766,6 +808,33 @@ MikanCameraFrameSyncMode CameraComponent::getEffectiveFrameSyncMode() const
 	return syncMode;
 }
 
+void CameraComponent::applyClientRenderScales(MikanCameraNewPropertiesEvent& inOutPropertiesEvent) const
+{
+	auto scaleDimension= [](int value, float scale)
+	{ return std::max((int)std::lround((double)value * (double)scale), 1); };
+
+	CameraDefinitionPtr cameraDefinition= getCameraDefinition();
+	const float colorScale= cameraDefinition->getClientColorRenderScale();
+	const float auxScale= cameraDefinition->getClientAuxRenderScale();
+	const MikanVector2i videoPixelSize= inOutPropertiesEvent.pixel_size;
+
+	// The depth and shadow buffers scale off the video resolution, not off the color
+	// buffer, so the two knobs are independent of each other.
+	inOutPropertiesEvent.aux_pixel_size= {scaleDimension(videoPixelSize.x, auxScale),
+										  scaleDimension(videoPixelSize.y, auxScale)};
+
+	// Scaling the pixel size, the focal length and the principal point by one factor
+	// leaves the projection a client builds from them unchanged, since that projection
+	// only ever uses those values as ratios against the pixel size. So a client renders
+	// more pixels of exactly the same view, and nothing moves in frame.
+	inOutPropertiesEvent.pixel_size= {scaleDimension(videoPixelSize.x, colorScale),
+									  scaleDimension(videoPixelSize.y, colorScale)};
+	inOutPropertiesEvent.focal_length.x*= colorScale;
+	inOutPropertiesEvent.focal_length.y*= colorScale;
+	inOutPropertiesEvent.principal_point.x*= colorScale;
+	inOutPropertiesEvent.principal_point.y*= colorScale;
+}
+
 bool CameraComponent::makeCameraPropertiesEvent(int defaultWidth, int defaultHeight,
 												MikanCameraNewPropertiesEvent& outPropertiesEvent) const
 {
@@ -801,6 +870,7 @@ bool CameraComponent::makeCameraPropertiesEvent(int defaultWidth, int defaultHei
 			outPropertiesEvent.pixel_size= {(int)monoIntrinsics.pixel_width, (int)monoIntrinsics.pixel_height};
 			outPropertiesEvent.z_bounds= {monoIntrinsics.znear, monoIntrinsics.zfar};
 
+			applyClientRenderScales(outPropertiesEvent);
 			return true;
 		}
 		else if (intrinsics.intrinsics_type == MikanIntrinsicsType::STEREO_CAMERA_INTRINSICS)
@@ -814,6 +884,7 @@ bool CameraComponent::makeCameraPropertiesEvent(int defaultWidth, int defaultHei
 			outPropertiesEvent.pixel_size= {(int)stereoIntrinsics.pixel_width, (int)stereoIntrinsics.pixel_height};
 			outPropertiesEvent.z_bounds= {stereoIntrinsics.znear, stereoIntrinsics.zfar};
 
+			applyClientRenderScales(outPropertiesEvent);
 			return true;
 		}
 	}
@@ -839,6 +910,7 @@ bool CameraComponent::makeCameraPropertiesEvent(int defaultWidth, int defaultHei
 			outPropertiesEvent.pixel_size= {pixelWidth, pixelHeight};
 			outPropertiesEvent.z_bounds= {fakeIntrinsics.znear, fakeIntrinsics.zfar};
 
+			applyClientRenderScales(outPropertiesEvent);
 			return true;
 		}
 	}
@@ -859,6 +931,7 @@ bool CameraComponent::makeNewCameraFrameEvent(int64_t frameIndex, int defaultWid
 	outNewFrameEvent.camera_up= propertiesEvent.camera_up;
 	outNewFrameEvent.camera_position= propertiesEvent.camera_position;
 	outNewFrameEvent.pixel_size= propertiesEvent.pixel_size;
+	outNewFrameEvent.aux_pixel_size= propertiesEvent.aux_pixel_size;
 	outNewFrameEvent.focal_length= propertiesEvent.focal_length;
 	outNewFrameEvent.principal_point= propertiesEvent.principal_point;
 	outNewFrameEvent.z_bounds= propertiesEvent.z_bounds;
@@ -930,6 +1003,12 @@ void CameraComponent::getPropertyDescriptors(std::vector<PropertyDescriptorConst
 		std::make_shared<PropertyDescriptor>(CameraDefinition::k_frameSyncModePropertyId, MikanVariantType::INT)
 			->setDefaultValue((int)MikanCameraFrameSyncMode_Auto)
 			->addMetaData(std::make_shared<EnumPropertyMetaData>(k_frameSyncModeLocKeys, k_frameSyncModeCount)));
+	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(CameraDefinition::k_clientColorRenderScalePropertyId,
+																  MikanVariantType::FLOAT)
+								 ->setDefaultValue(1.f));
+	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(CameraDefinition::k_clientAuxRenderScalePropertyId,
+																  MikanVariantType::FLOAT)
+								 ->setDefaultValue(1.f));
 	outDescriptors.push_back(
 		std::make_shared<PropertyDescriptor>(CameraDefinition::k_poseDrivenPerFramePropertyId, MikanVariantType::BOOL)
 			->setDefaultValue(false)
@@ -983,6 +1062,16 @@ bool CameraComponent::getPropertyValue(const std::string& propertyName, MikanVar
 		outValue= (int)getCameraDefinition()->getFrameSyncMode();
 		return true;
 	}
+	else if (propertyName == CameraDefinition::k_clientColorRenderScalePropertyId)
+	{
+		outValue= getCameraDefinition()->getClientColorRenderScale();
+		return true;
+	}
+	else if (propertyName == CameraDefinition::k_clientAuxRenderScalePropertyId)
+	{
+		outValue= getCameraDefinition()->getClientAuxRenderScale();
+		return true;
+	}
 	else if (propertyName == CameraDefinition::k_poseDrivenPerFramePropertyId)
 	{
 		outValue= getCameraDefinition()->getIsPoseDrivenPerFrame();
@@ -1030,6 +1119,16 @@ bool CameraComponent::setPropertyValue(const std::string& propertyName, const Mi
 	else if (propertyName == CameraDefinition::k_frameSyncModePropertyId)
 	{
 		getCameraDefinition()->setFrameSyncMode(frameSyncModeFromInt(inValue.getIntValue()));
+		return true;
+	}
+	else if (propertyName == CameraDefinition::k_clientColorRenderScalePropertyId)
+	{
+		getCameraDefinition()->setClientColorRenderScale(inValue.getFloatValue());
+		return true;
+	}
+	else if (propertyName == CameraDefinition::k_clientAuxRenderScalePropertyId)
+	{
+		getCameraDefinition()->setClientAuxRenderScale(inValue.getFloatValue());
 		return true;
 	}
 

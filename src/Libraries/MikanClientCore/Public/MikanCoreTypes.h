@@ -130,8 +130,12 @@ struct MIKAN_CORE_API STRUCT(Serialization::CodeGenModule("MikanCoreTypes")) Mik
 	FIELD() MikanColorBufferType color_buffer_type= MikanColorBufferType::MikanColorBuffer_NOCOLOR;
 	FIELD() MikanDepthBufferType depth_buffer_type= MikanDepthBufferType::MikanDepthBuffer_NODEPTH;
 	FIELD() MikanShadowBufferType shadow_buffer_type= MikanShadowBufferType::MikanShadowBuffer_NOSHADOW;
+	/// Size of the color buffer
 	FIELD() uint32_t width= 0;
 	FIELD() uint32_t height= 0;
+	/// Size of the depth and shadow buffers. 0 means same as width/height.
+	FIELD() uint32_t aux_width= 0;
+	FIELD() uint32_t aux_height= 0;
 	FIELD() MikanClientGraphicsApi graphicsAPI= MikanClientGraphicsApi_UNKNOWN;
 
 #ifdef MIKANCORE_REFLECTION_ENABLED

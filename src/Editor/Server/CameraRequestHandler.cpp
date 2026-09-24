@@ -293,6 +293,7 @@ void CameraRequestHandler::getCameraPropertiesHandler(const ClientRequest& reque
 	propertiesResponse.camera_up= properties.camera_up;
 	propertiesResponse.camera_position= properties.camera_position;
 	propertiesResponse.pixel_size= properties.pixel_size;
+	propertiesResponse.aux_pixel_size= properties.aux_pixel_size;
 	propertiesResponse.focal_length= properties.focal_length;
 	propertiesResponse.principal_point= properties.principal_point;
 	propertiesResponse.z_bounds= properties.z_bounds;

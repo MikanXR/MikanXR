@@ -19,6 +19,12 @@ bool ClientTextureFrameQueue::initialize(const MikanRenderTargetDescriptor& desc
 {
 	bool bSuccess= true;
 
+	// The depth and shadow buffers may be rendered at a different resolution than the
+	// color buffer. A client that predates the aux fields leaves them zero and gets the
+	// color size for all three, which is what it publishes.
+	const uint32_t auxWidth= desc.aux_width > 0 ? desc.aux_width : desc.width;
+	const uint32_t auxHeight= desc.aux_height > 0 ? desc.aux_height : desc.height;
+
 	for (int i= 0; i < m_queueSize; ++i)
 	{
 		ClientTextureFrameEntry& entry= m_entries[i];
@@ -77,7 +83,7 @@ bool ClientTextureFrameQueue::initialize(const MikanRenderTargetDescriptor& desc
 
 		if (entry.depthTexture != nullptr)
 		{
-			entry.depthTexture->setSize(desc.width, desc.height);
+			entry.depthTexture->setSize(auxWidth, auxHeight);
 			entry.depthTexture->setGenerateMipMap(false);
 			entry.depthTexture->setPixelBufferObjectMode(desc.graphicsAPI == MikanClientGraphicsApi_UNKNOWN
 															 ? IMkTexture::PixelBufferObjectMode::DoublePBOWrite
@@ -112,7 +118,7 @@ bool ClientTextureFrameQueue::initialize(const MikanRenderTargetDescriptor& desc
 
 		if (entry.shadowTexture != nullptr)
 		{
-			entry.shadowTexture->setSize(desc.width, desc.height);
+			entry.shadowTexture->setSize(auxWidth, auxHeight);
 			entry.shadowTexture->setGenerateMipMap(false);
 			entry.shadowTexture->setPixelBufferObjectMode(desc.graphicsAPI == MikanClientGraphicsApi_UNKNOWN
 															  ? IMkTexture::PixelBufferObjectMode::DoublePBOWrite

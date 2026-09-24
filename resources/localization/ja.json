@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1036,
+		"stringCount": 1038,
 		"translatedCount": 899,
 		"reviewedCount": 0
 	},
@@ -849,6 +849,8 @@
 		"charuco_mount_offset_mm": "ChArUco マウントオフセット (mm)",
 		"charuco_rows": "ChArUco 行数",
 		"charuco_square_length_mm": "ChArUco マス目長 (mm)",
+		"client_aux_render_scale": "Client Depth/Shadow Render Scale",
+		"client_color_render_scale": "Client Color Render Scale",
 		"client_source": "クライアントソース",
 		"component_name": "コンポーネント名",
 		"compositor_graph_path": "コンポジターグラフのパス",

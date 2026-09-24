@@ -18,6 +18,8 @@ export class MikanCameraComponentValues extends MikanTransformComponentValues {
   tracking_frame_delay: number = 0;
   frame_sync_mode: MikanCameraFrameSyncMode = MikanCameraFrameSyncMode.Auto;
   pose_driven_per_frame: boolean = false;
+  client_color_render_scale: number = 1;
+  client_aux_render_scale: number = 1;
   aperture_orientation_offset: MikanQuatd = new MikanQuatd();
   aperture_position_offset: MikanVector3d = new MikanVector3d();
   has_valid_aperture_offset: boolean = false;
@@ -30,6 +32,8 @@ export class MikanCameraComponentValues extends MikanTransformComponentValues {
     { name: 'tracking_frame_delay', type: 'int32' },
     { name: 'frame_sync_mode', type: 'enum:MikanCameraFrameSyncMode' },
     { name: 'pose_driven_per_frame', type: 'boolean' },
+    { name: 'client_color_render_scale', type: 'float' },
+    { name: 'client_aux_render_scale', type: 'float' },
     { name: 'aperture_orientation_offset', type: 'MikanQuatd' },
     { name: 'aperture_position_offset', type: 'MikanVector3d' },
     { name: 'has_valid_aperture_offset', type: 'boolean' }

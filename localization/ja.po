@@ -4669,6 +4669,16 @@ msgid "ChArUco Square Length (mm)"
 msgstr "ChArUco マス目長 (mm)"
 
 #. Section: properties
+msgctxt "properties.client_aux_render_scale"
+msgid "Client Depth/Shadow Render Scale"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.client_color_render_scale"
+msgid "Client Color Render Scale"
+msgstr ""
+
+#. Section: properties
 #, fuzzy
 msgctxt "properties.client_source"
 msgid "Client Source"

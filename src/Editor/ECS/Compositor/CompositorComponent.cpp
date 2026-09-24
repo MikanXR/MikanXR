@@ -698,8 +698,9 @@ static bool cameraPropertiesEqual(const MikanCameraNewPropertiesEvent& a, const 
 
 	return a.camera_id == b.camera_id && equal3f(a.camera_forward, b.camera_forward)
 		   && equal3f(a.camera_up, b.camera_up) && equal3f(a.camera_position, b.camera_position)
-		   && equal2i(a.pixel_size, b.pixel_size) && equal2d(a.focal_length, b.focal_length)
-		   && equal2d(a.principal_point, b.principal_point) && equal2d(a.z_bounds, b.z_bounds);
+		   && equal2i(a.pixel_size, b.pixel_size) && equal2i(a.aux_pixel_size, b.aux_pixel_size)
+		   && equal2d(a.focal_length, b.focal_length) && equal2d(a.principal_point, b.principal_point)
+		   && equal2d(a.z_bounds, b.z_bounds);
 }
 
 void CompositorComponent::publishClientFrameNotification(CameraComponentPtr cameraComponent,
