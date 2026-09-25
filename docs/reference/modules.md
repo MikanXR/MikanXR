@@ -81,7 +81,11 @@ Each plugin is a `SHARED` DLL with hidden symbol visibility that links only low-
 
 ## src/Programs
 
-- `ClientCodeGen` (target `MikanClientCodeGen`): console app that walks the Refureku reflection metadata of `MikanClientAPI`/`MikanClientCore`/`MikanSerialization` and emits the C# and TypeScript client bindings under `bindings/`. Links those three DLLs plus `MikanCoreApp`, `MikanUtility`, `${RFK_LIBRARIES}`.
+- `ClientCodeGen` (target `MikanClientCodeGen`): console app that walks the Refureku reflection metadata of `MikanClientAPI`/`MikanClientCore`/`MikanSerialization` and emits the C# and TypeScript client bindings under `bindings/`. Links those three DLLs plus `MikanCoreApp`, `MikanUtility`, `${RFK_LIBRARIES}`. One file per concern, with each target language behind the `MikanClientLanguageGen` seam:
+	- `ClientCodeGen.cpp`: the app, which parses the config, walks the database once, and maps the configured language to its generator
+	- `CodeGenDatabase.h`: the reflected entities bucketed by output module, and the sort that gives them a canonical order
+	- `MikanClientLanguageGen.h`/`.cpp`: the generator base class and the reflection helpers every language needs
+	- `MikanClientCSharpGen.cpp` and `MikanClientTypeScriptGen.cpp`: one target language each, reached only through the factory the seam declares
 
 - `Tests/UnitTests` (target `unit_test_suite_cpp`): C++ unit test executable. Links the client libraries plus `MikanMath` and `MikanOnnx` (the latter for the spherical harmonic fit and ONNX session modules). Has its own Refureku pre-build target. It additionally compiles `ARKitVideoDeviceManagerLoader` from the editor tree and, when `MIKAN_WITH_GSTREAMER=ON`, the plugin's `CudaGLInterop` sources directly; its CMakeLists documents why `ARKitRTPHeaderExtension` must not be dual-compiled (GObject type registration is process-global).
 

@@ -69,7 +69,11 @@ The moving parts:
 
 ## Codegen pipeline: C++ to C# and TypeScript
 
-`src/Programs/ClientCodeGen/ClientCodeGen.cpp` builds `MikanClientCodeGen.exe`. It links against the reflected `MikanClientCore`/`MikanClientAPI`/`MikanSerialization` DLLs, walks the runtime Refureku database (`rfk::Struct`, `rfk::Enum`), buckets every entity by its `Serialization::CodeGenModule` property, and emits equivalent types per module.
+`src/Programs/ClientCodeGen` builds `MikanClientCodeGen.exe`. It links against the reflected `MikanClientCore`/`MikanClientAPI`/`MikanSerialization` DLLs, walks the runtime Refureku database (`rfk::Struct`, `rfk::Enum`), buckets every entity by its `Serialization::CodeGenModule` property, and emits equivalent types per module.
+
+A target language is one file behind the `MikanClientLanguageGen` base class, which declares a `create*ClientGen` factory per language the way `ISharedTextureWriterBackend` does per graphics API. The base carries what every language needs from the reflection data: the wire type-name field of a request, response or event, a default-constructed instance to read real field defaults from, the inheritance ordering a language needs when its file cannot reference a type declared later, and which module owns a type. A generator emits one file per module through `generateModuleFile`, plus whatever files describe the whole output through `generateWholeOutputFiles` (TypeScript writes four: the shared field descriptor, the two registries, and the barrel; C# writes none). Adding a language is a generator file, a case in `createLanguageGen`, a `target_language` string, and a config plus CMake target under `bindings/`.
+
+Entity order is decided once, in `CodeGenDatabase::sortEntities`, before anything emits. The reflection database enumerates in an order that varies between runs, so a generator that walks those vectors as filled rewrites unchanged files on every regeneration. Sorting centrally is also what makes the TypeScript inheritance ordering deterministic, since it preserves input order among structs that have no relationship to each other.
 
 How it runs (all wired in CMake, not manual):
 
