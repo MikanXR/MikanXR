@@ -99,7 +99,14 @@ The generated outputs are checked into git (`bindings/csharp/CMakeLists.txt` car
 
 ## Serialization layer and its traps
 
-`src/Libraries/MikanSerialization` walks reflected structs generically: `JsonSerializer`/`JsonDeserializer` (nlohmann-backed) for the websocket and config files, `BinarySerializer`/`BinaryDeserializer` for binary response payloads, with `SerializationVisitor` as the shared field-visiting core and `Serialization::List`/`Map`/`PolymorphicObjectPtr`/`String` as the reflected container types. `TypeRegistry::buildFromRfkDatabase` must run at startup before deserializing polymorphic objects by type name (both `MikanServer` clients and `CmdApp::exec` do this).
+`src/Libraries/MikanSerialization` walks reflected structs generically: `JsonSerializer`/`JsonDeserializer` (nlohmann-backed) for the websocket and config files, `BinarySerializer`/`BinaryDeserializer` for binary response payloads, with `SerializationVisitor` as the shared field-visiting core and `Serialization::List`/`Map`/`PolymorphicObjectPtr`/`String` as the reflected container types. `TypeRegistry::build` must run at startup before deserializing polymorphic objects by type name (both `MikanServer` clients and `CmdApp::exec` do this).
+
+Refureku is MikanSerialization's implementation detail, not a vocabulary the rest of the tree shares. Code outside the library names two things instead:
+
+- `Serialization::StructTypeHandle` (`Public/ReflectionHandles.h`), the opaque reflected-struct handle that `getClientAPIValuesStructType`, `TypeRegistry::getStructByName`, and every serializer entry point traffic in
+- `Serialization::ValueAccessor`'s own type questions: `isType<T>()`, `isTemplateInstantiation()`, `getTemplateName()`, `getTemplateArgumentCount()`, `isTemplateArgumentType<T>(index)`, and `setEnumValueFromInt()`
+
+`isType<T>()` stays compile-time checked without the public header including Refureku: a reflected struct carries a `staticGetArchetype()` whose address the accessor compares, and a fundamental resolves through the `Serialization::FundamentalType` enum. A visitor subclass outside the library (`EntityAccessorReadVisitor` in `src/Editor/Server/ServerEntitySerializer.cpp`, `PropertySchemaVisitor` in the schema test) is written entirely in that vocabulary. `rfk::` itself appears only in `MikanSerialization`, `ClientCodeGen.cpp`, and `MikanClientAPI/Private/MikanVariantTypes.cpp`, which reads its own enum's `ENUMVALUE_STRING`.
 
 A struct's binary encoding is the concatenation of its fields in memory offset order, parents first, with no framing between them. `src/Editor/Server/ServerModelGeometryPayload` leans on that: model render geometry is serialized once, cached on the `MikanRenderModelResource` it came from, and each response is built by serializing only the `MikanResponse` header and appending those cached bytes, rather than walking every vertex through reflection again. `ModelGeometryPayloadTests` (in `MikanCmd.exe -runTests`) compares the spliced bytes against a whole serialization for both the stencil and shape responses, so a field added to `MikanResponse` or inserted ahead of `render_geometry` fails there.
 
