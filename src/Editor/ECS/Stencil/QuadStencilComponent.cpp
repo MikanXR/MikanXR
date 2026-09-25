@@ -115,7 +115,7 @@ QuadStencilComponent::QuadStencilComponent(MikanObjectWeakPtr owner)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* QuadStencilComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle QuadStencilComponent::getClientAPIValuesStructType() const
 {
 	return &MikanQuadStencilComponentValues::staticGetArchetype();
 }

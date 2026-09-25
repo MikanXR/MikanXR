@@ -365,7 +365,7 @@ void DMXObjectSystem::registerFunctionDescriptors(MikanFunctionDatabasePtr funct
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* DMXObjectSystem::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle DMXObjectSystem::getClientAPIValuesStructType() const
 {
 	return &MikanDMXObjectSystemValues::staticGetArchetype();
 }

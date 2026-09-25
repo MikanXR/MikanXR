@@ -84,7 +84,7 @@ TrackingMountComponent::TrackingMountComponent(MikanObjectWeakPtr owner)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* TrackingMountComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle TrackingMountComponent::getClientAPIValuesStructType() const
 {
 	return &MikanTrackingMountComponentValues::staticGetArchetype();
 }

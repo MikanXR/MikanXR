@@ -109,7 +109,7 @@ public:
 	// -- IEntityAccessor ----
 	virtual std::string makePropertyUIIdentifier(const std::string& propName) const override;
 	virtual CommonConfigPtr getEntityConfig() override { return m_definition; }
-	virtual rfk::Struct const* getClientAPIValuesStructType() const;
+	virtual Serialization::StructTypeHandle getClientAPIValuesStructType() const;
 
 	// -- IPropertyInterface ----
 	static void getPropertyDescriptors(std::vector<PropertyDescriptorConstPtr>& outDescriptors);

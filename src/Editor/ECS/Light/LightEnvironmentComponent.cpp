@@ -354,7 +354,7 @@ StageComponentConstPtr LightEnvironmentComponent::getOwnerStageComponent() const
 	return (ownerCamera) ? ownerCamera->getOwnerStageComponent() : nullptr;
 }
 
-rfk::Struct const* LightEnvironmentComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle LightEnvironmentComponent::getClientAPIValuesStructType() const
 {
 	return &MikanLightEnvironmentComponentValues::staticGetArchetype();
 }

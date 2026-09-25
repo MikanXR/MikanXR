@@ -171,7 +171,7 @@ MarkerObjectSystem::MarkerObjectSystem(ProjectManagerPtr ownerObjectSystemManage
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* MarkerObjectSystem::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle MarkerObjectSystem::getClientAPIValuesStructType() const
 {
 	return &MikanMarkerSystemValues::staticGetArchetype();
 }

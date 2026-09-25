@@ -971,7 +971,7 @@ void DMXSequenceComponent::fillGroup(uint8_t r, uint8_t g, uint8_t b)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* DMXSequenceComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle DMXSequenceComponent::getClientAPIValuesStructType() const
 {
 	return &MikanDMXSequenceComponentValues::staticGetArchetype();
 }

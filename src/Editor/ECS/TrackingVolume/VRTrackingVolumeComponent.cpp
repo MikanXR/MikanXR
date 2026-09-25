@@ -182,7 +182,7 @@ void VRTrackingVolumeComponent::init()
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* VRTrackingVolumeComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle VRTrackingVolumeComponent::getClientAPIValuesStructType() const
 {
 	return &MikanVRTrackingVolumeComponentValues::staticGetArchetype();
 }

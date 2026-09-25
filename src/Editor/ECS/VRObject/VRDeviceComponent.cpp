@@ -57,7 +57,7 @@ VRDeviceComponent::VRDeviceComponent(MikanObjectWeakPtr owner)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* VRDeviceComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle VRDeviceComponent::getClientAPIValuesStructType() const
 {
 	return &MikanVRDeviceComponentValues::staticGetArchetype();
 }

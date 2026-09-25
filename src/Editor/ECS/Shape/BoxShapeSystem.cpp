@@ -26,7 +26,7 @@ BoxShapeSystem::BoxShapeSystem(ProjectManagerPtr ownerObjectSystem)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* BoxShapeSystem::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle BoxShapeSystem::getClientAPIValuesStructType() const
 {
 	return &MikanBoxShapeSystemValues::staticGetArchetype();
 }

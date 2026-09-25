@@ -142,7 +142,7 @@ ARKitVideoSourceComponent::ARKitVideoSourceComponent(MikanObjectWeakPtr owner)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* ARKitVideoSourceComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle ARKitVideoSourceComponent::getClientAPIValuesStructType() const
 {
 	return &MikanARKitVideoSourceValues::staticGetArchetype();
 }

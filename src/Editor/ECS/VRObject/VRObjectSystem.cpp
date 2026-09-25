@@ -489,7 +489,7 @@ void VRObjectSystem::onDevicePosesChanged(IVRDeviceManager* deviceManager, int64
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* VRObjectSystem::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle VRObjectSystem::getClientAPIValuesStructType() const
 {
 	return &MikanVRObjectSystemValues::staticGetArchetype();
 }

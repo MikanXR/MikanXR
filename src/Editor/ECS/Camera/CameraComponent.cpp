@@ -411,7 +411,7 @@ CameraComponent::CameraComponent(MikanObjectWeakPtr owner)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* CameraComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle CameraComponent::getClientAPIValuesStructType() const
 {
 	return &MikanCameraComponentValues::staticGetArchetype();
 }

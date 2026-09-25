@@ -302,7 +302,7 @@ void PropertyRequestHandler::getComponentValuesHandler(const ClientRequest& requ
 		return;
 	}
 
-	rfk::Struct const* valuesStruct= componentPtr->getClientAPIValuesStructType();
+	Serialization::StructTypeHandle valuesStruct= componentPtr->getClientAPIValuesStructType();
 	if (!valuesStruct)
 	{
 		writeSimpleJsonResponse(request.requestId, MikanAPIResult::MalformedParameters, response);
@@ -378,7 +378,7 @@ void PropertyRequestHandler::getSystemValuesHandler(const ClientRequest& request
 		return;
 	}
 
-	rfk::Struct const* valuesStruct= objectSystem->getClientAPIValuesStructType();
+	Serialization::StructTypeHandle valuesStruct= objectSystem->getClientAPIValuesStructType();
 	if (!valuesStruct)
 	{
 		writeSimpleJsonResponse(request.requestId, MikanAPIResult::MalformedParameters, response);

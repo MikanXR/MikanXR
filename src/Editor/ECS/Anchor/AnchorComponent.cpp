@@ -57,7 +57,7 @@ bool AnchorComponent::canAttachToParent(TransformComponentConstPtr newParentComp
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* AnchorComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle AnchorComponent::getClientAPIValuesStructType() const
 {
 	return &MikanAnchorComponentValues::staticGetArchetype();
 }

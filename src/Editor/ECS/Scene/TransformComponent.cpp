@@ -182,7 +182,7 @@ TransformComponent::TransformComponent(MikanObjectWeakPtr owner)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* TransformComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle TransformComponent::getClientAPIValuesStructType() const
 {
 	return &MikanTransformComponentValues::staticGetArchetype();
 }

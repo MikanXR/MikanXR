@@ -167,7 +167,7 @@ void DMXFixtureGroupComponent::getFixtures(std::vector<DMXFixtureComponentPtr>& 
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* DMXFixtureGroupComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle DMXFixtureGroupComponent::getClientAPIValuesStructType() const
 {
 	return &MikanDMXFixtureGroupComponentValues::staticGetArchetype();
 }

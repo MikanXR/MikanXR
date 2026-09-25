@@ -274,7 +274,7 @@ FileVideoSourceComponent::FileVideoSourceComponent(MikanObjectWeakPtr owner)
 
 FileVideoSourceComponent::~FileVideoSourceComponent() { stopWorker(); }
 
-rfk::Struct const* FileVideoSourceComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle FileVideoSourceComponent::getClientAPIValuesStructType() const
 {
 	return &MikanFileVideoSourceValues::staticGetArchetype();
 }

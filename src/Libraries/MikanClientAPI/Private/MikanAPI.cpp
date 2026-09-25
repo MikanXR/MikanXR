@@ -245,7 +245,7 @@ public:
 		}
 
 #ifdef MIKANAPI_REFLECTION_ENABLED
-		Serialization::TypeRegistry::buildFromRfkDatabase();
+		Serialization::TypeRegistry::build();
 #endif // MIKANAPI_REFLECTION_ENABLED
 
 		return MikanAPIResult::Success;

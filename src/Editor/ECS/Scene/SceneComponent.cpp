@@ -100,7 +100,7 @@ SceneComponent::SceneComponent(MikanObjectWeakPtr owner)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* SceneComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle SceneComponent::getClientAPIValuesStructType() const
 {
 	return &MikanSceneComponentValues::staticGetArchetype();
 }

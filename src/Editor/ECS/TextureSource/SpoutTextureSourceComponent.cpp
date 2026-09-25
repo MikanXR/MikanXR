@@ -70,7 +70,7 @@ SpoutTextureSourceComponent::SpoutTextureSourceComponent(MikanObjectWeakPtr owne
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* SpoutTextureSourceComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle SpoutTextureSourceComponent::getClientAPIValuesStructType() const
 {
 	return &MikanSpoutTextureSourceValues::staticGetArchetype();
 }

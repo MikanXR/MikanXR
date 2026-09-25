@@ -130,7 +130,7 @@ std::string MikanObjectSystem::makePropertyUIIdentifier(const std::string& propN
 	return StringUtils::stringify(getObjectSystemClassName(), "_", propName);
 }
 
-rfk::Struct const* MikanObjectSystem::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle MikanObjectSystem::getClientAPIValuesStructType() const
 {
 	return &MikanSystemValues::staticGetArchetype();
 }

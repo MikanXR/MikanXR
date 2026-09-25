@@ -297,7 +297,7 @@ void DMXPresetComponent::apply()
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* DMXPresetComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle DMXPresetComponent::getClientAPIValuesStructType() const
 {
 	return &MikanDMXPresetComponentValues::staticGetArchetype();
 }

@@ -33,16 +33,16 @@ bool mikan_api_test_type_registry_build()
 {
 	UNIT_TEST_BEGIN("type registry build")
 
-	Serialization::TypeRegistry::buildFromRfkDatabase();
+	Serialization::TypeRegistry::build();
 
 	// After building, core Mikan types must be registered
-	rfk::Struct const* requestStruct= Serialization::TypeRegistry::getStructByName("MikanRequest");
+	Serialization::StructTypeHandle requestStruct= Serialization::TypeRegistry::getStructByName("MikanRequest");
 	assert(requestStruct != nullptr);
 
-	rfk::Struct const* responseStruct= Serialization::TypeRegistry::getStructByName("MikanResponse");
+	Serialization::StructTypeHandle responseStruct= Serialization::TypeRegistry::getStructByName("MikanResponse");
 	assert(responseStruct != nullptr);
 
-	rfk::Struct const* eventStruct= Serialization::TypeRegistry::getStructByName("MikanEvent");
+	Serialization::StructTypeHandle eventStruct= Serialization::TypeRegistry::getStructByName("MikanEvent");
 	assert(eventStruct != nullptr);
 
 	UNIT_TEST_COMPLETE()
@@ -52,10 +52,11 @@ bool mikan_api_test_type_registry_lookup()
 {
 	UNIT_TEST_BEGIN("type registry lookup by name")
 
-	Serialization::TypeRegistry::buildFromRfkDatabase();
+	Serialization::TypeRegistry::build();
 
 	// Concrete request type must also be found
-	rfk::Struct const* cmdStruct= Serialization::TypeRegistry::getStructByName("MikanRemoteControlCommand");
+	Serialization::StructTypeHandle cmdStruct=
+		Serialization::TypeRegistry::getStructByName("MikanRemoteControlCommand");
 	assert(cmdStruct != nullptr);
 
 	// The returned struct's name must match what we queried
@@ -73,9 +74,9 @@ bool mikan_api_test_type_registry_unknown_returns_null()
 {
 	UNIT_TEST_BEGIN("type registry unknown type returns null")
 
-	Serialization::TypeRegistry::buildFromRfkDatabase();
+	Serialization::TypeRegistry::build();
 
-	rfk::Struct const* unknownStruct= Serialization::TypeRegistry::getStructByName("ThisTypeDoesNotExist");
+	Serialization::StructTypeHandle unknownStruct= Serialization::TypeRegistry::getStructByName("ThisTypeDoesNotExist");
 	assert(unknownStruct == nullptr);
 
 	UNIT_TEST_COMPLETE()
@@ -133,7 +134,7 @@ bool mikan_api_test_response_round_trip()
 {
 	UNIT_TEST_BEGIN("response JSON round-trip via TypeRegistry")
 
-	Serialization::TypeRegistry::buildFromRfkDatabase();
+	Serialization::TypeRegistry::build();
 
 	// Simulate server producing a response JSON
 	MikanResponse expected;
@@ -153,7 +154,7 @@ bool mikan_api_test_response_round_trip()
 	assert(bHeader);
 
 	// Look up the concrete struct type by name and create an instance
-	rfk::Struct const* responseStruct=
+	Serialization::StructTypeHandle responseStruct=
 		Serialization::TypeRegistry::getStructByName(header.responseTypeName.getUtf8Value());
 	assert(responseStruct != nullptr);
 

@@ -105,7 +105,7 @@ MarkerComponent::MarkerComponent(MikanObjectWeakPtr owner)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* MarkerComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle MarkerComponent::getClientAPIValuesStructType() const
 {
 	return &MikanMarkerComponentValues::staticGetArchetype();
 }

@@ -94,7 +94,7 @@ bool StencilComponent::canAttachToParent(TransformComponentConstPtr newParentCom
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* StencilComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle StencilComponent::getClientAPIValuesStructType() const
 {
 	return &MikanStencilComponentValues::staticGetArchetype();
 }
