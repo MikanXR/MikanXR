@@ -12,15 +12,29 @@ export class MikanShapeComponentValues extends MikanTransformComponentValues {
   ];
 }
 
-export class MikanQuadShapeSystemValues extends MikanSystemValues {
+export class MikanBoxShapeComponentValues extends MikanShapeComponentValues {
+  box_x_size: number = 0;
+  box_y_size: number = 0;
+  box_z_size: number = 0;
 
   static __serializationMetadata: SerializationField[] = [
+    { name: 'box_x_size', type: 'float' },
+    { name: 'box_y_size', type: 'float' },
+    { name: 'box_z_size', type: 'float' }
   ];
 }
 
 export class MikanBoxShapeSystemValues extends MikanSystemValues {
 
   static __serializationMetadata: SerializationField[] = [
+  ];
+}
+
+export class MikanModelShapeComponentValues extends MikanShapeComponentValues {
+  model_path: string = '';
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'model_path', type: 'string' }
   ];
 }
 
@@ -42,23 +56,9 @@ export class MikanQuadShapeComponentValues extends MikanShapeComponentValues {
   ];
 }
 
-export class MikanBoxShapeComponentValues extends MikanShapeComponentValues {
-  box_x_size: number = 0;
-  box_y_size: number = 0;
-  box_z_size: number = 0;
+export class MikanQuadShapeSystemValues extends MikanSystemValues {
 
   static __serializationMetadata: SerializationField[] = [
-    { name: 'box_x_size', type: 'float' },
-    { name: 'box_y_size', type: 'float' },
-    { name: 'box_z_size', type: 'float' }
-  ];
-}
-
-export class MikanModelShapeComponentValues extends MikanShapeComponentValues {
-  model_path: string = '';
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'model_path', type: 'string' }
   ];
 }
 

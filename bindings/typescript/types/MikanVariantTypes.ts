@@ -38,69 +38,11 @@ export class MikanVariantBase extends PolymorphicStruct {
   ];
 }
 
-export class MikanVector2fValue extends MikanVariantBase {
-  value: MikanVector2f = new MikanVector2f();
+export class MikanBoolArrayValue extends MikanVariantBase {
+  value: boolean[] = [];
 
   static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'MikanVector2f' }
-  ];
-}
-
-export class MikanUByteValue extends MikanVariantBase {
-  value: number = 0;
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'uint8' }
-  ];
-}
-
-export class MikanUShortValue extends MikanVariantBase {
-  value: number = 0;
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'uint16' }
-  ];
-}
-
-export class MikanStringValue extends MikanVariantBase {
-  value: string = '';
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'string' }
-  ];
-}
-
-export class MikanVariant {
-  value_type: MikanVariantType = MikanVariantType.INVALID_TYPE;
-  value_ptr: PolymorphicObject = new PolymorphicObject();
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'value_type', type: 'enum:MikanVariantType' },
-    { name: 'value_ptr', type: 'PolymorphicObject' }
-  ];
-}
-
-export class MikanUByteArrayValue extends MikanVariantBase {
-  value: number[] = [];
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'uint8', isArray: true }
-  ];
-}
-
-export class MikanIntArrayValue extends MikanVariantBase {
-  value: number[] = [];
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'int32', isArray: true }
-  ];
-}
-
-export class MikanMatrix4fValue extends MikanVariantBase {
-  value: MikanMatrix4f = new MikanMatrix4f();
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'MikanMatrix4f' }
+    { name: 'value', type: 'boolean', isArray: true }
   ];
 }
 
@@ -109,6 +51,38 @@ export class MikanBoolValue extends MikanVariantBase {
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'value', type: 'boolean' }
+  ];
+}
+
+export class MikanDoubleValue extends MikanVariantBase {
+  value: number = 0;
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'value', type: 'double' }
+  ];
+}
+
+export class MikanFloatArrayValue extends MikanVariantBase {
+  value: number[] = [];
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'value', type: 'float', isArray: true }
+  ];
+}
+
+export class MikanFloatValue extends MikanVariantBase {
+  value: number = 0;
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'value', type: 'float' }
+  ];
+}
+
+export class MikanIntArrayValue extends MikanVariantBase {
+  value: number[] = [];
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'value', type: 'int32', isArray: true }
   ];
 }
 
@@ -128,67 +102,11 @@ export class MikanLongValue extends MikanVariantBase {
   ];
 }
 
-export class MikanFloatValue extends MikanVariantBase {
-  value: number = 0;
+export class MikanMatrix4fValue extends MikanVariantBase {
+  value: MikanMatrix4f = new MikanMatrix4f();
 
   static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'float' }
-  ];
-}
-
-export class MikanDoubleValue extends MikanVariantBase {
-  value: number = 0;
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'double' }
-  ];
-}
-
-export class MikanVector3fValue extends MikanVariantBase {
-  value: MikanVector3f = new MikanVector3f();
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'MikanVector3f' }
-  ];
-}
-
-export class MikanVector4fValue extends MikanVariantBase {
-  value: MikanVector4f = new MikanVector4f();
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'MikanVector4f' }
-  ];
-}
-
-export class MikanQuatfValue extends MikanVariantBase {
-  value: MikanQuatf = new MikanQuatf();
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'MikanQuatf' }
-  ];
-}
-
-export class MikanVector2dValue extends MikanVariantBase {
-  value: MikanVector2d = new MikanVector2d();
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'MikanVector2d' }
-  ];
-}
-
-export class MikanVector3dValue extends MikanVariantBase {
-  value: MikanVector3d = new MikanVector3d();
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'MikanVector3d' }
-  ];
-}
-
-export class MikanVector4dValue extends MikanVariantBase {
-  value: MikanVector4d = new MikanVector4d();
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'MikanVector4d' }
+    { name: 'value', type: 'MikanMatrix4f' }
   ];
 }
 
@@ -200,19 +118,11 @@ export class MikanQuatdValue extends MikanVariantBase {
   ];
 }
 
-export class MikanBoolArrayValue extends MikanVariantBase {
-  value: boolean[] = [];
+export class MikanQuatfValue extends MikanVariantBase {
+  value: MikanQuatf = new MikanQuatf();
 
   static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'boolean', isArray: true }
-  ];
-}
-
-export class MikanFloatArrayValue extends MikanVariantBase {
-  value: number[] = [];
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'value', type: 'float', isArray: true }
+    { name: 'value', type: 'MikanQuatf' }
   ];
 }
 
@@ -229,6 +139,96 @@ export class MikanStringMapValue extends MikanVariantBase {
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'value', type: 'Map', isMap: true, keyType: 'string', valueType: 'string' }
+  ];
+}
+
+export class MikanStringValue extends MikanVariantBase {
+  value: string = '';
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'value', type: 'string' }
+  ];
+}
+
+export class MikanUByteArrayValue extends MikanVariantBase {
+  value: number[] = [];
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'value', type: 'uint8', isArray: true }
+  ];
+}
+
+export class MikanUByteValue extends MikanVariantBase {
+  value: number = 0;
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'value', type: 'uint8' }
+  ];
+}
+
+export class MikanUShortValue extends MikanVariantBase {
+  value: number = 0;
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'value', type: 'uint16' }
+  ];
+}
+
+export class MikanVariant {
+  value_type: MikanVariantType = MikanVariantType.INVALID_TYPE;
+  value_ptr: PolymorphicObject = new PolymorphicObject();
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'value_type', type: 'enum:MikanVariantType' },
+    { name: 'value_ptr', type: 'PolymorphicObject' }
+  ];
+}
+
+export class MikanVector2dValue extends MikanVariantBase {
+  value: MikanVector2d = new MikanVector2d();
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'value', type: 'MikanVector2d' }
+  ];
+}
+
+export class MikanVector2fValue extends MikanVariantBase {
+  value: MikanVector2f = new MikanVector2f();
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'value', type: 'MikanVector2f' }
+  ];
+}
+
+export class MikanVector3dValue extends MikanVariantBase {
+  value: MikanVector3d = new MikanVector3d();
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'value', type: 'MikanVector3d' }
+  ];
+}
+
+export class MikanVector3fValue extends MikanVariantBase {
+  value: MikanVector3f = new MikanVector3f();
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'value', type: 'MikanVector3f' }
+  ];
+}
+
+export class MikanVector4dValue extends MikanVariantBase {
+  value: MikanVector4d = new MikanVector4d();
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'value', type: 'MikanVector4d' }
+  ];
+}
+
+export class MikanVector4fValue extends MikanVariantBase {
+  value: MikanVector4f = new MikanVector4f();
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'value', type: 'MikanVector4f' }
   ];
 }
 

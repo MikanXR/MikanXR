@@ -22,23 +22,29 @@ export class MikanStencilComponentValues extends MikanTransformComponentValues {
   ];
 }
 
-export class MikanModelStencilComponentValues extends MikanStencilComponentValues {
-  model_path: string = '';
+export class MikanBoxStencilComponentValues extends MikanStencilComponentValues {
+  box_x_size: number = 0;
+  box_y_size: number = 0;
+  box_z_size: number = 0;
 
   static __serializationMetadata: SerializationField[] = [
-    { name: 'model_path', type: 'string' }
-  ];
-}
-
-export class MikanQuadStencilSystemValues extends MikanSystemValues {
-
-  static __serializationMetadata: SerializationField[] = [
+    { name: 'box_x_size', type: 'float' },
+    { name: 'box_y_size', type: 'float' },
+    { name: 'box_z_size', type: 'float' }
   ];
 }
 
 export class MikanBoxStencilSystemValues extends MikanSystemValues {
 
   static __serializationMetadata: SerializationField[] = [
+  ];
+}
+
+export class MikanModelStencilComponentValues extends MikanStencilComponentValues {
+  model_path: string = '';
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'model_path', type: 'string' }
   ];
 }
 
@@ -60,15 +66,17 @@ export class MikanQuadStencilComponentValues extends MikanStencilComponentValues
   ];
 }
 
-export class MikanBoxStencilComponentValues extends MikanStencilComponentValues {
-  box_x_size: number = 0;
-  box_y_size: number = 0;
-  box_z_size: number = 0;
+export class MikanQuadStencilSystemValues extends MikanSystemValues {
 
   static __serializationMetadata: SerializationField[] = [
-    { name: 'box_x_size', type: 'float' },
-    { name: 'box_y_size', type: 'float' },
-    { name: 'box_z_size', type: 'float' }
+  ];
+}
+
+export class MikanStencilModelRenderGeometry {
+  meshes: MikanTriagulatedMesh[] = [];
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'meshes', type: 'MikanTriagulatedMesh', isArray: true }
   ];
 }
 
@@ -83,14 +91,6 @@ export class MikanTriagulatedMesh {
     { name: 'normals', type: 'MikanVector3f', isArray: true },
     { name: 'texels', type: 'MikanVector2f', isArray: true },
     { name: 'indices', type: 'int32', isArray: true }
-  ];
-}
-
-export class MikanStencilModelRenderGeometry {
-  meshes: MikanTriagulatedMesh[] = [];
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'meshes', type: 'MikanTriagulatedMesh', isArray: true }
   ];
 }
 

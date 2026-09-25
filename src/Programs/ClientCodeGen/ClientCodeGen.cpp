@@ -112,6 +112,27 @@ struct CodeGenDatabase
 
 		return ClientModulePtr();
 	}
+
+	// Put every module's entities in a canonical order, once, before anything emits.
+	//
+	// The reflection database enumerates entities in an order that varies between runs, so
+	// anything that walks these vectors as filled writes a different file each time even when
+	// no type changed. Sorting here rather than at each emission site means every consumer
+	// gets the same order: the per-module emitters, the registration files that walk the
+	// modules again, and any generator added later. The modules map is a std::map, so module
+	// order is already canonical.
+	void sortEntities()
+	{
+		for (auto const& [moduleName, module] : modules)
+		{
+			std::sort(module->enums.begin(), module->enums.end(),
+					  [](rfk::Enum const* a, rfk::Enum const* b) { return stricmp(a->getName(), b->getName()) < 0; });
+
+			std::sort(module->serializableStructs.begin(), module->serializableStructs.end(),
+					  [](rfk::Struct const* a, rfk::Struct const* b)
+					  { return stricmp(a->getName(), b->getName()) < 0; });
+		}
+	}
 };
 
 class MikanClientCodeGen
@@ -131,6 +152,10 @@ public:
 
 			// Fetch all reflection data, sorted by module name
 			fetchModules(codeGenDatabase);
+
+			// Give every emitter below the same entity order, whatever order the reflection
+			// database happened to enumerate them in
+			codeGenDatabase.sortEntities();
 
 			if (codeGenDatabase.modules.size() > 0)
 			{
@@ -565,29 +590,18 @@ protected:
 
 	void emitCSharpModuleEntities(std::ofstream& moduleFile, ClientModulePtr const& module)
 	{
-		if (module->enums.size() > 0)
+		// Both lists arrive in name order from CodeGenDatabase::sortEntities. A C# class can
+		// reference one declared later in the same namespace, so name order is all this needs.
+		for (rfk::Enum const* enumRef : module->enums)
 		{
-			std::sort(module->enums.begin(), module->enums.end(),
-					  [](rfk::Enum const* a, rfk::Enum const* b) { return stricmp(a->getName(), b->getName()) < 0; });
-
-			for (rfk::Enum const* enumRef : module->enums)
-			{
-				emitCSharpEnum(moduleFile, *enumRef);
-				moduleFile << std::endl;
-			}
+			emitCSharpEnum(moduleFile, *enumRef);
+			moduleFile << std::endl;
 		}
 
-		if (module->serializableStructs.size() > 0)
+		for (rfk::Struct const* structRef : module->serializableStructs)
 		{
-			std::sort(module->serializableStructs.begin(), module->serializableStructs.end(),
-					  [](rfk::Struct const* a, rfk::Struct const* b)
-					  { return stricmp(a->getName(), b->getName()) < 0; });
-
-			for (rfk::Struct const* structRef : module->serializableStructs)
-			{
-				emitCSharpSerializableClass(moduleFile, *structRef);
-				moduleFile << std::endl;
-			}
+			emitCSharpSerializableClass(moduleFile, *structRef);
+			moduleFile << std::endl;
 		}
 	}
 
@@ -637,21 +651,15 @@ protected:
 			moduleFile << std::endl;
 		}
 
-		// Emit enums
-		if (module->enums.size() > 0)
+		// Emit enums, already in name order from CodeGenDatabase::sortEntities
+		for (rfk::Enum const* enumRef : module->enums)
 		{
-			std::sort(module->enums.begin(), module->enums.end(),
-					  [](rfk::Enum const* a, rfk::Enum const* b) { return stricmp(a->getName(), b->getName()) < 0; });
-
-			for (rfk::Enum const* enumRef : module->enums)
-			{
-				emitTypeScriptEnum(moduleFile, *enumRef);
-				moduleFile << std::endl;
-			}
+			emitTypeScriptEnum(moduleFile, *enumRef);
+			moduleFile << std::endl;
 		}
 
-		// Emit interfaces
-		// Sort structs by inheritance hierarchy to avoid forward references
+		// Emit interfaces. A TypeScript interface cannot extend one declared later in the
+		// file, so these are reordered to put every base ahead of its derived types.
 		if (module->serializableStructs.size() > 0)
 		{
 			std::vector<rfk::Struct const*> sortedStructs=
@@ -932,6 +940,12 @@ protected:
 
 	// TypeScript Code Generation Methods
 	// Topological sort to order structs so base classes come before derived classes
+	// Reorders structs so every base comes before the types deriving from it, which is what a
+	// TypeScript interface's extends clause requires of the file it lives in.
+	//
+	// Two structs with no inheritance relationship keep their relative input order, so this is
+	// only as stable as what it is handed. The input comes from CodeGenDatabase::sortEntities
+	// in name order, which is what makes the result the same on every run.
 	std::vector<rfk::Struct const*> topologicalSortStructsByInheritance(const std::vector<rfk::Struct const*>& structs)
 	{
 		std::vector<rfk::Struct const*> result;
@@ -1787,21 +1801,6 @@ protected:
 		}
 
 		return "any";
-	}
-
-	static std::string toUpperSnakeCase(const std::string& str)
-	{
-		std::string result;
-		for (size_t i= 0; i < str.length(); ++i)
-		{
-			char c= str[i];
-			if (std::isupper(c) && i > 0 && std::islower(str[i - 1]))
-			{
-				result+= '_';
-			}
-			result+= std::toupper(c);
-		}
-		return result;
 	}
 
 	// Find which module a type belongs to
