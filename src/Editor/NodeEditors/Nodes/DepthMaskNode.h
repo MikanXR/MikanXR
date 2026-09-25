@@ -2,6 +2,7 @@
 
 #include "ComponentFwd.h"
 #include "CompositorConstants.h"
+#include "DepthPreviewRenderer.h"
 #include "LocText.h"
 #include "Node.h"
 #include "MikanRendererFwd.h"
@@ -27,6 +28,7 @@ public:
 	bool bDisableQuadStencils= false;
 	bool bDisableBoxStencils= false;
 	bool bDisableModelStencils= false;
+	DepthPreviewSettings depthPreviewSettings;
 };
 
 class DepthMaskNode : public Node
@@ -76,6 +78,10 @@ protected:
 	bool m_bDisableQuadStencil= false;
 	bool m_bDisableBoxStencil= false;
 	bool m_bDisableModelStencil= false;
+
+	// Editor preview only. The output pin always carries the untouched linear depth.
+	DepthPreviewSettings m_depthPreviewSettings;
+	DepthPreviewRenderer m_depthPreviewRenderer;
 
 	friend class DepthMaskNodeFactory;
 };

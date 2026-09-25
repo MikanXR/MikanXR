@@ -2431,6 +2431,21 @@ msgid "Default Value"
 msgstr ""
 
 #. Section: nodes
+msgctxt "nodes.depthCurveGamma"
+msgid "Gamma"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthCurveLinear"
+msgid "Linear"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthCurveLog"
+msgid "Log"
+msgstr ""
+
+#. Section: nodes
 msgctxt "nodes.depthMaskHeader"
 msgid "Depth Mask Node"
 msgstr ""
@@ -2438,6 +2453,51 @@ msgstr ""
 #. Section: nodes
 msgctxt "nodes.depthMaskTitle"
 msgid "Depth Mask"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthPaletteBanded"
+msgid "Banded"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthPaletteGrayscale"
+msgid "Grayscale"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthPaletteGrayscaleInverted"
+msgid "Grayscale Inverted"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthPaletteTurbo"
+msgid "Turbo"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthPreviewCurve"
+msgid "Preview Curve"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthPreviewGamma"
+msgid "Preview Gamma"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthPreviewPalette"
+msgid "Preview Palette"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthPreviewRangeMax"
+msgid "Preview Range Max"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthPreviewRangeMin"
+msgid "Preview Range Min"
 msgstr ""
 
 #. Section: nodes

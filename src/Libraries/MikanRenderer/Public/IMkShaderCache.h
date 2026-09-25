@@ -25,6 +25,9 @@
 #define INTERNAL_MATERIAL_PNT_TEXTURED_LIT_COLORED "Internal_PNT_TexturedLitColored"
 #define INTERNAL_MATERIAL_P_LINEAR_DEPTH "Internal_P_LinearDepth"
 #define INTERNAL_MATERIAL_PT_NORMALIZE_DEPTH "Internal_PT_NormalizeDepth"
+// Maps a linear depth texture to a readable color ramp for an editor preview, through a
+// range window, a curve and a palette. Never used in a composite.
+#define INTERNAL_MATERIAL_PT_DEPTH_COLORIZE "Internal_PT_DepthColorize"
 #define INTERNAL_MATERIAL_PT_LINEAR_TO_HARDWARE_DEPTH "Internal_PT_LinearToHardwareDepth"
 #define INTERNAL_MATERIAL_PT_PM5544_TEST_CARD "Internal_PT_PM5544TestCard"
 #define INTERNAL_MATERIAL_PT_TEXTURED "Internal_PT_Textured"

@@ -131,6 +131,37 @@ enum class eColorTextureResolveAlphaMode : int
 };
 extern const std::string* k_colorTextureResolveAlphaModeStrings;
 
+// How a depth node's editor preview maps linear depth to color. Preview only: the texture
+// on the node's output pin is always the unmodified linear depth its consumers expect.
+// The default reproduces the plain grayscale ramp the previews have always shown.
+enum class eDepthPreviewPalette : int
+{
+	INVALID= -1,
+
+	grayscale, // near black, far white
+	grayscaleInverted,
+	turbo,  // perceptually ordered color ramp, small differences stay legible
+	banded, // repeating ramp, which reads structure even in a compressed range
+
+	COUNT
+};
+extern const std::string* k_depthPreviewPaletteStrings;
+
+// Curve applied to the depth value before the palette. A typical zNear 0.1 / zFar 20 puts a
+// subject at 2-4m into the bottom fifth of the range, so a curve is usually what makes the
+// preview readable before any palette choice matters.
+enum class eDepthPreviewCurve : int
+{
+	INVALID= -1,
+
+	linear,
+	gamma, // pow(d, exponent), an exponent below 1 expands the near range
+	log,   // expands the near range harder than gamma, with no exponent to tune
+
+	COUNT
+};
+extern const std::string* k_depthPreviewCurveStrings;
+
 enum class eTextureSourceDepthType : int
 {
 	INVALID= -1,

@@ -56,6 +56,7 @@ configuru::Config DepthMaskNodeConfig::writeToJSON()
 	pt["disable_quad_stencils"]= bDisableQuadStencils;
 	pt["disable_box_stencils"]= bDisableBoxStencils;
 	pt["disable_model_stencils"]= bDisableModelStencils;
+	depthPreviewSettings.writeToJSON(pt);
 
 	return pt;
 }
@@ -67,6 +68,7 @@ void DepthMaskNodeConfig::readFromJSON(const configuru::Config& pt)
 	bDisableQuadStencils= pt.get_or<bool>("disable_quad_stencils", false);
 	bDisableBoxStencils= pt.get_or<bool>("disable_box_stencils", false);
 	bDisableModelStencils= pt.get_or<bool>("disable_model_stencils", false);
+	depthPreviewSettings.readFromJSON(pt);
 }
 
 // -- DepthMaskNode -----
@@ -101,6 +103,7 @@ bool DepthMaskNode::loadFromConfig(NodeConfigConstPtr nodeConfig)
 		m_bDisableQuadStencil= depthMaskNodeConfig->bDisableQuadStencils;
 		m_bDisableBoxStencil= depthMaskNodeConfig->bDisableBoxStencils;
 		m_bDisableModelStencil= depthMaskNodeConfig->bDisableModelStencils;
+		m_depthPreviewSettings= depthMaskNodeConfig->depthPreviewSettings;
 
 		return true;
 	}
@@ -132,6 +135,7 @@ void DepthMaskNode::saveToConfig(NodeConfigPtr nodeConfig) const
 	depthMaskNodeConfig->bDisableQuadStencils= m_bDisableQuadStencil;
 	depthMaskNodeConfig->bDisableBoxStencils= m_bDisableBoxStencil;
 	depthMaskNodeConfig->bDisableModelStencils= m_bDisableModelStencil;
+	depthMaskNodeConfig->depthPreviewSettings= m_depthPreviewSettings;
 
 	Node::saveToConfig(nodeConfig);
 }
@@ -254,6 +258,13 @@ bool DepthMaskNode::evaluateNode(NodeEvaluator& evaluator)
 		}
 	}
 
+	// Colorize for the node body only, after the mask is final. Skipped entirely while the
+	// preview settings are the grayscale defaults.
+	if (bSuccess)
+	{
+		m_depthPreviewRenderer.render(evaluator, m_linearDepthFrameBuffer->getColorTexture(), m_depthPreviewSettings);
+	}
+
 	return bSuccess;
 }
 
@@ -269,11 +280,14 @@ void DepthMaskNode::editorRenderNode(const NodeEditorState& editorState)
 	// Inputs
 	editorRenderInputPins(editorState);
 
-	// Texture Preview
+	// Texture Preview, colorized when the preview settings ask for it
 	ImGui::Dummy(ImVec2(1.0f, 0.5f));
-	IMkTexturePtr colorTexture=
-		m_linearDepthFrameBuffer ? m_linearDepthFrameBuffer->getColorTexture() : IMkTexturePtr();
-	MkGui::drawImage(colorTexture, 100.f, 100.f);
+	IMkTexturePtr previewTexture= m_depthPreviewRenderer.getPreviewTexture();
+	if (previewTexture == nullptr)
+	{
+		previewTexture= m_linearDepthFrameBuffer ? m_linearDepthFrameBuffer->getColorTexture() : IMkTexturePtr();
+	}
+	MkGui::drawImage(previewTexture, 100.f, 100.f);
 	ImGui::SameLine();
 
 	// Outputs
@@ -296,6 +310,8 @@ void DepthMaskNode::editorRenderPropertySheet(const NodeEditorState& editorState
 									m_bDisableBoxStencil);
 		MkGui::drawCheckBoxProperty(propertyStyle, "DepthMaskNodeDisableModelStencil", locText("nodes.disableModels"),
 									m_bDisableModelStencil);
+
+		drawDepthPreviewProperties(propertyStyle, m_depthPreviewSettings);
 	}
 }
 

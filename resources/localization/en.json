@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1043,
-		"translatedCount": 1043,
-		"reviewedCount": 1043
+		"stringCount": 1055,
+		"translatedCount": 1055,
+		"reviewedCount": 1055
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -527,8 +527,20 @@
 		"customExpressionTitle": "Custom Expression",
 		"defaultTexture": "Default Texture",
 		"defaultValue": "Default Value",
+		"depthCurveGamma": "Gamma",
+		"depthCurveLinear": "Linear",
+		"depthCurveLog": "Log",
 		"depthMaskHeader": "Depth Mask Node",
 		"depthMaskTitle": "Depth Mask",
+		"depthPaletteBanded": "Banded",
+		"depthPaletteGrayscale": "Grayscale",
+		"depthPaletteGrayscaleInverted": "Grayscale Inverted",
+		"depthPaletteTurbo": "Turbo",
+		"depthPreviewCurve": "Preview Curve",
+		"depthPreviewGamma": "Preview Gamma",
+		"depthPreviewPalette": "Preview Palette",
+		"depthPreviewRangeMax": "Preview Range Max",
+		"depthPreviewRangeMin": "Preview Range Min",
 		"depthTest": "Depth Test",
 		"disableBoxes": "Disable Boxes",
 		"disableModels": "Disable Models",

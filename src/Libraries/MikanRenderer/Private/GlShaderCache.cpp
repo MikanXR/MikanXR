@@ -1007,6 +1007,120 @@ IMkShaderCodeConstPtr getPTVisualizeGLDepthShaderCode()
 	return x_shaderCode;
 }
 
+IMkShaderCodeConstPtr getPTDepthColorizeShaderCode()
+{
+	static IMkShaderCodePtr x_shaderCode= nullptr;
+
+	if (x_shaderCode == nullptr)
+	{
+		// Takes the linear depth [0, 1] an Internal_P_LinearDepth pass wrote into a color
+		// attachment and remaps it for a preview: window the range, bend the curve, then
+		// apply a palette. Defaults (full range, linear curve, grayscale) reproduce the
+		// source texture exactly.
+		x_shaderCode= createIMkShaderCode(INTERNAL_MATERIAL_PT_DEPTH_COLORIZE,
+										  // vertex shader
+										  R""""(
+				#version 330 core
+				layout (location = 0) in vec2 aPos;
+				layout (location = 1) in vec2 aTexCoords;
+
+				out vec2 TexCoords;
+
+				void main()
+				{
+					TexCoords = aTexCoords;
+					gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);
+				}
+				)"""",
+										  // fragment shader
+										  R""""(
+				#version 330 core
+				out vec4 FragColor;
+
+				in vec2 TexCoords;
+
+				uniform sampler2D rgbTexture;
+				// The slice of [0, 1] linear depth the ramp spans
+				uniform float zNear;
+				uniform float zFar;
+				// 0 grayscale, 1 grayscale inverted, 2 turbo, 3 banded
+				uniform float floatConstant0;
+				// 0 linear, 1 gamma, 2 log
+				uniform float floatConstant1;
+				// Exponent for the gamma curve
+				uniform float floatConstant2;
+
+				// Compact polynomial fit of the turbo ramp. A lookup texture would read
+				// closer to the reference, but keeping the math inline keeps this material
+				// self contained like every other internal one.
+				vec3 turbo(float t)
+				{
+					float r = 0.1357 + t * (4.5974 + t * (-42.3277 + t * (130.5887 + t * (-150.5666 + t * 58.1375))));
+					float g = 0.0914 + t * (2.1856 + t * (4.8052 + t * (-14.0195 + t * (4.2109 + t * 2.7747))));
+					float b = 0.1067 + t * (12.5925 + t * (-60.1097 + t * (109.0745 + t * (-88.5066 + t * 26.8183))));
+
+					return clamp(vec3(r, g, b), 0.0, 1.0);
+				}
+
+				void main()
+				{
+					float depth = texture(rgbTexture, TexCoords).r;
+
+					// Window the range, so a narrow slab of depth can fill the whole ramp
+					float span = max(zFar - zNear, 1e-5);
+					float t = clamp((depth - zNear) / span, 0.0, 1.0);
+
+					int curve = int(floatConstant1 + 0.5);
+					if (curve == 1)
+					{
+						t = pow(t, max(floatConstant2, 1e-3));
+					}
+					else if (curve == 2)
+					{
+						// log1p normalized back to [0, 1], which lifts the near range
+						// harder than a gamma without an exponent to tune
+						const float k = 99.0;
+						t = log(1.0 + t * k) / log(1.0 + k);
+					}
+
+					int palette = int(floatConstant0 + 0.5);
+					vec3 color;
+					if (palette == 1)
+					{
+						color = vec3(1.0 - t);
+					}
+					else if (palette == 2)
+					{
+						color = turbo(t);
+					}
+					else if (palette == 3)
+					{
+						// Repeating ramp, so depth structure stays readable even when the
+						// windowed range is still much wider than the subject
+						const float bands = 16.0;
+						color = vec3(fract(t * bands));
+					}
+					else
+					{
+						color = vec3(t);
+					}
+
+					FragColor = vec4(color, 1.0);
+				}
+				)"""");
+		x_shaderCode->addVertexAttribute("aPos", eVertexDataType::datatype_vec2, eVertexSemantic::position);
+		x_shaderCode->addVertexAttribute("aTexCoords", eVertexDataType::datatype_vec2, eVertexSemantic::texCoord);
+		x_shaderCode->addUniform("rgbTexture", eUniformSemantic::rgbTexture);
+		x_shaderCode->addUniform("zNear", eUniformSemantic::zNear);
+		x_shaderCode->addUniform("zFar", eUniformSemantic::zFar);
+		x_shaderCode->addUniform("floatConstant0", eUniformSemantic::floatConstant0);
+		x_shaderCode->addUniform("floatConstant1", eUniformSemantic::floatConstant1);
+		x_shaderCode->addUniform("floatConstant2", eUniformSemantic::floatConstant2);
+	}
+
+	return x_shaderCode;
+}
+
 IMkShaderCodeConstPtr getPTLinearToHardwareDepthShaderCode()
 {
 	static IMkShaderCodePtr x_shaderCode= nullptr;
@@ -1546,6 +1660,7 @@ bool registerInternalShaders(IMkShaderCache* shaderCache)
 		getPNTTexturedColoredShaderCode(),
 		getPLinearDepthShaderCode(),
 		getPTVisualizeGLDepthShaderCode(),
+		getPTDepthColorizeShaderCode(),
 		getPTLinearToHardwareDepthShaderCode(),
 		getPM5544TestCardShaderCode(),
 		getPConeVolumeShaderCode(),

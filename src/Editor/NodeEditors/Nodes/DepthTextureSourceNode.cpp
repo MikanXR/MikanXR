@@ -45,6 +45,7 @@ configuru::Config DepthTextureSourceNodeConfig::writeToJSON()
 	pt["texture_source_depth_type"]= k_textureSourceDepthTypeStrings[(int)textureSourceColorType];
 	pt["texture_source_id"]= textureVideoSourceId;
 	pt["vertical_flip"]= bVerticalFlip;
+	depthPreviewSettings.writeToJSON(pt);
 
 	return pt;
 }
@@ -60,6 +61,7 @@ void DepthTextureSourceNodeConfig::readFromJSON(const configuru::Config& pt)
 	bVerticalFlip= pt.get_or<bool>("vertical_flip", false);
 
 	textureVideoSourceId= pt.get_or<int>("texture_source_id", INVALID_MIKAN_ID);
+	depthPreviewSettings.readFromJSON(pt);
 }
 
 // -- ClientTextureNode -----
@@ -71,6 +73,7 @@ bool DepthTextureSourceNode::loadFromConfig(NodeConfigConstPtr nodeConfig)
 
 		m_clientTextureType= clientTextureNodeConfig->textureSourceColorType;
 		m_bVerticalFlip= clientTextureNodeConfig->bVerticalFlip;
+		m_depthPreviewSettings= clientTextureNodeConfig->depthPreviewSettings;
 
 		// Get the client video source component corresponding to the saved video source id
 		ProjectManagerPtr projectManager= getOwnerProject();
@@ -93,6 +96,7 @@ void DepthTextureSourceNode::saveToConfig(NodeConfigPtr nodeConfig) const
 
 	textureSourceNodeConfig->textureSourceColorType= m_clientTextureType;
 	textureSourceNodeConfig->bVerticalFlip= m_bVerticalFlip;
+	textureSourceNodeConfig->depthPreviewSettings= m_depthPreviewSettings;
 	textureSourceNodeConfig->textureVideoSourceId=
 		textureSourceComponent ? textureSourceComponent->getTextureSourceId() : INVALID_MIKAN_ID;
 
@@ -120,6 +124,14 @@ bool DepthTextureSourceNode::evaluateNode(NodeEvaluator& evaluator)
 	if (clientDepthTexture)
 	{
 		updateLinearDepthFrameBuffer(evaluator, clientDepthTexture);
+
+		// Colorize for the node body only. Skipped entirely while the preview settings
+		// are the grayscale defaults.
+		if (m_linearDepthFrameBuffer)
+		{
+			m_depthPreviewRenderer.render(evaluator, m_linearDepthFrameBuffer->getColorTexture(),
+										  m_depthPreviewSettings);
+		}
 	}
 
 	// Return the linear depth texture from the frame buffer
@@ -252,11 +264,14 @@ void DepthTextureSourceNode::editorRenderNode(const NodeEditorState& editorState
 	// Title
 	editorRenderTitle(scopedNode);
 
-	// Texture Preview (color texture of the frame buffer)
+	// Texture Preview, colorized when the preview settings ask for it
 	ImGui::Dummy(ImVec2(1.0f, 0.5f));
-	IMkTexturePtr colorTexture=
-		m_linearDepthFrameBuffer ? m_linearDepthFrameBuffer->getColorTexture() : IMkTexturePtr();
-	MkGui::drawImage(colorTexture, 100.f, 100.f);
+	IMkTexturePtr previewTexture= m_depthPreviewRenderer.getPreviewTexture();
+	if (previewTexture == nullptr)
+	{
+		previewTexture= m_linearDepthFrameBuffer ? m_linearDepthFrameBuffer->getColorTexture() : IMkTexturePtr();
+	}
+	MkGui::drawImage(previewTexture, 100.f, 100.f);
 	ImGui::SameLine();
 
 	// Outputs
@@ -298,6 +313,8 @@ void DepthTextureSourceNode::editorRenderPropertySheet(const NodeEditorState& ed
 		// Vertical Flip
 		MkGui::drawCheckBoxProperty(propertyStyle, "drawDepthTextureVerticalFlip", locText("nodes.verticalFlip"),
 									m_bVerticalFlip);
+
+		drawDepthPreviewProperties(propertyStyle, m_depthPreviewSettings);
 	}
 }
 

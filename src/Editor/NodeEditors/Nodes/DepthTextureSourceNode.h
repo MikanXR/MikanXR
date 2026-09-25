@@ -2,6 +2,7 @@
 
 #include "CompositorConstants.h"
 #include "ComponentFwd.h"
+#include "DepthPreviewRenderer.h"
 #include "Node.h"
 #include "ObjectSystemFwd.h"
 #include "MikanRendererFwd.h"
@@ -18,6 +19,7 @@ public:
 	eTextureSourceDepthType textureSourceColorType;
 	MikanVideoSourceID textureVideoSourceId;
 	bool bVerticalFlip;
+	DepthPreviewSettings depthPreviewSettings;
 };
 
 class DepthTextureSourceNode : public Node
@@ -52,6 +54,10 @@ protected:
 	eTextureSourceDepthType m_clientTextureType= eTextureSourceDepthType::depthPackRGBA;
 	TextureSourceComponentWeakPtr m_textureSourceComponent;
 	bool m_bVerticalFlip= false;
+
+	// Editor preview only. The output pin always carries the untouched linear depth.
+	DepthPreviewSettings m_depthPreviewSettings;
+	DepthPreviewRenderer m_depthPreviewRenderer;
 };
 
 class DepthTextureSourceNodeFactory : public TypedNodeFactory<DepthTextureSourceNode, DepthTextureSourceNodeConfig>
