@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1038,
+		"stringCount": 1043,
 		"translatedCount": 899,
 		"reviewedCount": 0
 	},
@@ -471,6 +471,7 @@
 		"disconnect": "Disconnect",
 		"editMenu": "編集",
 		"evalErrorWindowTitle": "評価エラー",
+		"evalWarningWindowTitle": "Eval Warning",
 		"materialGraphFilesFilterDescription": "マテリアルグラフファイル (*.matgraph)",
 		"noCompositor": "コンポジターなし",
 		"pages": "ページ",
@@ -603,6 +604,10 @@
 		"rerouteName": "名前",
 		"rerouteUsageHeader": "リルート参照",
 		"rerouteUsageTitle": "リルート参照",
+		"resolveAlphaInverted": "Inverted (1 - Coverage)",
+		"resolveAlphaMode": "Downsample Alpha",
+		"resolveAlphaNone": "No Coverage",
+		"resolveAlphaStraight": "Coverage",
 		"screenPositionTitle": "画面位置",
 		"screenSizeTitle": "画面サイズ",
 		"shaderConstantHeader": "定数ノード",

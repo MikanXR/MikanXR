@@ -2161,6 +2161,11 @@ msgid "Eval Error"
 msgstr ""
 
 #. Section: nodeEditor
+msgctxt "nodeEditor.evalWarningWindowTitle"
+msgid "Eval Warning"
+msgstr ""
+
+#. Section: nodeEditor
 msgctxt "nodeEditor.materialGraphFilesFilterDescription"
 msgid "Material Graph Files (*.matgraph)"
 msgstr ""
@@ -2808,6 +2813,26 @@ msgstr ""
 #. Section: nodes
 msgctxt "nodes.rerouteUsageTitle"
 msgid "Reroute Usage"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.resolveAlphaInverted"
+msgid "Inverted (1 - Coverage)"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.resolveAlphaMode"
+msgid "Downsample Alpha"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.resolveAlphaNone"
+msgid "No Coverage"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.resolveAlphaStraight"
+msgid "Coverage"
 msgstr ""
 
 #. Section: nodes

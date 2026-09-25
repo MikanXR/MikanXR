@@ -2470,6 +2470,11 @@ msgid "Eval Error"
 msgstr "評価エラー"
 
 #. Section: nodeEditor
+msgctxt "nodeEditor.evalWarningWindowTitle"
+msgid "Eval Warning"
+msgstr ""
+
+#. Section: nodeEditor
 #, fuzzy
 msgctxt "nodeEditor.materialGraphFilesFilterDescription"
 msgid "Material Graph Files (*.matgraph)"
@@ -3248,6 +3253,26 @@ msgstr "リルート参照"
 msgctxt "nodes.rerouteUsageTitle"
 msgid "Reroute Usage"
 msgstr "リルート参照"
+
+#. Section: nodes
+msgctxt "nodes.resolveAlphaInverted"
+msgid "Inverted (1 - Coverage)"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.resolveAlphaMode"
+msgid "Downsample Alpha"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.resolveAlphaNone"
+msgid "No Coverage"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.resolveAlphaStraight"
+msgid "Coverage"
+msgstr ""
 
 #. Section: nodes
 #, fuzzy

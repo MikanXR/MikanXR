@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1038,
-		"translatedCount": 1038,
-		"reviewedCount": 1038
+		"stringCount": 1043,
+		"translatedCount": 1043,
+		"reviewedCount": 1043
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -471,6 +471,7 @@
 		"disconnect": "Disconnect",
 		"editMenu": "Edit",
 		"evalErrorWindowTitle": "Eval Error",
+		"evalWarningWindowTitle": "Eval Warning",
 		"materialGraphFilesFilterDescription": "Material Graph Files (*.matgraph)",
 		"noCompositor": "No Compositor",
 		"pages": "Pages",
@@ -603,6 +604,10 @@
 		"rerouteName": "Name",
 		"rerouteUsageHeader": "Reroute Usage",
 		"rerouteUsageTitle": "Reroute Usage",
+		"resolveAlphaInverted": "Inverted (1 - Coverage)",
+		"resolveAlphaMode": "Downsample Alpha",
+		"resolveAlphaNone": "No Coverage",
+		"resolveAlphaStraight": "Coverage",
 		"screenPositionTitle": "Screen Position",
 		"screenSizeTitle": "Screen Size",
 		"shaderConstantHeader": "Constant Node",

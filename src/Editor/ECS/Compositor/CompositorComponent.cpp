@@ -488,13 +488,11 @@ void CompositorComponent::evaluateCompositorNodeGraph(CompositorNodeGraphPtr nod
 				m_renderTargetWriteAccessor->writeColorFrameTexture(platformTexturePtr);
 			}
 		}
+	}
 
-		m_lastNodeEvalErrors.clear();
-	}
-	else
-	{
-		m_lastNodeEvalErrors= evaluator.getErrors();
-	}
+	// Taken whether or not the frame composited, because a successful frame can still carry
+	// warnings and the editor has to see them. An entirely clean frame leaves this empty.
+	m_lastNodeEvalErrors= evaluator.getErrors();
 }
 
 void CompositorComponent::renderToViewportQuad() const

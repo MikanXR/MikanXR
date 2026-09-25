@@ -176,16 +176,27 @@ bool DepthMaskNode::evaluateNode(NodeEvaluator& evaluator)
 		bSuccess= cameraComponent && cameraComponent->getAperturePixelDimensions(frameWidth, frameHeight);
 	}
 
-	bool bAnyQuadStencils= !m_quadStencilIds.empty();
-	bool bAnyBoxStencils= !m_boxStencilIds.empty();
-	bool bAnyModelStencils= !m_modelStencilIds.empty();
+	// The flags have to be read after the rebuild, or the frame a stencil first arrives
+	// is decided against the previous frame's lists
+	bool bAnyQuadStencils= false;
+	bool bAnyBoxStencils= false;
+	bool bAnyModelStencils= false;
 	if (bSuccess)
 	{
 		rebuildDepthMaskLists();
+
+		bAnyQuadStencils= !m_quadStencilIds.empty();
+		bAnyBoxStencils= !m_boxStencilIds.empty();
+		bAnyModelStencils= !m_modelStencilIds.empty();
+
 		if (!bAnyQuadStencils && !bAnyBoxStencils && !bAnyModelStencils)
 		{
-			evaluator.addError(NodeEvaluationError(eNodeEvaluationErrorCode::missingInput, "No stencils", this));
-			bSuccess= false;
+			// Nothing to occlude anything, which is a legitimate authoring state with a
+			// well defined answer: a mask entirely at the far plane, which is what the
+			// frame buffer's clear already produces. Warn rather than error, since an
+			// error here would stop the whole composite chain at this node.
+			evaluator.addWarning(NodeEvaluationError(eNodeEvaluationErrorCode::missingInput, "No stencils", this,
+													 nullptr, eNodeEvaluationSeverity::warning));
 		}
 	}
 
@@ -214,8 +225,9 @@ bool DepthMaskNode::evaluateNode(NodeEvaluator& evaluator)
 		}
 	}
 
-	// Render the stencils (if any)
-	if (bSuccess && (bAnyQuadStencils || bAnyBoxStencils || bAnyModelStencils))
+	// Bind unconditionally, because binding is what clears the mask to the far plane.
+	// With no stencils that clear is the whole result.
+	if (bSuccess)
 	{
 		// Bind the depth frame buffer
 		IMkGraphicsContext* graphicsContext= evaluator.getCurrentGraphicsContext();

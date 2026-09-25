@@ -187,14 +187,11 @@ void ShapeComponent::renderShapeGraph(const glm::mat4& vpMatrix, IMkGraphicsCont
 	NodeEvaluator evaluator;
 	evaluator.setCurrentGraphicsContext(graphicsContext);
 
-	if (nodeGraph->renderShape(vpMatrix, evaluator))
-	{
-		m_lastNodeEvalErrors.clear();
-	}
-	else
-	{
-		m_lastNodeEvalErrors= evaluator.getErrors();
-	}
+	nodeGraph->renderShape(vpMatrix, evaluator);
+
+	// Taken whether or not the shape rendered, because a successful render can still carry
+	// warnings and the editor has to see them. An entirely clean render leaves this empty.
+	m_lastNodeEvalErrors= evaluator.getErrors();
 }
 
 std::filesystem::path ShapeComponent::getShapeGraphAssetResolvedPath() const

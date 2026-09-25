@@ -48,6 +48,8 @@ Node positions and comment box sizes are stored in 96 DPI logical units, so a gr
 
 `NodeEvaluator` (`Graphs/NodeEvaluator.h`) carries the graphics context and delta time. `evaluateFlowPinChain(startNode)` evaluates the start node, then follows the first link off each node's output `FlowPin` to the next node, stopping on a node with no output flow pin, on an error, or after 1000 nodes (`kInifiniteLoopThreshold`, reported as an infinite-loop error). Non-flow input pins are pulled on demand by the node being evaluated (`evaluateInputs`). Failures accumulate as `NodeEvaluationError` values on the evaluator; the owning component stores them (`getLastNodeEvalErrors()`) and the node editor windows display them.
 
+A diagnostic carries an `eNodeEvaluationSeverity`. `addError` stops the chain where it was raised, which means everything downstream of the failing node goes unevaluated for that frame. `addWarning` reports something an author should see about a node that still produced a usable result, and evaluation carries on past it. Both travel in the one list in emission order, so the editor groups them per node and colors each by its own severity. Reach for a warning when a node has a defined answer for the state it is complaining about, and an error only when it does not.
+
 ---
 
 ## Graph persistence
