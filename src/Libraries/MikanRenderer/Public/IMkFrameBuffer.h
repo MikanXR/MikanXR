@@ -26,6 +26,9 @@ public:
 		RGBA,
 		RGB16,
 		RGBA16,
+		// Half-float, the only format here that holds values outside [0,1]. A client
+		// publishing an HDR color buffer needs this to survive an intermediate pass.
+		RGBA16F,
 	};
 
 	virtual ~IMkFrameBuffer() {}

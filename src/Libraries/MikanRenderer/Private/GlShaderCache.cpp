@@ -308,6 +308,174 @@ IMkShaderCodeConstPtr getPTTexturedFullScreenRGBAQuad()
 	return x_shaderCode;
 }
 
+IMkShaderCodeConstPtr getPTResolveDownsampleRGBQuad()
+{
+	static IMkShaderCodePtr x_shaderCode= nullptr;
+
+	if (x_shaderCode == nullptr)
+	{
+		x_shaderCode= createIMkShaderCode(INTERNAL_MATERIAL_PT_RESOLVE_DOWNSAMPLE_RGB,
+										  // vertex shader
+										  R""""(
+				#version 330 core
+				layout (location = 0) in vec2 aPos;
+				layout (location = 1) in vec2 aTexCoords;
+
+				out vec2 TexCoords;
+
+				void main()
+				{
+					TexCoords = aTexCoords;
+					gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);
+				}
+				)"""",
+										  // fragment shader
+										  R""""(
+				#version 330 core
+				out vec4 FragColor;
+
+				in vec2 TexCoords;
+
+				uniform sampler2D rgbTexture;
+				// Source size in texels
+				uniform vec2 screenSize;
+				// Source texels covered by one destination pixel, per axis
+				uniform float floatConstant0;
+				uniform float floatConstant1;
+
+				void main()
+				{
+					// One tap per source texel the destination pixel covers, capped to match the
+					// camera's maximum client render scale. Taps sit at the centers of equal
+					// sub-intervals of the footprint, so the estimate is exact at integer ratios.
+					int tapsX = clamp(int(ceil(floatConstant0)), 1, 4);
+					int tapsY = clamp(int(ceil(floatConstant1)), 1, 4);
+					vec2 footprint = vec2(floatConstant0, floatConstant1) / screenSize;
+					vec2 origin = TexCoords - 0.5 * footprint;
+					vec2 tapStep = footprint / vec2(float(tapsX), float(tapsY));
+
+					vec3 sumRGB = vec3(0.0);
+					for (int y = 0; y < tapsY; ++y)
+					{
+						for (int x = 0; x < tapsX; ++x)
+						{
+							vec2 uv = origin + (vec2(float(x), float(y)) + 0.5) * tapStep;
+							sumRGB += texture(rgbTexture, uv).rgb;
+						}
+					}
+
+					FragColor = vec4(sumRGB / float(tapsX * tapsY), 1.0);
+				}
+				)"""");
+		x_shaderCode->addVertexAttribute("aPos", eVertexDataType::datatype_vec2, eVertexSemantic::position);
+		x_shaderCode->addVertexAttribute("aTexCoords", eVertexDataType::datatype_vec2, eVertexSemantic::texCoord);
+		x_shaderCode->addUniform("rgbTexture", eUniformSemantic::rgbTexture);
+		x_shaderCode->addUniform("screenSize", eUniformSemantic::screenSize);
+		x_shaderCode->addUniform("floatConstant0", eUniformSemantic::floatConstant0);
+		x_shaderCode->addUniform("floatConstant1", eUniformSemantic::floatConstant1);
+	}
+
+	return x_shaderCode;
+}
+
+IMkShaderCodeConstPtr getPTResolveDownsampleRGBAQuad()
+{
+	static IMkShaderCodePtr x_shaderCode= nullptr;
+
+	if (x_shaderCode == nullptr)
+	{
+		x_shaderCode= createIMkShaderCode(INTERNAL_MATERIAL_PT_RESOLVE_DOWNSAMPLE_RGBA,
+										  // vertex shader
+										  R""""(
+				#version 330 core
+				layout (location = 0) in vec2 aPos;
+				layout (location = 1) in vec2 aTexCoords;
+
+				out vec2 TexCoords;
+
+				void main()
+				{
+					TexCoords = aTexCoords;
+					gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);
+				}
+				)"""",
+										  // fragment shader
+										  R""""(
+				#version 330 core
+				out vec4 FragColor;
+
+				in vec2 TexCoords;
+
+				uniform sampler2D rgbaTexture;
+				// Source size in texels
+				uniform vec2 screenSize;
+				// Source texels covered by one destination pixel, per axis
+				uniform float floatConstant0;
+				uniform float floatConstant1;
+				// What the alpha channel means: 0 nothing, 1 coverage, 2 one minus coverage
+				uniform float floatConstant2;
+
+				void main()
+				{
+					// One tap per source texel the destination pixel covers, capped to match the
+					// camera's maximum client render scale. Taps sit at the centers of equal
+					// sub-intervals of the footprint, so the estimate is exact at integer ratios.
+					int tapsX = clamp(int(ceil(floatConstant0)), 1, 4);
+					int tapsY = clamp(int(ceil(floatConstant1)), 1, 4);
+					vec2 footprint = vec2(floatConstant0, floatConstant1) / screenSize;
+					vec2 origin = TexCoords - 0.5 * footprint;
+					vec2 tapStep = footprint / vec2(float(tapsX), float(tapsY));
+					float tapCount = float(tapsX * tapsY);
+
+					int alphaMode = int(floatConstant2 + 0.5);
+
+					vec4 sumPlain = vec4(0.0);
+					vec3 sumWeightedRGB = vec3(0.0);
+					float sumCoverage = 0.0;
+					for (int y = 0; y < tapsY; ++y)
+					{
+						for (int x = 0; x < tapsX; ++x)
+						{
+							vec2 uv = origin + (vec2(float(x), float(y)) + 0.5) * tapStep;
+							vec4 texel = texture(rgbaTexture, uv);
+
+							float coverage = alphaMode == 2 ? (1.0 - texel.a) : texel.a;
+							sumPlain += texel;
+							sumWeightedRGB += texel.rgb * coverage;
+							sumCoverage += coverage;
+						}
+					}
+
+					if (alphaMode == 0)
+					{
+						// The alpha channel carries no coverage, so every channel gets a plain box
+						FragColor = sumPlain / tapCount;
+					}
+					else
+					{
+						// Averaging color and alpha separately blends the empty region's color into
+						// a silhouette edge, which then composites darker than it should. Weighting
+						// color by coverage is the premultiplied average, decoded back into the
+						// convention the layer material reads.
+						vec3 color = sumCoverage > 0.0 ? sumWeightedRGB / sumCoverage : vec3(0.0);
+						float coverage = sumCoverage / tapCount;
+
+						FragColor = vec4(color, alphaMode == 2 ? (1.0 - coverage) : coverage);
+					}
+				}
+				)"""");
+		x_shaderCode->addVertexAttribute("aPos", eVertexDataType::datatype_vec2, eVertexSemantic::position);
+		x_shaderCode->addVertexAttribute("aTexCoords", eVertexDataType::datatype_vec2, eVertexSemantic::texCoord);
+		x_shaderCode->addUniform("rgbaTexture", eUniformSemantic::rgbaTexture);
+		x_shaderCode->addUniform("screenSize", eUniformSemantic::screenSize);
+		x_shaderCode->addUniform("floatConstant0", eUniformSemantic::floatConstant0);
+		x_shaderCode->addUniform("floatConstant1", eUniformSemantic::floatConstant1);
+		x_shaderCode->addUniform("floatConstant2", eUniformSemantic::floatConstant2);
+	}
+
+	return x_shaderCode;
+}
+
 IMkShaderCodeConstPtr getTextShaderCode()
 {
 	static IMkShaderCodePtr x_shaderCode= nullptr;
@@ -1366,6 +1534,8 @@ bool registerInternalShaders(IMkShaderCache* shaderCache)
 		getPTUndistortTexturedFullScreenRGBQuad(),
 		getPTConvertNV12ToRGBAQuad(),
 		getPTTexturedFullScreenRGBAQuad(),
+		getPTResolveDownsampleRGBQuad(),
+		getPTResolveDownsampleRGBAQuad(),
 		getTextShaderCode(),
 		getUnpackRGBALinearDepthTextureShaderCode(),
 		getPWireframeShaderCode(),

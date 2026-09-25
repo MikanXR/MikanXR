@@ -11,6 +11,11 @@
 #define INTERNAL_MATERIAL_PT_UNDISTORT_FULLSCREEN_RGB_TEXTURE "Internal_PT_UndistortFullscreenRGBTexture"
 #define INTERNAL_MATERIAL_PT_CONVERT_NV12_TO_RGBA "Internal_PT_ConvertNV12ToRGBA"
 #define INTERNAL_MATERIAL_PT_FULLSCREEN_RGBA_TEXTURE "Internal_PT_FullscreenRGBATexture"
+// Box-filter downsample of a texture rendered above the destination resolution. The RGBA
+// variant can weight color by coverage so a silhouette edge does not drag the empty
+// region's color in with it.
+#define INTERNAL_MATERIAL_PT_RESOLVE_DOWNSAMPLE_RGB "Internal_PT_ResolveDownsampleRGB"
+#define INTERNAL_MATERIAL_PT_RESOLVE_DOWNSAMPLE_RGBA "Internal_PT_ResolveDownsampleRGBA"
 #define INTERNAL_MATERIAL_TEXT "Internal_Text"
 #define INTERNAL_MATERIAL_UNPACK_RGBA_DEPTH_TEXTURE "Internal_UnpackRGBADepthTexture"
 #define INTERNAL_MATERIAL_P_WIREFRAME "Internal_P_Wireframe"
