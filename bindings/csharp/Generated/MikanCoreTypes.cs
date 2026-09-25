@@ -16,6 +16,8 @@ namespace MikanXR
 		public MikanShadowBufferType shadow_buffer_type;
 		public uint width;
 		public uint height;
+		public uint aux_width;
+		public uint aux_height;
 		public MikanClientGraphicsApi graphicsAPI;
 	};
 

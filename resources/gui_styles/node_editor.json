@@ -114,6 +114,12 @@
         ]
     },
 
+    "node_editor_warning_text": {
+        "colors": [
+            { "name": "Text", "value": [0.90, 0.65, 0.10, 1.0] }
+        ]
+    },
+
     "node_editor_undo_button": {
         "colors": [
             { "name": "Text", "value": [0.9, 0.9, 0.9, 1.0] }

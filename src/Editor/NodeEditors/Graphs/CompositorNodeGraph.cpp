@@ -17,6 +17,7 @@
 #include "IMkState.h"
 #include "IEditorWindow.h"
 #include "Logger.h"
+#include "PathUtils.h"
 #include "ModelStencilComponent.h"
 #include "QuadStencilSystem.h"
 #include "BoxStencilSystem.h"
@@ -373,16 +374,17 @@ MikanRenderModelResourcePtr CompositorNodeGraph::getOrLoadStencilRenderModel(
 		// Load the stencil model and render it using the flat textured material
 		auto stencilMaterial=
 			ownerWindow->getGraphicsContext()->getShaderCache()->getMaterialByName(INTERNAL_MATERIAL_PNT_TEXTURED);
-		auto renderModelPtr= ownerWindow->getModelResourceManager()->fetchRenderModel(stencilDefinition->getModelPath(),
-																					  stencilMaterial);
+		// Model paths are project relative, the same resolve the stencil's own viewport mesh takes
+		auto renderModelPtr= ownerWindow->getModelResourceManager()->fetchRenderModel(
+			PathUtils::resolveProjectResource(stencilDefinition->getModelPath()), stencilMaterial);
 
 		if (renderModelPtr)
 		{
 			m_stencilMeshCache.insert({stencilId, renderModelPtr});
 		}
-	}
 
-	return MikanRenderModelResourcePtr();
+		return renderModelPtr;
+	}
 }
 
 MikanRenderModelResourcePtr CompositorNodeGraph::getOrLoadDepthRenderModel(ModelStencilDefinitionPtr stencilDefinition)
@@ -401,16 +403,16 @@ MikanRenderModelResourcePtr CompositorNodeGraph::getOrLoadDepthRenderModel(Model
 		// Load the depth model and render it using the simple depth material
 		auto depthMaterial=
 			ownerWindow->getGraphicsContext()->getShaderCache()->getMaterialByName(INTERNAL_MATERIAL_P_LINEAR_DEPTH);
-		auto renderModelPtr=
-			ownerWindow->getModelResourceManager()->fetchRenderModel(stencilDefinition->getModelPath(), depthMaterial);
+		auto renderModelPtr= ownerWindow->getModelResourceManager()->fetchRenderModel(
+			PathUtils::resolveProjectResource(stencilDefinition->getModelPath()), depthMaterial);
 
 		if (renderModelPtr)
 		{
 			m_depthMeshCache.insert({stencilId, renderModelPtr});
 		}
-	}
 
-	return MikanRenderModelResourcePtr();
+		return renderModelPtr;
+	}
 }
 
 void CompositorNodeGraph::flushStencilRenderModel(MikanStencilID stencilId)

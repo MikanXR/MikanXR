@@ -8,6 +8,8 @@
 #include "MikanRendererFwd.h"
 #include "NamedValueTable.h"
 
+#include <chrono>
+#include <functional>
 #include <string>
 
 class ClientSourceManager
@@ -21,10 +23,23 @@ public:
 		class SharedTextureReadAccessor* readAccessor= nullptr;
 		ClientTextureFrameQueue* textureQueue= nullptr;
 		int64_t frameIndex= 0;
+
+		// Publish statistics, so the rate a client actually delivers frames at can be
+		// read rather than guessed from the composite
+		uint64_t publishCount= 0;
+		float publishRateHz= 0.f; // publishes per second over the last completed window
+		std::chrono::steady_clock::time_point rateWindowStart;
+		int rateWindowCount= 0;
 	};
 
 	explicit ClientSourceManager(int textureQueueSize= 3);
 	virtual ~ClientSourceManager()= default;
+
+	// Answers the frame queue depth the camera's video source runs the compositor
+	// at, or 0 when unknown. A client's texture ring must hold at least that many
+	// frames or the compositor can never find the frame it is about to composite.
+	using TextureQueueSizeResolver= std::function<int(MikanCameraID cameraId)>;
+	void setTextureQueueSizeResolver(TextureQueueSizeResolver resolver) { m_queueSizeResolver= resolver; }
 
 	bool startup();
 	void shutdown();
@@ -59,6 +74,7 @@ protected:
 
 private:
 	int m_textureQueueSize= 3;
+	TextureQueueSizeResolver m_queueSizeResolver;
 
 	// Data sources used by the compositor layers
 	NamedValueTable<ClientSource*> m_clientSources;

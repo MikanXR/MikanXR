@@ -23,6 +23,8 @@ GLenum getGlColorTextureFormat(IMkFrameBuffer::eColorFormat colorFormat)
 		return GL_RGB16;
 	case IMkFrameBuffer::eColorFormat::RGBA16:
 		return GL_RGBA16;
+	case IMkFrameBuffer::eColorFormat::RGBA16F:
+		return GL_RGBA16F;
 	default:
 		return GL_RGB;
 	}
@@ -38,6 +40,7 @@ GLenum getGlColorBufferFormat(IMkFrameBuffer::eColorFormat colorFormat)
 		return GL_RGB;
 	case IMkFrameBuffer::eColorFormat::RGBA:
 	case IMkFrameBuffer::eColorFormat::RGBA16:
+	case IMkFrameBuffer::eColorFormat::RGBA16F:
 		return GL_RGBA;
 	default:
 		return GL_RGB;

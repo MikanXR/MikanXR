@@ -746,8 +746,21 @@ void NodeEditorWindow::renderNodeEvalErrors(const std::vector<ImVec2>& errorScre
 		while (errorIter < m_lastNodeEvalErrors.size())
 		{
 			const NodeEvaluationError* currentError= &m_lastNodeEvalErrors[errorIter];
+
+			// A node carrying both kinds is titled by the worse one, since an error is what
+			// stopped the chain and is the thing the author has to fix first
+			bool bNodeHasError= false;
+			for (size_t scanIter= errorIter; scanIter < m_lastNodeEvalErrors.size()
+											 && m_lastNodeEvalErrors[scanIter].errorNodeId == currentError->errorNodeId;
+				 ++scanIter)
+			{
+				bNodeHasError|= m_lastNodeEvalErrors[scanIter].severity == eNodeEvaluationSeverity::error;
+			}
+
+			const std::string evalWindowTitle= bNodeHasError ? locText("nodeEditor.evalErrorWindowTitle")
+															 : locText("nodeEditor.evalWarningWindowTitle");
 			const std::string evalWindowId=
-				StringUtils::stringify(locText("nodeEditor.evalErrorWindowTitle"), "##Node", currentError->errorNodeId);
+				StringUtils::stringify(evalWindowTitle, "##Node", currentError->errorNodeId);
 
 			static const float k_errorWindowOffset= 50.f;
 			ImVec2 errorPos= errorIter < errorScreenPositions.size() ? errorScreenPositions[errorIter] : ImVec2(0, 0);
@@ -759,10 +772,14 @@ void NodeEditorWindow::renderNodeEvalErrors(const std::vector<ImVec2>& errorScre
 											 | ImGuiWindowFlags_NoNav);
 			{
 				MkGuiScopedGroup errorGroup;
-				MkGuiScopedStyle errorTextStyle(m_styleManager->getStyle("node_editor_error_text"));
 				while (errorIter < m_lastNodeEvalErrors.size())
 				{
-					// Add a bullet point for each error on the same node
+					// Add a bullet point for each diagnostic on the same node, colored by
+					// its own severity rather than the window's
+					const char* severityStyle= currentError->severity == eNodeEvaluationSeverity::warning
+												   ? "node_editor_warning_text"
+												   : "node_editor_error_text";
+					MkGuiScopedStyle severityTextStyle(m_styleManager->getStyle(severityStyle));
 					ImGui::BulletText("%s", currentError->errorMessage.c_str());
 
 					// Advance to the next error message on this node

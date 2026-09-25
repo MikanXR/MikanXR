@@ -36,9 +36,17 @@ public:
 	IMkTexturePtr getDepthTexture(int64_t frameIndex= -1) const;
 	IMkTexturePtr getShadowTexture(int64_t frameIndex= -1) const;
 
+	// Lookups for a specific frame that had to settle for the newest slot. Counted
+	// on the color lookup only, since the depth and shadow lookups for the same
+	// frame miss identically.
+	inline uint64_t getFrameIndexMissCount() const { return m_frameIndexMissCount; }
+
 private:
+	void noteFrameIndexMiss(int64_t requestedFrameIndex) const;
+
 	ClientTextureFrameEntry* m_entries= nullptr;
 	int m_queueSize= 0;
 	int m_lastWriteIndex= -1;
 	int m_pendingWriteIndex= 0;
+	mutable uint64_t m_frameIndexMissCount= 0;
 };

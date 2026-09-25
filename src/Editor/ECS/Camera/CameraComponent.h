@@ -51,6 +51,55 @@ public:
 	inline int getTrackingFrameDelay() const { return m_trackingFrameDelay; }
 	void setTrackingFrameDelay(int trackingFrameDelay);
 
+	/// How a client paces its renders for this camera. Auto follows
+	/// getIsPoseDrivenPerFrame(): a per-frame pose wants a render per video
+	/// frame, a static pose lets the client run on its own clock.
+	static const std::string k_frameSyncModePropertyId;
+	inline MikanCameraFrameSyncMode getFrameSyncMode() const { return m_frameSyncMode; }
+	void setFrameSyncMode(MikanCameraFrameSyncMode syncMode);
+
+	/// Multiplier on the video source resolution for the color buffer a client
+	/// renders for this camera. The composite stays at video resolution, so a
+	/// scale above 1 is a supersample: the client rasterizes the silhouette
+	/// finer than the composite consumes it and the extra coverage survives the
+	/// downsample. Scaling the published pixel size with the focal length and
+	/// principal point leaves the client's projection matrix unchanged, so this
+	/// cannot move where anything lands in frame.
+	static const std::string k_clientColorRenderScalePropertyId;
+	inline float getClientColorRenderScale() const { return m_clientColorRenderScale; }
+	void setClientColorRenderScale(float scale);
+
+	/// The same multiplier for the depth and shadow buffers. They are a render
+	/// pass each on the client and rarely need the color buffer's resolution.
+	static const std::string k_clientAuxRenderScalePropertyId;
+	inline float getClientAuxRenderScale() const { return m_clientAuxRenderScale; }
+	void setClientAuxRenderScale(float scale);
+
+	/// Ceiling on the longer edge of every buffer a client renders for this camera,
+	/// applied after the scales and preserving aspect ratio. The scales alone cannot
+	/// bound the result, since they multiply a video resolution the camera does not
+	/// choose, so this is what keeps a setting from outrunning a client's texture
+	/// allocator. One of k_clientMaxBufferDimensions.
+	static const std::string k_clientMaxBufferDimensionPropertyId;
+	inline MikanClientMaxBufferDimension getClientMaxBufferDimension() const { return m_clientMaxBufferDimension; }
+	void setClientMaxBufferDimension(MikanClientMaxBufferDimension maxDimension);
+	/// The ceiling in pixels, which is what the size arithmetic wants
+	int getClientMaxBufferDimensionPixels() const;
+
+	/// Range a client render scale is held to, and the step its slider moves in
+	static const float k_minClientRenderScale;
+	static const float k_maxClientRenderScale;
+	static const float k_clientRenderScaleStep;
+
+	/// The size a client renders at for a video source of this size: the scale applied,
+	/// then the ceiling applied to the longer edge with the aspect ratio kept. Returns
+	/// true when the ceiling is what decided the result.
+	///
+	/// The one place this arithmetic lives. The published size and the size the editor
+	/// panel reports both come through here, so the two cannot disagree.
+	static bool computeClientRenderSize(int videoWidth, int videoHeight, float scale, int maxBufferDimension,
+										int& outWidth, int& outHeight);
+
 	static const std::string k_apertureOrientationOffsetPropertyId;
 	static const std::string k_aperturePositionOffsetPropertyId;
 	inline MikanQuatd getApertureOffsetOrientation() const { return m_apertureOrientationOffset; }
@@ -76,7 +125,10 @@ public:
 	/// being driven right now, and CameraComponent::update sets it from what it
 	/// actually finds. A tracking mount is known from the definition alone, but a
 	/// frame-coupled video source is not, so the component reports that in.
-	inline void setPoseDrivenPerFrame(bool bDriven) { m_bPoseDrivenPerFrame= bDriven; }
+	/// The effective value is a read-only property so a client can resolve the
+	/// auto frame sync mode the same way the editor does.
+	static const std::string k_poseDrivenPerFramePropertyId;
+	void setPoseDrivenPerFrame(bool bDriven);
 	inline bool getIsPoseDrivenPerFrame() const
 	{
 		return m_bPoseDrivenPerFrame || m_trackingMountId != INVALID_MIKAN_ID;
@@ -98,6 +150,14 @@ public:
 			return false;
 		}
 
+		// The pose-driven flag is runtime state that is never written to the
+		// project file, so its notification exists only to reach clients
+		if (changedPropertySet.getSet().size() == 1
+			&& changedPropertySet.hasPropertyName(k_poseDrivenPerFramePropertyId))
+		{
+			return false;
+		}
+
 		return TransformComponentDefinition::wantsSaveForPropertyChange(changedPropertySet);
 	}
 
@@ -107,6 +167,10 @@ private:
 	MikanTrackingMountID m_trackingMountId= INVALID_MIKAN_ID;
 	MikanVideoSourceID m_videoSourceId= INVALID_MIKAN_ID;
 	int m_trackingFrameDelay= 0;
+	MikanCameraFrameSyncMode m_frameSyncMode= MikanCameraFrameSyncMode_Auto;
+	float m_clientColorRenderScale= 1.f;
+	float m_clientAuxRenderScale= 1.f;
+	MikanClientMaxBufferDimension m_clientMaxBufferDimension= MikanClientMaxBufferDimension_4096;
 	float m_depthMeshScaleCorrection= 1.f;
 	MikanQuatd m_apertureOrientationOffset;
 	MikanVector3d m_aperturePositionOffset;
@@ -163,7 +227,16 @@ public:
 	bool getApertureViewMatrix(glm::mat4& outViewMatrix) const;
 	bool getApertureViewProjectionMatrix(glm::mat4& outVPMatrix, bool bVerticalFlip= false) const;
 
-	// Helper function to populate a new frame event with the current camera properties
+	// The frame sync mode with Auto resolved against the pose-driven state
+	MikanCameraFrameSyncMode getEffectiveFrameSyncMode() const;
+
+	// Helper functions to populate a camera event with the current camera properties.
+	// The frame event is the properties event plus the frame index.
+	// The event carries the size a client renders at, which is the video resolution
+	// times the camera's client render scales, never the video resolution itself.
+	// getAperturePixelDimensions stays the video resolution for everything else.
+	bool makeCameraPropertiesEvent(int defaultWidth, int defaultHeight,
+								   struct MikanCameraNewPropertiesEvent& outPropertiesEvent) const;
 	bool makeNewCameraFrameEvent(int64_t frameIndex, int defaultWidth, int defaultHeight,
 								 struct MikanCameraNewFrameEvent& newFrameEvent) const;
 
@@ -201,6 +274,10 @@ protected:
 	// expected) ARKit's reported intrinsics are essentially constant frame to frame.
 	void maybeUpdateFrameCoupledIntrinsics(VideoSourceComponentPtr videoSourceComponent,
 										   const struct MikanVideoSourceIntrinsics& newIntrinsics);
+
+	// Turns an event holding the video resolution and its matching intrinsics into one
+	// holding the sizes a client should actually render at
+	void applyClientRenderScales(struct MikanCameraNewPropertiesEvent& inOutPropertiesEvent) const;
 
 private:
 	SelectionComponentWeakPtr m_selectionComponent;

@@ -22,6 +22,7 @@
 #include "StringUtils.h"
 #include "TextureSourceQueries.h"
 #include "TextureSourceComponent.h"
+#include "VideoSourceComponent.h"
 
 #include "DataSources/TextureSourceListDataSource.h"
 
@@ -44,6 +45,7 @@ configuru::Config ColorTextureSourceNodeConfig::writeToJSON()
 
 	pt["texture_source_color_type"]= k_textureSourceColorTypeStrings[(int)textureSourceColorType];
 	pt["fallback_mode"]= k_colorTextureFallbackModeStrings[(int)fallbackMode];
+	pt["resolve_alpha_mode"]= k_colorTextureResolveAlphaModeStrings[(int)resolveAlphaMode];
 	pt["texture_source_id"]= textureSourceId;
 	pt["vertical_flip"]= bVerticalFlip;
 
@@ -69,6 +71,16 @@ void ColorTextureSourceNodeConfig::readFromJSON(const configuru::Config& pt)
 		fallbackMode= eColorTextureFallbackMode::autoByType;
 	}
 
+	const std::string resolveAlphaModeString= pt.get_or<std::string>(
+		"resolve_alpha_mode", k_colorTextureResolveAlphaModeStrings[(int)eColorTextureResolveAlphaMode::none]);
+	resolveAlphaMode= StringUtils::FindEnumValue<eColorTextureResolveAlphaMode>(resolveAlphaModeString,
+																				k_colorTextureResolveAlphaModeStrings);
+	// A graph saved before the option existed got a plain average, which is what none does
+	if (resolveAlphaMode == eColorTextureResolveAlphaMode::INVALID)
+	{
+		resolveAlphaMode= eColorTextureResolveAlphaMode::none;
+	}
+
 	bVerticalFlip= pt.get_or<bool>("vertical_flip", false);
 
 	textureSourceId= pt.get_or<int>("texture_source_id", INVALID_MIKAN_ID);
@@ -83,6 +95,7 @@ bool ColorTextureSourceNode::loadFromConfig(NodeConfigConstPtr nodeConfig)
 
 		m_clientTextureType= textureSourceNodeConfig->textureSourceColorType;
 		m_fallbackMode= textureSourceNodeConfig->fallbackMode;
+		m_resolveAlphaMode= textureSourceNodeConfig->resolveAlphaMode;
 		m_bVerticalFlip= textureSourceNodeConfig->bVerticalFlip;
 
 		// Get the client video source component corresponding to the saved video source id
@@ -106,6 +119,7 @@ void ColorTextureSourceNode::saveToConfig(NodeConfigPtr nodeConfig) const
 
 	textureSourceNodeConfig->textureSourceColorType= m_clientTextureType;
 	textureSourceNodeConfig->fallbackMode= m_fallbackMode;
+	textureSourceNodeConfig->resolveAlphaMode= m_resolveAlphaMode;
 	textureSourceNodeConfig->bVerticalFlip= m_bVerticalFlip;
 	textureSourceNodeConfig->textureSourceId=
 		textureSourceComponent ? textureSourceComponent->getTextureSourceId() : INVALID_MIKAN_ID;
@@ -120,7 +134,8 @@ TextureSourceComponentPtr ColorTextureSourceNode::getTextureSourceComponent() co
 
 IMkTexturePtr ColorTextureSourceNode::getTextureResource() const
 {
-	return m_bVerticalFlip && m_colorFrameBuffer ? m_colorFrameBuffer->getColorTexture() : getColorSourceTexture();
+	return m_colorFrameBuffer && m_colorFrameBuffer->isValid() ? m_colorFrameBuffer->getColorTexture()
+															   : getColorSourceTexture();
 }
 
 bool ColorTextureSourceNode::evaluateNode(NodeEvaluator& evaluator)
@@ -129,11 +144,9 @@ bool ColorTextureSourceNode::evaluateNode(NodeEvaluator& evaluator)
 	// it's safest to just refresh the output texture pin every frame
 	auto outputPin= getFirstPinOfType<TexturePin>(eNodePinDirection::OUTPUT);
 
-	// Render the color texture to the frame buffer if we want to flip the Y axis
-	if (m_bVerticalFlip)
-	{
-		updateColorFrameBuffer(evaluator, getColorSourceTexture());
-	}
+	// Flip the Y axis and/or resolve a client texture rendered above the video resolution.
+	// Both are the same fullscreen pass, so they cost one draw together.
+	updateColorFrameBuffer(evaluator, getColorSourceTexture());
 
 	// Render the output color texture to the output pin
 	outputPin->setValue(getTextureResource());
@@ -201,6 +214,14 @@ IMkTexturePtr ColorTextureSourceNode::getColorSourceTexture() const
 	return IMkTexturePtr();
 }
 
+bool ColorTextureSourceNode::getResolveTargetSize(int& outWidth, int& outHeight) const
+{
+	auto compositorGraph= std::static_pointer_cast<CompositorNodeGraph>(getOwnerGraph());
+	VideoSourceComponentPtr videoSource= compositorGraph->getBoundVideoSourceComponent();
+
+	return videoSource && videoSource->getVideoPixelDimensions(outWidth, outHeight);
+}
+
 void ColorTextureSourceNode::updateColorFrameBuffer(NodeEvaluator& evaluator, IMkTexturePtr clientTexture)
 {
 	IMkGraphicsContext* graphicsContext= evaluator.getCurrentGraphicsContext();
@@ -213,53 +234,96 @@ void ColorTextureSourceNode::updateColorFrameBuffer(NodeEvaluator& evaluator, IM
 		   || m_clientTextureType == eTextureSourceColorType::shadowRGBA
 		   || m_clientTextureType == eTextureSourceColorType::shadowRGB);
 
-	// Create the color frame buffer if it doesn't exist yet and we want to flip the Y axis
-	if (m_colorFrameBuffer == nullptr && m_bVerticalFlip)
+	// Decide what this frame's pass has to do, and at what size, before touching any resources.
+	// A texture already at or below the size the composite consumes it at needs no resolve:
+	// magnifying it is what the layer quad's bilinear filter is for.
+	int targetWidth= 0, targetHeight= 0;
+	bool bWantsResolve= false;
+	if (clientTexture && getResolveTargetSize(targetWidth, targetHeight) && targetWidth > 0 && targetHeight > 0)
+	{
+		bWantsResolve= (int)clientTexture->getTextureWidth() > targetWidth
+					   || (int)clientTexture->getTextureHeight() > targetHeight;
+	}
+
+	const bool bWantsPass= clientTexture != nullptr && (m_bVerticalFlip || bWantsResolve);
+	if (!bWantsPass)
+	{
+		// Nothing to do, so release the framebuffer and let the source texture pass straight through
+		if (m_colorFrameBuffer != nullptr)
+		{
+			m_colorFrameBuffer->disposeResources();
+			m_colorFrameBuffer= nullptr;
+			m_colorMaterialInstance= nullptr;
+		}
+		m_bIsResolving= false;
+		return;
+	}
+
+	// A client color buffer can be half-float, so an 8-bit target would clamp away the
+	// HDR range it was published with
+	const bool bIsFloatSource= clientTexture->getTextureFormat() == MK_RGBA16F;
+	const IMkFrameBuffer::eColorFormat colorFormat=
+		bIsFloatSource ? IMkFrameBuffer::eColorFormat::RGBA16F
+					   : (bIsRGBAVariant ? IMkFrameBuffer::eColorFormat::RGBA : IMkFrameBuffer::eColorFormat::RGB);
+
+	if (m_colorFrameBuffer == nullptr)
 	{
 		m_colorFrameBuffer= createMkFrameBuffer("ColorTextureSourceNode");
 		m_colorFrameBuffer->setFrameBufferType(IMkFrameBuffer::eFrameBufferType::COLOR);
-
-		m_colorFrameBuffer->setColorFormat(bIsRGBAVariant ? IMkFrameBuffer::eColorFormat::RGBA
-														  : IMkFrameBuffer::eColorFormat::RGB);
 	}
-	// Dispose the color frame buffer if it exists and we don't want to flip the Y axis
-	else if (m_colorFrameBuffer != nullptr && !m_bVerticalFlip)
+	// setColorFormat invalidates the frame buffer when the format actually changes
+	m_colorFrameBuffer->setColorFormat(colorFormat);
+
+	// Resolving renders at the size the composite consumes, flipping alone keeps the source size
+	if (bWantsResolve)
 	{
-		m_colorFrameBuffer->disposeResources();
-		m_colorFrameBuffer= nullptr;
+		m_colorFrameBuffer->setSize(targetWidth, targetHeight);
+	}
+	else
+	{
+		m_colorFrameBuffer->setSize(clientTexture->getTextureWidth(), clientTexture->getTextureHeight());
+	}
+
+	// The two jobs use different materials, so a switch between them needs a new instance
+	// even when the frame buffer itself is still valid
+	if (m_bIsResolving != bWantsResolve)
+	{
+		m_bIsResolving= bWantsResolve;
 		m_colorMaterialInstance= nullptr;
 	}
 
-	// Update the color frame buffer if it exists
-	if (m_colorFrameBuffer)
+	if (!m_colorFrameBuffer->isValid())
 	{
-		// Update render target size
-		m_colorFrameBuffer->setSize(clientTexture->getTextureWidth(), clientTexture->getTextureHeight());
+		m_colorFrameBuffer->createResources();
+		m_colorMaterialInstance= nullptr;
+	}
 
-		// Update render resources if the frame buffer is not valid
-		if (!m_colorFrameBuffer->isValid())
+	if (m_colorMaterialInstance == nullptr)
+	{
+		std::string colorMaterialName;
+		if (bWantsResolve)
 		{
-			// Re-create the frame buffer if it's not valid
-			m_colorFrameBuffer->createResources();
+			colorMaterialName= bIsRGBAVariant ? INTERNAL_MATERIAL_PT_RESOLVE_DOWNSAMPLE_RGBA
+											  : INTERNAL_MATERIAL_PT_RESOLVE_DOWNSAMPLE_RGB;
+		}
+		else
+		{
+			colorMaterialName= bIsRGBAVariant ? INTERNAL_MATERIAL_PT_FULLSCREEN_RGBA_TEXTURE
+											  : INTERNAL_MATERIAL_PT_FULLSCREEN_RGB_TEXTURE;
+		}
 
-			// Re-create the render material instance
-			const std::string colorMaterialName= bIsRGBAVariant ? INTERNAL_MATERIAL_PT_FULLSCREEN_RGBA_TEXTURE
-																: INTERNAL_MATERIAL_PT_FULLSCREEN_RGB_TEXTURE;
-			MkMaterialConstPtr colorMaterial= graphicsContext->getShaderCache()->getMaterialByName(colorMaterialName);
-			if (colorMaterial != nullptr)
-			{
-				m_colorMaterialInstance= createMkMaterialInstance(colorMaterial);
-			}
-			else
-			{
-				m_colorMaterialInstance= nullptr;
-				MIKAN_LOG_ERROR("updateColorFrameBuffer") << "Failed to get color material";
-			}
+		MkMaterialConstPtr colorMaterial= graphicsContext->getShaderCache()->getMaterialByName(colorMaterialName);
+		if (colorMaterial != nullptr)
+		{
+			m_colorMaterialInstance= createMkMaterialInstance(colorMaterial);
+		}
+		else
+		{
+			MIKAN_LOG_ERROR("updateColorFrameBuffer") << "Failed to get color material " << colorMaterialName;
 		}
 	}
 
-	// Render the color texture to the frame buffer
-	if (m_bVerticalFlip && m_colorMaterialInstance)
+	if (m_colorMaterialInstance)
 	{
 		MkScopedObjectBinding colorFramebufferBinding(graphicsContext->getMkStateStack().getCurrentState(),
 													  "Color Texture Framebuffer Scope", m_colorFrameBuffer);
@@ -267,12 +331,12 @@ void ColorTextureSourceNode::updateColorFrameBuffer(NodeEvaluator& evaluator, IM
 		{
 			IMkState* glState= colorFramebufferBinding.getMkState();
 
-			evaluateFlippedColorTexture(glState, clientTexture);
+			evaluateColorTexture(glState, clientTexture);
 		}
 	}
 }
 
-void ColorTextureSourceNode::evaluateFlippedColorTexture(IMkState* glState, IMkTexturePtr colorTexture)
+void ColorTextureSourceNode::evaluateColorTexture(IMkState* glState, IMkTexturePtr colorTexture)
 {
 	assert(colorTexture);
 	assert(m_colorMaterialInstance);
@@ -292,12 +356,39 @@ void ColorTextureSourceNode::evaluateFlippedColorTexture(IMkState* glState, IMkT
 			m_colorMaterialInstance->setTextureBySemantic(eUniformSemantic::rgbTexture, colorTexture);
 		}
 
+		if (m_bIsResolving)
+		{
+			const float sourceWidth= (float)colorTexture->getTextureWidth();
+			const float sourceHeight= (float)colorTexture->getTextureHeight();
+
+			// Source texels one destination pixel covers, which is what sizes the filter kernel
+			m_colorMaterialInstance->setVec2BySemantic(eUniformSemantic::screenSize,
+													   glm::vec2(sourceWidth, sourceHeight));
+			m_colorMaterialInstance->setFloatBySemantic(eUniformSemantic::floatConstant0,
+														sourceWidth / (float)m_colorFrameBuffer->getWidth());
+			m_colorMaterialInstance->setFloatBySemantic(eUniformSemantic::floatConstant1,
+														sourceHeight / (float)m_colorFrameBuffer->getHeight());
+
+			if (bIsRGBAVariant)
+			{
+				m_colorMaterialInstance->setFloatBySemantic(eUniformSemantic::floatConstant2,
+															(float)(int)m_resolveAlphaMode);
+			}
+		}
+
 		// Draw the color texture
 		if (auto materialInstanceBinding= m_colorMaterialInstance->bindMaterialInstance(materialBinding))
 		{
 			auto compositorGraph= std::static_pointer_cast<CompositorNodeGraph>(getOwnerGraph());
 
-			compositorGraph->getLayerVFlippedMesh()->drawElements();
+			if (m_bVerticalFlip)
+			{
+				compositorGraph->getLayerVFlippedMesh()->drawElements();
+			}
+			else
+			{
+				compositorGraph->getLayerMesh()->drawElements();
+			}
 		}
 	}
 }
@@ -364,6 +455,19 @@ void ColorTextureSourceNode::editorRenderPropertySheet(const NodeEditorState& ed
 											  iFallbackMode))
 		{
 			m_fallbackMode= (eColorTextureFallbackMode)iFallbackMode;
+		}
+
+		// What the alpha channel means when the client texture is filtered down to the
+		// video resolution (see eColorTextureResolveAlphaMode)
+		const std::string resolveAlphaModeItems= std::string(locText("nodes.resolveAlphaNone")) + '\0'
+												 + locText("nodes.resolveAlphaStraight") + '\0'
+												 + locText("nodes.resolveAlphaInverted") + '\0';
+		int iResolveAlphaMode= (int)m_resolveAlphaMode;
+		if (MkGui::drawSimpleComboBoxProperty(propertyStyle, "colorTextureResolveAlphaMode",
+											  locText("nodes.resolveAlphaMode"), resolveAlphaModeItems.c_str(),
+											  iResolveAlphaMode))
+		{
+			m_resolveAlphaMode= (eColorTextureResolveAlphaMode)iResolveAlphaMode;
 		}
 
 		// Texture Type

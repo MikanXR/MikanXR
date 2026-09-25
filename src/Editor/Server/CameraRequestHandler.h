@@ -54,6 +54,9 @@ public:
 	virtual void shutdown() override {}
 
 	void publishCameraNewFrameEvent(const struct MikanCameraNewFrameEvent& newFrameEvent);
+	void publishCameraNewPropertiesEvent(const struct MikanCameraNewPropertiesEvent& propertiesEvent);
+	void publishCompositorStartedEvent(MikanCompositorID compositorId, MikanCameraID cameraId);
+	void publishCompositorStoppedEvent(MikanCompositorID compositorId, MikanCameraID cameraId);
 
 	MulticastDelegate<void(const char* clientId, const struct MikanClientInfo& clientInfo,
 						   class SharedTextureReadAccessor* readAccessor)>
@@ -67,4 +70,5 @@ protected:
 	void allocateRenderTargetTexturesHandler(const ClientRequest& request, ClientResponse& response);
 	void freeRenderTargetTexturesHandler(const ClientRequest& request, ClientResponse& response);
 	void frameRenderedHandler(const ClientRequest& request, ClientResponse& response);
+	void getCameraPropertiesHandler(const ClientRequest& request, ClientResponse& response);
 };

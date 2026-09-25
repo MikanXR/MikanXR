@@ -113,6 +113,8 @@ private:
 								 std::string& outError);
 	bool handleScriptCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,
 							 std::string& outError);
+	bool handleClientCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,
+							 std::string& outError);
 	bool handleLogCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,
 						  std::string& outError);
 	bool handleNodeGraphCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,

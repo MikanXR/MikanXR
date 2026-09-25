@@ -112,6 +112,56 @@ enum class eColorTextureFallbackMode : int
 };
 extern const std::string* k_colorTextureFallbackModeStrings;
 
+// What the alpha channel of a client color texture means, which decides how a
+// ColorTextureSourceNode filters the texture down when the client renders above the video
+// resolution. Averaging color and alpha separately drags the empty region's color into a
+// silhouette edge; weighting color by coverage first does not. Which encoding the client
+// used is a property of the downstream layer material (the bundled rgbInvAlphaFrame reads
+// 1-a as coverage), and C++ cannot introspect GLSL, so the graph author selects it per node.
+// none keeps the plain average every graph got before the option existed.
+enum class eColorTextureResolveAlphaMode : int
+{
+	INVALID= -1,
+
+	none,     // alpha carries no coverage (shadow buffers, or a layer that ignores alpha)
+	straight, // alpha is coverage
+	inverted, // alpha is 1 - coverage, what an inverted-alpha "Normal"/"Over" layer reads
+
+	COUNT
+};
+extern const std::string* k_colorTextureResolveAlphaModeStrings;
+
+// How a depth node's editor preview maps linear depth to color. Preview only: the texture
+// on the node's output pin is always the unmodified linear depth its consumers expect.
+// The default reproduces the plain grayscale ramp the previews have always shown.
+enum class eDepthPreviewPalette : int
+{
+	INVALID= -1,
+
+	grayscale, // near black, far white
+	grayscaleInverted,
+	turbo,  // perceptually ordered color ramp, small differences stay legible
+	banded, // repeating ramp, which reads structure even in a compressed range
+
+	COUNT
+};
+extern const std::string* k_depthPreviewPaletteStrings;
+
+// Curve applied to the depth value before the palette. A typical zNear 0.1 / zFar 20 puts a
+// subject at 2-4m into the bottom fifth of the range, so a curve is usually what makes the
+// preview readable before any palette choice matters.
+enum class eDepthPreviewCurve : int
+{
+	INVALID= -1,
+
+	linear,
+	gamma, // pow(d, exponent), an exponent below 1 expands the near range
+	log,   // expands the near range harder than gamma, with no exponent to tune
+
+	COUNT
+};
+extern const std::string* k_depthPreviewCurveStrings;
+
 enum class eTextureSourceDepthType : int
 {
 	INVALID= -1,

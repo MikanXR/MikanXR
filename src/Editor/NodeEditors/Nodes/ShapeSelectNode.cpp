@@ -6,6 +6,8 @@
 #include "MkGuiDrawUtils.h"
 #include "MkGuiStyleManager.h"
 
+#include "CompositorComponent.h"
+#include "MikanObject.h"
 #include "QuadShapeComponent.h"
 #include "BoxShapeComponent.h"
 #include "ModelShapeComponent.h"
@@ -15,6 +17,7 @@
 
 #include "Graphs/NodeEvaluator.h"
 
+#include "Graphs/CompositorNodeGraph.h"
 #include "Pins/ArrayPin.h"
 #include "Properties/GraphShapeProperty.h"
 
@@ -72,6 +75,11 @@ void ShapeSelectNode::saveToConfig(NodeConfigPtr nodeConfig) const
 
 bool ShapeSelectNode::evaluateNode(NodeEvaluator& evaluator)
 {
+	auto compositorGraph= std::static_pointer_cast<CompositorNodeGraph>(getOwnerGraph());
+	CompositorComponentPtr compositorComponent= compositorGraph->getBoundCompositorComponent();
+	if (!compositorComponent)
+		return false;
+
 	std::vector<GraphPropertyPtr> gathered;
 
 	if (m_bEnableQuadShapes)
@@ -81,6 +89,10 @@ bool ShapeSelectNode::evaluateNode(NodeEvaluator& evaluator)
 
 		for (QuadShapeComponentPtr shape : quadList)
 		{
+			// Only this compositor's scene draws into its composite
+			if (!compositorComponent->ownsSceneObject(shape->getOwnerObject()))
+				continue;
+
 			auto prop= std::make_shared<GraphShapeProperty>();
 			prop->setShapeComponent(shape);
 			gathered.push_back(prop);
@@ -94,6 +106,9 @@ bool ShapeSelectNode::evaluateNode(NodeEvaluator& evaluator)
 
 		for (BoxShapeComponentPtr shape : boxList)
 		{
+			if (!compositorComponent->ownsSceneObject(shape->getOwnerObject()))
+				continue;
+
 			auto prop= std::make_shared<GraphShapeProperty>();
 			prop->setShapeComponent(shape);
 			gathered.push_back(prop);
@@ -107,6 +122,9 @@ bool ShapeSelectNode::evaluateNode(NodeEvaluator& evaluator)
 
 		for (ModelShapeComponentPtr shape : modelList)
 		{
+			if (!compositorComponent->ownsSceneObject(shape->getOwnerObject()))
+				continue;
+
 			auto prop= std::make_shared<GraphShapeProperty>();
 			prop->setShapeComponent(shape);
 			gathered.push_back(prop);

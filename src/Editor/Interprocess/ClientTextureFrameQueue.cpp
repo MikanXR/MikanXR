@@ -1,5 +1,6 @@
 #include "ClientTextureFrameQueue.h"
 #include "IMkTexture.h"
+#include "Logger.h"
 
 ClientTextureFrameQueue::ClientTextureFrameQueue(int queueSize)
 	: m_queueSize(queueSize)
@@ -17,6 +18,12 @@ ClientTextureFrameQueue::~ClientTextureFrameQueue()
 bool ClientTextureFrameQueue::initialize(const MikanRenderTargetDescriptor& desc)
 {
 	bool bSuccess= true;
+
+	// The depth and shadow buffers may be rendered at a different resolution than the
+	// color buffer. A client that predates the aux fields leaves them zero and gets the
+	// color size for all three, which is what it publishes.
+	const uint32_t auxWidth= desc.aux_width > 0 ? desc.aux_width : desc.width;
+	const uint32_t auxHeight= desc.aux_height > 0 ? desc.aux_height : desc.height;
 
 	for (int i= 0; i < m_queueSize; ++i)
 	{
@@ -76,7 +83,7 @@ bool ClientTextureFrameQueue::initialize(const MikanRenderTargetDescriptor& desc
 
 		if (entry.depthTexture != nullptr)
 		{
-			entry.depthTexture->setSize(desc.width, desc.height);
+			entry.depthTexture->setSize(auxWidth, auxHeight);
 			entry.depthTexture->setGenerateMipMap(false);
 			entry.depthTexture->setPixelBufferObjectMode(desc.graphicsAPI == MikanClientGraphicsApi_UNKNOWN
 															 ? IMkTexture::PixelBufferObjectMode::DoublePBOWrite
@@ -111,7 +118,7 @@ bool ClientTextureFrameQueue::initialize(const MikanRenderTargetDescriptor& desc
 
 		if (entry.shadowTexture != nullptr)
 		{
-			entry.shadowTexture->setSize(desc.width, desc.height);
+			entry.shadowTexture->setSize(auxWidth, auxHeight);
 			entry.shadowTexture->setGenerateMipMap(false);
 			entry.shadowTexture->setPixelBufferObjectMode(desc.graphicsAPI == MikanClientGraphicsApi_UNKNOWN
 															  ? IMkTexture::PixelBufferObjectMode::DoublePBOWrite
@@ -185,6 +192,21 @@ void ClientTextureFrameQueue::advanceWriteIndex(int64_t frameIndex)
 	}
 }
 
+void ClientTextureFrameQueue::noteFrameIndexMiss(int64_t requestedFrameIndex) const
+{
+	// A client running behind the compositor shows up here and nowhere else, since
+	// the fallback composites without complaint. Log the first miss and then every
+	// hundredth so a steady miss rate stays visible without flooding.
+	m_frameIndexMissCount++;
+	if (m_frameIndexMissCount == 1 || (m_frameIndexMissCount % 100) == 0)
+	{
+		const int64_t servedFrameIndex= m_lastWriteIndex >= 0 ? m_entries[m_lastWriteIndex].frameIndex : -1;
+		MIKAN_LOG_WARNING("ClientTextureFrameQueue::getColorTexture")
+			<< "Client frame " << requestedFrameIndex << " not in texture ring, serving newest frame "
+			<< servedFrameIndex << " (" << m_frameIndexMissCount << " misses so far)";
+	}
+}
+
 IMkTexturePtr ClientTextureFrameQueue::getColorTexture(int64_t frameIndex) const
 {
 	if (m_entries != nullptr)
@@ -198,6 +220,12 @@ IMkTexturePtr ClientTextureFrameQueue::getColorTexture(int64_t frameIndex) const
 				{
 					return m_entries[i].colorTexture;
 				}
+			}
+
+			// A free-running client stamps -1 on every slot and is never a miss
+			if (m_lastWriteIndex >= 0 && m_entries[m_lastWriteIndex].frameIndex != -1)
+			{
+				noteFrameIndexMiss(frameIndex);
 			}
 		}
 

@@ -1,6 +1,8 @@
 #include "StencilSelectNode.h"
 #include "IconsForkAwesome.h"
 #include "CameraComponent.h"
+#include "CompositorComponent.h"
+#include "MikanObject.h"
 #include "LocText.h"
 #include "Logger.h"
 #include "NodeEditorState.h"
@@ -75,8 +77,9 @@ void StencilSelectNode::saveToConfig(NodeConfigPtr nodeConfig) const
 bool StencilSelectNode::evaluateNode(NodeEvaluator& evaluator)
 {
 	auto compositorGraph= std::static_pointer_cast<CompositorNodeGraph>(getOwnerGraph());
+	CompositorComponentPtr compositorComponent= compositorGraph->getBoundCompositorComponent();
 	CameraComponentPtr cameraComponent= compositorGraph->getBoundCameraComponent();
-	if (!cameraComponent)
+	if (!compositorComponent || !cameraComponent)
 		return false;
 
 	// World space: the stencil systems cull against stencil world transforms
@@ -97,6 +100,10 @@ bool StencilSelectNode::evaluateNode(NodeEvaluator& evaluator)
 
 		for (QuadStencilComponentPtr stencil : quadList)
 		{
+			// Only this compositor's scene masks its composite
+			if (!compositorComponent->ownsSceneObject(stencil->getOwnerObject()))
+				continue;
+
 			auto prop= std::make_shared<GraphStencilProperty>();
 			prop->setStencilComponent(stencil);
 			gathered.push_back(prop);
@@ -111,6 +118,9 @@ bool StencilSelectNode::evaluateNode(NodeEvaluator& evaluator)
 
 		for (BoxStencilComponentPtr stencil : boxList)
 		{
+			if (!compositorComponent->ownsSceneObject(stencil->getOwnerObject()))
+				continue;
+
 			auto prop= std::make_shared<GraphStencilProperty>();
 			prop->setStencilComponent(stencil);
 			gathered.push_back(prop);
@@ -125,6 +135,9 @@ bool StencilSelectNode::evaluateNode(NodeEvaluator& evaluator)
 
 		for (ModelStencilComponentPtr stencil : modelList)
 		{
+			if (!compositorComponent->ownsSceneObject(stencil->getOwnerObject()))
+				continue;
+
 			auto prop= std::make_shared<GraphStencilProperty>();
 			prop->setStencilComponent(stencil);
 			gathered.push_back(prop);

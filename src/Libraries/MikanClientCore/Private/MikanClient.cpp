@@ -337,6 +337,8 @@ MikanCoreResult MikanClient::allocateCameraRenderTargetTextures(MikanCameraID ca
 
 	descriptor.width= mkDesiredDescriptor.width;
 	descriptor.height= mkDesiredDescriptor.height;
+	descriptor.aux_width= mkDesiredDescriptor.aux_width;
+	descriptor.aux_height= mkDesiredDescriptor.aux_height;
 
 	// Create a unique write for each camera id
 	ISharedTextureWriteAccessorPtr renderTargetWriter= getSharedTextureWriteAccessor(cameraId);
@@ -450,6 +452,8 @@ MikanCoreResult MikanClient::getCameraRenderTargetDescriptor(MikanCameraID camer
 
 			outDescriptor.width= desc->width;
 			outDescriptor.height= desc->height;
+			outDescriptor.aux_width= desc->aux_width;
+			outDescriptor.aux_height= desc->aux_height;
 
 			return MikanCoreResult_Success;
 		}

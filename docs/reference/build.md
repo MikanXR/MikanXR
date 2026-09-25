@@ -72,7 +72,7 @@ Third-party source builds: `thirdparty/CMakeLists.txt` builds `fast_obj_lib`, `i
 
 - `MikanClientCodeGen`: bindings generator executable (`src/Programs/ClientCodeGen`).
 
-- `MikanTypeScriptCodeGen` / `MikanCSharpCodeGen`: custom targets that run `MikanClientCodeGen` with `TypeScriptCodeGenConfig.json` / `CSharpCodeGenConfig.json`; the `MikanClientTypeScript` target then runs `npm install` and `npm run build`.
+- `MikanTypeScriptCodeGen` / `MikanCSharpCodeGen`: custom targets that run `MikanClientCodeGen` with `TypeScriptCodeGenConfig.json` / `CSharpCodeGenConfig.json`; the `MikanClientTypeScript` target then runs `npm install` and `npm run build`. The generators walk the reflection database in an order that varies between runs, so a regeneration can reorder unchanged classes in a generated file. Discard those reorders with `git checkout` rather than committing them, since the content is identical.
 
 - `unit_test_suite_cpp`: C++ unit tests; its `unit_test_suite_reflection` dependency runs `RefurekuGenerator.exe` first. `MikanClientAPIReflection`, `MikanClientCoreReflection`, `MikanSerializationReflection` do the same for the reflected libraries.
 
@@ -82,7 +82,7 @@ Third-party source builds: `thirdparty/CMakeLists.txt` builds `fast_obj_lib`, `i
 
 - `CREATE_INSTALLER`: Inno Setup installer build (`cmake/Installer.cmake`); only created when `ISCC.exe` (Inno Setup 6) is found. Fills in `templates/installer_win64.iss.in` and writes `dist/Mikan_<version>_Win64_Setup.exe` from the `dist/Win64` payload.
 
-- `INSTALL`: installs exes, DLLs, bindings, and the bundled `resources/` tree into `dist/Win64`, and every executable and DLL PDB into `dist/symbols/Win64`. The resources filter ships the graph, material, shader, and model sources as well as images, fonts, scripts, and ONNX models, since a project reads the bundled assets in place rather than owning copies.
+- `INSTALL`: installs exes, DLLs, bindings, and the bundled `resources/` tree into `dist/Win64`, and every executable and DLL PDB into `dist/symbols/Win64`. The client API headers it installs are gathered by a configure-time glob, so a header added to `MikanClientAPI/Public` reaches `dist/Win64/include` only after a reconfigure (`cmake -B build`). The resources filter ships the graph, material, shader, and model sources as well as images, fonts, scripts, and ONNX models, since a project reads the bundled assets in place rather than owning copies.
 
 - `PACKAGE_APP` / `PACKAGE_SYMBOLS` (`cmake/Symbols.cmake`): zip `dist/Win64` and `dist/symbols/Win64` into `dist/Mikan_<version>_Win64.zip` and `dist/Mikan_<version>_Win64_symbols.zip`. Both assume `INSTALL` has run.
 

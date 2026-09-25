@@ -70,6 +70,17 @@ const std::string g_colorTextureFallbackModeStrings[(int)eColorTextureFallbackMo
 	"auto", "transparentBlack", "opaqueBlack", "opaqueWhite"};
 const std::string* k_colorTextureFallbackModeStrings= g_colorTextureFallbackModeStrings;
 
+const std::string g_colorTextureResolveAlphaModeStrings[(int)eColorTextureResolveAlphaMode::COUNT]= {"none", "straight",
+																									 "inverted"};
+const std::string* k_colorTextureResolveAlphaModeStrings= g_colorTextureResolveAlphaModeStrings;
+
+const std::string g_depthPreviewPaletteStrings[(int)eDepthPreviewPalette::COUNT]= {"grayscale", "grayscaleInverted",
+																				   "turbo", "banded"};
+const std::string* k_depthPreviewPaletteStrings= g_depthPreviewPaletteStrings;
+
+const std::string g_depthPreviewCurveStrings[(int)eDepthPreviewCurve::COUNT]= {"linear", "gamma", "log"};
+const std::string* k_depthPreviewCurveStrings= g_depthPreviewCurveStrings;
+
 const std::string g_textureSourceDepthTypeStrings[(int)eTextureSourceDepthType::COUNT]= {"depthPackRGBA"};
 const std::string* k_textureSourceDepthTypeStrings= g_textureSourceDepthTypeStrings;
 

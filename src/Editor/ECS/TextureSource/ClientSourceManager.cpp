@@ -7,6 +7,8 @@
 #include "CameraRequestHandler.h"
 #include "StringUtils.h"
 
+#include <algorithm>
+
 ClientSourceManager::ClientSourceManager(int textureQueueSize)
 	: m_textureQueueSize(textureQueueSize)
 {
@@ -197,8 +199,22 @@ bool ClientSourceManager::addClientSource(const char* clientId, const MikanClien
 	clientSource->readAccessor= readAccessor;
 	clientSource->frameIndex= 0;
 
-	// Create the circular texture frame queue
-	clientSource->textureQueue= new ClientTextureFrameQueue(m_textureQueueSize);
+	// Create the circular texture frame queue, at least as deep as the compositor's
+	// own frame event queue for this camera
+	int textureQueueSize= m_textureQueueSize;
+	if (m_queueSizeResolver)
+	{
+		textureQueueSize= std::max(textureQueueSize, m_queueSizeResolver(cameraId));
+	}
+	// The sizes the ring is cut to, which every later frame is received into. A client whose
+	// senders disagree with these shows up as a composite artifact and nothing else, so the
+	// numbers are worth having in the log whenever a source appears.
+	MIKAN_LOG_INFO("ClientSourceManager::addClientSource")
+		<< tableKey << " ring of " << textureQueueSize << ": color " << desc.width << "x" << desc.height << ", aux "
+		<< desc.aux_width << "x" << desc.aux_height << " (color type " << (int)desc.color_buffer_type << ", depth type "
+		<< (int)desc.depth_buffer_type << ", shadow type " << (int)desc.shadow_buffer_type << ")";
+
+	clientSource->textureQueue= new ClientTextureFrameQueue(textureQueueSize);
 	bSuccess= clientSource->textureQueue->initialize(desc);
 
 	if (bSuccess)
@@ -304,6 +320,20 @@ void ClientSourceManager::onClientRenderTargetUpdated(const char* clientId, Mika
 		// Stamp the frame index on the current slot and advance to the next
 		clientSource->textureQueue->advanceWriteIndex(frameIndex);
 		clientSource->frameIndex= frameIndex;
+
+		// Publish rate over a one second window
+		const auto now= std::chrono::steady_clock::now();
+		if (clientSource->publishCount == 0)
+			clientSource->rateWindowStart= now;
+		clientSource->publishCount++;
+		clientSource->rateWindowCount++;
+		const float windowSeconds= std::chrono::duration<float>(now - clientSource->rateWindowStart).count();
+		if (windowSeconds >= 1.f)
+		{
+			clientSource->publishRateHz= (float)clientSource->rateWindowCount / windowSeconds;
+			clientSource->rateWindowStart= now;
+			clientSource->rateWindowCount= 0;
+		}
 
 		// Re-point the accessor at the new pending write slot
 		if (clientSource->readAccessor != nullptr)

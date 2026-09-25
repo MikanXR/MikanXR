@@ -95,3 +95,10 @@ protected:
 // scene that owns it. An object under no scene (stage level, or unparented) always does.
 // The render and the collider queries share this so picking never reaches hidden geometry.
 bool isSceneGeometryRendered(MikanObjectConstPtr objectPtr);
+
+// The scene an object hangs under, the first scene up its transform chain, or
+// INVALID_MIKAN_ID for stage-level and unparented objects
+MikanSceneID findOwnerSceneId(MikanObjectConstPtr objectPtr);
+
+// The stage an object hangs under, through its scene when it has one, or INVALID_MIKAN_ID
+MikanStageID findOwnerStageId(MikanObjectConstPtr objectPtr);
