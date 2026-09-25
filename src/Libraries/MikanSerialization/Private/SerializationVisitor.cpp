@@ -338,21 +338,16 @@ void* ValueAccessor::getUntypedValueMutablePtr() const
 	return const_cast<void*>(getUntypedValuePtr());
 }
 
-void memoryOffsetSortStructFields(rfk::Struct const& structType, FieldList& outFields)
+FieldList getStructFieldsInWireOrder(StructTypeHandle structType)
 {
-	// Recurse into parent structs first, since they will be laid out in memory first
-	structType.foreachDirectParent(
-		[](rfk::ParentStruct const& parentStruct, void* userData) -> bool
-		{
-			FieldList* outSortedFieldsPtr= reinterpret_cast<FieldList*>(userData);
-			memoryOffsetSortStructFields(parentStruct.getArchetype(), *outSortedFieldsPtr);
-			return true;
-		},
-		&outFields);
+	if (structType == nullptr)
+	{
+		return FieldList();
+	}
 
 	// Gather all the public, non-static fields on this struct
 	FieldList fieldsOnThisStruct;
-	structType.foreachField(
+	structType->foreachField(
 		[](rfk::Field const& field, void* userData) -> bool
 		{
 			FieldList* sortedFieldsPtr= reinterpret_cast<FieldList*>(userData);
@@ -368,14 +363,32 @@ void memoryOffsetSortStructFields(rfk::Struct const& structType, FieldList& outF
 		},
 		&fieldsOnThisStruct, false);
 
-	// Sort the fields on this struct by memory offset
+	// Reflection hands these back in no particular order, so memory offset is what puts them
+	// in the order the binary encoding concatenates them
 	if (fieldsOnThisStruct.size() > 1)
 	{
 		std::sort(fieldsOnThisStruct.begin(), fieldsOnThisStruct.end(),
 				  [](rfk::Field const* a, rfk::Field const* b) { return a->getMemoryOffset() < b->getMemoryOffset(); });
 	}
 
-	// Append the sorted fields to the output list
+	return fieldsOnThisStruct;
+}
+
+void memoryOffsetSortStructFields(rfk::Struct const& structType, FieldList& outFields)
+{
+	// Recurse into parent structs first, since they will be laid out in memory first
+	structType.foreachDirectParent(
+		[](rfk::ParentStruct const& parentStruct, void* userData) -> bool
+		{
+			FieldList* outSortedFieldsPtr= reinterpret_cast<FieldList*>(userData);
+			memoryOffsetSortStructFields(parentStruct.getArchetype(), *outSortedFieldsPtr);
+			return true;
+		},
+		&outFields);
+
+	// Then this struct's own fields, in the one order every consumer of the wire format agrees on
+	const FieldList fieldsOnThisStruct= getStructFieldsInWireOrder(&structType);
+
 	outFields.insert(outFields.end(), fieldsOnThisStruct.begin(), fieldsOnThisStruct.end());
 }
 

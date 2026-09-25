@@ -4,6 +4,7 @@
 
 #include "MikanAPI.h"
 #include "SerializableObjectPtr.h"
+#include "SerializationVisitor.h"
 
 #include <filesystem>
 #include <memory>

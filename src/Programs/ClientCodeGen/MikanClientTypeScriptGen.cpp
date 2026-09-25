@@ -721,20 +721,9 @@ public:
 		const std::string& className= structRef.getName();
 		moduleFile << "export class " << className << classInheritance << " {" << std::endl;
 
-		// Sort fields by memory offset
-		using FieldList= std::vector<rfk::Field const*>;
-		FieldList sortedFields;
-		structRef.foreachField(
-			[](rfk::Field const& field, void* userData) -> bool
-			{
-				FieldList* sortedFieldsPtr= reinterpret_cast<FieldList*>(userData);
-				sortedFieldsPtr->push_back(&field);
-				return true;
-			},
-			&sortedFields);
-
-		std::sort(sortedFields.begin(), sortedFields.end(),
-				  [](rfk::Field const* a, rfk::Field const* b) { return a->getMemoryOffset() < b->getMemoryOffset(); });
+		// The emitted __serializationMetadata array is the binary wire order the client runtime
+		// reads back, so it has to be the serializer's
+		const Serialization::FieldList sortedFields= Serialization::getStructFieldsInWireOrder(&structRef);
 
 		// Allocate a default-constructed instance to read actual field defaults from.
 		// Falls back to type-based defaults if no known base class is available.

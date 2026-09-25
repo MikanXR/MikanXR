@@ -249,4 +249,15 @@ SERIALIZATION_API void visitField(const void* instance, rfk::Field const& fieldT
 SERIALIZATION_API void visitField(void* instance, rfk::Field const& fieldType, IVisitor* visitor);
 
 SERIALIZATION_API void visitValue(ValueAccessor const& accessor, IVisitor* visitor);
+
+// A struct's own fields in the order they cross the wire: public and non-static, ordered by
+// memory offset. Reflection returns fields in no particular order, and the binary encoding is
+// the concatenation of them in this one, so this is the definition of that order.
+//
+// Inherited fields are not included. A parent's fields precede a child's on the wire, and the
+// two callers reach that differently: the visitors below walk the parents themselves, while
+// the bindings generator emits the parent as the target language's base class and lets the
+// generated type inherit them. Both depend on agreeing with this function about which fields
+// count and in what order, which is why it is exported rather than reimplemented per caller.
+SERIALIZATION_API FieldList getStructFieldsInWireOrder(StructTypeHandle structType);
 }; // namespace Serialization

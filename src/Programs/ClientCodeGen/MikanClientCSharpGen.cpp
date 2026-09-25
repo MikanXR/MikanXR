@@ -99,21 +99,9 @@ public:
 		moduleFile << "\tpublic class " << className << structInheritance << std::endl;
 		moduleFile << "\t{" << std::endl;
 
-		// For some reason Refureku doesn't return fields in the order they were declared
-		// So we extract fields into a vector and sort them by memory offset
-		using FieldList= std::vector<rfk::Field const*>;
-		FieldList sortedFields;
-		structRef.foreachField(
-			[](rfk::Field const& field, void* userData) -> bool
-			{
-				FieldList* sortedFieldsPtr= reinterpret_cast<FieldList*>(userData);
-				sortedFieldsPtr->push_back(&field);
-				return true;
-			},
-			&sortedFields);
-
-		std::sort(sortedFields.begin(), sortedFields.end(),
-				  [](rfk::Field const* a, rfk::Field const* b) { return a->getMemoryOffset() < b->getMemoryOffset(); });
+		// The C# runtime reads these back through Type.GetFields in declaration order, so the
+		// order they are emitted in is the binary wire order and has to be the serializer's
+		const Serialization::FieldList sortedFields= Serialization::getStructFieldsInWireOrder(&structRef);
 
 		// Emit the fields
 		for (rfk::Field const* field : sortedFields)
