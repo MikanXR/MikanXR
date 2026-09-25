@@ -169,14 +169,17 @@ Only the Unreal plugin implements the free-running side today. A client that ign
 
 ## The resolution a client renders at
 
-`pixel_size` on the camera events is not the video resolution. It is the size the camera asks a client to render its color buffer at, and the resolution `focal_length` and `principal_point` are expressed in. Two camera properties scale it off the video resolution, both defaulting to 1 and both held to [0.25, 4]:
+`pixel_size` on the camera events is not the video resolution. It is the size the camera asks a client to render its color buffer at, and the resolution `focal_length` and `principal_point` are expressed in. Three camera properties decide it:
 
-- `client_color_render_scale` for the color buffer
-- `client_aux_render_scale` for the depth and shadow buffers, whose size travels separately as `aux_pixel_size`
+- `client_color_render_scale` for the color buffer, default 1, held to [0.5, 2]
+- `client_aux_render_scale` for the depth and shadow buffers, same range, whose size travels separately as `aux_pixel_size`
+- `client_max_buffer_dimension` (`MikanClientMaxBufferDimension`: 1024, 2048, 4096 or 8192, default 4096), a ceiling on the longer edge of every buffer, applied after the scales with the aspect ratio kept
 
-A scale above 1 is a supersample. The composite is always built at video resolution ([compositor.md](./compositor.md)), so extra client pixels buy edge coverage that survives the downsample rather than a larger output. The depth and shadow buffers get their own scale because each is a full render pass on the client and neither usually needs the color buffer's resolution.
+A scale above 1 is a supersample. The composite is always built at video resolution ([compositor.md](./compositor.md)), so extra client pixels buy edge coverage that survives the downsample rather than a larger output. The depth and shadow buffers get their own scale because each is a full render pass on the client and neither usually needs the color buffer's resolution. The ceiling exists because the scales alone cannot bound the result: they multiply a video resolution the camera does not choose, so without it a setting can outrun a client's texture allocator.
 
-`CameraComponent::applyClientRenderScales` is the single place the scale is applied, and it multiplies `pixel_size`, `focal_length` and `principal_point` by the same factor. A client builds its projection from those values only as ratios against the pixel size, so the projection matrix comes out unchanged and a scale cannot move where anything lands in frame. The depth and shadow passes share that projection and differ only in target size. `CameraComponent::getAperturePixelDimensions` remains the video resolution and is what the calibration tools and `DepthMaskNode` read.
+`CameraDefinition::computeClientRenderSize` is the only place that arithmetic lives, and both the published size and the size the editor's camera panel reports come through it, so the two cannot disagree.
+
+`CameraComponent::applyClientRenderScales` is the single place it is applied. It multiplies `pixel_size`, `focal_length` and `principal_point` by the same factor, taken from the size that was actually published rather than from the requested scale. A client builds its projection from those values only as ratios against the pixel size, so the projection matrix comes out unchanged and neither a scale nor the ceiling can move where anything lands in frame. The depth and shadow passes share that projection and differ only in target size. `CameraComponent::getAperturePixelDimensions` remains the video resolution and is what the calibration tools and `DepthMaskNode` read.
 
 `MikanRenderTargetDescriptor` carries `aux_width` and `aux_height` beside `width` and `height` so the editor allocates its texture ring to match. Zero in either means the depth and shadow buffers are the color size. A client that ignores `aux_pixel_size` renders all three buffers at `pixel_size` and keeps working, since `SharedTextureReadAccessor` sizes each texture from its own Spout sender.
 

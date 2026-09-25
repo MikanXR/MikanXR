@@ -57,13 +57,67 @@ const std::string CameraDefinition::k_apertureOrientationOffsetPropertyId= "aper
 const std::string CameraDefinition::k_aperturePositionOffsetPropertyId= "aperture_position_offset";
 const std::string CameraDefinition::k_hasValidApertureOffsetPropertyId= "has_valid_aperture_offset";
 
-const float CameraDefinition::k_minClientRenderScale= 0.25f;
-const float CameraDefinition::k_maxClientRenderScale= 4.f;
+const std::string CameraDefinition::k_clientMaxBufferDimensionPropertyId= "client_max_buffer_dimension";
+
+const float CameraDefinition::k_minClientRenderScale= 0.5f;
+const float CameraDefinition::k_maxClientRenderScale= 2.f;
+const float CameraDefinition::k_clientRenderScaleStep= 0.25f;
 
 static float clampClientRenderScale(float scale)
 {
 	return std::min(std::max(scale, CameraDefinition::k_minClientRenderScale),
 					CameraDefinition::k_maxClientRenderScale);
+}
+
+// The ceiling in pixels, indexed by MikanClientMaxBufferDimension
+static const int k_clientMaxBufferDimensionPixels[]= {1024, 2048, 4096, 8192};
+static const int k_clientMaxBufferDimensionCount= 4;
+// JSON persistence spellings, same order
+static const char* k_clientMaxBufferDimensionJsonStrings[]= {"1024", "2048", "4096", "8192"};
+// Localization keys, not display text (see EnumPropertyMetaData)
+static const std::string k_clientMaxBufferDimensionLocKeys[]= {
+	"propertyValues.max_buffer_dimension_1024",
+	"propertyValues.max_buffer_dimension_2048",
+	"propertyValues.max_buffer_dimension_4096",
+	"propertyValues.max_buffer_dimension_8192",
+};
+
+static MikanClientMaxBufferDimension clientMaxBufferDimensionFromJsonString(const std::string& value)
+{
+	for (int index= 0; index < k_clientMaxBufferDimensionCount; ++index)
+	{
+		if (value == k_clientMaxBufferDimensionJsonStrings[index])
+			return static_cast<MikanClientMaxBufferDimension>(index);
+	}
+
+	return MikanClientMaxBufferDimension_4096;
+}
+
+static MikanClientMaxBufferDimension clientMaxBufferDimensionFromInt(int value)
+{
+	return (value >= 0 && value < k_clientMaxBufferDimensionCount) ? static_cast<MikanClientMaxBufferDimension>(value)
+																   : MikanClientMaxBufferDimension_4096;
+}
+
+bool CameraDefinition::computeClientRenderSize(int videoWidth, int videoHeight, float scale, int maxBufferDimension,
+											   int& outWidth, int& outHeight)
+{
+	auto scaleDimension= [](int value, double factor) { return std::max((int)std::lround((double)value * factor), 1); };
+
+	outWidth= scaleDimension(videoWidth, (double)scale);
+	outHeight= scaleDimension(videoHeight, (double)scale);
+
+	const int longestEdge= std::max(outWidth, outHeight);
+	if (maxBufferDimension <= 0 || longestEdge <= maxBufferDimension)
+		return false;
+
+	// Bring the longer edge down to the ceiling and take the other edge with it, so the
+	// aspect ratio the intrinsics describe survives the clamp
+	const double clampFactor= (double)maxBufferDimension / (double)longestEdge;
+	outWidth= scaleDimension(outWidth, clampFactor);
+	outHeight= scaleDimension(outHeight, clampFactor);
+
+	return true;
 }
 
 // JSON persistence spellings, indexed by MikanCameraFrameSyncMode
@@ -125,6 +179,7 @@ configuru::Config CameraDefinition::writeToJSON()
 	pt[k_frameSyncModePropertyId]= k_frameSyncModeJsonStrings[(int)m_frameSyncMode];
 	pt[k_clientColorRenderScalePropertyId]= m_clientColorRenderScale;
 	pt[k_clientAuxRenderScalePropertyId]= m_clientAuxRenderScale;
+	pt[k_clientMaxBufferDimensionPropertyId]= k_clientMaxBufferDimensionJsonStrings[(int)m_clientMaxBufferDimension];
 	pt["depth_mesh_scale_correction"]= m_depthMeshScaleCorrection;
 
 	writeQuaderntiond(pt, "aperture_orientation_offset", m_apertureOrientationOffset);
@@ -149,6 +204,9 @@ void CameraDefinition::readFromJSON(const configuru::Config& pt)
 		clampClientRenderScale(pt.get_or<float>(k_clientColorRenderScalePropertyId.c_str(), m_clientColorRenderScale));
 	m_clientAuxRenderScale=
 		clampClientRenderScale(pt.get_or<float>(k_clientAuxRenderScalePropertyId.c_str(), m_clientAuxRenderScale));
+	m_clientMaxBufferDimension= clientMaxBufferDimensionFromJsonString(
+		pt.get_or<std::string>(k_clientMaxBufferDimensionPropertyId.c_str(),
+							   k_clientMaxBufferDimensionJsonStrings[(int)m_clientMaxBufferDimension]));
 	m_depthMeshScaleCorrection= pt.get_or<float>("depth_mesh_scale_correction", m_depthMeshScaleCorrection);
 
 	readQuaterniond(pt, "aperture_orientation_offset", m_apertureOrientationOffset);
@@ -173,6 +231,7 @@ bool CameraDefinition::readFromInitParams(MikanObjectSystem* ownerObjectSystem,
 		m_frameSyncMode= frameSyncModeFromInt((int)componentValues->frame_sync_mode);
 		m_clientColorRenderScale= clampClientRenderScale(componentValues->client_color_render_scale);
 		m_clientAuxRenderScale= clampClientRenderScale(componentValues->client_aux_render_scale);
+		m_clientMaxBufferDimension= clientMaxBufferDimensionFromInt((int)componentValues->client_max_buffer_dimension);
 		m_apertureOrientationOffset= componentValues->aperture_orientation_offset;
 		m_aperturePositionOffset= componentValues->aperture_position_offset;
 
@@ -271,6 +330,20 @@ void CameraDefinition::setClientAuxRenderScale(float scale)
 	{
 		m_clientAuxRenderScale= clampedScale;
 		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_clientAuxRenderScalePropertyId));
+	}
+}
+
+int CameraDefinition::getClientMaxBufferDimensionPixels() const
+{
+	return k_clientMaxBufferDimensionPixels[(int)m_clientMaxBufferDimension];
+}
+
+void CameraDefinition::setClientMaxBufferDimension(MikanClientMaxBufferDimension maxDimension)
+{
+	if (maxDimension != m_clientMaxBufferDimension)
+	{
+		m_clientMaxBufferDimension= maxDimension;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_clientMaxBufferDimensionPropertyId));
 	}
 }
 
@@ -810,29 +883,40 @@ MikanCameraFrameSyncMode CameraComponent::getEffectiveFrameSyncMode() const
 
 void CameraComponent::applyClientRenderScales(MikanCameraNewPropertiesEvent& inOutPropertiesEvent) const
 {
-	auto scaleDimension= [](int value, float scale)
-	{ return std::max((int)std::lround((double)value * (double)scale), 1); };
-
 	CameraDefinitionPtr cameraDefinition= getCameraDefinition();
 	const float colorScale= cameraDefinition->getClientColorRenderScale();
 	const float auxScale= cameraDefinition->getClientAuxRenderScale();
+	const int maxBufferDimension= cameraDefinition->getClientMaxBufferDimensionPixels();
 	const MikanVector2i videoPixelSize= inOutPropertiesEvent.pixel_size;
+
+	if (videoPixelSize.x <= 0 || videoPixelSize.y <= 0)
+		return;
 
 	// The depth and shadow buffers scale off the video resolution, not off the color
 	// buffer, so the two knobs are independent of each other.
-	inOutPropertiesEvent.aux_pixel_size= {scaleDimension(videoPixelSize.x, auxScale),
-										  scaleDimension(videoPixelSize.y, auxScale)};
+	int auxWidth= 0, auxHeight= 0;
+	CameraDefinition::computeClientRenderSize(videoPixelSize.x, videoPixelSize.y, auxScale, maxBufferDimension,
+											  auxWidth, auxHeight);
+	inOutPropertiesEvent.aux_pixel_size= {auxWidth, auxHeight};
+
+	int colorWidth= 0, colorHeight= 0;
+	CameraDefinition::computeClientRenderSize(videoPixelSize.x, videoPixelSize.y, colorScale, maxBufferDimension,
+											  colorWidth, colorHeight);
+	inOutPropertiesEvent.pixel_size= {colorWidth, colorHeight};
 
 	// Scaling the pixel size, the focal length and the principal point by one factor
 	// leaves the projection a client builds from them unchanged, since that projection
 	// only ever uses those values as ratios against the pixel size. So a client renders
 	// more pixels of exactly the same view, and nothing moves in frame.
-	inOutPropertiesEvent.pixel_size= {scaleDimension(videoPixelSize.x, colorScale),
-									  scaleDimension(videoPixelSize.y, colorScale)};
-	inOutPropertiesEvent.focal_length.x*= colorScale;
-	inOutPropertiesEvent.focal_length.y*= colorScale;
-	inOutPropertiesEvent.principal_point.x*= colorScale;
-	inOutPropertiesEvent.principal_point.y*= colorScale;
+	//
+	// The factors come from the size that was actually published rather than from the
+	// requested scale, so the buffer dimension ceiling stays alignment-neutral too.
+	const double colorFactorX= (double)colorWidth / (double)videoPixelSize.x;
+	const double colorFactorY= (double)colorHeight / (double)videoPixelSize.y;
+	inOutPropertiesEvent.focal_length.x*= colorFactorX;
+	inOutPropertiesEvent.focal_length.y*= colorFactorY;
+	inOutPropertiesEvent.principal_point.x*= colorFactorX;
+	inOutPropertiesEvent.principal_point.y*= colorFactorY;
 }
 
 bool CameraComponent::makeCameraPropertiesEvent(int defaultWidth, int defaultHeight,
@@ -1009,6 +1093,11 @@ void CameraComponent::getPropertyDescriptors(std::vector<PropertyDescriptorConst
 	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(CameraDefinition::k_clientAuxRenderScalePropertyId,
 																  MikanVariantType::FLOAT)
 								 ->setDefaultValue(1.f));
+	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(
+								 CameraDefinition::k_clientMaxBufferDimensionPropertyId, MikanVariantType::INT)
+								 ->setDefaultValue((int)MikanClientMaxBufferDimension_4096)
+								 ->addMetaData(std::make_shared<EnumPropertyMetaData>(
+									 k_clientMaxBufferDimensionLocKeys, k_clientMaxBufferDimensionCount)));
 	outDescriptors.push_back(
 		std::make_shared<PropertyDescriptor>(CameraDefinition::k_poseDrivenPerFramePropertyId, MikanVariantType::BOOL)
 			->setDefaultValue(false)
@@ -1072,6 +1161,11 @@ bool CameraComponent::getPropertyValue(const std::string& propertyName, MikanVar
 		outValue= getCameraDefinition()->getClientAuxRenderScale();
 		return true;
 	}
+	else if (propertyName == CameraDefinition::k_clientMaxBufferDimensionPropertyId)
+	{
+		outValue= (int)getCameraDefinition()->getClientMaxBufferDimension();
+		return true;
+	}
 	else if (propertyName == CameraDefinition::k_poseDrivenPerFramePropertyId)
 	{
 		outValue= getCameraDefinition()->getIsPoseDrivenPerFrame();
@@ -1129,6 +1223,11 @@ bool CameraComponent::setPropertyValue(const std::string& propertyName, const Mi
 	else if (propertyName == CameraDefinition::k_clientAuxRenderScalePropertyId)
 	{
 		getCameraDefinition()->setClientAuxRenderScale(inValue.getFloatValue());
+		return true;
+	}
+	else if (propertyName == CameraDefinition::k_clientMaxBufferDimensionPropertyId)
+	{
+		getCameraDefinition()->setClientMaxBufferDimension(clientMaxBufferDimensionFromInt(inValue.getIntValue()));
 		return true;
 	}
 

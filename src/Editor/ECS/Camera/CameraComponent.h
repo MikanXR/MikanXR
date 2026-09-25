@@ -75,10 +75,30 @@ public:
 	inline float getClientAuxRenderScale() const { return m_clientAuxRenderScale; }
 	void setClientAuxRenderScale(float scale);
 
-	/// Range a client render scale is held to. The editor allocates a texture ring
-	/// this size per buffer, so an unbounded scale is a VRAM hazard.
+	/// Ceiling on the longer edge of every buffer a client renders for this camera,
+	/// applied after the scales and preserving aspect ratio. The scales alone cannot
+	/// bound the result, since they multiply a video resolution the camera does not
+	/// choose, so this is what keeps a setting from outrunning a client's texture
+	/// allocator. One of k_clientMaxBufferDimensions.
+	static const std::string k_clientMaxBufferDimensionPropertyId;
+	inline MikanClientMaxBufferDimension getClientMaxBufferDimension() const { return m_clientMaxBufferDimension; }
+	void setClientMaxBufferDimension(MikanClientMaxBufferDimension maxDimension);
+	/// The ceiling in pixels, which is what the size arithmetic wants
+	int getClientMaxBufferDimensionPixels() const;
+
+	/// Range a client render scale is held to, and the step its slider moves in
 	static const float k_minClientRenderScale;
 	static const float k_maxClientRenderScale;
+	static const float k_clientRenderScaleStep;
+
+	/// The size a client renders at for a video source of this size: the scale applied,
+	/// then the ceiling applied to the longer edge with the aspect ratio kept. Returns
+	/// true when the ceiling is what decided the result.
+	///
+	/// The one place this arithmetic lives. The published size and the size the editor
+	/// panel reports both come through here, so the two cannot disagree.
+	static bool computeClientRenderSize(int videoWidth, int videoHeight, float scale, int maxBufferDimension,
+										int& outWidth, int& outHeight);
 
 	static const std::string k_apertureOrientationOffsetPropertyId;
 	static const std::string k_aperturePositionOffsetPropertyId;
@@ -150,6 +170,7 @@ private:
 	MikanCameraFrameSyncMode m_frameSyncMode= MikanCameraFrameSyncMode_Auto;
 	float m_clientColorRenderScale= 1.f;
 	float m_clientAuxRenderScale= 1.f;
+	MikanClientMaxBufferDimension m_clientMaxBufferDimension= MikanClientMaxBufferDimension_4096;
 	float m_depthMeshScaleCorrection= 1.f;
 	MikanQuatd m_apertureOrientationOffset;
 	MikanVector3d m_aperturePositionOffset;

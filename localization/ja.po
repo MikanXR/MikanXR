@@ -853,6 +853,11 @@ msgid "Charuco Mount"
 msgstr "Charuco マウント"
 
 #. Section: componentPanel
+msgctxt "componentPanel.clampedSize"
+msgid "Clamped Size"
+msgstr ""
+
+#. Section: componentPanel
 #, fuzzy
 msgctxt "componentPanel.columns"
 msgid "Columns"
@@ -1094,6 +1099,11 @@ msgstr "解像度"
 msgctxt "componentPanel.rows"
 msgid "Rows"
 msgstr "行"
+
+#. Section: componentPanel
+msgctxt "componentPanel.scaledSize"
+msgid "Scaled Size"
+msgstr ""
 
 #. Section: componentPanel
 #, fuzzy
@@ -4755,12 +4765,17 @@ msgstr "ChArUco マス目長 (mm)"
 
 #. Section: properties
 msgctxt "properties.client_aux_render_scale"
-msgid "Client Depth/Shadow Render Scale"
+msgid "Client Aux Render Scale"
 msgstr ""
 
 #. Section: properties
 msgctxt "properties.client_color_render_scale"
 msgid "Client Color Render Scale"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.client_max_buffer_dimension"
+msgid "Max Buffer Dimension"
 msgstr ""
 
 #. Section: properties
@@ -5412,6 +5427,26 @@ msgstr ""
 #. Section: propertyValues
 msgctxt "propertyValues.frame_sync_video_frame"
 msgid "Video Frame"
+msgstr ""
+
+#. Section: propertyValues
+msgctxt "propertyValues.max_buffer_dimension_1024"
+msgid "1024"
+msgstr ""
+
+#. Section: propertyValues
+msgctxt "propertyValues.max_buffer_dimension_2048"
+msgid "2048"
+msgstr ""
+
+#. Section: propertyValues
+msgctxt "propertyValues.max_buffer_dimension_4096"
+msgid "4096"
+msgstr ""
+
+#. Section: propertyValues
+msgctxt "propertyValues.max_buffer_dimension_8192"
+msgid "8192"
 msgstr ""
 
 #. Section: propertyValues

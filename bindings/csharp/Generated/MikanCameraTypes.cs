@@ -11,6 +11,14 @@ namespace MikanXR
 		FreeRunning= 2,
 	};
 
+	public enum MikanClientMaxBufferDimension
+	{
+		Dim1024= 0,
+		Dim2048= 1,
+		Dim4096= 2,
+		Dim8192= 3,
+	};
+
 	public class MikanCameraComponentValues : MikanTransformComponentValues
 	{
 		public int stage_id;
@@ -22,6 +30,7 @@ namespace MikanXR
 		public bool pose_driven_per_frame;
 		public float client_color_render_scale;
 		public float client_aux_render_scale;
+		public MikanClientMaxBufferDimension client_max_buffer_dimension;
 		public MikanQuatd aperture_orientation_offset;
 		public MikanVector3d aperture_position_offset;
 		public bool has_valid_aperture_offset;
