@@ -21,6 +21,8 @@ git submodule update --init --recursive
 git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```
 
+`--recursive` is required rather than optional: `thirdparty/Refureku` builds from source and carries a nested `Kodgen` submodule, and configure stops with a message naming this command when it is missing.
+
 The second command (once per clone) makes `git blame` skip the repo-wide clang-format commit listed in `.git-blame-ignore-revs`.
 
 ---

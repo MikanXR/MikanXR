@@ -18,7 +18,9 @@ How MikanXR is configured and built: toolchain, dependency setup, CMake targets,
 
 ## First-time setup
 
-`InitialSetup_x64.bat` (run from the repo root) deletes any existing `build/` and `deps/` folders, then downloads and unpacks prebuilt dependencies into `deps/` using `tools/7zip/7za.exe`: SDL2 2.30.10, SDL2_image 2.8.8, SDL2_ttf 2.24.0 (the devel zips, which carry the runtime DLLs; SDL2_ttf 2.24 statically links freetype so no separate `libfreetype-6.dll`/`zlib1.dll` ship anymore), OpenCV 4.10.0, GLEW 2.2.0, Spout2 2.007h, easy_profiler 2.1.0, Refureku (prebuilt `rfk` package, includes `RefurekuGenerator.exe`), libharu 2.4.5, CEF (Chromium 145 binary distribution), ONNX Runtime 1.20.1 (DirectML flavor) and DirectML 1.15.4 (both from NuGet packages), `nuget.exe`, and the DirectX Shader Compiler v1.9.2607 release (`dxc_2026_07_29.zip`, unpacked to `deps/dxc`).
+`InitialSetup_x64.bat` (run from the repo root) deletes any existing `build/` and `deps/` folders, then downloads and unpacks prebuilt dependencies into `deps/` using `tools/7zip/7za.exe`: SDL2 2.30.10, SDL2_image 2.8.8, SDL2_ttf 2.24.0 (the devel zips, which carry the runtime DLLs; SDL2_ttf 2.24 statically links freetype so no separate `libfreetype-6.dll`/`zlib1.dll` ship anymore), OpenCV 4.10.0, GLEW 2.2.0, Spout2 2.007h, easy_profiler 2.1.0, libharu 2.4.5, CEF (Chromium 145 binary distribution), ONNX Runtime 1.20.1 (DirectML flavor) and DirectML 1.15.4 (both from NuGet packages), `nuget.exe`, and the DirectX Shader Compiler v1.9.2607 release (`dxc_2026_07_29.zip`, unpacked to `deps/dxc`).
+
+Refureku is not among them. It builds from source as part of the tree, out of the `thirdparty/Refureku` submodule, so it arrives with `git submodule update --init --recursive` rather than through the setup script. See the Refureku section below.
 
 `deps/dxc` exists for one consumer: the Vulkan path of `MikanClientTestCPP` compiles its HLSL to SPIR-V at build time with `dxc -spirv`. The Windows SDK also ships a `dxc.exe`, and its help even lists the `-spirv` options, but that build has no SPIR-V code generator and fails with "SPIR-V CodeGen not available". The harness's CMake therefore looks only under `deps/dxc` and at an explicit `-DDXC_EXECUTABLE=<path>`, and warns and skips the shader step when neither is present, so a tree without `deps/dxc` still configures and builds everything else. The Vulkan headers and volk arrive as `thirdparty/` submodules rather than through the setup script, and nothing in the build links a Vulkan library: volk loads `vulkan-1.dll` at runtime.
 
@@ -55,6 +57,33 @@ Notable CMake options (defined in `cmake/ThirdParty.cmake` unless noted):
 - `CLANG_FORMAT_EXE`: overrides clang-format discovery for the format targets.
 
 Third-party source builds: `thirdparty/CMakeLists.txt` builds `fast_obj_lib`, `ixwebsocket`, and CEF's `libcef_dll_wrapper` (forced to `/MD` to match Mikan's dynamic CRT). `dylib` is fetched via `FetchContent` at configure time.
+
+---
+
+## Refureku
+
+The reflection library and its generator build from the `thirdparty/Refureku` submodule, which carries its own nested `Kodgen` submodule, so the checkout needs `git submodule update --init --recursive`. `cmake/ThirdParty.cmake` owns the whole integration and exports the same four variables the rest of the tree consumes:
+
+- `RFK_INCLUDE_DIR`: the submodule's `Library/Include/Public`
+- `RFK_LIBRARIES`: the `Refureku` target
+- `RFK_GENERATOR_EXE`: `$<TARGET_FILE:RefurekuGenerator>`
+- `RFK_SHARED_LIBRARIES`: `$<TARGET_FILE:Refureku>`
+
+Four things about the integration are load-bearing, and each exists because the submodule's CMake assumes it is the top-level project:
+
+- **The submodule's own `Refureku/CMakeLists.txt` is skipped.** `ThirdParty.cmake` adds `Generator/` and `Library/` directly. The file in between hardcodes the output directories to `${CMAKE_BINARY_DIR}/Bin` and `/Lib`, and it also carries an `include(CTest)` and the `Dist` target that assembled the prebuilt package this replaced.
+
+- **`CMAKE_CXX_STANDARD` drops to 17 for the subtree.** Kodgen declares `cxx_std_17` as a floor rather than a pin, so Mikan's C++20 would otherwise reach its vendored toml11, which uses the `std::result_of` that C++20 removed. 17 is also what the prebuilt package was compiled as.
+
+- **`CMAKE_UNITY_BUILD` drops to `OFF` for the subtree.** Both local generation and CI configure with it on as a cache entry, and toml11 does not compile with its translation units concatenated.
+
+- **`RefurekuGeneratorRuntime` stages `libclang.dll` and `vswhere.exe` beside the generator.** Kodgen copies both next to its own output directory, which is not where `RefurekuGenerator.exe` lands. The generator loads libclang at startup and shells out to vswhere to locate the MSVC toolchain; without vswhere it fails with `ParsingSettings::compilerExeName must be set to parse files` even though the toml sets it. Each `*Reflection` target depends on this staging target rather than on `RefurekuGenerator` directly.
+
+`ThirdParty.cmake` is `include()`d rather than added as a subdirectory, so it shares the root's variable scope and every override above is saved and restored around the two `add_subdirectory` calls. Everything except `Refureku` and `RefurekuGenerator` is `EXCLUDE_FROM_ALL`, so the submodule's `LibraryGenerator`, examples, and tests cost nothing.
+
+A reflected header's `projectIncludeDirectories` in each `RefurekuSettings.toml` names the submodule's include tree, so a submodule move needs those four files updated alongside `ThirdParty.cmake`.
+
+Kodgen's own post-build step still copies `libclang.dll` into `build/Bin/<Config>/`. That is a duplicate of the staged copy and nothing reads it, but it is 64MB and it is why the subtree's output directories are kept apart from the flattened `build/bin` CI configures.
 
 ---
 
@@ -130,4 +159,4 @@ CI then builds `MikanCmd` and `unit_test_suite_cpp`, runs `build\bin\MikanCmd.ex
 
 - The TypeScript binding targets require `npm` on PATH; if it is missing, configuration emits a warning and skips them.
 
-- Refureku generated headers land in `build/RfkGenerated/<Library>`; the `*Reflection` custom targets regenerate them before each dependent build.
+- Refureku generated headers land in `build/RfkGenerated/<Library>`. The `*Reflection` custom targets regenerate them before each dependent build.
