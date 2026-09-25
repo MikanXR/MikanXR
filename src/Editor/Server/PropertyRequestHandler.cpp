@@ -317,7 +317,7 @@ void PropertyRequestHandler::getComponentValuesHandler(const ClientRequest& requ
 	// Extract the values into the response polymorphic object
 	std::string serializeError;
 	if (!Serialization::serializeFromEntity(std::static_pointer_cast<IEntityAccessor>(componentPtr),
-											getValuesResponse.valuesObject.allocateByType(valuesStruct), *valuesStruct,
+											getValuesResponse.valuesObject.allocateByType(valuesStruct), valuesStruct,
 											serializeError))
 	{
 		MIKAN_LOG_ERROR("PropertyRequestHandler::getComponentValuesHandler")
@@ -392,7 +392,7 @@ void PropertyRequestHandler::getSystemValuesHandler(const ClientRequest& request
 	// Extract the values into the response polymorphic object
 	std::string serializeError;
 	if (!Serialization::serializeFromEntity(std::static_pointer_cast<IEntityAccessor>(objectSystem),
-											getValuesResponse.valuesObject.allocateByType(valuesStruct), *valuesStruct,
+											getValuesResponse.valuesObject.allocateByType(valuesStruct), valuesStruct,
 											serializeError))
 	{
 		MIKAN_LOG_ERROR("PropertyRequestHandler::getSystemValuesHandler")

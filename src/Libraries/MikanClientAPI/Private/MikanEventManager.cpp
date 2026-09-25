@@ -83,21 +83,21 @@ MikanEventPtr MikanEventManager::parseEventString(const char* szUtf8EventString)
 
 			MikanEvent eventHeader= {};
 			std::string parseHeaderError;
-			if (!Serialization::deserializeFromJson(jsonResponse, &eventHeader, MikanEvent::staticGetArchetype(),
+			if (!Serialization::deserializeFromJson(jsonResponse, &eventHeader, &MikanEvent::staticGetArchetype(),
 													parseHeaderError))
 			{
 				MIKAN_MT_LOG_ERROR("MikanClient::parseEventString()")
 					<< "Failed to parse event header: " << parseHeaderError;
 			}
 
-			rfk::Struct const* eventStruct=
+			Serialization::StructTypeHandle eventStruct=
 				Serialization::TypeRegistry::getStructByName(eventHeader.eventTypeName.getUtf8Value());
 			if (eventStruct != nullptr)
 			{
 				eventPtr= eventStruct->makeSharedInstance<MikanEvent>();
 
 				std::string parseEventError;
-				if (!Serialization::deserializeFromJson(jsonResponse, eventPtr.get(), *eventStruct, parseEventError))
+				if (!Serialization::deserializeFromJson(jsonResponse, eventPtr.get(), eventStruct, parseEventError))
 				{
 					MIKAN_MT_LOG_ERROR("MikanClient::parseEventString()")
 						<< "Failed to parse event: " << parseEventError;

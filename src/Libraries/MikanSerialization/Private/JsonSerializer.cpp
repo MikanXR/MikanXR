@@ -393,7 +393,7 @@ private:
 };
 
 // Public API
-bool serializeToJsonString(const void* instance, rfk::Struct const& structType, std::string& jsonString,
+bool serializeToJsonString(const void* instance, StructTypeHandle structType, std::string& jsonString,
 						   std::string& outErrorMsg)
 {
 	json jsonObject;
@@ -407,11 +407,11 @@ bool serializeToJsonString(const void* instance, rfk::Struct const& structType, 
 	return false;
 }
 
-bool serializeToJson(const void* instance, rfk::Struct const& structType, nlohmann::json& jsonObject,
+bool serializeToJson(const void* instance, StructTypeHandle structType, nlohmann::json& jsonObject,
 					 std::string& outErrorMsg)
 {
 	JsonWriteVisitor visitor(jsonObject);
-	Serialization::visitStruct(const_cast<void*>(instance), structType, &visitor);
+	Serialization::visitStruct(const_cast<void*>(instance), *structType, &visitor);
 
 	if (visitor.hasError())
 	{

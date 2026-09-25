@@ -293,18 +293,18 @@ private:
 };
 
 // Public API
-bool deserializeFromBytes(const std::vector<uint8_t>& inBytes, void* instance, rfk::Struct const& structType,
+bool deserializeFromBytes(const std::vector<uint8_t>& inBytes, void* instance, StructTypeHandle structType,
 						  std::string& outErrorMesg)
 {
 	return deserializeFromBytes(inBytes.data(), inBytes.size(), instance, structType, outErrorMesg);
 }
 
-bool deserializeFromBytes(const uint8_t* inBytes, const size_t inSize, void* instance, rfk::Struct const& structType,
+bool deserializeFromBytes(const uint8_t* inBytes, const size_t inSize, void* instance, StructTypeHandle structType,
 						  std::string& outErrorMesg)
 {
 	BinaryReader reader(inBytes, inSize);
 	BinaryReadVisitor visitor(reader);
-	Serialization::visitStruct(instance, structType, &visitor);
+	Serialization::visitStruct(instance, *structType, &visitor);
 
 	if (visitor.hasError())
 	{

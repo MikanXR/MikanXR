@@ -150,7 +150,7 @@ bool mikan_api_test_response_round_trip()
 	json j= json::parse(jsonString);
 	MikanResponse header= {};
 	std::string headerError;
-	bool bHeader= Serialization::deserializeFromJson(j, &header, MikanResponse::staticGetArchetype(), headerError);
+	bool bHeader= Serialization::deserializeFromJson(j, &header, &MikanResponse::staticGetArchetype(), headerError);
 	assert(bHeader);
 
 	// Look up the concrete struct type by name and create an instance
@@ -163,7 +163,7 @@ bool mikan_api_test_response_round_trip()
 
 	// Deserialize the full response into the dynamically created instance
 	std::string deserializeError;
-	bool bDeserialize= Serialization::deserializeFromJson(j, instance.get(), *responseStruct, deserializeError);
+	bool bDeserialize= Serialization::deserializeFromJson(j, instance.get(), responseStruct, deserializeError);
 	assert(bDeserialize);
 
 	// Verify field values survived the round-trip
