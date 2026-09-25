@@ -73,18 +73,104 @@ set (LIBHARU_LIBRARIES
 )
 
 # Refureku
-set (RFK_DIR ${ROOT_DIR}/deps/rfk)
-set (RFK_INCLUDE_DIR ${RFK_DIR}/Include)
-set (RFK_LIB_DIR ${RFK_DIR}/Lib)
-set (RFK_BIN_DIR ${RFK_DIR}/Bin)
+# Built from source out of the submodule rather than consumed as a prebuilt package. The
+# submodule's own Refureku/CMakeLists.txt is deliberately skipped and its two children are
+# added directly: that file hardcodes the archive/library/runtime output directories to
+# ${CMAKE_BINARY_DIR}/Bin and /Lib, which would put the subtree's output on top of the
+# flattened build/bin CI configures. Adding Generator/ and Library/ directly leaves the
+# directories below in control. It also skips the submodule root's include(CTest) and its
+# Dist target, which exists to assemble the prebuilt package this replaced.
+set (RFK_DIR ${ROOT_DIR}/thirdparty/Refureku/Refureku)
+set (RFK_INCLUDE_DIR ${RFK_DIR}/Library/Include/Public)
 set (RFK_GENERATED_ROOT_DIR ${ROOT_DIR}/build/RfkGenerated)
-if (WIN32) 
-	set (RFK_LIBRARIES ${RFK_LIB_DIR}/Refureku.lib)
-	set (RFK_GENERATOR_EXE ${RFK_BIN_DIR}/RefurekuGenerator.exe)
-	list(APPEND RFK_SHARED_LIBRARIES
-		 ${RFK_BIN_DIR}/Refureku.dll
-	)	
+
+if (NOT EXISTS "${RFK_DIR}/Library/CMakeLists.txt")
+	message(FATAL_ERROR
+		"Refureku sources are missing. Run: git submodule update --init --recursive thirdparty/Refureku")
 endif()
+
+# This file is include()d, not add_subdirectory()d, so it shares the root's variable scope
+# and anything set here reaches every Mikan target. Save what the Refureku subtree needs
+# overridden and put it back afterwards.
+set (RFK_SAVED_BUILD_TESTING "${BUILD_TESTING}")
+set (RFK_SAVED_UNITY_BUILD "${CMAKE_UNITY_BUILD}")
+set (RFK_SAVED_CXX_STANDARD "${CMAKE_CXX_STANDARD}")
+set (RFK_SAVED_ARCHIVE_OUT "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}")
+set (RFK_SAVED_LIBRARY_OUT "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+set (RFK_SAVED_RUNTIME_OUT "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+
+# Kodgen declares cxx_std_17 as a floor, not a pin, so cmake/Environment.cmake's
+# CMAKE_CXX_STANDARD 20 would otherwise reach it, and its vendored toml11 uses
+# std::result_of, which C++20 removed. 17 is also what the prebuilt package this replaced
+# was compiled as, so the Refureku objects Mikan links against are unchanged.
+set (CMAKE_CXX_STANDARD 17)
+
+# Both local generation and CI configure with CMAKE_UNITY_BUILD=ON, which as a cache entry
+# would otherwise reach the submodule's targets too. Kodgen's vendored toml11 does not
+# compile when its translation units are concatenated.
+set (CMAKE_UNITY_BUILD OFF)
+
+# Kodgen's CMakeLists includes CTest and adds its Examples and Tests subdirectories
+# unconditionally. EXCLUDE_FROM_ALL below keeps those targets out of the build; this keeps
+# Refureku's own test tree from being configured at all.
+set (BUILD_TESTING OFF)
+
+# Where the generator and the reflection runtime land. Kodgen's own CMakeLists overrides
+# these again in its scope, which the staging target below compensates for.
+set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/rfk/lib)
+set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/rfk/bin)
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/rfk/bin)
+
+# EXCLUDE_FROM_ALL: only Refureku (linked in) and RefurekuGenerator (an add_dependencies
+# target of every *Reflection step) are wanted. LibraryGenerator regenerates Refureku's own
+# reflection and the Kodgen examples and tests are internal to the submodule, so none of
+# them should cost a build here.
+add_subdirectory(${RFK_DIR}/Generator ${CMAKE_BINARY_DIR}/rfk/Generator EXCLUDE_FROM_ALL)
+add_subdirectory(${RFK_DIR}/Library ${CMAKE_BINARY_DIR}/rfk/Library EXCLUDE_FROM_ALL)
+
+# Kodgen's CMakeLists sets its own output directories and copies libclang.dll and
+# vswhere.exe beside them, in a different folder from RefurekuGenerator.exe.
+# The generator loads libclang at startup and shells out to vswhere to locate the MSVC toolchain,
+# and without vswhere it fails with "ParsingSettings::compilerExeName must be set to parse
+# files" even though the toml sets it.
+# Create a custom target to stage both beside RefurekuGenerator instead. The staging is its
+# own target because a POST_BUILD command can only be attached to a target declared in the
+# same directory, and RefurekuGenerator comes from the subdirectory added above.
+# The target is declared on every platform so the *Reflection steps can depend on it
+# unconditionally. Only Windows has anything to stage: elsewhere libclang is a system
+# library the loader finds on its own, and vswhere is specific to Visual Studio.
+add_custom_target(RefurekuGeneratorRuntime
+	COMMENT "Staging the generator's runtime dependencies")
+add_dependencies(RefurekuGeneratorRuntime RefurekuGenerator)
+
+if (WIN32)
+	set (RFK_KODGEN_THIRDPARTY ${RFK_DIR}/Generator/ThirdParty/Kodgen/Kodgen/ThirdParty)
+	add_custom_command(TARGET RefurekuGeneratorRuntime POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"${RFK_KODGEN_THIRDPARTY}/x64/Shared/libclang.dll" "$<TARGET_FILE_DIR:RefurekuGenerator>"
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"${RFK_KODGEN_THIRDPARTY}/x64/Bin/vswhere.exe" "$<TARGET_FILE_DIR:RefurekuGenerator>")
+endif()
+
+set (BUILD_TESTING "${RFK_SAVED_BUILD_TESTING}")
+set (CMAKE_UNITY_BUILD "${RFK_SAVED_UNITY_BUILD}")
+set (CMAKE_CXX_STANDARD "${RFK_SAVED_CXX_STANDARD}")
+set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${RFK_SAVED_ARCHIVE_OUT}")
+set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${RFK_SAVED_LIBRARY_OUT}")
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${RFK_SAVED_RUNTIME_OUT}")
+
+set (RFK_LIBRARIES Refureku)
+set (RFK_GENERATOR_EXE $<TARGET_FILE:RefurekuGenerator>)
+set (RFK_SHARED_LIBRARIES $<TARGET_FILE:Refureku>)
+
+# Keep the submodule's targets out of the solution's top level
+foreach (rfk_target Refureku RefurekuGenerator RefurekuGeneratorRuntime Kodgen LibraryGenerator
+				 CppPropertiesDemoProject CppPropertiesDemoProjectGenerator
+				 RunCppPropertiesGenerator ThreadingTests)
+	if (TARGET ${rfk_target})
+		set_target_properties(${rfk_target} PROPERTIES FOLDER ThirdParty/Refureku)
+	endif()
+endforeach()
 
 # Lua
 if (WIN32) 

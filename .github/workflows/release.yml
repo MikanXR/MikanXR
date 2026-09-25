@@ -54,6 +54,9 @@ jobs:
             thirdparty/Vulkan-Headers \
             thirdparty/volk
           # LuaBridge3 has its own sub-submodules we don't need, so skip them.
+          # Refureku is built from source and needs its nested Kodgen submodule, so it
+          # takes a recursive init of its own rather than joining the list above.
+          git submodule update --init --recursive --depth=1 thirdparty/Refureku
 
       # ---------------------------------------------------------------
       # The version baked into the binaries comes from

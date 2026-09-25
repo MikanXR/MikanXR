@@ -85,7 +85,7 @@ projectIncludeDirectories = [
 	'''./Public''',
 	'''../MikanClientCore/Public''',
 	'''../MikanSerialization/Public''',
-	'''../../../deps/rfk/Include''',
+	'''../../../thirdparty/Refureku/Refureku/Library/Include/Public''',
 	'''../../../thirdparty/nlohmann_json/include''',
 	'''../../../build/RfkGenerated/MikanClientAPI''',
 	'''../../../build/RfkGenerated/MikanClientCore''',

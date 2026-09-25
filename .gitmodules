@@ -42,3 +42,6 @@
 [submodule "thirdparty/volk"]
 	path = thirdparty/volk
 	url = https://github.com/zeux/volk.git
+[submodule "thirdparty/Refureku"]
+	path = thirdparty/Refureku
+	url = https://github.com/MikanXR/Refureku.git
