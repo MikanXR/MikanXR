@@ -10,6 +10,10 @@ namespace Mikan
 
 		protected int _width = 0;
 		protected int _height = 0;
+
+		// The size a reallocation last failed on, so it is not attempted again every frame
+		private int _failedAllocWidth = 0;
+		private int _failedAllocHeight = 0;
 		protected float _zNear = 0.1f;
 		protected float _zFar = 100.0f;
 		protected bool _hasAllocatedRemoteTexture = false;
@@ -54,12 +58,27 @@ namespace Mikan
 			int newHeight = newFrameEvent.pixel_size.y;
 			if (_width != newWidth || _height != newHeight)
 			{
+				// A failed reallocation tears the graphics resources back down, which puts
+				// _width/_height back to 0 and makes the next frame event look like another size
+				// change. Without this the same failing size is retried at frame rate, so give up
+				// on a size that already failed and wait for the camera to ask for a different one.
+				if (newWidth == _failedAllocWidth && newHeight == _failedAllocHeight)
+				{
+					return false;
+				}
+
 				if (ReallocateRenderTarget(mikanAPI, newWidth, newHeight))
 				{
+					_failedAllocWidth = 0;
+					_failedAllocHeight = 0;
+
 					Console.WriteLine($"INFO: Update frame size (camera_id: {_cameraId}, new size: {newWidth}x{newHeight}, frame: {_lastReceivedFrameIndex}).");
 				}
 				else
 				{
+					_failedAllocWidth = newWidth;
+					_failedAllocHeight = newHeight;
+
 					Console.WriteLine($"ERROR: Failed to update frame size (camera_id: {_cameraId}, new size: {newWidth}x{newHeight}, frame: {_lastReceivedFrameIndex}). Invalidating render target.");
 					return false;
 				}
