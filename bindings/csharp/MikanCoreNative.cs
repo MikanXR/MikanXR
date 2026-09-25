@@ -4,13 +4,23 @@ using System.Text;
 
 namespace MikanXR
 {
+	// Field-for-field mirror of MikanRenderTargetDescriptor in MikanCoreTypes.h, which the core
+	// C API reads and writes directly. Sequential layout means every field has to be present and
+	// in the same order: a missing one shifts everything after it, and since
+	// Mikan_GetCameraRenderTargetDescriptor takes this as an out parameter, a struct that is
+	// short also gets written past its end. Keep this in step with that header.
 	[StructLayout(LayoutKind.Sequential)]
 	public struct MikanRenderTargetDescriptor_Native
 	{
 		public MikanColorBufferType color_buffer_type;
 		public MikanDepthBufferType depth_buffer_type;
+		public MikanShadowBufferType shadow_buffer_type;
+		// Size of the color buffer
 		public uint width;
 		public uint height;
+		// Size of the depth and shadow buffers. 0 means same as width/height.
+		public uint aux_width;
+		public uint aux_height;
 		public MikanClientGraphicsApi graphicsAPI;
 	};
 

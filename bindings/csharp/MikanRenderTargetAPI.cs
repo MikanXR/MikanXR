@@ -93,12 +93,15 @@ namespace MikanXR
 		{
 			var allocateRequest = request as AllocateCameraRenderTargetTextures;
 			MikanRenderTargetDescriptor desiredDescriptor= allocateRequest.descriptor;
-			MikanRenderTargetDescriptor_Native desiredDescriptor_Native= 
-				new MikanRenderTargetDescriptor_Native() { 
+			MikanRenderTargetDescriptor_Native desiredDescriptor_Native=
+				new MikanRenderTargetDescriptor_Native() {
 					color_buffer_type= desiredDescriptor.color_buffer_type,
 					depth_buffer_type= desiredDescriptor.depth_buffer_type,
+					shadow_buffer_type= desiredDescriptor.shadow_buffer_type,
 					width= desiredDescriptor.width,
 					height= desiredDescriptor.height,
+					aux_width= desiredDescriptor.aux_width,
+					aux_height= desiredDescriptor.aux_height,
 					graphicsAPI= desiredDescriptor.graphicsAPI
 				};
 
@@ -120,8 +123,11 @@ namespace MikanXR
 						{
 							color_buffer_type = actualDescriptor_Native.color_buffer_type,
 							depth_buffer_type = actualDescriptor_Native.depth_buffer_type,
+							shadow_buffer_type = actualDescriptor_Native.shadow_buffer_type,
 							width = actualDescriptor_Native.width,
 							height = actualDescriptor_Native.height,
+							aux_width = actualDescriptor_Native.aux_width,
+							aux_height = actualDescriptor_Native.aux_height,
 							graphicsAPI = actualDescriptor_Native.graphicsAPI
 						};
 
