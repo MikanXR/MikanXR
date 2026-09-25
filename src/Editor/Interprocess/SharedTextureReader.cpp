@@ -105,6 +105,43 @@ public:
 		}
 	}
 
+	// Whether a receiving texture has to be rebuilt before the next receive.
+	//
+	// IsUpdated() reports a sender change exactly once and is cleared by reading it, so on
+	// its own it only ever fixes up whichever ring slot happened to be the pending write
+	// that frame. Every other slot keeps whatever size it was allocated with, and Spout
+	// writes the sender's image into the corner of an oversized texture rather than
+	// failing, which surfaces as a composite artifact on the frames those slots serve.
+	// Comparing the sizes as well lets every slot converge within one cycle of the ring.
+	bool needsTextureRebuild(const std::string& senderName, SPOUTLIBRARY* spoutFrame, IMkTexturePtr texture,
+							 int& inout_resizeCount)
+	{
+		const bool bSenderUpdated= spoutFrame->IsUpdated();
+
+		const int senderWidth= (int)spoutFrame->GetSenderWidth();
+		const int senderHeight= (int)spoutFrame->GetSenderHeight();
+		if (senderWidth <= 0 || senderHeight <= 0)
+			return bSenderUpdated;
+
+		const int textureWidth= (int)texture->getTextureWidth();
+		const int textureHeight= (int)texture->getTextureHeight();
+		const bool bSizeDiffers= textureWidth != senderWidth || textureHeight != senderHeight;
+
+		if (bSizeDiffers)
+		{
+			inout_resizeCount++;
+			if (inout_resizeCount == 1 || (inout_resizeCount % 100) == 0)
+			{
+				MIKAN_LOG_INFO("SpoutTextureReader::readRenderTargetTexture")
+					<< senderName << " receiving texture was " << textureWidth << "x" << textureHeight
+					<< ", resizing to the sender's " << senderWidth << "x" << senderHeight << " (" << inout_resizeCount
+					<< " so far)";
+			}
+		}
+
+		return bSenderUpdated || bSizeDiffers;
+	}
+
 	bool readRenderTargetTexture()
 	{
 		bool bSuccess= false;
@@ -114,7 +151,8 @@ public:
 		{
 			EASY_BLOCK("receive color texture");
 
-			if (m_spoutColorFrame->IsUpdated())
+			if (needsTextureRebuild(m_parentAccessor->getColorSenderName(), m_spoutColorFrame, colorTexture,
+									m_colorResizeCount))
 			{
 				const GLint colorTexFormat=
 					getReceiveColorTextureFormat(m_parentAccessor->getRenderTargetDescriptor().color_buffer_type);
@@ -134,7 +172,8 @@ public:
 		{
 			EASY_BLOCK("receive depth texture");
 
-			if (m_spoutDepthFrame->IsUpdated())
+			if (needsTextureRebuild(m_parentAccessor->getDepthSenderName(), m_spoutDepthFrame, depthTexture,
+									m_depthResizeCount))
 			{
 				depthTexture->disposeTexture();
 				depthTexture->setSize(m_spoutDepthFrame->GetSenderWidth(), m_spoutDepthFrame->GetSenderHeight());
@@ -151,7 +190,8 @@ public:
 		{
 			EASY_BLOCK("receive shadow texture");
 
-			if (m_spoutShadowFrame->IsUpdated())
+			if (needsTextureRebuild(m_parentAccessor->getShadowSenderName(), m_spoutShadowFrame, shadowTexture,
+									m_shadowResizeCount))
 			{
 				const GLint shadowTexFormat=
 					getReceiveShadowTextureFormat(m_parentAccessor->getRenderTargetDescriptor().shadow_buffer_type);
@@ -170,6 +210,10 @@ public:
 	}
 
 private:
+	int m_colorResizeCount= 0;
+	int m_depthResizeCount= 0;
+	int m_shadowResizeCount= 0;
+
 	SharedTextureReadAccessor* m_parentAccessor;
 	SPOUTLIBRARY* m_spoutColorFrame;
 	SPOUTLIBRARY* m_spoutDepthFrame;

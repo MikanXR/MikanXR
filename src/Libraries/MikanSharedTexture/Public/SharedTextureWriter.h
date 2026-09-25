@@ -65,8 +65,15 @@ struct SharedTextureDescriptor
 	SharedColorBufferType color_buffer_type= SharedColorBufferType::NOCOLOR;
 	SharedDepthBufferType depth_buffer_type= SharedDepthBufferType::NODEPTH;
 	SharedShadowBufferType shadow_buffer_type= SharedShadowBufferType::NOSHADOW;
+	// Size of the color buffer
 	uint32_t width= 0;
 	uint32_t height= 0;
+	// Size of the depth and shadow buffers. 0 means same as width/height. The writers size
+	// their senders from the texture each write hands them rather than from these, but the
+	// descriptor round-trips back out through getCameraRenderTargetDescriptor, so a field
+	// missing here is a field the server never learns about.
+	uint32_t aux_width= 0;
+	uint32_t aux_height= 0;
 	SharedClientGraphicsApi graphicsAPI= SharedClientGraphicsApi::UNKNOWN;
 };
 

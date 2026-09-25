@@ -206,6 +206,14 @@ bool ClientSourceManager::addClientSource(const char* clientId, const MikanClien
 	{
 		textureQueueSize= std::max(textureQueueSize, m_queueSizeResolver(cameraId));
 	}
+	// The sizes the ring is cut to, which every later frame is received into. A client whose
+	// senders disagree with these shows up as a composite artifact and nothing else, so the
+	// numbers are worth having in the log whenever a source appears.
+	MIKAN_LOG_INFO("ClientSourceManager::addClientSource")
+		<< tableKey << " ring of " << textureQueueSize << ": color " << desc.width << "x" << desc.height << ", aux "
+		<< desc.aux_width << "x" << desc.aux_height << " (color type " << (int)desc.color_buffer_type << ", depth type "
+		<< (int)desc.depth_buffer_type << ", shadow type " << (int)desc.shadow_buffer_type << ")";
+
 	clientSource->textureQueue= new ClientTextureFrameQueue(textureQueueSize);
 	bSuccess= clientSource->textureQueue->initialize(desc);
 
