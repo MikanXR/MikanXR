@@ -220,7 +220,7 @@ public:
 		rfk::Type const& keyType= templateKeyArg.getType();
 		rfk::Type const& valueType= templateValueArg.getType();
 
-		if (keyType == rfk::getType<std::string>() && valueType == rfk::getType<Serialization::String>())
+		if (keyType == rfk::getType<Serialization::String>() && valueType == rfk::getType<Serialization::String>())
 		{
 			visitStringMap(mapAccessor, templatedMapType);
 		}

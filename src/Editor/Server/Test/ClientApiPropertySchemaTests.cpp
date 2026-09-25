@@ -121,8 +121,19 @@ public:
 			}
 			else if (templateName == "Map" && templateInst->getTemplateArgumentsCount() == 2)
 			{
-				// The serializer only supports Map<std::string, Serialization::String>.
-				record(a, MikanVariantType::STRING_MAP);
+				// The serializer only supports Map<Serialization::String, Serialization::String>,
+				// so the key and value types are checked here rather than assumed.
+				auto const& keyArg=
+					static_cast<rfk::TypeTemplateArgument const&>(templateInst->getTemplateArgumentAt(0));
+				auto const& valueArg=
+					static_cast<rfk::TypeTemplateArgument const&>(templateInst->getTemplateArgumentAt(1));
+
+				if (keyArg.getType() == rfk::getType<Serialization::String>()
+					&& valueArg.getType() == rfk::getType<Serialization::String>())
+					record(a, MikanVariantType::STRING_MAP);
+				else
+					setError(StringUtils::stringify("Field '", a.getName(),
+													"' is a Map with an unsupported key or value type"));
 			}
 			else
 			{

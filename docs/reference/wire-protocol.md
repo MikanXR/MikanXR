@@ -141,7 +141,7 @@ A client-facing property must be wired consistently in three places:
 
 The guard test is `src/Editor/Server/Test/ClientApiPropertySchemaTests.cpp`, run from `CmdApp::runTests` via `MikanCmd.exe -runTests` (see [commands.md](./commands.md)). For every entry in `k_schemaTestEntries` (each `SCHEMA_ENTRY(EditorClass, ValuesStruct)` pair, covering all components and object systems) it:
 
-- instantiates the values struct via reflection and walks it with `PropertySchemaVisitor`, a deliberate mirror of `EntityAccessorReadVisitor`, computing the `MikanVariantType` the serializer will demand per field (failing on unsupported field types);
+- instantiates the values struct via reflection and walks it with `PropertySchemaVisitor`, a deliberate mirror of `EntityAccessorReadVisitor`, computing the `MikanVariantType` the serializer will demand per field (failing on unsupported field types). The mirror is only as good as what it checks: for a `Serialization::Map` field it used to record `STRING_MAP` on the template name alone, while the serializer tested the key against `std::string`. Every map on the wire is `Map<Serialization::String, Serialization::String>`, so that test never passed and `MikanUSBVideoSourceSystemValues::usb_device_map` came back empty with a serialization error. Both sides now check the key and value types, and a map of any other shape fails the guard test rather than at runtime;
 - fails if any values-struct field has no non-hidden descriptor of the exact same name and type;
 - fails if any non-hidden descriptor has no matching values-struct field.
 
