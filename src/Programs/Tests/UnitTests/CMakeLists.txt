@@ -95,6 +95,9 @@ target_compile_definitions(unit_test_suite_cpp PRIVATE ENABLE_SERIALIZATION_REFL
 target_compile_definitions(unit_test_suite_cpp PRIVATE JSON_DISABLE_ENUM_SERIALIZATION=1)
 target_compile_definitions(unit_test_suite_cpp PRIVATE ENABLE_MIKANCORE_REFLECTION)
 target_compile_definitions(unit_test_suite_cpp PRIVATE ENABLE_MIKANAPI_REFLECTION)
+# csharp_interop_unit_tests reads bindings/csharp/MikanCoreNative.cs, which is source rather
+# than a build artifact, so it needs the repo it was configured from
+target_compile_definitions(unit_test_suite_cpp PRIVATE MIKAN_REPO_ROOT_DIR="${ROOT_DIR}")
 if(MIKAN_WITH_ARKIT_VIDEO)
   target_compile_definitions(unit_test_suite_cpp PRIVATE MIKAN_ARKIT_CUDA_GL_INTEROP_AVAILABLE)
 endif()
