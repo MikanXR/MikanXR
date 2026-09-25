@@ -6,7 +6,7 @@ namespace MikanXR
 {
 	public class DisposeClientRequest : MikanRequest
 	{
-		public string clientId;
+		[MikanFieldOrder(0)] public string clientId;
 
 		public DisposeClientRequest()
 		{
@@ -16,7 +16,7 @@ namespace MikanXR
 
 	public class InitClientRequest : MikanRequest
 	{
-		public MikanClientInfo clientInfo;
+		[MikanFieldOrder(0)] public MikanClientInfo clientInfo;
 
 		public InitClientRequest()
 		{

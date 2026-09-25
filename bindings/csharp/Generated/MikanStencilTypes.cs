@@ -14,9 +14,9 @@ namespace MikanXR
 
 	public class MikanBoxStencilComponentValues : MikanStencilComponentValues
 	{
-		public float box_x_size;
-		public float box_y_size;
-		public float box_z_size;
+		[MikanFieldOrder(0)] public float box_x_size;
+		[MikanFieldOrder(1)] public float box_y_size;
+		[MikanFieldOrder(2)] public float box_z_size;
 	};
 
 	public class MikanBoxStencilSystemValues : MikanSystemValues
@@ -25,7 +25,7 @@ namespace MikanXR
 
 	public class MikanModelStencilComponentValues : MikanStencilComponentValues
 	{
-		public string model_path;
+		[MikanFieldOrder(0)] public string model_path;
 	};
 
 	public class MikanModelStencilSystemValues : MikanSystemValues
@@ -34,9 +34,9 @@ namespace MikanXR
 
 	public class MikanQuadStencilComponentValues : MikanStencilComponentValues
 	{
-		public float quad_width;
-		public float quad_height;
-		public bool is_double_sided;
+		[MikanFieldOrder(0)] public float quad_width;
+		[MikanFieldOrder(1)] public float quad_height;
+		[MikanFieldOrder(2)] public bool is_double_sided;
 	};
 
 	public class MikanQuadStencilSystemValues : MikanSystemValues
@@ -45,21 +45,21 @@ namespace MikanXR
 
 	public class MikanStencilComponentValues : MikanTransformComponentValues
 	{
-		public bool is_disabled;
-		public MikanStencilCullMode cull_mode;
+		[MikanFieldOrder(0)] public bool is_disabled;
+		[MikanFieldOrder(1)] public MikanStencilCullMode cull_mode;
 	};
 
 	public class MikanStencilModelRenderGeometry
 	{
-		public List<MikanTriagulatedMesh> meshes;
+		[MikanFieldOrder(0)] public List<MikanTriagulatedMesh> meshes;
 	};
 
 	public class MikanTriagulatedMesh
 	{
-		public List<MikanVector3f> vertices;
-		public List<MikanVector3f> normals;
-		public List<MikanVector2f> texels;
-		public List<int> indices;
+		[MikanFieldOrder(0)] public List<MikanVector3f> vertices;
+		[MikanFieldOrder(1)] public List<MikanVector3f> normals;
+		[MikanFieldOrder(2)] public List<MikanVector2f> texels;
+		[MikanFieldOrder(3)] public List<int> indices;
 	};
 
 }

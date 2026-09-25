@@ -43,144 +43,144 @@ namespace MikanXR
 
 	public class MikanARKitVideoSourceValues : MikanVideoSourceValues
 	{
-		public int base_port;
+		[MikanFieldOrder(0)] public int base_port;
 	};
 
 	public class MikanBaseIntrinsics : PolymorphicStruct
 	{
-		public double pixel_width;
-		public double pixel_height;
-		public double aspect_ratio;
-		public double hfov;
-		public double vfov;
-		public double znear;
-		public double zfar;
+		[MikanFieldOrder(0)] public double pixel_width;
+		[MikanFieldOrder(1)] public double pixel_height;
+		[MikanFieldOrder(2)] public double aspect_ratio;
+		[MikanFieldOrder(3)] public double hfov;
+		[MikanFieldOrder(4)] public double vfov;
+		[MikanFieldOrder(5)] public double znear;
+		[MikanFieldOrder(6)] public double zfar;
 	};
 
 	public class MikanDistortionCoefficients
 	{
-		public double k1;
-		public double k2;
-		public double k3;
-		public double k4;
-		public double k5;
-		public double k6;
-		public double p1;
-		public double p2;
+		[MikanFieldOrder(0)] public double k1;
+		[MikanFieldOrder(1)] public double k2;
+		[MikanFieldOrder(2)] public double k3;
+		[MikanFieldOrder(3)] public double k4;
+		[MikanFieldOrder(4)] public double k5;
+		[MikanFieldOrder(5)] public double k6;
+		[MikanFieldOrder(6)] public double p1;
+		[MikanFieldOrder(7)] public double p2;
 	};
 
 	public class MikanFileVideoSourceValues : MikanVideoSourceValues
 	{
-		public string media_path;
-		public string marker_media_path;
-		public string pose_track_path;
-		public string marker_pose_track_path;
-		public bool loop;
-		public int playback_state;
-		public float playback_time;
-		public float duration_seconds;
+		[MikanFieldOrder(0)] public string media_path;
+		[MikanFieldOrder(1)] public string marker_media_path;
+		[MikanFieldOrder(2)] public string pose_track_path;
+		[MikanFieldOrder(3)] public string marker_pose_track_path;
+		[MikanFieldOrder(4)] public bool loop;
+		[MikanFieldOrder(5)] public int playback_state;
+		[MikanFieldOrder(6)] public float playback_time;
+		[MikanFieldOrder(7)] public float duration_seconds;
 	};
 
 	public class MikanMonoIntrinsics : MikanBaseIntrinsics
 	{
-		public MikanDistortionCoefficients distortion_coefficients;
-		public MikanMatrix3d distorted_camera_matrix;
-		public MikanMatrix3d undistorted_camera_matrix;
+		[MikanFieldOrder(0)] public MikanDistortionCoefficients distortion_coefficients;
+		[MikanFieldOrder(1)] public MikanMatrix3d distorted_camera_matrix;
+		[MikanFieldOrder(2)] public MikanMatrix3d undistorted_camera_matrix;
 	};
 
 	public class MikanNetworkVideoSourceValues : MikanVideoSourceValues
 	{
-		public string protocol;
-		public string ip_address;
-		public int port;
-		public string path;
+		[MikanFieldOrder(0)] public string protocol;
+		[MikanFieldOrder(1)] public string ip_address;
+		[MikanFieldOrder(2)] public int port;
+		[MikanFieldOrder(3)] public string path;
 	};
 
 	public class MikanStereoIntrinsics : MikanBaseIntrinsics
 	{
-		public MikanDistortionCoefficients left_distortion_coefficients;
-		public MikanMatrix3d left_camera_matrix;
-		public MikanDistortionCoefficients right_distortion_coefficients;
-		public MikanMatrix3d right_camera_matrix;
-		public MikanMatrix3d left_rectification_rotation;
-		public MikanMatrix3d right_rectification_rotation;
-		public MikanMatrix4x3d left_rectification_projection;
-		public MikanMatrix4x3d right_rectification_projection;
-		public MikanMatrix3d rotation_between_cameras;
-		public MikanVector3d translation_between_cameras;
-		public MikanMatrix3d essential_matrix;
-		public MikanMatrix3d fundamental_matrix;
-		public MikanMatrix4d reprojection_matrix;
+		[MikanFieldOrder(0)] public MikanDistortionCoefficients left_distortion_coefficients;
+		[MikanFieldOrder(1)] public MikanMatrix3d left_camera_matrix;
+		[MikanFieldOrder(2)] public MikanDistortionCoefficients right_distortion_coefficients;
+		[MikanFieldOrder(3)] public MikanMatrix3d right_camera_matrix;
+		[MikanFieldOrder(4)] public MikanMatrix3d left_rectification_rotation;
+		[MikanFieldOrder(5)] public MikanMatrix3d right_rectification_rotation;
+		[MikanFieldOrder(6)] public MikanMatrix4x3d left_rectification_projection;
+		[MikanFieldOrder(7)] public MikanMatrix4x3d right_rectification_projection;
+		[MikanFieldOrder(8)] public MikanMatrix3d rotation_between_cameras;
+		[MikanFieldOrder(9)] public MikanVector3d translation_between_cameras;
+		[MikanFieldOrder(10)] public MikanMatrix3d essential_matrix;
+		[MikanFieldOrder(11)] public MikanMatrix3d fundamental_matrix;
+		[MikanFieldOrder(12)] public MikanMatrix4d reprojection_matrix;
 	};
 
 	public class MikanUSBVideoSourceSystemValues : MikanSystemValues
 	{
-		public Dictionary<string, string> usb_device_map;
+		[MikanFieldOrder(0)] public Dictionary<string, string> usb_device_map;
 	};
 
 	public class MikanUSBVideoSourceValues : MikanVideoSourceValues
 	{
-		public string current_friendly_name;
-		public string current_device_path;
-		public string video_mode;
-		public string video_resolution;
-		public string video_fps;
-		public string video_format;
-		public List<float> video_settings;
-		public List<string> video_resolutions;
-		public List<string> video_frame_rates;
-		public List<string> video_formats;
-		public bool brightness_valid;
-		public float brightness_fraction;
-		public bool contrast_valid;
-		public float contrast_fraction;
-		public bool hue_valid;
-		public float hue_fraction;
-		public bool saturation_valid;
-		public float saturation_fraction;
-		public bool sharpness_valid;
-		public float sharpness_fraction;
-		public bool gamma_valid;
-		public float gamma_fraction;
-		public bool white_balance_valid;
-		public float white_balance_fraction;
-		public bool red_balance_valid;
-		public float red_balance_fraction;
-		public bool green_balance_valid;
-		public float green_balance_fraction;
-		public bool blue_balance_valid;
-		public float blue_balance_fraction;
-		public bool gain_valid;
-		public float gain_fraction;
-		public bool pan_valid;
-		public float pan_fraction;
-		public bool tilt_valid;
-		public float tilt_fraction;
-		public bool roll_valid;
-		public float roll_fraction;
-		public bool zoom_valid;
-		public float zoom_fraction;
-		public bool exposure_valid;
-		public float exposure_fraction;
-		public bool iris_valid;
-		public float iris_fraction;
-		public bool focus_valid;
-		public float focus_fraction;
+		[MikanFieldOrder(0)] public string current_friendly_name;
+		[MikanFieldOrder(1)] public string current_device_path;
+		[MikanFieldOrder(2)] public string video_mode;
+		[MikanFieldOrder(3)] public string video_resolution;
+		[MikanFieldOrder(4)] public string video_fps;
+		[MikanFieldOrder(5)] public string video_format;
+		[MikanFieldOrder(6)] public List<float> video_settings;
+		[MikanFieldOrder(7)] public List<string> video_resolutions;
+		[MikanFieldOrder(8)] public List<string> video_frame_rates;
+		[MikanFieldOrder(9)] public List<string> video_formats;
+		[MikanFieldOrder(10)] public bool brightness_valid;
+		[MikanFieldOrder(11)] public float brightness_fraction;
+		[MikanFieldOrder(12)] public bool contrast_valid;
+		[MikanFieldOrder(13)] public float contrast_fraction;
+		[MikanFieldOrder(14)] public bool hue_valid;
+		[MikanFieldOrder(15)] public float hue_fraction;
+		[MikanFieldOrder(16)] public bool saturation_valid;
+		[MikanFieldOrder(17)] public float saturation_fraction;
+		[MikanFieldOrder(18)] public bool sharpness_valid;
+		[MikanFieldOrder(19)] public float sharpness_fraction;
+		[MikanFieldOrder(20)] public bool gamma_valid;
+		[MikanFieldOrder(21)] public float gamma_fraction;
+		[MikanFieldOrder(22)] public bool white_balance_valid;
+		[MikanFieldOrder(23)] public float white_balance_fraction;
+		[MikanFieldOrder(24)] public bool red_balance_valid;
+		[MikanFieldOrder(25)] public float red_balance_fraction;
+		[MikanFieldOrder(26)] public bool green_balance_valid;
+		[MikanFieldOrder(27)] public float green_balance_fraction;
+		[MikanFieldOrder(28)] public bool blue_balance_valid;
+		[MikanFieldOrder(29)] public float blue_balance_fraction;
+		[MikanFieldOrder(30)] public bool gain_valid;
+		[MikanFieldOrder(31)] public float gain_fraction;
+		[MikanFieldOrder(32)] public bool pan_valid;
+		[MikanFieldOrder(33)] public float pan_fraction;
+		[MikanFieldOrder(34)] public bool tilt_valid;
+		[MikanFieldOrder(35)] public float tilt_fraction;
+		[MikanFieldOrder(36)] public bool roll_valid;
+		[MikanFieldOrder(37)] public float roll_fraction;
+		[MikanFieldOrder(38)] public bool zoom_valid;
+		[MikanFieldOrder(39)] public float zoom_fraction;
+		[MikanFieldOrder(40)] public bool exposure_valid;
+		[MikanFieldOrder(41)] public float exposure_fraction;
+		[MikanFieldOrder(42)] public bool iris_valid;
+		[MikanFieldOrder(43)] public float iris_fraction;
+		[MikanFieldOrder(44)] public bool focus_valid;
+		[MikanFieldOrder(45)] public float focus_fraction;
 	};
 
 	public class MikanVideoSourceIntrinsics
 	{
-		public PolymorphicObject intrinsics_ptr;
-		public MikanIntrinsicsType intrinsics_type;
+		[MikanFieldOrder(0)] public PolymorphicObject intrinsics_ptr;
+		[MikanFieldOrder(1)] public MikanIntrinsicsType intrinsics_type;
 	};
 
 	public class MikanVideoSourceValues : MikanComponentValues
 	{
-		public PolymorphicObject intrinsics_ptr;
-		public MikanIntrinsicsType intrinsics_type;
-		public bool is_frame_mirrored;
-		public bool is_buffer_mirrored;
-		public int video_frame_queue_size;
+		[MikanFieldOrder(0)] public PolymorphicObject intrinsics_ptr;
+		[MikanFieldOrder(1)] public MikanIntrinsicsType intrinsics_type;
+		[MikanFieldOrder(2)] public bool is_frame_mirrored;
+		[MikanFieldOrder(3)] public bool is_buffer_mirrored;
+		[MikanFieldOrder(4)] public int video_frame_queue_size;
 	};
 
 }

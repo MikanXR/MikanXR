@@ -6,9 +6,9 @@ namespace MikanXR
 {
 	public class MikanConnectedEvent : MikanEvent
 	{
-		public MikanClientAPIVersion serverVersion;
-		public MikanClientAPIVersion minClientVersion;
-		public bool isClientCompatible;
+		[MikanFieldOrder(0)] public MikanClientAPIVersion serverVersion;
+		[MikanFieldOrder(1)] public MikanClientAPIVersion minClientVersion;
+		[MikanFieldOrder(2)] public bool isClientCompatible;
 
 		public MikanConnectedEvent()
 		{
@@ -18,8 +18,8 @@ namespace MikanXR
 
 	public class MikanDisconnectedEvent : MikanEvent
 	{
-		public MikanDisconnectCode code;
-		public string reason;
+		[MikanFieldOrder(0)] public MikanDisconnectCode code;
+		[MikanFieldOrder(1)] public string reason;
 
 		public MikanDisconnectedEvent()
 		{

@@ -6,7 +6,7 @@ namespace MikanXR
 {
 	public class MikanAppStageInfo
 	{
-		public string app_state_name;
+		[MikanFieldOrder(0)] public string app_state_name;
 	};
 
 }

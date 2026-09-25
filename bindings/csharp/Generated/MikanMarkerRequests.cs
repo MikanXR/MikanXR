@@ -6,7 +6,7 @@ namespace MikanXR
 {
 	public class ArucoMarkerImageResponse : MikanResponse
 	{
-		public string imageData;
+		[MikanFieldOrder(0)] public string imageData;
 
 		public ArucoMarkerImageResponse()
 		{
@@ -16,8 +16,8 @@ namespace MikanXR
 
 	public class GetArucoMarkerImageRequest : MikanRequest
 	{
-		public int markerId;
-		public int imageSize;
+		[MikanFieldOrder(0)] public int markerId;
+		[MikanFieldOrder(1)] public int imageSize;
 
 		public GetArucoMarkerImageRequest()
 		{

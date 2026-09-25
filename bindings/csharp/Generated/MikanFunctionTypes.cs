@@ -6,10 +6,10 @@ namespace MikanXR
 {
 	public class MikanFunctionDescriptor
 	{
-		public string ownerSystemClass;
-		public string ownerComponentClass;
-		public string functionName;
-		public string displayName;
+		[MikanFieldOrder(0)] public string ownerSystemClass;
+		[MikanFieldOrder(1)] public string ownerComponentClass;
+		[MikanFieldOrder(2)] public string functionName;
+		[MikanFieldOrder(3)] public string displayName;
 	};
 
 }

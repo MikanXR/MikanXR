@@ -6,13 +6,13 @@ namespace MikanXR
 {
 	public class MikanSceneComponentValues : MikanTransformComponentValues
 	{
-		public int display_compositor_id;
-		public bool force_render;
+		[MikanFieldOrder(0)] public int display_compositor_id;
+		[MikanFieldOrder(1)] public bool force_render;
 	};
 
 	public class MikanSceneSystemValues : MikanSystemValues
 	{
-		public int current_scene_id;
+		[MikanFieldOrder(0)] public int current_scene_id;
 	};
 
 }

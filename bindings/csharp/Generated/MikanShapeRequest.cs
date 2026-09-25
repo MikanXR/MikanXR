@@ -6,7 +6,7 @@ namespace MikanXR
 {
 	public class GetModelShapeRenderGeometry : MikanRequest
 	{
-		public int shapeId;
+		[MikanFieldOrder(0)] public int shapeId;
 
 		public GetModelShapeRenderGeometry()
 		{
@@ -16,7 +16,7 @@ namespace MikanXR
 
 	public class MikanShapeModelRenderGeometryResponse : MikanResponse
 	{
-		public MikanStencilModelRenderGeometry render_geometry;
+		[MikanFieldOrder(0)] public MikanStencilModelRenderGeometry render_geometry;
 
 		public MikanShapeModelRenderGeometryResponse()
 		{

@@ -6,8 +6,8 @@ namespace MikanXR
 {
 	public class MikanCompositorStartedEvent : MikanEvent
 	{
-		public int compositor_id;
-		public int camera_id;
+		[MikanFieldOrder(0)] public int compositor_id;
+		[MikanFieldOrder(1)] public int camera_id;
 
 		public MikanCompositorStartedEvent()
 		{
@@ -17,8 +17,8 @@ namespace MikanXR
 
 	public class MikanCompositorStoppedEvent : MikanEvent
 	{
-		public int compositor_id;
-		public int camera_id;
+		[MikanFieldOrder(0)] public int compositor_id;
+		[MikanFieldOrder(1)] public int camera_id;
 
 		public MikanCompositorStoppedEvent()
 		{

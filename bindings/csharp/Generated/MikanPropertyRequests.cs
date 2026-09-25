@@ -13,8 +13,8 @@ namespace MikanXR
 
 	public class ComponentGetValuesRequest : MikanRequest
 	{
-		public string ownerSystem;
-		public int componentId;
+		[MikanFieldOrder(0)] public string ownerSystem;
+		[MikanFieldOrder(1)] public int componentId;
 
 		public ComponentGetValuesRequest()
 		{
@@ -24,9 +24,9 @@ namespace MikanXR
 
 	public class ComponentGetValuesResponse : MikanResponse
 	{
-		public string ownerSystem;
-		public string componentClassName;
-		public PolymorphicObject valuesObject;
+		[MikanFieldOrder(0)] public string ownerSystem;
+		[MikanFieldOrder(1)] public string componentClassName;
+		[MikanFieldOrder(2)] public PolymorphicObject valuesObject;
 
 		public ComponentGetValuesResponse()
 		{
@@ -36,7 +36,7 @@ namespace MikanXR
 
 	public class ComponentListResponse : MikanResponse
 	{
-		public List<int> componentIdList;
+		[MikanFieldOrder(0)] public List<int> componentIdList;
 
 		public ComponentListResponse()
 		{
@@ -46,8 +46,8 @@ namespace MikanXR
 
 	public class GetComponentListRequest : MikanRequest
 	{
-		public string ownerSystem;
-		public string componentClassName;
+		[MikanFieldOrder(0)] public string ownerSystem;
+		[MikanFieldOrder(1)] public string componentClassName;
 
 		public GetComponentListRequest()
 		{
@@ -57,9 +57,9 @@ namespace MikanXR
 
 	public class GetPropertyDescriptors : MikanRequest
 	{
-		public string systemFilter;
-		public string componentFilter;
-		public string propertyFilter;
+		[MikanFieldOrder(0)] public string systemFilter;
+		[MikanFieldOrder(1)] public string componentFilter;
+		[MikanFieldOrder(2)] public string propertyFilter;
 
 		public GetPropertyDescriptors()
 		{
@@ -69,7 +69,7 @@ namespace MikanXR
 
 	public class PropertyDescriptorResponse : MikanResponse
 	{
-		public List<MikanPropertyDescriptor> descriptor_list;
+		[MikanFieldOrder(0)] public List<MikanPropertyDescriptor> descriptor_list;
 
 		public PropertyDescriptorResponse()
 		{
@@ -79,9 +79,9 @@ namespace MikanXR
 
 	public class PropertyGetValueRequest : MikanRequest
 	{
-		public string ownerSystem;
-		public int componentId;
-		public string fieldName;
+		[MikanFieldOrder(0)] public string ownerSystem;
+		[MikanFieldOrder(1)] public int componentId;
+		[MikanFieldOrder(2)] public string fieldName;
 
 		public PropertyGetValueRequest()
 		{
@@ -91,7 +91,7 @@ namespace MikanXR
 
 	public class PropertyGetValueResponse : MikanResponse
 	{
-		public MikanPropertyValue propertyValue;
+		[MikanFieldOrder(0)] public MikanPropertyValue propertyValue;
 
 		public PropertyGetValueResponse()
 		{
@@ -101,10 +101,10 @@ namespace MikanXR
 
 	public class PropertySetValueRequest : MikanRequest
 	{
-		public string ownerSystem;
-		public int componentId;
-		public string fieldName;
-		public MikanVariant fieldValue;
+		[MikanFieldOrder(0)] public string ownerSystem;
+		[MikanFieldOrder(1)] public int componentId;
+		[MikanFieldOrder(2)] public string fieldName;
+		[MikanFieldOrder(3)] public MikanVariant fieldValue;
 
 		public PropertySetValueRequest()
 		{
@@ -123,10 +123,10 @@ namespace MikanXR
 
 	public class SetPropertyNotifyMode : MikanRequest
 	{
-		public string systemFilter;
-		public string componentFilter;
-		public string propertyFilter;
-		public MikanPropertyNotifyMode notifyMode;
+		[MikanFieldOrder(0)] public string systemFilter;
+		[MikanFieldOrder(1)] public string componentFilter;
+		[MikanFieldOrder(2)] public string propertyFilter;
+		[MikanFieldOrder(3)] public MikanPropertyNotifyMode notifyMode;
 
 		public SetPropertyNotifyMode()
 		{
@@ -136,9 +136,9 @@ namespace MikanXR
 
 	public class SystemCreateObjectRequest : MikanRequest
 	{
-		public string ownerSystem;
-		public string componentClassName;
-		public PolymorphicObject initParams;
+		[MikanFieldOrder(0)] public string ownerSystem;
+		[MikanFieldOrder(1)] public string componentClassName;
+		[MikanFieldOrder(2)] public PolymorphicObject initParams;
 
 		public SystemCreateObjectRequest()
 		{
@@ -148,9 +148,9 @@ namespace MikanXR
 
 	public class SystemDestroyObjectRequest : MikanRequest
 	{
-		public string ownerSystem;
-		public string componentClassName;
-		public int componentId;
+		[MikanFieldOrder(0)] public string ownerSystem;
+		[MikanFieldOrder(1)] public string componentClassName;
+		[MikanFieldOrder(2)] public int componentId;
 
 		public SystemDestroyObjectRequest()
 		{
@@ -160,7 +160,7 @@ namespace MikanXR
 
 	public class SystemGetValuesRequest : MikanRequest
 	{
-		public string ownerSystem;
+		[MikanFieldOrder(0)] public string ownerSystem;
 
 		public SystemGetValuesRequest()
 		{
@@ -170,8 +170,8 @@ namespace MikanXR
 
 	public class SystemGetValuesResponse : MikanResponse
 	{
-		public string ownerSystem;
-		public PolymorphicObject valuesObject;
+		[MikanFieldOrder(0)] public string ownerSystem;
+		[MikanFieldOrder(1)] public PolymorphicObject valuesObject;
 
 		public SystemGetValuesResponse()
 		{

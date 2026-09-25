@@ -30,18 +30,18 @@ namespace MikanXR
 
 	public class MikanTrackingVolumeComponentValues : MikanComponentValues
 	{
-		public int origin_marker_id;
+		[MikanFieldOrder(0)] public int origin_marker_id;
 	};
 
 	public class MikanVRTrackingVolumeComponentValues : MikanTrackingVolumeComponentValues
 	{
-		public MikanTrackingRuntime tracking_runtime;
-		public int charuco_mount_id;
-		public MikanVector3f charuco_mount_offset_mm;
-		public int utility_marker_id;
-		public List<int> tracking_mount_ids;
-		public MikanMatrix4f vr_space_to_stage_space;
-		public MikanTrackingSpace display_tracking_space;
+		[MikanFieldOrder(0)] public MikanTrackingRuntime tracking_runtime;
+		[MikanFieldOrder(1)] public int charuco_mount_id;
+		[MikanFieldOrder(2)] public MikanVector3f charuco_mount_offset_mm;
+		[MikanFieldOrder(3)] public int utility_marker_id;
+		[MikanFieldOrder(4)] public List<int> tracking_mount_ids;
+		[MikanFieldOrder(5)] public MikanMatrix4f vr_space_to_stage_space;
+		[MikanFieldOrder(6)] public MikanTrackingSpace display_tracking_space;
 	};
 
 }

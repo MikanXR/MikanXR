@@ -6,9 +6,9 @@ namespace MikanXR
 {
 	public class MikanTrackingMountComponentValues : MikanComponentValues
 	{
-		public string device_path;
-		public string socket_name;
-		public List<string> available_socket_names;
+		[MikanFieldOrder(0)] public string device_path;
+		[MikanFieldOrder(1)] public string socket_name;
+		[MikanFieldOrder(2)] public List<string> available_socket_names;
 	};
 
 }

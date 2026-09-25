@@ -6,7 +6,7 @@ namespace MikanXR
 {
 	public class GetDMXData : MikanRequest
 	{
-		public List<int> dmx_universe_ids;
+		[MikanFieldOrder(0)] public List<int> dmx_universe_ids;
 
 		public GetDMXData()
 		{
@@ -16,7 +16,7 @@ namespace MikanXR
 
 	public class MikanDMXDataResponse : MikanResponse
 	{
-		public MikanDMXData dmx_data;
+		[MikanFieldOrder(0)] public MikanDMXData dmx_data;
 
 		public MikanDMXDataResponse()
 		{
@@ -26,8 +26,8 @@ namespace MikanXR
 
 	public class SetLightDMXDataSubcription : MikanRequest
 	{
-		public List<int> light_ids;
-		public bool subscribe;
+		[MikanFieldOrder(0)] public List<int> light_ids;
+		[MikanFieldOrder(1)] public bool subscribe;
 
 		public SetLightDMXDataSubcription()
 		{

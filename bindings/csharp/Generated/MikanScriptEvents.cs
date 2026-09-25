@@ -6,7 +6,7 @@ namespace MikanXR
 {
 	public class MikanScriptMessagePostedEvent : MikanEvent
 	{
-		public string message;
+		[MikanFieldOrder(0)] public string message;
 
 		public MikanScriptMessagePostedEvent()
 		{

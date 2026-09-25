@@ -6,8 +6,8 @@ namespace MikanXR
 {
 	public class AllocateCameraRenderTargetTextures : MikanRequest
 	{
-		public int camera_id;
-		public MikanRenderTargetDescriptor descriptor;
+		[MikanFieldOrder(0)] public int camera_id;
+		[MikanFieldOrder(1)] public MikanRenderTargetDescriptor descriptor;
 
 		public AllocateCameraRenderTargetTextures()
 		{
@@ -17,7 +17,7 @@ namespace MikanXR
 
 	public class FreeCameraRenderTargetTextures : MikanRequest
 	{
-		public int camera_id;
+		[MikanFieldOrder(0)] public int camera_id;
 
 		public FreeCameraRenderTargetTextures()
 		{
@@ -27,7 +27,7 @@ namespace MikanXR
 
 	public class GetCameraProperties : MikanRequest
 	{
-		public int camera_id;
+		[MikanFieldOrder(0)] public int camera_id;
 
 		public GetCameraProperties()
 		{
@@ -37,16 +37,16 @@ namespace MikanXR
 
 	public class MikanCameraPropertiesResponse : MikanResponse
 	{
-		public int camera_id;
-		public bool compositor_running;
-		public MikanVector3f camera_forward;
-		public MikanVector3f camera_up;
-		public MikanVector3f camera_position;
-		public MikanVector2i pixel_size;
-		public MikanVector2i aux_pixel_size;
-		public MikanVector2d focal_length;
-		public MikanVector2d principal_point;
-		public MikanVector2d z_bounds;
+		[MikanFieldOrder(0)] public int camera_id;
+		[MikanFieldOrder(1)] public bool compositor_running;
+		[MikanFieldOrder(2)] public MikanVector3f camera_forward;
+		[MikanFieldOrder(3)] public MikanVector3f camera_up;
+		[MikanFieldOrder(4)] public MikanVector3f camera_position;
+		[MikanFieldOrder(5)] public MikanVector2i pixel_size;
+		[MikanFieldOrder(6)] public MikanVector2i aux_pixel_size;
+		[MikanFieldOrder(7)] public MikanVector2d focal_length;
+		[MikanFieldOrder(8)] public MikanVector2d principal_point;
+		[MikanFieldOrder(9)] public MikanVector2d z_bounds;
 
 		public MikanCameraPropertiesResponse()
 		{
@@ -56,8 +56,8 @@ namespace MikanXR
 
 	public class PublishCameraRenderTargetTextures : MikanRequest
 	{
-		public int camera_id;
-		public long frame_index;
+		[MikanFieldOrder(0)] public int camera_id;
+		[MikanFieldOrder(1)] public long frame_index;
 
 		public PublishCameraRenderTargetTextures()
 		{
@@ -67,8 +67,8 @@ namespace MikanXR
 
 	public class WriteCameraColorRenderTargetTexture : MikanRequest
 	{
-		public int camera_id;
-		public IntPtr api_color_texture_ptr;
+		[MikanFieldOrder(0)] public int camera_id;
+		[MikanFieldOrder(1)] public IntPtr api_color_texture_ptr;
 
 		public WriteCameraColorRenderTargetTexture()
 		{
@@ -78,10 +78,10 @@ namespace MikanXR
 
 	public class WriteCameraDepthRenderTargetTexture : MikanRequest
 	{
-		public int camera_id;
-		public IntPtr api_depth_texture_ptr;
-		public float z_near;
-		public float z_far;
+		[MikanFieldOrder(0)] public int camera_id;
+		[MikanFieldOrder(1)] public IntPtr api_depth_texture_ptr;
+		[MikanFieldOrder(2)] public float z_near;
+		[MikanFieldOrder(3)] public float z_far;
 
 		public WriteCameraDepthRenderTargetTexture()
 		{
@@ -91,8 +91,8 @@ namespace MikanXR
 
 	public class WriteCameraShadowRenderTargetTexture : MikanRequest
 	{
-		public int camera_id;
-		public IntPtr api_shadow_texture_ptr;
+		[MikanFieldOrder(0)] public int camera_id;
+		[MikanFieldOrder(1)] public IntPtr api_shadow_texture_ptr;
 
 		public WriteCameraShadowRenderTargetTexture()
 		{

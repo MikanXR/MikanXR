@@ -15,7 +15,7 @@ namespace MikanXR
 
 	public class MikanAppStageInfoResponse : MikanResponse
 	{
-		public MikanAppStageInfo app_stage_info;
+		[MikanFieldOrder(0)] public MikanAppStageInfo app_stage_info;
 
 		public MikanAppStageInfoResponse()
 		{
@@ -25,8 +25,8 @@ namespace MikanXR
 
 	public class MikanRemoteControlCommand : MikanRequest
 	{
-		public string command;
-		public List<string> parameters;
+		[MikanFieldOrder(0)] public string command;
+		[MikanFieldOrder(1)] public List<string> parameters;
 
 		public MikanRemoteControlCommand()
 		{
@@ -36,7 +36,7 @@ namespace MikanXR
 
 	public class MikanRemoteControlCommandResult : MikanResponse
 	{
-		public List<string> results;
+		[MikanFieldOrder(0)] public List<string> results;
 
 		public MikanRemoteControlCommandResult()
 		{
@@ -55,7 +55,7 @@ namespace MikanXR
 
 	public class PushAppStage : MikanRequest
 	{
-		public string app_state_name;
+		[MikanFieldOrder(0)] public string app_state_name;
 
 		public PushAppStage()
 		{

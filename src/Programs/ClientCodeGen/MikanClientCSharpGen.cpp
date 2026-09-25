@@ -99,15 +99,18 @@ public:
 		moduleFile << "\tpublic class " << className << structInheritance << std::endl;
 		moduleFile << "\t{" << std::endl;
 
-		// The C# runtime reads these back through Type.GetFields in declaration order, so the
-		// order they are emitted in is the binary wire order and has to be the serializer's
+		// The order these go out in is the binary wire order, so it has to be the serializer's
 		const Serialization::FieldList sortedFields= Serialization::getStructFieldsInWireOrder(&structRef);
 
-		// Emit the fields
-		for (rfk::Field const* field : sortedFields)
+		// Each field states its own position rather than leaving it to declaration order, since
+		// the C# runtime recovers it through Type.GetFields, which promises no ordering at all
+		for (size_t fieldIndex= 0; fieldIndex < sortedFields.size(); ++fieldIndex)
 		{
+			rfk::Field const* field= sortedFields[fieldIndex];
 			std::string csharpType= getCSharpType(*field);
-			moduleFile << "\t\tpublic " << csharpType << " " << field->getName() << ";" << std::endl;
+
+			moduleFile << "\t\t[MikanFieldOrder(" << fieldIndex << ")] public " << csharpType << " " << field->getName()
+					   << ";" << std::endl;
 		}
 
 		// Emit a constructor to set the typeName field if this is a MikanRequest/Response/Event

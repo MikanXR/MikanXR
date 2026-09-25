@@ -6,7 +6,7 @@ namespace MikanXR
 {
 	public class MikanPropertyUpdateEvent : MikanEvent
 	{
-		public MikanPropertyValue propertyValue;
+		[MikanFieldOrder(0)] public MikanPropertyValue propertyValue;
 
 		public MikanPropertyUpdateEvent()
 		{
