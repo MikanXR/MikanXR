@@ -36,7 +36,7 @@ namespace MikanXR
 
 	public class MikanEvent
 	{
-		public string eventTypeName;
+		[MikanFieldOrder(0)] public string eventTypeName;
 
 		public MikanEvent()
 		{
@@ -46,8 +46,8 @@ namespace MikanXR
 
 	public class MikanRequest
 	{
-		public string requestTypeName;
-		public int requestId;
+		[MikanFieldOrder(0)] public string requestTypeName;
+		[MikanFieldOrder(1)] public int requestId;
 
 		public MikanRequest()
 		{
@@ -57,9 +57,9 @@ namespace MikanXR
 
 	public class MikanResponse
 	{
-		public string responseTypeName;
-		public int requestId;
-		public MikanAPIResult resultCode;
+		[MikanFieldOrder(0)] public string responseTypeName;
+		[MikanFieldOrder(1)] public int requestId;
+		[MikanFieldOrder(2)] public MikanAPIResult resultCode;
 
 		public MikanResponse()
 		{

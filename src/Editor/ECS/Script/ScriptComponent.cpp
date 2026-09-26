@@ -304,7 +304,7 @@ void ScriptComponent::onDefinitionMarkedDirty(CommonConfigPtr configPtr,
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* ScriptComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle ScriptComponent::getClientAPIValuesStructType() const
 {
 	return &MikanScriptComponentValues::staticGetArchetype();
 }

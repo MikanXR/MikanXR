@@ -90,7 +90,7 @@ BoxShapeComponent::BoxShapeComponent(MikanObjectWeakPtr owner)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* BoxShapeComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle BoxShapeComponent::getClientAPIValuesStructType() const
 {
 	return &MikanBoxShapeComponentValues::staticGetArchetype();
 }

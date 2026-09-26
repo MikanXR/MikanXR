@@ -4,6 +4,7 @@
 #include <Refureku/Refureku.h>
 
 #include <algorithm>
+#include <cstring>
 #include <string>
 
 namespace Serialization
@@ -160,6 +161,162 @@ rfk::Struct const* ValueAccessor::getStructType() const { return rfk::structCast
 
 rfk::Enum const* ValueAccessor::getEnumType() const { return rfk::enumCast(m_pimpl->type.getArchetype()); }
 
+std::string ValueAccessor::getTypeName() const
+{
+	rfk::Archetype const* archetype= m_pimpl->type.getArchetype();
+
+	return archetype != nullptr ? archetype->getName() : "<Null Archetype>";
+}
+
+static rfk::Type const& fundamentalRfkType(FundamentalType fundamentalType)
+{
+	switch (fundamentalType)
+	{
+	case FundamentalType::Bool:
+		return rfk::getType<bool>();
+	case FundamentalType::Byte:
+		return rfk::getType<int8_t>();
+	case FundamentalType::UByte:
+		return rfk::getType<uint8_t>();
+	case FundamentalType::Short:
+		return rfk::getType<int16_t>();
+	case FundamentalType::UShort:
+		return rfk::getType<uint16_t>();
+	case FundamentalType::Int:
+		return rfk::getType<int32_t>();
+	case FundamentalType::UInt:
+		return rfk::getType<uint32_t>();
+	case FundamentalType::Long:
+		return rfk::getType<int64_t>();
+	case FundamentalType::ULong:
+		return rfk::getType<uint64_t>();
+	case FundamentalType::Float:
+		return rfk::getType<float>();
+	default:
+		return rfk::getType<double>();
+	}
+}
+
+bool ValueAccessor::isStructType(StructTypeHandle archetype) const
+{
+	return archetype != nullptr && m_pimpl->type.getArchetype() == archetype;
+}
+
+bool ValueAccessor::isFundamentalType(FundamentalType fundamentalType) const
+{
+	return m_pimpl->type == fundamentalRfkType(fundamentalType);
+}
+
+// The instantiation behind the accessed value, or null when it is not a templated class
+static rfk::ClassTemplateInstantiation const* templateInstantiationOf(rfk::Type const& type)
+{
+	rfk::Class const* classType= rfk::classCast(type.getArchetype());
+	if (classType == nullptr || classType->getClassKind() != rfk::EClassKind::TemplateInstantiation)
+	{
+		return nullptr;
+	}
+
+	return rfk::classTemplateInstantiationCast(classType);
+}
+
+// The type of one of the instantiation's arguments, or null when the index is out of range
+static rfk::Type const* templateArgumentTypeOf(rfk::Type const& type, std::size_t index)
+{
+	rfk::ClassTemplateInstantiation const* instantiation= templateInstantiationOf(type);
+	if (instantiation == nullptr || index >= instantiation->getTemplateArgumentsCount())
+	{
+		return nullptr;
+	}
+
+	auto const& argument= static_cast<rfk::TypeTemplateArgument const&>(instantiation->getTemplateArgumentAt(index));
+
+	return &argument.getType();
+}
+
+bool ValueAccessor::isTemplateInstantiation() const { return templateInstantiationOf(m_pimpl->type) != nullptr; }
+
+std::string ValueAccessor::getTemplateName() const
+{
+	rfk::ClassTemplateInstantiation const* instantiation= templateInstantiationOf(m_pimpl->type);
+
+	return instantiation != nullptr ? instantiation->getClassTemplate().getName() : std::string();
+}
+
+std::size_t ValueAccessor::getTemplateArgumentCount() const
+{
+	rfk::ClassTemplateInstantiation const* instantiation= templateInstantiationOf(m_pimpl->type);
+
+	return instantiation != nullptr ? instantiation->getTemplateArgumentsCount() : 0;
+}
+
+std::string ValueAccessor::getTemplateArgumentTypeName(std::size_t index) const
+{
+	rfk::Type const* argumentType= templateArgumentTypeOf(m_pimpl->type, index);
+	rfk::Archetype const* archetype= argumentType != nullptr ? argumentType->getArchetype() : nullptr;
+
+	return archetype != nullptr ? archetype->getName() : "<Null Archetype>";
+}
+
+bool ValueAccessor::isTemplateArgumentStructType(std::size_t index, StructTypeHandle archetype) const
+{
+	rfk::Type const* argumentType= templateArgumentTypeOf(m_pimpl->type, index);
+
+	return argumentType != nullptr && archetype != nullptr && argumentType->getArchetype() == archetype;
+}
+
+bool ValueAccessor::isTemplateArgumentFundamentalType(std::size_t index, FundamentalType fundamentalType) const
+{
+	rfk::Type const* argumentType= templateArgumentTypeOf(m_pimpl->type, index);
+
+	return argumentType != nullptr && *argumentType == fundamentalRfkType(fundamentalType);
+}
+
+bool ValueAccessor::setEnumValueFromInt(int sourceValue) const
+{
+	rfk::Enum const* enumType= getEnumType();
+	if (enumType == nullptr)
+	{
+		return false;
+	}
+
+	rfk::EnumValue const* enumValue= enumType->getEnumValue(sourceValue);
+	if (enumValue == nullptr)
+	{
+		return false;
+	}
+
+	// An enum is written at its underlying type's width, not int64's
+	const int64_t enumInt64Value= enumValue->getValue();
+	const std::size_t enumByteCount= enumType->getUnderlyingArchetype().getMemorySize();
+	void* enumInstance= getInstanceMutable();
+	rfk::Field const* enumField= m_pimpl->field;
+
+	if (enumField != nullptr)
+	{
+		enumField->setUnsafe(enumInstance, &enumInt64Value, enumByteCount);
+	}
+	else
+	{
+		std::memcpy(enumInstance, &enumInt64Value, enumByteCount);
+	}
+
+	return true;
+}
+
+void ValueAccessor::setValueBytes(const void* bytes, std::size_t byteCount) const
+{
+	rfk::Field const* field= m_pimpl->field;
+
+	if (field != nullptr)
+	{
+		field->setUnsafe(getInstanceMutable(), bytes, byteCount);
+	}
+	else
+	{
+		std::memcpy(getInstanceMutable(), bytes, byteCount);
+	}
+}
+
 const void* ValueAccessor::getUntypedValuePtr() const
 {
 	assert(m_pimpl->type.isValue());
@@ -181,21 +338,16 @@ void* ValueAccessor::getUntypedValueMutablePtr() const
 	return const_cast<void*>(getUntypedValuePtr());
 }
 
-void memoryOffsetSortStructFields(rfk::Struct const& structType, FieldList& outFields)
+FieldList getStructFieldsInWireOrder(StructTypeHandle structType)
 {
-	// Recurse into parent structs first, since they will be laid out in memory first
-	structType.foreachDirectParent(
-		[](rfk::ParentStruct const& parentStruct, void* userData) -> bool
-		{
-			FieldList* outSortedFieldsPtr= reinterpret_cast<FieldList*>(userData);
-			memoryOffsetSortStructFields(parentStruct.getArchetype(), *outSortedFieldsPtr);
-			return true;
-		},
-		&outFields);
+	if (structType == nullptr)
+	{
+		return FieldList();
+	}
 
 	// Gather all the public, non-static fields on this struct
 	FieldList fieldsOnThisStruct;
-	structType.foreachField(
+	structType->foreachField(
 		[](rfk::Field const& field, void* userData) -> bool
 		{
 			FieldList* sortedFieldsPtr= reinterpret_cast<FieldList*>(userData);
@@ -211,14 +363,32 @@ void memoryOffsetSortStructFields(rfk::Struct const& structType, FieldList& outF
 		},
 		&fieldsOnThisStruct, false);
 
-	// Sort the fields on this struct by memory offset
+	// Reflection hands these back in no particular order, so memory offset is what puts them
+	// in the order the binary encoding concatenates them
 	if (fieldsOnThisStruct.size() > 1)
 	{
 		std::sort(fieldsOnThisStruct.begin(), fieldsOnThisStruct.end(),
 				  [](rfk::Field const* a, rfk::Field const* b) { return a->getMemoryOffset() < b->getMemoryOffset(); });
 	}
 
-	// Append the sorted fields to the output list
+	return fieldsOnThisStruct;
+}
+
+void memoryOffsetSortStructFields(rfk::Struct const& structType, FieldList& outFields)
+{
+	// Recurse into parent structs first, since they will be laid out in memory first
+	structType.foreachDirectParent(
+		[](rfk::ParentStruct const& parentStruct, void* userData) -> bool
+		{
+			FieldList* outSortedFieldsPtr= reinterpret_cast<FieldList*>(userData);
+			memoryOffsetSortStructFields(parentStruct.getArchetype(), *outSortedFieldsPtr);
+			return true;
+		},
+		&outFields);
+
+	// Then this struct's own fields, in the one order every consumer of the wire format agrees on
+	const FieldList fieldsOnThisStruct= getStructFieldsInWireOrder(&structType);
+
 	outFields.insert(outFields.end(), fieldsOnThisStruct.begin(), fieldsOnThisStruct.end());
 }
 

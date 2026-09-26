@@ -34,7 +34,7 @@ TextureSourceComponent::TextureSourceComponent(MikanObjectWeakPtr owner)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* TextureSourceComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle TextureSourceComponent::getClientAPIValuesStructType() const
 {
 	return &MikanTextureSourceValues::staticGetArchetype();
 }

@@ -6,9 +6,9 @@ namespace MikanXR
 {
 	public class InvokeScriptTrigger : MikanRequest
 	{
-		public string script_name;
-		public string trigger_name;
-		public Dictionary<string, string> trigger_args;
+		[MikanFieldOrder(0)] public string script_name;
+		[MikanFieldOrder(1)] public string trigger_name;
+		[MikanFieldOrder(2)] public Dictionary<string, string> trigger_args;
 
 		public InvokeScriptTrigger()
 		{
@@ -18,7 +18,7 @@ namespace MikanXR
 
 	public class SendScriptMessage : MikanRequest
 	{
-		public MikanScriptMessageInfo message;
+		[MikanFieldOrder(0)] public MikanScriptMessageInfo message;
 
 		public SendScriptMessage()
 		{

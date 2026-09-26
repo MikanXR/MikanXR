@@ -1176,7 +1176,7 @@ void EditorObjectSystem::registerFunctionDescriptors(MikanFunctionDatabasePtr fu
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* EditorObjectSystem::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle EditorObjectSystem::getClientAPIValuesStructType() const
 {
 	return &MikanEditorSystemValues::staticGetArchetype();
 }

@@ -25,7 +25,7 @@ ModelShapeSystem::ModelShapeSystem(ProjectManagerPtr ownerObjectSystem)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* ModelShapeSystem::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle ModelShapeSystem::getClientAPIValuesStructType() const
 {
 	return &MikanModelShapeSystemValues::staticGetArchetype();
 }

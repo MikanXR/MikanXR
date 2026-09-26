@@ -84,7 +84,7 @@ public:
 							const glm::mat4& transformToTargetSpace) const;
 
 	// -- IEntityAccessor ----
-	virtual rfk::Struct const* getClientAPIValuesStructType() const override;
+	virtual Serialization::StructTypeHandle getClientAPIValuesStructType() const override;
 
 	// -- IPropertyInterface ----
 	static const std::string k_socketNameListPropertyId;

@@ -95,6 +95,9 @@ target_compile_definitions(unit_test_suite_cpp PRIVATE ENABLE_SERIALIZATION_REFL
 target_compile_definitions(unit_test_suite_cpp PRIVATE JSON_DISABLE_ENUM_SERIALIZATION=1)
 target_compile_definitions(unit_test_suite_cpp PRIVATE ENABLE_MIKANCORE_REFLECTION)
 target_compile_definitions(unit_test_suite_cpp PRIVATE ENABLE_MIKANAPI_REFLECTION)
+# csharp_interop_unit_tests reads bindings/csharp/MikanCoreNative.cs, which is source rather
+# than a build artifact, so it needs the repo it was configured from
+target_compile_definitions(unit_test_suite_cpp PRIVATE MIKAN_REPO_ROOT_DIR="${ROOT_DIR}")
 if(MIKAN_WITH_ARKIT_VIDEO)
   target_compile_definitions(unit_test_suite_cpp PRIVATE MIKAN_ARKIT_CUDA_GL_INTEROP_AVAILABLE)
 endif()
@@ -105,6 +108,7 @@ add_custom_target(unit_test_suite_reflection
 					WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
 					COMMAND "${RFK_GENERATOR_EXE}" "${CMAKE_CURRENT_LIST_DIR}/RefurekuSettings.toml") 
 set_target_properties(unit_test_suite_reflection PROPERTIES FOLDER Test)
+add_dependencies(unit_test_suite_reflection RefurekuGeneratorRuntime)
 
 # Run the RefurekuGenerator BEFORE building the project to refresh generated files
 add_dependencies(unit_test_suite_cpp unit_test_suite_reflection)

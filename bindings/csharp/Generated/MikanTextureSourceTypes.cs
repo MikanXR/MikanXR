@@ -6,19 +6,19 @@ namespace MikanXR
 {
 	public class MikanCEFTextureSourceValues : MikanTextureSourceValues
 	{
-		public string url;
-		public int width;
-		public int height;
+		[MikanFieldOrder(0)] public string url;
+		[MikanFieldOrder(1)] public int width;
+		[MikanFieldOrder(2)] public int height;
 	};
 
 	public class MikanClientTextureSourceValues : MikanTextureSourceValues
 	{
-		public string client_source;
+		[MikanFieldOrder(0)] public string client_source;
 	};
 
 	public class MikanSpoutTextureSourceValues : MikanTextureSourceValues
 	{
-		public string spout_source;
+		[MikanFieldOrder(0)] public string spout_source;
 	};
 
 	public class MikanTextureSourceValues : MikanComponentValues

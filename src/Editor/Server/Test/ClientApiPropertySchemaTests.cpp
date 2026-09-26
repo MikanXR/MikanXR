@@ -64,25 +64,23 @@ public:
 	// -- Math structs --
 	void visitStruct(Serialization::ValueAccessor const& a) override
 	{
-		rfk::Type const& t= a.getType();
-
-		if (t == rfk::getType<MikanVector2f>())
+		if (a.isType<MikanVector2f>())
 			record(a, MikanVariantType::VECTOR2F);
-		else if (t == rfk::getType<MikanVector3f>())
+		else if (a.isType<MikanVector3f>())
 			record(a, MikanVariantType::VECTOR3F);
-		else if (t == rfk::getType<MikanVector4f>())
+		else if (a.isType<MikanVector4f>())
 			record(a, MikanVariantType::VECTOR4F);
-		else if (t == rfk::getType<MikanQuatf>())
+		else if (a.isType<MikanQuatf>())
 			record(a, MikanVariantType::QUATERNIONF);
-		else if (t == rfk::getType<MikanMatrix4f>())
+		else if (a.isType<MikanMatrix4f>())
 			record(a, MikanVariantType::MATRIX4F);
-		else if (t == rfk::getType<MikanVector2d>())
+		else if (a.isType<MikanVector2d>())
 			record(a, MikanVariantType::VECTOR2D);
-		else if (t == rfk::getType<MikanVector3d>())
+		else if (a.isType<MikanVector3d>())
 			record(a, MikanVariantType::VECTOR3D);
-		else if (t == rfk::getType<MikanVector4d>())
+		else if (a.isType<MikanVector4d>())
 			record(a, MikanVariantType::VECTOR4D);
-		else if (t == rfk::getType<MikanQuatd>())
+		else if (a.isType<MikanQuatd>())
 			record(a, MikanVariantType::QUATERNIOND);
 		else
 			setError(StringUtils::stringify("Field '", a.getName(), "' has unsupported struct type"));
@@ -91,38 +89,37 @@ public:
 	// -- Strings, lists, maps, polymorphic object ptrs --
 	void visitClass(Serialization::ValueAccessor const& a) override
 	{
-		rfk::Type const& fieldType= a.getType();
-		rfk::Class const* fieldClassType= a.getClassType();
-
-		if (fieldClassType != nullptr && fieldClassType->getClassKind() == rfk::EClassKind::TemplateInstantiation)
+		if (a.isTemplateInstantiation())
 		{
-			const auto* templateInst= rfk::classTemplateInstantiationCast(fieldClassType);
-			const std::string templateName= templateInst->getClassTemplate().getName();
+			const std::string templateName= a.getTemplateName();
 
-			if (templateName == "List" && templateInst->getTemplateArgumentsCount() == 1)
+			if (templateName == "List" && a.getTemplateArgumentCount() == 1)
 			{
-				auto const& templateArg=
-					static_cast<rfk::TypeTemplateArgument const&>(templateInst->getTemplateArgumentAt(0));
-				rfk::Type const& elementType= templateArg.getType();
-
-				if (elementType == rfk::getType<bool>())
+				if (a.isTemplateArgumentType<bool>(0))
 					record(a, MikanVariantType::BOOL_ARRAY);
-				else if (elementType == rfk::getType<uint8_t>())
+				else if (a.isTemplateArgumentType<uint8_t>(0))
 					record(a, MikanVariantType::UBYTE_ARRAY);
-				else if (elementType == rfk::getType<int>())
+				else if (a.isTemplateArgumentType<int>(0))
 					record(a, MikanVariantType::INT_ARRAY);
-				else if (elementType == rfk::getType<float>())
+				else if (a.isTemplateArgumentType<float>(0))
 					record(a, MikanVariantType::FLOAT_ARRAY);
-				else if (elementType == rfk::getType<Serialization::String>())
+				else if (a.isTemplateArgumentType<Serialization::String>(0))
 					record(a, MikanVariantType::STRING_ARRAY);
 				else
 					setError(
 						StringUtils::stringify("Field '", a.getName(), "' is a List with an unsupported element type"));
 			}
-			else if (templateName == "Map" && templateInst->getTemplateArgumentsCount() == 2)
+			else if (templateName == "Map" && a.getTemplateArgumentCount() == 2)
 			{
-				// The serializer only supports Map<std::string, Serialization::String>.
-				record(a, MikanVariantType::STRING_MAP);
+				// The serializer only supports Map<Serialization::String, Serialization::String>,
+				// so the key and value types are checked here rather than assumed.
+				if (a.isTemplateArgumentType<Serialization::String>(0)
+					&& a.isTemplateArgumentType<Serialization::String>(1))
+					record(a, MikanVariantType::STRING_MAP);
+				else
+					setError(StringUtils::stringify("Field '", a.getName(), "' is a Map<",
+													a.getTemplateArgumentTypeName(0), ", ",
+													a.getTemplateArgumentTypeName(1), ">, which is not supported"));
 			}
 			else
 			{
@@ -130,11 +127,11 @@ public:
 												templateName, "'"));
 			}
 		}
-		else if (fieldType == rfk::getType<Serialization::PolymorphicObjectPtr>())
+		else if (a.isType<Serialization::PolymorphicObjectPtr>())
 		{
 			record(a, MikanVariantType::POLYMORPHIC_OBJECT);
 		}
-		else if (fieldType == rfk::getType<Serialization::String>())
+		else if (a.isType<Serialization::String>())
 		{
 			record(a, MikanVariantType::STRING);
 		}

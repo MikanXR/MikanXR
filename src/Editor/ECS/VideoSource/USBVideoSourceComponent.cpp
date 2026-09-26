@@ -171,7 +171,7 @@ USBVideoSourceComponent::USBVideoSourceComponent(MikanObjectWeakPtr owner)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* USBVideoSourceComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle USBVideoSourceComponent::getClientAPIValuesStructType() const
 {
 	return &MikanUSBVideoSourceValues::staticGetArchetype();
 }

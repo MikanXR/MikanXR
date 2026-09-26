@@ -139,19 +139,6 @@ IF %ERRORLEVEL% NEQ 0 (
   goto failure
 )
 
-:: Download pre-compiled Refureku libraries
-echo "Downloading Refureku..."
-curl -L https://github.com/MikanXR/Refureku/releases/download/v2.2.2/rfk_v2.2.1_windows.7z --output rfk_v2.2.1_windows.7z
-IF %ERRORLEVEL% NEQ 0 (
-  echo "Error downloading rfk_v2.2.1_windows.7z"
-  goto failure
-)
-%UNZIP_EXE% e rfk_v2.2.1_windows.7z -y -r -spf -orfk
-IF %ERRORLEVEL% NEQ 0 (
-  echo "Error unzipping rfk_v2.2.1_windows.7z"
-  goto failure
-)
-
 :: Download pre-compiled libharu library (PDF generator)
 echo "Downloading libharu..."
 curl -L https://github.com/MikanXR/libharu/releases/download/2.4.5/libharu-2.4.5-static.zip --output libharu-2.4.5-static.zip

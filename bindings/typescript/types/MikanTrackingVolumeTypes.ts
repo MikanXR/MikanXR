@@ -29,6 +29,12 @@ export class MikanTrackingVolumeComponentValues extends MikanComponentValues {
   ];
 }
 
+export class MikanMarkerTrackingVolumeComponentValues extends MikanTrackingVolumeComponentValues {
+
+  static __serializationMetadata: SerializationField[] = [
+  ];
+}
+
 export class MikanVRTrackingVolumeComponentValues extends MikanTrackingVolumeComponentValues {
   tracking_runtime: MikanTrackingRuntime = MikanTrackingRuntime.INVALID;
   charuco_mount_id: number = -1;
@@ -46,12 +52,6 @@ export class MikanVRTrackingVolumeComponentValues extends MikanTrackingVolumeCom
     { name: 'tracking_mount_ids', type: 'int32', isArray: true },
     { name: 'vr_space_to_stage_space', type: 'MikanMatrix4f' },
     { name: 'display_tracking_space', type: 'enum:MikanTrackingSpace' }
-  ];
-}
-
-export class MikanMarkerTrackingVolumeComponentValues extends MikanTrackingVolumeComponentValues {
-
-  static __serializationMetadata: SerializationField[] = [
   ];
 }
 

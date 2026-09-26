@@ -89,7 +89,7 @@ TrackingVolumeComponent::TrackingVolumeComponent(MikanObjectWeakPtr owner)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* TrackingVolumeComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle TrackingVolumeComponent::getClientAPIValuesStructType() const
 {
 	return &MikanTrackingVolumeComponentValues::staticGetArchetype();
 }

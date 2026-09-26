@@ -80,7 +80,7 @@ public:
 	MulticastDelegate<void(eTrackingRuntime runtime, int64_t newFrameId)> OnDevicePosesChanged;
 
 	// -- IEntityAccessor ----
-	virtual rfk::Struct const* getClientAPIValuesStructType() const override;
+	virtual Serialization::StructTypeHandle getClientAPIValuesStructType() const override;
 
 	// -- IPropertyInterface ----
 	static const std::string k_vrDevicePathListPropertyId;

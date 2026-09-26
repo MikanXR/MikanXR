@@ -259,7 +259,7 @@ std::string MikanComponent::makePropertyUIIdentifier(const std::string& propName
 	return StringUtils::stringify(getComponentClassName(), getComponentId(), "_", propName);
 }
 
-rfk::Struct const* MikanComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle MikanComponent::getClientAPIValuesStructType() const
 {
 	return &MikanComponentValues::staticGetArchetype();
 }

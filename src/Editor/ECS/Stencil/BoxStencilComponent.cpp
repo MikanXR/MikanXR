@@ -109,7 +109,7 @@ BoxStencilComponent::BoxStencilComponent(MikanObjectWeakPtr owner)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* BoxStencilComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle BoxStencilComponent::getClientAPIValuesStructType() const
 {
 	return &MikanBoxStencilComponentValues::staticGetArchetype();
 }

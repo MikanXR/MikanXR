@@ -139,7 +139,7 @@ void ModelShapeComponent::setModelPath(const std::filesystem::path& path)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* ModelShapeComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle ModelShapeComponent::getClientAPIValuesStructType() const
 {
 	return &MikanModelShapeComponentValues::staticGetArchetype();
 }

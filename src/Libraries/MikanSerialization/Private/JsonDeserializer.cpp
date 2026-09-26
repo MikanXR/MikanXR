@@ -605,7 +605,7 @@ private:
 };
 
 // Public API
-bool deserializeFromJsonString(const std::string& jsonString, void* instance, rfk::Struct const& structType,
+bool deserializeFromJsonString(const std::string& jsonString, void* instance, StructTypeHandle structType,
 							   std::string& outErrorMsg)
 {
 	try
@@ -621,11 +621,11 @@ bool deserializeFromJsonString(const std::string& jsonString, void* instance, rf
 	}
 }
 
-bool deserializeFromJson(const nlohmann::json& jsonObject, void* instance, rfk::Struct const& structType,
+bool deserializeFromJson(const nlohmann::json& jsonObject, void* instance, StructTypeHandle structType,
 						 std::string& outErrorMsg)
 {
 	JsonReadVisitor visitor(jsonObject);
-	Serialization::visitStruct(instance, structType, &visitor);
+	Serialization::visitStruct(instance, *structType, &visitor);
 
 	if (visitor.hasError())
 	{

@@ -20,70 +20,6 @@ export class AllocateCameraRenderTargetTextures extends MikanRequest {
   ];
 }
 
-export class WriteCameraColorRenderTargetTexture extends MikanRequest {
-  camera_id: number = -1;
-  api_color_texture_ptr: any = null;
-
-  constructor() {
-    super();
-    this.requestTypeName = 'WriteCameraColorRenderTargetTexture';
-  }
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'camera_id', type: 'int32' },
-    { name: 'api_color_texture_ptr', type: 'any' }
-  ];
-}
-
-export class WriteCameraDepthRenderTargetTexture extends MikanRequest {
-  camera_id: number = -1;
-  api_depth_texture_ptr: any = null;
-  z_near: number = 0;
-  z_far: number = 0;
-
-  constructor() {
-    super();
-    this.requestTypeName = 'WriteCameraDepthRenderTargetTexture';
-  }
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'camera_id', type: 'int32' },
-    { name: 'api_depth_texture_ptr', type: 'any' },
-    { name: 'z_near', type: 'float' },
-    { name: 'z_far', type: 'float' }
-  ];
-}
-
-export class WriteCameraShadowRenderTargetTexture extends MikanRequest {
-  camera_id: number = -1;
-  api_shadow_texture_ptr: any = null;
-
-  constructor() {
-    super();
-    this.requestTypeName = 'WriteCameraShadowRenderTargetTexture';
-  }
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'camera_id', type: 'int32' },
-    { name: 'api_shadow_texture_ptr', type: 'any' }
-  ];
-}
-
-export class PublishCameraRenderTargetTextures extends MikanRequest {
-  camera_id: number = -1;
-  frame_index: bigint = 0n;
-
-  constructor() {
-    super();
-    this.requestTypeName = 'PublishCameraRenderTargetTextures';
-  }
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'camera_id', type: 'int32' },
-    { name: 'frame_index', type: 'int64' }
-  ];
-}
-
 export class FreeCameraRenderTargetTextures extends MikanRequest {
   camera_id: number = -1;
 
@@ -138,6 +74,70 @@ export class MikanCameraPropertiesResponse extends MikanResponse {
     { name: 'focal_length', type: 'MikanVector2d' },
     { name: 'principal_point', type: 'MikanVector2d' },
     { name: 'z_bounds', type: 'MikanVector2d' }
+  ];
+}
+
+export class PublishCameraRenderTargetTextures extends MikanRequest {
+  camera_id: number = -1;
+  frame_index: bigint = 0n;
+
+  constructor() {
+    super();
+    this.requestTypeName = 'PublishCameraRenderTargetTextures';
+  }
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'camera_id', type: 'int32' },
+    { name: 'frame_index', type: 'int64' }
+  ];
+}
+
+export class WriteCameraColorRenderTargetTexture extends MikanRequest {
+  camera_id: number = -1;
+  api_color_texture_ptr: any = null;
+
+  constructor() {
+    super();
+    this.requestTypeName = 'WriteCameraColorRenderTargetTexture';
+  }
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'camera_id', type: 'int32' },
+    { name: 'api_color_texture_ptr', type: 'any' }
+  ];
+}
+
+export class WriteCameraDepthRenderTargetTexture extends MikanRequest {
+  camera_id: number = -1;
+  api_depth_texture_ptr: any = null;
+  z_near: number = 0;
+  z_far: number = 0;
+
+  constructor() {
+    super();
+    this.requestTypeName = 'WriteCameraDepthRenderTargetTexture';
+  }
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'camera_id', type: 'int32' },
+    { name: 'api_depth_texture_ptr', type: 'any' },
+    { name: 'z_near', type: 'float' },
+    { name: 'z_far', type: 'float' }
+  ];
+}
+
+export class WriteCameraShadowRenderTargetTexture extends MikanRequest {
+  camera_id: number = -1;
+  api_shadow_texture_ptr: any = null;
+
+  constructor() {
+    super();
+    this.requestTypeName = 'WriteCameraShadowRenderTargetTexture';
+  }
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'camera_id', type: 'int32' },
+    { name: 'api_shadow_texture_ptr', type: 'any' }
   ];
 }
 

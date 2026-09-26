@@ -22,7 +22,7 @@
 //-- public interface -----
 bool run_serialization_unit_tests()
 {
-	Serialization::TypeRegistry::buildFromRfkDatabase();
+	Serialization::TypeRegistry::build();
 
 	UNIT_TEST_MODULE_BEGIN("serialization")
 	UNIT_TEST_MODULE_CALL_TEST(serialization_utility_test_endian_swap);

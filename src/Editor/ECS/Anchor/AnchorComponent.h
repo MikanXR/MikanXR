@@ -47,7 +47,7 @@ public:
 	virtual bool canAttachToParent(TransformComponentConstPtr newParentComponent) const override;
 
 	// -- IEntityAccessor ----
-	virtual rfk::Struct const* getClientAPIValuesStructType() const override;
+	virtual Serialization::StructTypeHandle getClientAPIValuesStructType() const override;
 
 	// -- IFunctionInterface ----
 	static const std::string k_editAnchorFunctionId;

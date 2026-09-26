@@ -6,8 +6,8 @@ namespace MikanXR
 {
 	public class MikanComponentValues : PolymorphicStruct
 	{
-		public int component_id;
-		public string component_name;
+		[MikanFieldOrder(0)] public int component_id;
+		[MikanFieldOrder(1)] public string component_name;
 	};
 
 }

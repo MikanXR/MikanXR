@@ -39,7 +39,7 @@ MarkerTrackingVolumeComponent::MarkerTrackingVolumeComponent(MikanObjectWeakPtr 
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* MarkerTrackingVolumeComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle MarkerTrackingVolumeComponent::getClientAPIValuesStructType() const
 {
 	return &MikanMarkerTrackingVolumeComponentValues::staticGetArchetype();
 }

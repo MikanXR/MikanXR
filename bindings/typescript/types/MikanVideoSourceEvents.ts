@@ -3,17 +3,6 @@
 import { MikanEvent } from './MikanAPITypes.js';
 import type { SerializationField } from './SerializationTypes.js';
 
-export class MikanVideoSourceOpenedEvent extends MikanEvent {
-
-  constructor() {
-    super();
-    this.eventTypeName = 'MikanVideoSourceOpenedEvent';
-  }
-
-  static __serializationMetadata: SerializationField[] = [
-  ];
-}
-
 export class MikanVideoSourceClosedEvent extends MikanEvent {
 
   constructor() {
@@ -30,6 +19,17 @@ export class MikanVideoSourceModeChangedEvent extends MikanEvent {
   constructor() {
     super();
     this.eventTypeName = 'MikanVideoSourceModeChangedEvent';
+  }
+
+  static __serializationMetadata: SerializationField[] = [
+  ];
+}
+
+export class MikanVideoSourceOpenedEvent extends MikanEvent {
+
+  constructor() {
+    super();
+    this.eventTypeName = 'MikanVideoSourceOpenedEvent';
   }
 
   static __serializationMetadata: SerializationField[] = [

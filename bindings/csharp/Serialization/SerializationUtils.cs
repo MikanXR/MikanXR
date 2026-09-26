@@ -145,15 +145,14 @@ namespace MikanXR
 				memoryOffsetSortStructFields(classType.BaseType, ref outFields);
 			}
 
-			// Add fields from the current class
-			// TODO: Observationally, Type.GetFields() returns fields in declaration order, but it's not guaranteed
-			// We should really be using a custom attribute to specify the order and then sort on that.
-			// See "Remarks" in https://learn.microsoft.com/en-us/dotnet/api/system.type.getfields?view=net-9.0&redirectedfrom=MSDN#System_Type_GetFields
+			// Add fields from the current class, in the wire order the generated bindings state.
+			// Type.GetFields() is documented as returning fields in no particular order, so the
+			// order is read off MikanFieldOrderAttribute rather than assumed from the array.
+			// OrderBy is a stable sort, so a type carrying no such attribute (nothing generated,
+			// but a hand-written serializable class would) keeps the order it came back in.
 			FieldInfo[] fields = classType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
-			foreach (FieldInfo field in fields)
-			{
-				outFields.Add(field);
-			}
+			outFields.AddRange(
+				fields.OrderBy(field => field.GetCustomAttribute<MikanFieldOrderAttribute>()?.Order ?? int.MaxValue));
 		}
 
 		public static void visitObject<T>(T instance, IVisitor visitor) where T : struct

@@ -6,9 +6,9 @@ namespace MikanXR
 {
 	public class MikanBoxShapeComponentValues : MikanShapeComponentValues
 	{
-		public float box_x_size;
-		public float box_y_size;
-		public float box_z_size;
+		[MikanFieldOrder(0)] public float box_x_size;
+		[MikanFieldOrder(1)] public float box_y_size;
+		[MikanFieldOrder(2)] public float box_z_size;
 	};
 
 	public class MikanBoxShapeSystemValues : MikanSystemValues
@@ -17,7 +17,7 @@ namespace MikanXR
 
 	public class MikanModelShapeComponentValues : MikanShapeComponentValues
 	{
-		public string model_path;
+		[MikanFieldOrder(0)] public string model_path;
 	};
 
 	public class MikanModelShapeSystemValues : MikanSystemValues
@@ -26,9 +26,9 @@ namespace MikanXR
 
 	public class MikanQuadShapeComponentValues : MikanShapeComponentValues
 	{
-		public float quad_width;
-		public float quad_height;
-		public bool is_double_sided;
+		[MikanFieldOrder(0)] public float quad_width;
+		[MikanFieldOrder(1)] public float quad_height;
+		[MikanFieldOrder(2)] public bool is_double_sided;
 	};
 
 	public class MikanQuadShapeSystemValues : MikanSystemValues
@@ -37,7 +37,7 @@ namespace MikanXR
 
 	public class MikanShapeComponentValues : MikanTransformComponentValues
 	{
-		public string shape_graph_path;
+		[MikanFieldOrder(0)] public string shape_graph_path;
 	};
 
 }

@@ -196,7 +196,7 @@ CompositorComponent::CompositorComponent(MikanObjectWeakPtr owner)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* CompositorComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle CompositorComponent::getClientAPIValuesStructType() const
 {
 	return &MikanCompositorComponentValues::staticGetArchetype();
 }

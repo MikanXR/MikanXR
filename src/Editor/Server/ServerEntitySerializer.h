@@ -5,6 +5,6 @@
 
 namespace Serialization
 {
-bool serializeFromEntity(IEntityAccessorConstPtr entityAccessor, void* instance, rfk::Struct const& structType,
+bool serializeFromEntity(IEntityAccessorConstPtr entityAccessor, void* instance, StructTypeHandle structType,
 						 std::string& outErrorMsg);
 };

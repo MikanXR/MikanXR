@@ -283,7 +283,7 @@ CEFTextureSourceComponent::CEFTextureSourceComponent(MikanObjectWeakPtr owner)
 CEFTextureSourceComponent::~CEFTextureSourceComponent()= default;
 
 // -- IEntityAccessor ----
-rfk::Struct const* CEFTextureSourceComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle CEFTextureSourceComponent::getClientAPIValuesStructType() const
 {
 	return &MikanCEFTextureSourceValues::staticGetArchetype();
 }

@@ -31,22 +31,6 @@ export enum MikanAPIResult {
   InvalidShapeID = 107
 }
 
-export class MikanResponse {
-  responseTypeName: string = '';
-  requestId: number = -1;
-  resultCode: MikanAPIResult = MikanAPIResult.Success;
-
-  constructor() {
-    this.responseTypeName = 'MikanResponse';
-  }
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'responseTypeName', type: 'string' },
-    { name: 'requestId', type: 'int32' },
-    { name: 'resultCode', type: 'enum:MikanAPIResult' }
-  ];
-}
-
 export class MikanEvent {
   eventTypeName: string = '';
 
@@ -70,6 +54,22 @@ export class MikanRequest {
   static __serializationMetadata: SerializationField[] = [
     { name: 'requestTypeName', type: 'string' },
     { name: 'requestId', type: 'int32' }
+  ];
+}
+
+export class MikanResponse {
+  responseTypeName: string = '';
+  requestId: number = -1;
+  resultCode: MikanAPIResult = MikanAPIResult.Success;
+
+  constructor() {
+    this.responseTypeName = 'MikanResponse';
+  }
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'responseTypeName', type: 'string' },
+    { name: 'requestId', type: 'int32' },
+    { name: 'resultCode', type: 'enum:MikanAPIResult' }
   ];
 }
 

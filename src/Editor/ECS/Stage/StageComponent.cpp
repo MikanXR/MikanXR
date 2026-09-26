@@ -94,7 +94,7 @@ StageComponent::StageComponent(MikanObjectWeakPtr owner)
 {
 }
 
-rfk::Struct const* StageComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle StageComponent::getClientAPIValuesStructType() const
 {
 	return &MikanStageComponentValues::staticGetArchetype();
 }

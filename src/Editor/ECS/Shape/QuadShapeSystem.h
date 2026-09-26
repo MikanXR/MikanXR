@@ -47,7 +47,7 @@ public:
 	void getQuadShapeComponentList(std::vector<QuadShapeComponentPtr>& outList) const;
 
 	// -- IEntityAccessor ----
-	virtual rfk::Struct const* getClientAPIValuesStructType() const override;
+	virtual Serialization::StructTypeHandle getClientAPIValuesStructType() const override;
 
 	// -- Lua Binding ----
 	static void bindLuaFunctions(struct lua_State* L);

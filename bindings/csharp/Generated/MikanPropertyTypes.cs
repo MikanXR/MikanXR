@@ -6,20 +6,20 @@ namespace MikanXR
 {
 	public class MikanPropertyDescriptor
 	{
-		public string ownerSystemClass;
-		public string ownerComponentClass;
-		public string fieldName;
-		public MikanVariantType fieldType;
-		public bool isReadOnly;
+		[MikanFieldOrder(0)] public string ownerSystemClass;
+		[MikanFieldOrder(1)] public string ownerComponentClass;
+		[MikanFieldOrder(2)] public string fieldName;
+		[MikanFieldOrder(3)] public MikanVariantType fieldType;
+		[MikanFieldOrder(4)] public bool isReadOnly;
 	};
 
 	public class MikanPropertyValue
 	{
-		public string ownerSystem;
-		public string ownerComponentClass;
-		public int componentId;
-		public string fieldName;
-		public MikanVariant fieldValue;
+		[MikanFieldOrder(0)] public string ownerSystem;
+		[MikanFieldOrder(1)] public string ownerComponentClass;
+		[MikanFieldOrder(2)] public int componentId;
+		[MikanFieldOrder(3)] public string fieldName;
+		[MikanFieldOrder(4)] public MikanVariant fieldValue;
 	};
 
 	public class MikanSystemValues : PolymorphicStruct

@@ -15,19 +15,19 @@ namespace MikanXR
 
 	public class MikanMarkerComponentValues : MikanComponentValues
 	{
-		public int aruco_id;
-		public float length_mm;
+		[MikanFieldOrder(0)] public int aruco_id;
+		[MikanFieldOrder(1)] public float length_mm;
 	};
 
 	public class MikanMarkerSystemValues : MikanSystemValues
 	{
-		public List<int> aruco_id_list;
-		public MikanMarkerDictionaryType aruco_dictionary_type;
-		public int charuco_rows;
-		public int charuco_cols;
-		public float charuco_square_length_mm;
-		public float charuco_marker_length_mm;
-		public MikanMarkerDictionaryType charuco_dictionary_type;
+		[MikanFieldOrder(0)] public List<int> aruco_id_list;
+		[MikanFieldOrder(1)] public MikanMarkerDictionaryType aruco_dictionary_type;
+		[MikanFieldOrder(2)] public int charuco_rows;
+		[MikanFieldOrder(3)] public int charuco_cols;
+		[MikanFieldOrder(4)] public float charuco_square_length_mm;
+		[MikanFieldOrder(5)] public float charuco_marker_length_mm;
+		[MikanFieldOrder(6)] public MikanMarkerDictionaryType charuco_dictionary_type;
 	};
 
 }

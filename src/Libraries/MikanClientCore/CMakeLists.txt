@@ -79,6 +79,7 @@ add_custom_target(MikanClientCoreReflection
 					WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
 					COMMAND "${RFK_GENERATOR_EXE}" "${CMAKE_CURRENT_LIST_DIR}/RefurekuSettings.toml") 
 set_target_properties(MikanClientCoreReflection PROPERTIES FOLDER ClientAPI)
+add_dependencies(MikanClientCoreReflection RefurekuGeneratorRuntime)
 
 # Run the RefurekuGenerator BEFORE building the project to refresh generated files
 add_dependencies(MikanClientCore MikanClientCoreReflection)

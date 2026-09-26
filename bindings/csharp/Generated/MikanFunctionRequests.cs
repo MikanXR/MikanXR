@@ -6,7 +6,7 @@ namespace MikanXR
 {
 	public class FunctionDescriptorResponse : MikanResponse
 	{
-		public List<MikanFunctionDescriptor> descriptor_list;
+		[MikanFieldOrder(0)] public List<MikanFunctionDescriptor> descriptor_list;
 
 		public FunctionDescriptorResponse()
 		{
@@ -16,8 +16,8 @@ namespace MikanXR
 
 	public class GetFunctionListRequest : MikanRequest
 	{
-		public string systemFilter;
-		public string componentFilter;
+		[MikanFieldOrder(0)] public string systemFilter;
+		[MikanFieldOrder(1)] public string componentFilter;
 
 		public GetFunctionListRequest()
 		{
@@ -27,9 +27,9 @@ namespace MikanXR
 
 	public class InvokeComponentFunctionRequest : MikanRequest
 	{
-		public string ownerSystem;
-		public int componentId;
-		public string functionName;
+		[MikanFieldOrder(0)] public string ownerSystem;
+		[MikanFieldOrder(1)] public int componentId;
+		[MikanFieldOrder(2)] public string functionName;
 
 		public InvokeComponentFunctionRequest()
 		{
@@ -39,8 +39,8 @@ namespace MikanXR
 
 	public class InvokeSystemFunctionRequest : MikanRequest
 	{
-		public string ownerSystem;
-		public string functionName;
+		[MikanFieldOrder(0)] public string ownerSystem;
+		[MikanFieldOrder(1)] public string functionName;
 
 		public InvokeSystemFunctionRequest()
 		{

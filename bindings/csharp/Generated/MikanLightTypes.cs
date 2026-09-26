@@ -36,25 +36,25 @@ namespace MikanXR
 
 	public class MikanDMXData
 	{
-		public double server_time_seconds;
-		public List<MikanUniverseDMXData> universes;
+		[MikanFieldOrder(0)] public double server_time_seconds;
+		[MikanFieldOrder(1)] public List<MikanUniverseDMXData> universes;
 	};
 
 	public class MikanDMXFixtureComponentValues : MikanTransformComponentValues
 	{
-		public int stage_id;
-		public ushort dmx_universe;
-		public ushort dmx_start_channel;
-		public ushort dmx_channel_count;
-		public bool is_disabled;
-		public float max_wattage;
-		public float lumens_per_watt;
+		[MikanFieldOrder(0)] public int stage_id;
+		[MikanFieldOrder(1)] public ushort dmx_universe;
+		[MikanFieldOrder(2)] public ushort dmx_start_channel;
+		[MikanFieldOrder(3)] public ushort dmx_channel_count;
+		[MikanFieldOrder(4)] public bool is_disabled;
+		[MikanFieldOrder(5)] public float max_wattage;
+		[MikanFieldOrder(6)] public float lumens_per_watt;
 	};
 
 	public class MikanDMXFixtureGroupComponentValues : MikanComponentValues
 	{
-		public int stage_id;
-		public List<int> fixture_ids;
+		[MikanFieldOrder(0)] public int stage_id;
+		[MikanFieldOrder(1)] public List<int> fixture_ids;
 	};
 
 	public class MikanDMXFixtureGroupSystemValues : MikanSystemValues
@@ -63,17 +63,17 @@ namespace MikanXR
 
 	public class MikanDMXObjectSystemValues : MikanSystemValues
 	{
-		public string network_interface_ip;
-		public byte dmx_priority;
-		public float transmit_rate_hz;
+		[MikanFieldOrder(0)] public string network_interface_ip;
+		[MikanFieldOrder(1)] public byte dmx_priority;
+		[MikanFieldOrder(2)] public float transmit_rate_hz;
 	};
 
 	public class MikanDMXPresetComponentValues : MikanComponentValues
 	{
-		public int group_id;
-		public List<int> fixture_ids;
-		public List<int> channel_counts;
-		public List<byte> channel_data;
+		[MikanFieldOrder(0)] public int group_id;
+		[MikanFieldOrder(1)] public List<int> fixture_ids;
+		[MikanFieldOrder(2)] public List<int> channel_counts;
+		[MikanFieldOrder(3)] public List<byte> channel_data;
 	};
 
 	public class MikanDMXPresetSystemValues : MikanSystemValues
@@ -82,26 +82,26 @@ namespace MikanXR
 
 	public class MikanDMXSequenceComponentValues : MikanComponentValues
 	{
-		public int group_id;
-		public int script_component_id;
-		public float duration_seconds;
-		public bool loop;
-		public int playback_state;
-		public float time_since_start;
-		public MikanDMXSequenceContentSource content_source;
-		public string content_path;
-		public string scroll_text;
-		public string font_path;
-		public int text_pixel_height;
-		public MikanVector3f foreground_color;
-		public MikanVector3f background_color;
-		public MikanDMXScrollDirection scroll_direction;
-		public float scroll_speed;
-		public int sprite_frame_width;
-		public int sprite_frame_height;
-		public float sprite_fps;
-		public float playback_speed_scale;
-		public float brightness;
+		[MikanFieldOrder(0)] public int group_id;
+		[MikanFieldOrder(1)] public int script_component_id;
+		[MikanFieldOrder(2)] public float duration_seconds;
+		[MikanFieldOrder(3)] public bool loop;
+		[MikanFieldOrder(4)] public int playback_state;
+		[MikanFieldOrder(5)] public float time_since_start;
+		[MikanFieldOrder(6)] public MikanDMXSequenceContentSource content_source;
+		[MikanFieldOrder(7)] public string content_path;
+		[MikanFieldOrder(8)] public string scroll_text;
+		[MikanFieldOrder(9)] public string font_path;
+		[MikanFieldOrder(10)] public int text_pixel_height;
+		[MikanFieldOrder(11)] public MikanVector3f foreground_color;
+		[MikanFieldOrder(12)] public MikanVector3f background_color;
+		[MikanFieldOrder(13)] public MikanDMXScrollDirection scroll_direction;
+		[MikanFieldOrder(14)] public float scroll_speed;
+		[MikanFieldOrder(15)] public int sprite_frame_width;
+		[MikanFieldOrder(16)] public int sprite_frame_height;
+		[MikanFieldOrder(17)] public float sprite_fps;
+		[MikanFieldOrder(18)] public float playback_speed_scale;
+		[MikanFieldOrder(19)] public float brightness;
 	};
 
 	public class MikanDMXSequenceSystemValues : MikanSystemValues
@@ -110,10 +110,10 @@ namespace MikanXR
 
 	public class MikanLightEnvironmentComponentValues : MikanTransformComponentValues
 	{
-		public List<float> sh_coefficients;
-		public float exposure_scale;
-		public float directionality;
-		public MikanVector3f key_light_direction;
+		[MikanFieldOrder(0)] public List<float> sh_coefficients;
+		[MikanFieldOrder(1)] public float exposure_scale;
+		[MikanFieldOrder(2)] public float directionality;
+		[MikanFieldOrder(3)] public MikanVector3f key_light_direction;
 	};
 
 	public class MikanLightEnvironmentSystemValues : MikanSystemValues
@@ -122,12 +122,12 @@ namespace MikanXR
 
 	public class MikanRGBPixelGridComponentValues : MikanDMXFixtureComponentValues
 	{
-		public int grid_columns;
-		public int grid_rows;
-		public MikanVector3f pixel_size_mm;
-		public MikanVector2f pixel_separation_mm;
-		public MikanPixelGridOrigin origin_pixel;
-		public bool zig_zag;
+		[MikanFieldOrder(0)] public int grid_columns;
+		[MikanFieldOrder(1)] public int grid_rows;
+		[MikanFieldOrder(2)] public MikanVector3f pixel_size_mm;
+		[MikanFieldOrder(3)] public MikanVector2f pixel_separation_mm;
+		[MikanFieldOrder(4)] public MikanPixelGridOrigin origin_pixel;
+		[MikanFieldOrder(5)] public bool zig_zag;
 	};
 
 	public class MikanRGBPixelGridSystemValues : MikanSystemValues
@@ -136,8 +136,8 @@ namespace MikanXR
 
 	public class MikanRGBSpotLightComponentValues : MikanDMXFixtureComponentValues
 	{
-		public float cone_angle_degrees;
-		public float cone_range_meters;
+		[MikanFieldOrder(0)] public float cone_angle_degrees;
+		[MikanFieldOrder(1)] public float cone_range_meters;
 	};
 
 	public class MikanRGBSpotLightSystemValues : MikanSystemValues
@@ -146,9 +146,9 @@ namespace MikanXR
 
 	public class MikanUniverseDMXData
 	{
-		public ushort dmx_universe_id;
-		public MikanDMXBufferFormat buffer_format;
-		public List<byte> buffer_data;
+		[MikanFieldOrder(0)] public ushort dmx_universe_id;
+		[MikanFieldOrder(1)] public MikanDMXBufferFormat buffer_format;
+		[MikanFieldOrder(2)] public List<byte> buffer_data;
 	};
 
 }

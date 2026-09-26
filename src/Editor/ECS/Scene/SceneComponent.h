@@ -52,7 +52,7 @@ public:
 	virtual bool canAttachToParent(TransformComponentConstPtr newParentComponent) const override;
 
 	// -- IEntityAccessor ----
-	virtual rfk::Struct const* getClientAPIValuesStructType() const override;
+	virtual Serialization::StructTypeHandle getClientAPIValuesStructType() const override;
 
 	// -- IPropertyInterface ----
 	static void getPropertyDescriptors(std::vector<PropertyDescriptorConstPtr>& outDescriptors);

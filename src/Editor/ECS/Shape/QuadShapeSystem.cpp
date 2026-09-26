@@ -26,7 +26,7 @@ QuadShapeSystem::QuadShapeSystem(ProjectManagerPtr ownerObjectSystem)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* QuadShapeSystem::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle QuadShapeSystem::getClientAPIValuesStructType() const
 {
 	return &MikanQuadShapeSystemValues::staticGetArchetype();
 }

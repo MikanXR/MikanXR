@@ -6,149 +6,149 @@ namespace MikanXR
 {
 	public class MikanMatrix3d
 	{
-		public double x0;
-		public double x1;
-		public double x2;
-		public double y0;
-		public double y1;
-		public double y2;
-		public double z0;
-		public double z1;
-		public double z2;
+		[MikanFieldOrder(0)] public double x0;
+		[MikanFieldOrder(1)] public double x1;
+		[MikanFieldOrder(2)] public double x2;
+		[MikanFieldOrder(3)] public double y0;
+		[MikanFieldOrder(4)] public double y1;
+		[MikanFieldOrder(5)] public double y2;
+		[MikanFieldOrder(6)] public double z0;
+		[MikanFieldOrder(7)] public double z1;
+		[MikanFieldOrder(8)] public double z2;
 	};
 
 	public class MikanMatrix4d
 	{
-		public double x0;
-		public double x1;
-		public double x2;
-		public double x3;
-		public double y0;
-		public double y1;
-		public double y2;
-		public double y3;
-		public double z0;
-		public double z1;
-		public double z2;
-		public double z3;
-		public double w0;
-		public double w1;
-		public double w2;
-		public double w3;
+		[MikanFieldOrder(0)] public double x0;
+		[MikanFieldOrder(1)] public double x1;
+		[MikanFieldOrder(2)] public double x2;
+		[MikanFieldOrder(3)] public double x3;
+		[MikanFieldOrder(4)] public double y0;
+		[MikanFieldOrder(5)] public double y1;
+		[MikanFieldOrder(6)] public double y2;
+		[MikanFieldOrder(7)] public double y3;
+		[MikanFieldOrder(8)] public double z0;
+		[MikanFieldOrder(9)] public double z1;
+		[MikanFieldOrder(10)] public double z2;
+		[MikanFieldOrder(11)] public double z3;
+		[MikanFieldOrder(12)] public double w0;
+		[MikanFieldOrder(13)] public double w1;
+		[MikanFieldOrder(14)] public double w2;
+		[MikanFieldOrder(15)] public double w3;
 	};
 
 	public class MikanMatrix4f
 	{
-		public float x0;
-		public float x1;
-		public float x2;
-		public float x3;
-		public float y0;
-		public float y1;
-		public float y2;
-		public float y3;
-		public float z0;
-		public float z1;
-		public float z2;
-		public float z3;
-		public float w0;
-		public float w1;
-		public float w2;
-		public float w3;
+		[MikanFieldOrder(0)] public float x0;
+		[MikanFieldOrder(1)] public float x1;
+		[MikanFieldOrder(2)] public float x2;
+		[MikanFieldOrder(3)] public float x3;
+		[MikanFieldOrder(4)] public float y0;
+		[MikanFieldOrder(5)] public float y1;
+		[MikanFieldOrder(6)] public float y2;
+		[MikanFieldOrder(7)] public float y3;
+		[MikanFieldOrder(8)] public float z0;
+		[MikanFieldOrder(9)] public float z1;
+		[MikanFieldOrder(10)] public float z2;
+		[MikanFieldOrder(11)] public float z3;
+		[MikanFieldOrder(12)] public float w0;
+		[MikanFieldOrder(13)] public float w1;
+		[MikanFieldOrder(14)] public float w2;
+		[MikanFieldOrder(15)] public float w3;
 	};
 
 	public class MikanMatrix4x3d
 	{
-		public double x0;
-		public double x1;
-		public double x2;
-		public double x3;
-		public double y0;
-		public double y1;
-		public double y2;
-		public double y3;
-		public double z0;
-		public double z1;
-		public double z2;
-		public double z3;
+		[MikanFieldOrder(0)] public double x0;
+		[MikanFieldOrder(1)] public double x1;
+		[MikanFieldOrder(2)] public double x2;
+		[MikanFieldOrder(3)] public double x3;
+		[MikanFieldOrder(4)] public double y0;
+		[MikanFieldOrder(5)] public double y1;
+		[MikanFieldOrder(6)] public double y2;
+		[MikanFieldOrder(7)] public double y3;
+		[MikanFieldOrder(8)] public double z0;
+		[MikanFieldOrder(9)] public double z1;
+		[MikanFieldOrder(10)] public double z2;
+		[MikanFieldOrder(11)] public double z3;
 	};
 
 	public class MikanQuatd
 	{
-		public double w;
-		public double x;
-		public double y;
-		public double z;
+		[MikanFieldOrder(0)] public double w;
+		[MikanFieldOrder(1)] public double x;
+		[MikanFieldOrder(2)] public double y;
+		[MikanFieldOrder(3)] public double z;
 	};
 
 	public class MikanQuatf
 	{
-		public float w;
-		public float x;
-		public float y;
-		public float z;
+		[MikanFieldOrder(0)] public float w;
+		[MikanFieldOrder(1)] public float x;
+		[MikanFieldOrder(2)] public float y;
+		[MikanFieldOrder(3)] public float z;
 	};
 
 	public class MikanRotator3f
 	{
-		public float x_angle;
-		public float y_angle;
-		public float z_angle;
+		[MikanFieldOrder(0)] public float x_angle;
+		[MikanFieldOrder(1)] public float y_angle;
+		[MikanFieldOrder(2)] public float z_angle;
 	};
 
 	public class MikanTransform
 	{
-		public MikanVector3f scale;
-		public MikanQuatf rotation;
-		public MikanVector3f position;
+		[MikanFieldOrder(0)] public MikanVector3f scale;
+		[MikanFieldOrder(1)] public MikanQuatf rotation;
+		[MikanFieldOrder(2)] public MikanVector3f position;
 	};
 
 	public class MikanVector2d
 	{
-		public double x;
-		public double y;
+		[MikanFieldOrder(0)] public double x;
+		[MikanFieldOrder(1)] public double y;
 	};
 
 	public class MikanVector2f
 	{
-		public float x;
-		public float y;
+		[MikanFieldOrder(0)] public float x;
+		[MikanFieldOrder(1)] public float y;
 	};
 
 	public class MikanVector2i
 	{
-		public int x;
-		public int y;
+		[MikanFieldOrder(0)] public int x;
+		[MikanFieldOrder(1)] public int y;
 	};
 
 	public class MikanVector3d
 	{
-		public double x;
-		public double y;
-		public double z;
+		[MikanFieldOrder(0)] public double x;
+		[MikanFieldOrder(1)] public double y;
+		[MikanFieldOrder(2)] public double z;
 	};
 
 	public class MikanVector3f
 	{
-		public float x;
-		public float y;
-		public float z;
+		[MikanFieldOrder(0)] public float x;
+		[MikanFieldOrder(1)] public float y;
+		[MikanFieldOrder(2)] public float z;
 	};
 
 	public class MikanVector4d
 	{
-		public double x;
-		public double y;
-		public double z;
-		public double w;
+		[MikanFieldOrder(0)] public double x;
+		[MikanFieldOrder(1)] public double y;
+		[MikanFieldOrder(2)] public double z;
+		[MikanFieldOrder(3)] public double w;
 	};
 
 	public class MikanVector4f
 	{
-		public float x;
-		public float y;
-		public float z;
-		public float w;
+		[MikanFieldOrder(0)] public float x;
+		[MikanFieldOrder(1)] public float y;
+		[MikanFieldOrder(2)] public float z;
+		[MikanFieldOrder(3)] public float w;
 	};
 
 }

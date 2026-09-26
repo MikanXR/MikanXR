@@ -420,7 +420,7 @@ void RGBSpotLightComponent::sendDMXData() const
 }
 
 // -- IEntityAccessor --
-rfk::Struct const* RGBSpotLightComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle RGBSpotLightComponent::getClientAPIValuesStructType() const
 {
 	return &MikanRGBSpotLightComponentValues::staticGetArchetype();
 }

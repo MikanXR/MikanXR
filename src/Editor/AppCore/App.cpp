@@ -173,7 +173,7 @@ bool App::startup(int argc, char** argv)
 #endif // _WIN32
 
 	// Initialize registry of reflection types
-	Serialization::TypeRegistry::buildFromRfkDatabase();
+	Serialization::TypeRegistry::build();
 
 	// Initialize the module manager
 	if (success && !initMikanModuleManager())

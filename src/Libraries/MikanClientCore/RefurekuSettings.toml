@@ -39,7 +39,7 @@ cppVersion = 20
 projectIncludeDirectories = [
 	'''./Public''',
 	'''../MikanSerialization/Public''',
-	'''../../../deps/rfk/Include''',
+	'''../../../thirdparty/Refureku/Refureku/Library/Include/Public''',
 	'''../../../build/RfkGenerated/MikanClientCore''',
 	'''../../../build/RfkGenerated/MikanSerialization'''
 ]

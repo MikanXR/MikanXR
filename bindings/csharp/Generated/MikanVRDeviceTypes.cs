@@ -20,16 +20,16 @@ namespace MikanXR
 
 	public class MikanVRDeviceComponentValues : MikanTransformComponentValues
 	{
-		public MikanVRDeviceApi vr_device_api;
-		public MikanVRDeviceType vr_device_type;
-		public int vr_device_index;
-		public string vr_device_path;
-		public List<string> socket_names;
+		[MikanFieldOrder(0)] public MikanVRDeviceApi vr_device_api;
+		[MikanFieldOrder(1)] public MikanVRDeviceType vr_device_type;
+		[MikanFieldOrder(2)] public int vr_device_index;
+		[MikanFieldOrder(3)] public string vr_device_path;
+		[MikanFieldOrder(4)] public List<string> socket_names;
 	};
 
 	public class MikanVRObjectSystemValues : MikanSystemValues
 	{
-		public List<string> vr_device_path_list;
+		[MikanFieldOrder(0)] public List<string> vr_device_path_list;
 	};
 
 }

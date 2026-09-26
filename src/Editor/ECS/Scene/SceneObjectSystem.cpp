@@ -148,7 +148,7 @@ void SceneObjectSystem::setCurrentSceneById(MikanSceneID newSceneId)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* SceneObjectSystem::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle SceneObjectSystem::getClientAPIValuesStructType() const
 {
 	return &MikanSceneSystemValues::staticGetArchetype();
 }

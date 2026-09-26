@@ -206,7 +206,7 @@ eTrackingVolumeType DMXFixtureComponent::getTrackingVolumeType() const
 }
 
 // -- IEntityAccessor --
-rfk::Struct const* DMXFixtureComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle DMXFixtureComponent::getClientAPIValuesStructType() const
 {
 	return &MikanDMXFixtureComponentValues::staticGetArchetype();
 }

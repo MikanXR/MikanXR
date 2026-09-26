@@ -328,12 +328,12 @@ private:
 };
 
 // Public API
-bool serializeToBytes(const void* instance, rfk::Struct const& structType, std::vector<uint8_t>& outBytes,
+bool serializeToBytes(const void* instance, StructTypeHandle structType, std::vector<uint8_t>& outBytes,
 					  std::string& outErrorMsg)
 {
 	BinaryWriter writer(outBytes);
 	BinaryWriteVisitor visitor(writer);
-	Serialization::visitStruct(const_cast<void*>(instance), structType, &visitor);
+	Serialization::visitStruct(const_cast<void*>(instance), *structType, &visitor);
 
 	if (visitor.hasError())
 	{

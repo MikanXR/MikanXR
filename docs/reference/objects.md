@@ -134,7 +134,7 @@ Every component and system implements `IEntityAccessor` (`src/Editor/ECS/IEntity
 
 - Static `getPropertyDescriptors` / `getFunctionDescriptors` declare the schema (`PropertyDescriptor` with `MikanVariantType`, flags like `setReadOnly()`, `setUIHidden()`, `setClientAPIHidden()`).
 - Virtual `getPropertyValue` / `setPropertyValue` (`MikanVariant`) and `invokeFunction` implement it.
-- `getClientAPIValuesStructType()` returns the Refureku archetype of the matching client-API values struct.
+- `getClientAPIValuesStructType()` returns the matching client-API values struct as a `Serialization::StructTypeHandle`, the opaque reflected-struct handle ([wire-protocol.md](./wire-protocol.md)).
 
 `MikanTypedObjectSystem::registerPropertyDescriptors` registers both system and component schemas into the `ProjectManager`-owned `MikanPropertyDatabase` / `MikanFunctionDatabase`; each typed system also exposes its ID list via `k_componentIdListPropertyId` (served by `GetComponentListRequest`). The websocket side is `PropertyRequestHandler` / `FunctionRequestHandler` in `src/Editor/Server`; the values-struct/descriptor/`getPropertyValue` consistency is enforced by the schema-guard test run through `MikanCmd -runTests`. Details in [wire-protocol.md](./wire-protocol.md).
 

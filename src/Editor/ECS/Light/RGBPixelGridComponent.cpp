@@ -498,7 +498,7 @@ void RGBPixelGridComponent::sendDMXData() const
 }
 
 // -- IEntityAccessor --
-rfk::Struct const* RGBPixelGridComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle RGBPixelGridComponent::getClientAPIValuesStructType() const
 {
 	return &MikanRGBPixelGridComponentValues::staticGetArchetype();
 }

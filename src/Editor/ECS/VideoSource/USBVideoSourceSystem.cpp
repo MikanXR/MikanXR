@@ -334,7 +334,7 @@ void USBVideoSourceSystem::onConnectedDeviceListChanged()
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* USBVideoSourceSystem::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle USBVideoSourceSystem::getClientAPIValuesStructType() const
 {
 	return &MikanUSBVideoSourceSystemValues::staticGetArchetype();
 }

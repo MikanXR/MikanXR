@@ -6,12 +6,12 @@ namespace MikanXR
 {
 	public class MikanScriptComponentValues : MikanComponentValues
 	{
-		public string script_path;
+		[MikanFieldOrder(0)] public string script_path;
 	};
 
 	public class MikanScriptMessageInfo
 	{
-		public string content;
+		[MikanFieldOrder(0)] public string content;
 	};
 
 }

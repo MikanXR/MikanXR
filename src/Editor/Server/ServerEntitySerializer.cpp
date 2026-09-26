@@ -20,41 +20,31 @@ public:
 
 	virtual void visitClass(ValueAccessor const& accessor) override
 	{
-		rfk::Type const& fieldType= accessor.getType();
-		rfk::Class const* fieldClassType= accessor.getClassType();
-		rfk::EClassKind classKind= fieldClassType->getClassKind();
-
-		if (classKind == rfk::EClassKind::TemplateInstantiation)
+		if (accessor.isTemplateInstantiation())
 		{
-			void* arrayInstance= accessor.getUntypedValueMutablePtr();
-			const auto* templateClassInstanceType= rfk::classTemplateInstantiationCast(fieldClassType);
-			std::string templateTypeName= templateClassInstanceType->getClassTemplate().getName();
+			const std::string templateTypeName= accessor.getTemplateName();
 
 			// See if the field is a Serialization::List<T>
-			if (templateTypeName == "List" && templateClassInstanceType->getTemplateArgumentsCount() == 1)
+			if (templateTypeName == "List" && accessor.getTemplateArgumentCount() == 1)
 			{
-				// Get the type of the elements in the array from the template argument
-				auto const& templateArg=
-					static_cast<rfk::TypeTemplateArgument const&>(templateClassInstanceType->getTemplateArgumentAt(0));
-				rfk::Type const& elementType= templateArg.getType();
-
-				if (elementType == rfk::getType<bool>())
+				// Pick the visit by the type of the elements in the array
+				if (accessor.isTemplateArgumentType<bool>(0))
 				{
 					visitBoolList(accessor);
 				}
-				else if (elementType == rfk::getType<uint8_t>())
+				else if (accessor.isTemplateArgumentType<uint8_t>(0))
 				{
 					visitUByteList(accessor);
 				}
-				else if (elementType == rfk::getType<int>())
+				else if (accessor.isTemplateArgumentType<int>(0))
 				{
 					visitIntList(accessor);
 				}
-				else if (elementType == rfk::getType<float>())
+				else if (accessor.isTemplateArgumentType<float>(0))
 				{
 					visitFloatList(accessor);
 				}
-				else if (elementType == rfk::getType<Serialization::String>())
+				else if (accessor.isTemplateArgumentType<Serialization::String>(0))
 				{
 					visitStringList(accessor);
 				}
@@ -65,9 +55,9 @@ public:
 				}
 			}
 			// See if the field is a Serialization::Map<K,V>
-			else if (templateTypeName == "Map" && templateClassInstanceType->getTemplateArgumentsCount() == 2)
+			else if (templateTypeName == "Map" && accessor.getTemplateArgumentCount() == 2)
 			{
-				visitMap(accessor, *templateClassInstanceType);
+				visitMap(accessor);
 			}
 			else
 			{
@@ -76,11 +66,11 @@ public:
 				return;
 			}
 		}
-		else if (fieldType == rfk::getType<PolymorphicObjectPtr>())
+		else if (accessor.isType<PolymorphicObjectPtr>())
 		{
 			visitObjectPtr(accessor);
 		}
-		else if (fieldType == rfk::getType<Serialization::String>())
+		else if (accessor.isType<Serialization::String>())
 		{
 			visitString(accessor);
 		}
@@ -210,34 +200,23 @@ public:
 		}
 	}
 
-	void visitMap(ValueAccessor const& mapAccessor, rfk::ClassTemplateInstantiation const& templatedMapType)
+	void visitMap(ValueAccessor const& mapAccessor)
 	{
-		// Get the key type of the map from the template argument
-		auto const& templateKeyArg=
-			static_cast<rfk::TypeTemplateArgument const&>(templatedMapType.getTemplateArgumentAt(0));
-		auto const& templateValueArg=
-			static_cast<rfk::TypeTemplateArgument const&>(templatedMapType.getTemplateArgumentAt(1));
-		rfk::Type const& keyType= templateKeyArg.getType();
-		rfk::Type const& valueType= templateValueArg.getType();
-
-		if (keyType == rfk::getType<std::string>() && valueType == rfk::getType<Serialization::String>())
+		if (mapAccessor.isTemplateArgumentType<Serialization::String>(0)
+			&& mapAccessor.isTemplateArgumentType<Serialization::String>(1))
 		{
-			visitStringMap(mapAccessor, templatedMapType);
+			visitStringMap(mapAccessor);
 		}
 		else
 		{
-			rfk::Archetype const* keyArchetype= keyType.getArchetype();
-			rfk::Archetype const* valueArchetype= valueType.getArchetype();
-
-			setError(StringUtils::stringify(
-				"EntityAccessorReadVisitor::visitMap() ", "Map Key Archetype ",
-				keyArchetype != nullptr ? keyArchetype->getName() : "<Null Archetype>", " Value Archetype ",
-				valueArchetype != nullptr ? valueArchetype->getName() : "<Null Archetype>", " is not supported"));
+			setError(StringUtils::stringify("EntityAccessorReadVisitor::visitMap() ", "Map Key Archetype ",
+											mapAccessor.getTemplateArgumentTypeName(0), " Value Archetype ",
+											mapAccessor.getTemplateArgumentTypeName(1), " is not supported"));
 			return;
 		}
 	}
 
-	void visitStringMap(ValueAccessor const& mapAccessor, rfk::ClassTemplateInstantiation const& templatedMapType)
+	void visitStringMap(ValueAccessor const& mapAccessor)
 	{
 		// Get an enumerator to the target string map
 		auto* mapInstance= reinterpret_cast<Serialization::Map<Serialization::String, Serialization::String>*>(
@@ -284,41 +263,40 @@ public:
 
 	virtual void visitStruct(ValueAccessor const& accessor) override
 	{
-		rfk::Type const& fieldType= accessor.getType();
 
-		if (fieldType == rfk::getType<MikanVector2f>())
+		if (accessor.isType<MikanVector2f>())
 		{
 			visitVector2f(accessor);
 		}
-		else if (fieldType == rfk::getType<MikanVector3f>())
+		else if (accessor.isType<MikanVector3f>())
 		{
 			visitVector3f(accessor);
 		}
-		else if (fieldType == rfk::getType<MikanVector4f>())
+		else if (accessor.isType<MikanVector4f>())
 		{
 			visitVector4f(accessor);
 		}
-		else if (fieldType == rfk::getType<MikanQuatf>())
+		else if (accessor.isType<MikanQuatf>())
 		{
 			visitQuaternionf(accessor);
 		}
-		else if (fieldType == rfk::getType<MikanMatrix4f>())
+		else if (accessor.isType<MikanMatrix4f>())
 		{
 			visitMatrix4f(accessor);
 		}
-		else if (fieldType == rfk::getType<MikanVector2d>())
+		else if (accessor.isType<MikanVector2d>())
 		{
 			visitVector2d(accessor);
 		}
-		else if (fieldType == rfk::getType<MikanVector3d>())
+		else if (accessor.isType<MikanVector3d>())
 		{
 			visitVector3d(accessor);
 		}
-		else if (fieldType == rfk::getType<MikanVector4d>())
+		else if (accessor.isType<MikanVector4d>())
 		{
 			visitVector4d(accessor);
 		}
-		else if (fieldType == rfk::getType<MikanQuatd>())
+		else if (accessor.isType<MikanQuatd>())
 		{
 			visitQuaterniond(accessor);
 		}
@@ -492,26 +470,7 @@ public:
 		{
 			const int sourceEnumIntValue= sourcePropertyValue.getIntValue();
 
-			rfk::Enum const& enumType= *accessor.getEnumType();
-			rfk::Archetype const& enumArchetype= enumType.getUnderlyingArchetype();
-			rfk::EnumValue const* enumValue= enumType.getEnumValue(sourceEnumIntValue);
-
-			if (enumValue != nullptr)
-			{
-				void* enumInstance= accessor.getInstanceMutable();
-				rfk::Field const* enumField= accessor.getField();
-				const int64_t enumInt64Value= enumValue->getValue();
-
-				if (enumField != nullptr)
-				{
-					enumField->setUnsafe(enumInstance, &enumInt64Value, enumArchetype.getMemorySize());
-				}
-				else
-				{
-					std::memcpy(enumInstance, &enumInt64Value, enumArchetype.getMemorySize());
-				}
-			}
-			else
+			if (!accessor.setEnumValueFromInt(sourceEnumIntValue))
 			{
 				setError(StringUtils::stringify("EntityAccessorReadVisitor::visitEnum() ", "Enum Accessor ",
 												accessor.getName(), " has an invalid value ", sourceEnumIntValue));
@@ -731,11 +690,11 @@ private:
 };
 
 // Public API
-bool serializeFromEntity(IEntityAccessorConstPtr entityAccessor, void* instance, rfk::Struct const& structType,
+bool serializeFromEntity(IEntityAccessorConstPtr entityAccessor, void* instance, StructTypeHandle structType,
 						 std::string& outErrorMsg)
 {
 	EntityAccessorReadVisitor visitor(entityAccessor);
-	Serialization::visitStruct(instance, structType, &visitor);
+	Serialization::visitStruct(instance, *structType, &visitor);
 
 	if (visitor.hasError())
 	{

@@ -90,7 +90,7 @@ QuadShapeComponent::QuadShapeComponent(MikanObjectWeakPtr owner)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* QuadShapeComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle QuadShapeComponent::getClientAPIValuesStructType() const
 {
 	return &MikanQuadShapeComponentValues::staticGetArchetype();
 }

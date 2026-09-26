@@ -4,19 +4,6 @@ import { MikanRequest } from './MikanAPITypes.js';
 import { MikanScriptMessageInfo } from './MikanScriptTypes.js';
 import type { SerializationField } from './SerializationTypes.js';
 
-export class SendScriptMessage extends MikanRequest {
-  message: MikanScriptMessageInfo = new MikanScriptMessageInfo();
-
-  constructor() {
-    super();
-    this.requestTypeName = 'SendScriptMessage';
-  }
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'message', type: 'MikanScriptMessageInfo' }
-  ];
-}
-
 export class InvokeScriptTrigger extends MikanRequest {
   script_name: string = '';
   trigger_name: string = '';
@@ -31,6 +18,19 @@ export class InvokeScriptTrigger extends MikanRequest {
     { name: 'script_name', type: 'string' },
     { name: 'trigger_name', type: 'string' },
     { name: 'trigger_args', type: 'Map', isMap: true, keyType: 'string', valueType: 'string' }
+  ];
+}
+
+export class SendScriptMessage extends MikanRequest {
+  message: MikanScriptMessageInfo = new MikanScriptMessageInfo();
+
+  constructor() {
+    super();
+    this.requestTypeName = 'SendScriptMessage';
+  }
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'message', type: 'MikanScriptMessageInfo' }
   ];
 }
 

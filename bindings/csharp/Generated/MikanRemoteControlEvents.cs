@@ -6,8 +6,8 @@ namespace MikanXR
 {
 	public class MikanAppStageChangedEvent : MikanEvent
 	{
-		public string new_app_state_name;
-		public string old_app_state_name;
+		[MikanFieldOrder(0)] public string new_app_state_name;
+		[MikanFieldOrder(1)] public string old_app_state_name;
 
 		public MikanAppStageChangedEvent()
 		{
@@ -17,8 +17,8 @@ namespace MikanXR
 
 	public class MikanRemoteControlEvent : MikanEvent
 	{
-		public string remoteControlEvent;
-		public List<string> parameters;
+		[MikanFieldOrder(0)] public string remoteControlEvent;
+		[MikanFieldOrder(1)] public List<string> parameters;
 
 		public MikanRemoteControlEvent()
 		{

@@ -63,13 +63,17 @@ The moving parts:
 
 - Each library has a `RefurekuSettings.toml` listing exactly which headers are parsed (`toProcessFiles`) and where generated files go (`build/RfkGenerated/<LibraryName>`). A new header with wire types must be added to that list or it is invisible to reflection and codegen.
 
-- CMake runs the generator before compiling: `src/Libraries/MikanClientAPI/CMakeLists.txt` defines a `MikanClientAPIReflection` custom target that runs `RefurekuGenerator.exe` on the toml, and `MikanClientAPI` depends on it. `MikanClientCore` and `MikanSerialization` follow the same pattern.
+- CMake runs the generator before compiling: `src/Libraries/MikanClientAPI/CMakeLists.txt` defines a `MikanClientAPIReflection` custom target that runs `RefurekuGenerator.exe` on the toml, and `MikanClientAPI` depends on it. `MikanClientCore` and `MikanSerialization` follow the same pattern. Refureku and its generator build from the `thirdparty/Refureku` submodule as part of the tree. A change to either is a submodule bump rather than a new binary package, and [build.md](./build.md) covers that integration.
 
 ---
 
 ## Codegen pipeline: C++ to C# and TypeScript
 
-`src/Programs/ClientCodeGen/ClientCodeGen.cpp` builds `MikanClientCodeGen.exe`. It links against the reflected `MikanClientCore`/`MikanClientAPI`/`MikanSerialization` DLLs, walks the runtime Refureku database (`rfk::Struct`, `rfk::Enum`), buckets every entity by its `Serialization::CodeGenModule` property, and emits equivalent types per module.
+`src/Programs/ClientCodeGen` builds `MikanClientCodeGen.exe`. It links against the reflected `MikanClientCore`/`MikanClientAPI`/`MikanSerialization` DLLs, walks the runtime Refureku database (`rfk::Struct`, `rfk::Enum`), buckets every entity by its `Serialization::CodeGenModule` property, and emits equivalent types per module.
+
+A target language is one file behind the `MikanClientLanguageGen` base class, which declares a `create*ClientGen` factory per language the way `ISharedTextureWriterBackend` does per graphics API. The base carries what every language needs from the reflection data: the wire type-name field of a request, response or event, a default-constructed instance to read real field defaults from, the inheritance ordering a language needs when its file cannot reference a type declared later, and which module owns a type. A generator emits one file per module through `generateModuleFile`, plus whatever files describe the whole output through `generateWholeOutputFiles` (TypeScript writes four: the shared field descriptor, the two registries, and the barrel; C# writes none). Adding a language is a generator file, a case in `createLanguageGen`, a `target_language` string, and a config plus CMake target under `bindings/`.
+
+Entity order is decided once, in `CodeGenDatabase::sortEntities`, before anything emits. The reflection database enumerates in an order that varies between runs, so a generator that walks those vectors as filled rewrites unchanged files on every regeneration. Sorting centrally is also what makes the TypeScript inheritance ordering deterministic, since it preserves input order among structs that have no relationship to each other.
 
 How it runs (all wired in CMake, not manual):
 
@@ -99,9 +103,23 @@ The generated outputs are checked into git (`bindings/csharp/CMakeLists.txt` car
 
 ## Serialization layer and its traps
 
-`src/Libraries/MikanSerialization` walks reflected structs generically: `JsonSerializer`/`JsonDeserializer` (nlohmann-backed) for the websocket and config files, `BinarySerializer`/`BinaryDeserializer` for binary response payloads, with `SerializationVisitor` as the shared field-visiting core and `Serialization::List`/`Map`/`PolymorphicObjectPtr`/`String` as the reflected container types. `TypeRegistry::buildFromRfkDatabase` must run at startup before deserializing polymorphic objects by type name (both `MikanServer` clients and `CmdApp::exec` do this).
+`src/Libraries/MikanSerialization` walks reflected structs generically: `JsonSerializer`/`JsonDeserializer` (nlohmann-backed) for the websocket and config files, `BinarySerializer`/`BinaryDeserializer` for binary response payloads, with `SerializationVisitor` as the shared field-visiting core and `Serialization::List`/`Map`/`PolymorphicObjectPtr`/`String` as the reflected container types. `TypeRegistry::build` must run at startup before deserializing polymorphic objects by type name (both `MikanServer` clients and `CmdApp::exec` do this).
 
-A struct's binary encoding is the concatenation of its fields in memory offset order, parents first, with no framing between them. `src/Editor/Server/ServerModelGeometryPayload` leans on that: model render geometry is serialized once, cached on the `MikanRenderModelResource` it came from, and each response is built by serializing only the `MikanResponse` header and appending those cached bytes, rather than walking every vertex through reflection again. `ModelGeometryPayloadTests` (in `MikanCmd.exe -runTests`) compares the spliced bytes against a whole serialization for both the stencil and shape responses, so a field added to `MikanResponse` or inserted ahead of `render_geometry` fails there.
+Refureku is MikanSerialization's implementation detail, not a vocabulary the rest of the tree shares. Code outside the library names two things instead:
+
+- `Serialization::StructTypeHandle` (`Public/ReflectionHandles.h`), the opaque reflected-struct handle that `getClientAPIValuesStructType`, `TypeRegistry::getStructByName`, and every serializer entry point traffic in
+- `Serialization::ValueAccessor`'s own type questions: `isType<T>()`, `isTemplateInstantiation()`, `getTemplateName()`, `getTemplateArgumentCount()`, `isTemplateArgumentType<T>(index)`, and `setEnumValueFromInt()`
+
+`isType<T>()` stays compile-time checked without the public header including Refureku: a reflected struct carries a `staticGetArchetype()` whose address the accessor compares, and a fundamental resolves through the `Serialization::FundamentalType` enum. A visitor subclass outside the library (`EntityAccessorReadVisitor` in `src/Editor/Server/ServerEntitySerializer.cpp`, `PropertySchemaVisitor` in the schema test) is written entirely in that vocabulary. `rfk::` itself appears only in `MikanSerialization`, `ClientCodeGen.cpp`, and `MikanClientAPI/Private/MikanVariantTypes.cpp`, which reads its own enum's `ENUMVALUE_STRING`.
+
+A struct's binary encoding is the concatenation of its fields in memory offset order, parents first, with no framing between them. `Serialization::getStructFieldsInWireOrder` is the definition of that order for one struct: its own public, non-static fields sorted by memory offset. The serializer walks the parent chain around it, and the bindings generator emits the fields in the same order. Those two used to compute the order separately and disagreed on whether to skip non-public and static fields, which nothing would have caught until a reflected field was one of those.
+
+Each client runtime recovers that order from the generated type, and neither infers it from reflection order:
+
+- C#: every generated field carries `[MikanFieldOrder(n)]`, which `Utils.memoryOffsetSortStructFields` sorts on. `Type.GetFields()` is documented as returning fields in no particular order, so declaration order is not something the runtime may assume.
+- TypeScript: each generated class carries a `__serializationMetadata` array, and the runtime walks the prototype chain base-first to concatenate them.
+
+`src/Editor/Server/ServerModelGeometryPayload` leans on the same layout: model render geometry is serialized once, cached on the `MikanRenderModelResource` it came from, and each response is built by serializing only the `MikanResponse` header and appending those cached bytes, rather than walking every vertex through reflection again. `ModelGeometryPayloadTests` (in `MikanCmd.exe -runTests`) compares the spliced bytes against a whole serialization for both the stencil and shape responses, so a field added to `MikanResponse` or inserted ahead of `render_geometry` fails there.
 
 Two traps, both real and both verified in code:
 
@@ -141,7 +159,7 @@ A client-facing property must be wired consistently in three places:
 
 The guard test is `src/Editor/Server/Test/ClientApiPropertySchemaTests.cpp`, run from `CmdApp::runTests` via `MikanCmd.exe -runTests` (see [commands.md](./commands.md)). For every entry in `k_schemaTestEntries` (each `SCHEMA_ENTRY(EditorClass, ValuesStruct)` pair, covering all components and object systems) it:
 
-- instantiates the values struct via reflection and walks it with `PropertySchemaVisitor`, a deliberate mirror of `EntityAccessorReadVisitor`, computing the `MikanVariantType` the serializer will demand per field (failing on unsupported field types);
+- instantiates the values struct via reflection and walks it with `PropertySchemaVisitor`, a deliberate mirror of `EntityAccessorReadVisitor`, computing the `MikanVariantType` the serializer will demand per field (failing on unsupported field types). The mirror is only as good as what it checks: for a `Serialization::Map` field it used to record `STRING_MAP` on the template name alone, while the serializer tested the key against `std::string`. Every map on the wire is `Map<Serialization::String, Serialization::String>`, so that test never passed and `MikanUSBVideoSourceSystemValues::usb_device_map` came back empty with a serialization error. Both sides now check the key and value types, and a map of any other shape fails the guard test rather than at runtime;
 - fails if any values-struct field has no non-hidden descriptor of the exact same name and type;
 - fails if any non-hidden descriptor has no matching values-struct field.
 
@@ -182,6 +200,10 @@ A scale above 1 is a supersample. The composite is always built at video resolut
 `CameraComponent::applyClientRenderScales` is the single place it is applied. It multiplies `pixel_size`, `focal_length` and `principal_point` by the same factor, taken from the size that was actually published rather than from the requested scale. A client builds its projection from those values only as ratios against the pixel size, so the projection matrix comes out unchanged and neither a scale nor the ceiling can move where anything lands in frame. The depth and shadow passes share that projection and differ only in target size. `CameraComponent::getAperturePixelDimensions` remains the video resolution and is what the calibration tools and `DepthMaskNode` read.
 
 `MikanRenderTargetDescriptor` carries `aux_width` and `aux_height` beside `width` and `height` so the editor allocates its texture ring to match. Zero in either means the depth and shadow buffers are the color size. A client that ignores `aux_pixel_size` renders all three buffers at `pixel_size` and keeps working, since `SharedTextureReadAccessor` sizes each texture from its own Spout sender.
+
+Adding a field to this struct has a fourth leg the other wire types do not have. The struct crosses the core C API by value, so the C# bindings mirror it by hand as `MikanRenderTargetDescriptor_Native` in `bindings/csharp/MikanCoreNative.cs`, with `LayoutKind.Sequential` and no field names on the wire to catch a mismatch. A field missing there shifts every field after it, and since `Mikan_GetCameraRenderTargetDescriptor` takes the struct as an `out` parameter, a short struct is also written past its end. `MikanRenderTargetAPI.cs` then has to copy the new field in both directions. The generated bindings and the property schema guard test cover none of this, because the struct reaches C# through P/Invoke rather than through JSON.
+
+`csharp_interop_unit_tests.cpp` (in `unit_test_suite_cpp`) is what holds that leg. It reads the mirror's field names out of the C# source and compares them, in order, against `getStructFieldsInWireOrder` on the reflected struct, so a field added on one side and not the other fails the build's test run rather than corrupting a client's stack. A `static_assert` on `sizeof` sits beside it to catch a field whose type changed without its name changing, which the name comparison cannot see. The test needs the repo it was configured from, which arrives as the `MIKAN_REPO_ROOT_DIR` compile definition.
 
 ---
 

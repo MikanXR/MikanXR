@@ -43,6 +43,7 @@ add_custom_target(MikanSerializationReflection
 					WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
 					COMMAND "${RFK_GENERATOR_EXE}" "${CMAKE_CURRENT_LIST_DIR}/RefurekuSettings.toml") 
 set_target_properties(MikanSerializationReflection PROPERTIES FOLDER MikanLibraries)
+add_dependencies(MikanSerializationReflection RefurekuGeneratorRuntime)
 
 # Run the RefurekuGenerator BEFORE building the project to refresh generated files
 add_dependencies(MikanSerialization MikanSerializationReflection)

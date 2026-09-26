@@ -91,7 +91,7 @@ using GetFunctionDescriptorsFn= void (*)(std::vector<FunctionDescriptorConstPtr>
 struct SchemaTestEntry
 {
 	const char* label;
-	rfk::Struct const* valuesStruct;
+	Serialization::StructTypeHandle valuesStruct;
 	GetDescriptorsFn getDescriptors;
 	GetFunctionDescriptorsFn getFunctionDescriptors;
 };

@@ -212,7 +212,7 @@ void VideoSourceComponent::update(float deltaSeconds)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* VideoSourceComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle VideoSourceComponent::getClientAPIValuesStructType() const
 {
 	return &MikanVideoSourceValues::staticGetArchetype();
 }

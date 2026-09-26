@@ -125,7 +125,7 @@ int CmdApp::exec(int argc, char** argv)
 
 	// Build the reflection type registry
 	// (Used by the serialization-based commands such as the unit tests).
-	Serialization::TypeRegistry::buildFromRfkDatabase();
+	Serialization::TypeRegistry::build();
 
 	// Dispatch to the requested command.
 	int result= EXIT_SUCCESS;

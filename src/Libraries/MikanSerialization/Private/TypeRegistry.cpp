@@ -9,7 +9,7 @@ namespace Serialization
 {
 static std::unordered_map<std::string, rfk::Struct const*> s_structs;
 
-void TypeRegistry::buildFromRfkDatabase()
+void TypeRegistry::build()
 {
 	s_structs.clear();
 
@@ -25,7 +25,7 @@ void TypeRegistry::buildFromRfkDatabase()
 		nullptr);
 }
 
-rfk::Struct const* TypeRegistry::getStructByName(const std::string& typeName)
+StructTypeHandle TypeRegistry::getStructByName(const std::string& typeName)
 {
 	auto it= s_structs.find(typeName);
 	return (it != s_structs.end()) ? it->second : nullptr;

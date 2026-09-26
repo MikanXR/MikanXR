@@ -6,7 +6,7 @@ namespace MikanXR
 {
 	public class GetVideoSourceIntrinsics : MikanRequest
 	{
-		public int video_source_id;
+		[MikanFieldOrder(0)] public int video_source_id;
 
 		public GetVideoSourceIntrinsics()
 		{
@@ -16,7 +16,7 @@ namespace MikanXR
 
 	public class GetVideoSourceMode : MikanRequest
 	{
-		public int video_source_id;
+		[MikanFieldOrder(0)] public int video_source_id;
 
 		public GetVideoSourceMode()
 		{
@@ -26,7 +26,7 @@ namespace MikanXR
 
 	public class MikanVideoSourceIntrinsicsResponse : MikanResponse
 	{
-		public MikanVideoSourceIntrinsics intrinsics;
+		[MikanFieldOrder(0)] public MikanVideoSourceIntrinsics intrinsics;
 
 		public MikanVideoSourceIntrinsicsResponse()
 		{
@@ -36,13 +36,13 @@ namespace MikanXR
 
 	public class MikanVideoSourceModeResponse : MikanResponse
 	{
-		public MikanVideoSourceType video_source_type;
-		public string video_source_api;
-		public string device_path;
-		public string video_mode_name;
-		public int resolution_x;
-		public int resolution_y;
-		public float frame_rate;
+		[MikanFieldOrder(0)] public MikanVideoSourceType video_source_type;
+		[MikanFieldOrder(1)] public string video_source_api;
+		[MikanFieldOrder(2)] public string device_path;
+		[MikanFieldOrder(3)] public string video_mode_name;
+		[MikanFieldOrder(4)] public int resolution_x;
+		[MikanFieldOrder(5)] public int resolution_y;
+		[MikanFieldOrder(6)] public float frame_rate;
 
 		public MikanVideoSourceModeResponse()
 		{
@@ -52,8 +52,8 @@ namespace MikanXR
 
 	public class SetUSBVideoSourceDevice : MikanRequest
 	{
-		public int video_source_id;
-		public string device_path;
+		[MikanFieldOrder(0)] public int video_source_id;
+		[MikanFieldOrder(1)] public string device_path;
 
 		public SetUSBVideoSourceDevice()
 		{
@@ -63,8 +63,8 @@ namespace MikanXR
 
 	public class SetUSBVideoSourceFormat : MikanRequest
 	{
-		public int video_source_id;
-		public string format;
+		[MikanFieldOrder(0)] public int video_source_id;
+		[MikanFieldOrder(1)] public string format;
 
 		public SetUSBVideoSourceFormat()
 		{
@@ -74,8 +74,8 @@ namespace MikanXR
 
 	public class SetUSBVideoSourceFrameRate : MikanRequest
 	{
-		public int video_source_id;
-		public string frame_rate;
+		[MikanFieldOrder(0)] public int video_source_id;
+		[MikanFieldOrder(1)] public string frame_rate;
 
 		public SetUSBVideoSourceFrameRate()
 		{
@@ -85,8 +85,8 @@ namespace MikanXR
 
 	public class SetUSBVideoSourceResolution : MikanRequest
 	{
-		public int video_source_id;
-		public string resolution;
+		[MikanFieldOrder(0)] public int video_source_id;
+		[MikanFieldOrder(1)] public string resolution;
 
 		public SetUSBVideoSourceResolution()
 		{

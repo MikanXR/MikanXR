@@ -122,7 +122,7 @@ ModelStencilComponent::ModelStencilComponent(MikanObjectWeakPtr owner)
 }
 
 // -- IEntityAccessor ----
-rfk::Struct const* ModelStencilComponent::getClientAPIValuesStructType() const
+Serialization::StructTypeHandle ModelStencilComponent::getClientAPIValuesStructType() const
 {
 	return &MikanModelStencilComponentValues::staticGetArchetype();
 }

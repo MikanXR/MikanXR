@@ -35,93 +35,93 @@ namespace MikanXR
 
 	public class MikanBoolArrayValue : MikanVariantBase
 	{
-		public List<bool> value;
+		[MikanFieldOrder(0)] public List<bool> value;
 	};
 
 	public class MikanBoolValue : MikanVariantBase
 	{
-		public bool value;
+		[MikanFieldOrder(0)] public bool value;
 	};
 
 	public class MikanDoubleValue : MikanVariantBase
 	{
-		public double value;
+		[MikanFieldOrder(0)] public double value;
 	};
 
 	public class MikanFloatArrayValue : MikanVariantBase
 	{
-		public List<float> value;
+		[MikanFieldOrder(0)] public List<float> value;
 	};
 
 	public class MikanFloatValue : MikanVariantBase
 	{
-		public float value;
+		[MikanFieldOrder(0)] public float value;
 	};
 
 	public class MikanIntArrayValue : MikanVariantBase
 	{
-		public List<int> value;
+		[MikanFieldOrder(0)] public List<int> value;
 	};
 
 	public class MikanIntValue : MikanVariantBase
 	{
-		public int value;
+		[MikanFieldOrder(0)] public int value;
 	};
 
 	public class MikanLongValue : MikanVariantBase
 	{
-		public long value;
+		[MikanFieldOrder(0)] public long value;
 	};
 
 	public class MikanMatrix4fValue : MikanVariantBase
 	{
-		public MikanMatrix4f value;
+		[MikanFieldOrder(0)] public MikanMatrix4f value;
 	};
 
 	public class MikanQuatdValue : MikanVariantBase
 	{
-		public MikanQuatd value;
+		[MikanFieldOrder(0)] public MikanQuatd value;
 	};
 
 	public class MikanQuatfValue : MikanVariantBase
 	{
-		public MikanQuatf value;
+		[MikanFieldOrder(0)] public MikanQuatf value;
 	};
 
 	public class MikanStringArrayValue : MikanVariantBase
 	{
-		public List<string> value;
+		[MikanFieldOrder(0)] public List<string> value;
 	};
 
 	public class MikanStringMapValue : MikanVariantBase
 	{
-		public Dictionary<string, string> value;
+		[MikanFieldOrder(0)] public Dictionary<string, string> value;
 	};
 
 	public class MikanStringValue : MikanVariantBase
 	{
-		public string value;
+		[MikanFieldOrder(0)] public string value;
 	};
 
 	public class MikanUByteArrayValue : MikanVariantBase
 	{
-		public List<byte> value;
+		[MikanFieldOrder(0)] public List<byte> value;
 	};
 
 	public class MikanUByteValue : MikanVariantBase
 	{
-		public byte value;
+		[MikanFieldOrder(0)] public byte value;
 	};
 
 	public class MikanUShortValue : MikanVariantBase
 	{
-		public ushort value;
+		[MikanFieldOrder(0)] public ushort value;
 	};
 
 	public class MikanVariant
 	{
-		public MikanVariantType value_type;
-		public PolymorphicObject value_ptr;
+		[MikanFieldOrder(0)] public MikanVariantType value_type;
+		[MikanFieldOrder(1)] public PolymorphicObject value_ptr;
 	};
 
 	public class MikanVariantBase : PolymorphicStruct
@@ -130,32 +130,32 @@ namespace MikanXR
 
 	public class MikanVector2dValue : MikanVariantBase
 	{
-		public MikanVector2d value;
+		[MikanFieldOrder(0)] public MikanVector2d value;
 	};
 
 	public class MikanVector2fValue : MikanVariantBase
 	{
-		public MikanVector2f value;
+		[MikanFieldOrder(0)] public MikanVector2f value;
 	};
 
 	public class MikanVector3dValue : MikanVariantBase
 	{
-		public MikanVector3d value;
+		[MikanFieldOrder(0)] public MikanVector3d value;
 	};
 
 	public class MikanVector3fValue : MikanVariantBase
 	{
-		public MikanVector3f value;
+		[MikanFieldOrder(0)] public MikanVector3f value;
 	};
 
 	public class MikanVector4dValue : MikanVariantBase
 	{
-		public MikanVector4d value;
+		[MikanFieldOrder(0)] public MikanVector4d value;
 	};
 
 	public class MikanVector4fValue : MikanVariantBase
 	{
-		public MikanVector4f value;
+		[MikanFieldOrder(0)] public MikanVector4f value;
 	};
 
 }

@@ -6,11 +6,11 @@ namespace MikanXR
 {
 	public class MikanCompositorComponentValues : MikanComponentValues
 	{
-		public int owner_scene_id;
-		public int camera_id;
-		public string compositor_graph_path;
-		public bool spout_enable_output;
-		public string spout_output_name;
+		[MikanFieldOrder(0)] public int owner_scene_id;
+		[MikanFieldOrder(1)] public int camera_id;
+		[MikanFieldOrder(2)] public string compositor_graph_path;
+		[MikanFieldOrder(3)] public bool spout_enable_output;
+		[MikanFieldOrder(4)] public string spout_output_name;
 	};
 
 }
