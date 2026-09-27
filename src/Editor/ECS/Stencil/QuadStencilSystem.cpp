@@ -130,12 +130,12 @@ bool QuadStencilSystem::isStencilFacingCamera(StencilComponentConstPtr stencil, 
 // -- IPropertyInterface ----
 void QuadStencilSystem::getPropertyDescriptors(std::vector<PropertyDescriptorConstPtr>& outDescriptors)
 {
-	MikanObjectSystem::getPropertyDescriptors(outDescriptors);
+	Super::getPropertyDescriptors(outDescriptors);
 }
 
 bool QuadStencilSystem::getPropertyValue(const std::string& propertyName, MikanVariant& outValue) const
 {
-	return MikanObjectSystem::getPropertyValue(propertyName, outValue);
+	return Super::getPropertyValue(propertyName, outValue);
 }
 
 bool QuadStencilSystem::setPropertyValue(const std::string& propertyName, const MikanVariant& inValue)
