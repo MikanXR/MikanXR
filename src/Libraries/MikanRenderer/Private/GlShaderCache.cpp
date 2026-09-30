@@ -1218,8 +1218,15 @@ IMkShaderCodeConstPtr getPM5544TestCardShaderCode()
 				uniform vec2  screenSize;
 				uniform float time;
 
-				#define color(a, b) ((b) ? 244. - (a) : (a)) / 255.
 				const vec2 R = vec2(768, 576);
+
+				// A function rather than a macro: some drivers try to expand a function-like
+				// macro wherever its name appears, even without a following '(', and this
+				// shader also uses 'color' as a parameter name
+				vec3 pmColor(vec3 a, bool b)
+				{
+					return (b ? 244. - a : a) / 255.;
+				}
 
 				// ---- CRT effects ------------------------------------------------
 
@@ -1309,10 +1316,10 @@ IMkShaderCodeConstPtr getPM5544TestCardShaderCode()
 						if (abs(i.x) > 8. || abs(i.y) > 6.) col = vec3(float(mod(i.x + i.y, 2.) < .5));
 						if (p.y > 41. || p.y < 1.) col = vec3(1);
 						if (q.x > 273. && q.x < 314. && q.y < 230.)
-							col = I.x > 0. ? color(vec3(122, 100, 233), I.y > 0.)
-							               : color(vec3(184,  90, 122), I.y > 0.);
+							col = I.x > 0. ? pmColor(vec3(122, 100, 233), I.y > 0.)
+							               : pmColor(vec3(184,  90, 122), I.y > 0.);
 						if (q.x > 232. && q.x < 273. && q.y > 148. && q.y < 230.)
-							col = color(vec3(157, 122, 30), I.y > 0.);
+							col = pmColor(vec3(157, 122, 30), I.y > 0.);
 						if (q.x < 271. || q.x > 275. || q.y < 148. || q.y > 230.)
 						{
 							if (p.x > 40. || p.x < 2.) col = (col + 2.) / 3.;
