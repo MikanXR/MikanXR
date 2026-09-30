@@ -255,11 +255,23 @@ git tag v2026.09.14 && git push origin v2026.09.14
 
 `.github/workflows/release.yml` fails unless the tag matches the header. It builds Release with GStreamer on, runs both suites and the crash check, and drafts a GitHub release carrying the app zip, the setup exe, and the symbols zip. Publish the draft after checking the assets. Every published build keeps its symbols zip: a crash dump from that build cannot be read without it.
 
+To try the release build without a tag, run it by hand. It builds, tests, and packages the same way, uploads the three files as the `MikanXR-Release` workflow artifact, and skips the tag check and the draft release:
+
+```
+gh workflow run release.yml
+```
+
+The test build runs on Visual Studio 2026. To check that Visual Studio 2022 still builds, run it by hand on the 2022 image:
+
+```
+gh workflow run build-and-test.yml -f vs=2022
+```
+
 ---
 
 ## Reproducing the CI build locally
 
-CI uses Ninja (for sccache) with GStreamer off and a flattened output dir. From a Visual Studio developer command prompt:
+CI uses Ninja (for sccache) with GStreamer off and a flattened output dir, on Visual Studio 2026 (`windows-2025-vs2026`). From a Visual Studio developer command prompt:
 
 ```
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DMIKAN_WITH_GSTREAMER=OFF -DCMAKE_UNITY_BUILD=ON -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=%CD%\build\bin ...

@@ -2,11 +2,22 @@ name: Build and Test
 
 # Branch pushes only: a release tag push runs release.yml, which builds and tests
 # the same commit itself, so running this job on it too would only duplicate work.
+#
+# The Windows build runs on Visual Studio 2026. A manual run can pick Visual Studio
+# 2022 instead, to check the older toolchain still builds: the Actions tab, or
+# gh workflow run build-and-test.yml -f vs=2022
 on:
   push:
     branches: [ '**' ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      vs:
+        description: Visual Studio version the Windows build runs on
+        type: choice
+        options: [ '2026', '2022' ]
+        default: '2026'
 
 jobs:
   # -----------------------------------------------------------------
@@ -17,7 +28,7 @@ jobs:
   #
   # The clang-format version is PINNED to the 19.1.5 that
   # InitialSetup_x64.bat puts in deps/clang-format, a version Visual
-  # Studio 2022 also bundles. clang-format output changes between
+  # Studio 2022 also bundles (Visual Studio 2026 bundles 22.x). clang-format output changes between
   # major versions, so local and CI must agree or a locally-formatted
   # file could still fail here. cmake -P runs the exact same script that
   # backs the local `format-check` target (cmake/RunClangFormat.cmake).
@@ -87,8 +98,11 @@ jobs:
       - name: Check AI usage badges against the ledger
         run: python tools/token_stats.py --check
 
+  # The job keeps the name "build", which main's branch protection requires by name.
+  # Pushes and pull requests carry no inputs and get the Visual Studio 2026 image; the
+  # explicit label keeps a future relabel of windows-2025 from changing the toolchain.
   build:
-    runs-on: windows-2022
+    runs-on: ${{ github.event.inputs.vs == '2022' && 'windows-2022' || 'windows-2025-vs2026' }}
 
     # Enable the sccache GitHub Actions cache backend for the whole job.
     # sccache runs as a background server whose storage backend is fixed
