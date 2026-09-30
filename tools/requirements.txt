@@ -1,0 +1,3 @@
+# Packages the lightweight developer tools need, installed into the repo's .venv by
+# tools\SetupDevEnvironment.bat and used by CI's localization check
+polib==1.2.0

@@ -6,7 +6,8 @@ IF( NOT INNOSETUP_FOUND )
     set (ProgramFiles_x86 "ProgramFiles(x86)")
 	# ISCC.exe is the command line compiler. Compil32.exe is the IDE front end, which the
 	# GitHub Windows runner image does not ship. Version 6 is searched first so a machine
-	# with both installed builds the installer with the newer compiler.
+	# with both installed builds the installer with the newer compiler. The winget package
+	# installs per user, under LOCALAPPDATA.
 	FIND_PATH(
 	   INNOSETUP_DIR
 	   NAMES
@@ -14,6 +15,7 @@ IF( NOT INNOSETUP_FOUND )
 	   PATHS
 	   "$ENV{${ProgramFiles_x86}}/Inno Setup 6"
 	   "$ENV{ProgramFiles}/Inno Setup 6"
+	   "$ENV{LOCALAPPDATA}/Programs/Inno Setup 6"
 	   "$ENV{${ProgramFiles_x86}}/Inno Setup 5"
 	   "$ENV{ProgramFiles}/Inno Setup 5"
 	)

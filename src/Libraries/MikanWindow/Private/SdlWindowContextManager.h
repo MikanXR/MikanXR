@@ -23,6 +23,7 @@ public:
 	virtual const std::string& getGlslVersion() const override { return m_glslVersion; }
 	virtual float getPrimaryDisplayContentScale() const override;
 	virtual void setMouseCursor(const std::string& cursorName) override;
+	virtual void showErrorMessageBox(const std::string& title, const std::string& message) override;
 
 	virtual void pushCurrentWindowContext(IMkWindowContext* window) override;
 	virtual IMkWindowContext* getCurrentWindowContext() const override;

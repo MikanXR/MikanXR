@@ -66,7 +66,7 @@ add_dependencies(MikanClientAPI MikanUtility)
 # Create the command to run RefurekuGenerator
 add_custom_target(MikanClientAPIReflection
 					WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
-					COMMAND "${RFK_GENERATOR_EXE}" "${CMAKE_CURRENT_LIST_DIR}/RefurekuSettings.toml") 
+					COMMAND "${RFK_GENERATOR_EXE}" ${RFK_GENERATOR_ARGS} "${CMAKE_CURRENT_LIST_DIR}/RefurekuSettings.toml") 
 set_target_properties(MikanClientAPIReflection PROPERTIES FOLDER ClientAPI)
 add_dependencies(MikanClientAPIReflection RefurekuGeneratorRuntime)
 

@@ -10,7 +10,8 @@ Annotated map of the MikanXR directory hierarchy: where source, generated code, 
 MikanXR/
 ├── CMakeLists.txt                      # top-level CMake: includes cmake/*.cmake, adds src/, bindings/, thirdparty/
 ├── InitialSetup_x64.bat                # first-time setup: wipes build/ and deps/, downloads prebuilt deps into deps/
-├── GenerateProjectFiles_X64_VS2022.bat # configures build/ with the "Visual Studio 17 2022" generator
+├── GenerateProjectFiles_X64_VS2022.bat # configures build/ with the "Visual Studio 17 2022" generator (via tools/GenerateProjectFiles_X64.bat)
+├── GenerateProjectFiles_X64_VS2026.bat # configures build/ with the "Visual Studio 18 2026" generator (via tools/GenerateProjectFiles_X64.bat)
 ├── CLAUDE.md / README.md / CONTRIBUTING.md / LICENSE
 ├── .github/workflows/build-and-test.yml # CI: Linux format-check and localization-check jobs + Windows Ninja build/test job
 ├── .github/workflows/release.yml       # tag-triggered release: Release build with GStreamer, tests, app zip + symbols zip + installer as a draft release
@@ -25,18 +26,19 @@ MikanXR/
 ├── resources/                          # runtime assets: calibration patterns, config, dnn models, fonts, icons, gui_styles, localization, lua-definitions
 ├── localization/                       # gettext catalogs translators own; resources/localization is generated from them
 ├── models/                             # ONNX checkpoints for the ML capture tools (gitignored, produced by tools/*.py)
+├── .venv/                              # repo-local Python environment created by tools/SetupDevEnvironment.bat (gitignored)
 ├── templates/                          # installer_win64.iss.in (Inno Setup script template, filled in by cmake/Installer.cmake)
 ├── tools/                              # checked-in helper tools: 7zip/7za.exe (used by InitialSetup), Spout2, and the Python model tools
 └── docs/                               # documentation, including this reference set
 ```
 
-- `deps/` holds prebuilt downloads (SDL2, OpenCV, GLEW, Spout2, easy_profiler, libharu, CEF, nuget.exe, the DirectX Shader Compiler under `dxc/`). It is recreated from scratch by `InitialSetup_x64.bat`; never edit it by hand. GStreamer is the exception: its MSIs install system-wide rather than into `deps/`.
+- `deps/` holds prebuilt downloads (SDL2, OpenCV, GLEW, Spout2, easy_profiler, libharu, CEF, nuget.exe, the DirectX Shader Compiler under `dxc/`, the pinned clang-format under `clang-format/`). It is recreated from scratch by `InitialSetup_x64.bat`; never edit it by hand. GStreamer is the exception: its MSIs install system-wide rather than into `deps/`.
 
 - `thirdparty/` holds git submodules (see `.gitmodules`: `openvr`, `glm`, `Configuru`, `stb`, `fast-cpp-csv-parser`, `LuaBridge3`, `imgui`, `imgui-node-editor`, `fast_obj`, `IXWebSocket`, `readerwriterqueue`, `nlohmann_json`, `Vulkan-Headers`, `volk`, `Refureku`) plus vendored non-submodule dirs (`lua` prebuilt binaries, `lrdb`, `tinyfiledialogs`). `thirdparty/CMakeLists.txt` builds `fast_obj_lib`, `ixwebsocket`, and CEF's `libcef_dll_wrapper`; the rest are consumed header-only or as source lists from `cmake/ThirdParty.cmake`. `Refureku` is the exception on both counts: it carries a nested `Kodgen` submodule of its own, and `cmake/ThirdParty.cmake` builds it rather than `thirdparty/CMakeLists.txt` ([build.md](./build.md)).
 
 - `build/` layout depends on the generator: the VS generator puts executables in per-target per-config folders (e.g. `build\src\Editor\Release\Mikan.exe`), while CI flattens everything to `build\bin` via `CMAKE_RUNTIME_OUTPUT_DIRECTORY`. Refureku reflection codegen output lands in `build/RfkGenerated/<Library>`.
 
-- `tools/` mixes two unrelated things. `7zip/` and `Spout2/` are checked-in binaries the build depends on. The `*.py` scripts are developer-only: they export or fetch the ONNX checkpoints into `models/`, and they are the reference implementations the C++ ports are validated against. Neither ships with Mikan nor runs at runtime. See [scene-lighting.md](./scene-lighting.md) and [depth-proxy-mesh.md](./depth-proxy-mesh.md).
+- `tools/` mixes two unrelated things. `7zip/` and `Spout2/` are checked-in binaries the build depends on, and `GenerateProjectFiles_X64.bat` is the shared body of the root generate scripts. `SetupDevEnvironment.bat` installs the machine-level development tools and the `.venv`, whose packages `requirements.txt` pins. The `*.py` scripts are developer-only: they export or fetch the ONNX checkpoints into `models/`, and they are the reference implementations the C++ ports are validated against. Neither ships with Mikan nor runs at runtime. See [scene-lighting.md](./scene-lighting.md) and [depth-proxy-mesh.md](./depth-proxy-mesh.md).
 
 - `models/` holds the ONNX checkpoints (`marigold/`, `moge2/`, roughly 8GB together). It is gitignored and `InitialSetup_x64.bat` does not create it; the tools above do.
 
@@ -89,10 +91,10 @@ Each is a target of the same name, shared unless noted:
 Optional backends, each built as a separate `SHARED` DLL and copied next to the executables post-build:
 
 - `MikanWMFVideo`: USB webcam video source via Windows Media Foundation
-- `MikanGStreamerVideo`: GStreamer-based network video source (built only when `MIKAN_WITH_GSTREAMER=ON`)
+- `MikanGStreamerVideo`: GStreamer-based network video source (built only when GStreamer is enabled, see `MIKAN_WITH_GSTREAMER`)
 - `MikanSteamVR`: SteamVR/OpenVR tracking device integration
 
-- `MikanARKitVideo`: iOS ARKit network video source (RTP video + pose, CUDA-GL interop), gated behind `MIKAN_WITH_ARKIT_VIDEO`, which needs a CUDA Toolkit on top of `MIKAN_WITH_GSTREAMER`
+- `MikanARKitVideo`: iOS ARKit network video source (RTP video + pose, CUDA-GL interop), gated behind `MIKAN_WITH_ARKIT_VIDEO`, which needs a CUDA Toolkit on top of GStreamer
 
 File video sources are not a plugin: they decode in-process through OpenCV's ffmpeg videoio backend, and takes are recorded through OpenCV's Media Foundation videoio backend, two plugin DLLs the Editor's CMake copies beside the executables.
 

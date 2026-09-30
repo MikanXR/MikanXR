@@ -14,6 +14,18 @@
 
 #include "IMkTexture.h"
 
+// -- Device selection -----
+bool findCudaDeviceForCurrentGLContext(CUdevice& outDevice)
+{
+	unsigned int deviceCount= 0;
+	CUdevice device= 0;
+	if (cuGLGetDevices(&deviceCount, &device, 1, CU_GL_DEVICE_LIST_ALL) != CUDA_SUCCESS || deviceCount == 0)
+		return false;
+
+	outDevice= device;
+	return true;
+}
+
 // -- CudaGLColorTexture -----
 CudaGLColorTexture::CudaGLColorTexture()= default;
 

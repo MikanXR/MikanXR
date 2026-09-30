@@ -1,3 +1,7 @@
 @echo on
+setlocal
 
-python tools/token_stats.py --render && python tools/token_stats.py --check
+set "PYTHON=python"
+if exist "%~dp0.venv\Scripts\python.exe" set "PYTHON=%~dp0.venv\Scripts\python.exe"
+
+"%PYTHON%" "%~dp0tools\token_stats.py" --render && "%PYTHON%" "%~dp0tools\token_stats.py" --check

@@ -41,7 +41,7 @@ source_group("Public" FILES ${MIKAN_SERIALIZATION_PUBLIC_SRC})
 # Create the command to run RefurekuGenerator
 add_custom_target(MikanSerializationReflection
 					WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
-					COMMAND "${RFK_GENERATOR_EXE}" "${CMAKE_CURRENT_LIST_DIR}/RefurekuSettings.toml") 
+					COMMAND "${RFK_GENERATOR_EXE}" ${RFK_GENERATOR_ARGS} "${CMAKE_CURRENT_LIST_DIR}/RefurekuSettings.toml") 
 set_target_properties(MikanSerializationReflection PROPERTIES FOLDER MikanLibraries)
 add_dependencies(MikanSerializationReflection RefurekuGeneratorRuntime)
 

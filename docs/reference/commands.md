@@ -7,14 +7,26 @@ Handy commands for working in the MikanXR repo, all run from the repo root unles
 ## One-time setup
 
 ```
+tools\SetupDevEnvironment.bat
+tools\SetupDevEnvironment.bat -innosetup
+```
+
+Makes every machine-wide install, skipping anything already present:
+
+- Git, CMake, Node.js LTS, and Python 3.12 through winget
+- Inno Setup for installer packaging, with `-innosetup`
+- the C++ and .NET desktop components, added to any Visual Studio 2022 or newer that lacks them (it stops if no such Visual Studio is installed)
+- GStreamer's runtime and devel MSIs, unless `-nogstreamer`
+- the CUDA Toolkit's cudart package for `MikanARKitVideo`, unless `-nocuda` (`-nogstreamer` implies it)
+- a repo-local Python environment at `.venv` with `tools/requirements.txt` installed
+
+GStreamer and CUDA each ask for elevation from an unelevated shell. CUDA writes `CUDA_PATH` machine-wide, so open a new terminal afterwards, which also puts the other installed tools on PATH. Run the Python commands on this page with `.venv\Scripts\python`, or after `.venv\Scripts\activate`. `tools\InstallGStreamer.bat` runs the GStreamer step on its own.
+
+```
 InitialSetup_x64.bat
 ```
 
-Downloads prebuilt dependencies into `deps/` (large download) and installs GStreamer and the CUDA Toolkit's cudart package system-wide. Warning: it deletes any existing `build/` and `deps/` first. The CUDA installer needs administrator rights and writes `CUDA_PATH` machine-wide, so generate project files from a new shell afterwards. Environment variables it honors:
-
-- `SKIP_GSTREAMER=1` skips the GStreamer MSIs and the CUDA Toolkit (then configure with `-DMIKAN_WITH_GSTREAMER=OFF`)
-- `SKIP_CUDA=1` skips only the CUDA Toolkit, which drops the `MikanARKitVideo` plugin from the build
-- `GSTREAMER_ONLY=1` runs the GStreamer MSIs and nothing else
+Downloads prebuilt dependencies into `deps/` (large download) and installs nothing system-wide. Warning: it deletes any existing `build/` and `deps/` first.
 
 ```
 git submodule update --init --recursive
@@ -31,9 +43,10 @@ The second command (once per clone) makes `git blame` skip the repo-wide clang-f
 
 ```
 GenerateProjectFiles_X64_VS2022.bat
+GenerateProjectFiles_X64_VS2026.bat
 ```
 
-Configures `build/` with the `Visual Studio 17 2022` generator and produces `build/Mikan.sln`. Rerun after `InitialSetup_x64.bat` (which wipes `build/`).
+Run the one matching the installed Visual Studio. Each configures `build/` with its `Visual Studio 17 2022` or `Visual Studio 18 2026` generator and produces `build/Mikan.sln`. Both need `cmake` on PATH, and the 2026 generator needs CMake 4.2 or newer: install CMake, or run from a Visual Studio Developer Command Prompt, which puts the bundled copy on PATH. Rerun after `InitialSetup_x64.bat` (which wipes `build/`). The GStreamer video plugins build when GStreamer is installed and drop out otherwise (`MIKAN_WITH_GSTREAMER=AUTO`). Pass `-DMIKAN_WITH_GSTREAMER=ON` to make a missing GStreamer an error, or `OFF` to skip the plugins.
 
 ---
 
@@ -47,7 +60,7 @@ cmake --build build --target MikanCmd --config Release --parallel
 cmake --build build --target unit_test_suite_cpp --config Release --parallel
 ```
 
-Or open `build\Mikan.sln` in Visual Studio 2022 and build there.
+Or open `build\Mikan.sln` in Visual Studio and build there.
 
 Building `MikanCmd` also builds `Mikan` (dependency) and copies all runtime DLLs and plugin DLLs into the shared output folder.
 
@@ -147,7 +160,7 @@ Run it after editing a bundled material graph outside the editor, since `MikanCm
 
 ## Formatting
 
-Only `src/` is formatted; `thirdparty/` is never touched. Use clang-format 19.1.x to match CI (VS2022 bundles a compatible copy under `VC\Tools\Llvm\bin\clang-format.exe`, which the CMake scripts find automatically; otherwise `pip install clang-format==19.1.5`).
+Only `src/` is formatted; `thirdparty/` is never touched. Use clang-format 19.1.x to match CI. `InitialSetup_x64.bat` puts a pinned 19.1.5 in `deps/clang-format`, and the CMake scripts pick the first 19.x among that copy, PATH, the Visual Studio bundled copies, and a standalone LLVM install. VS2022 bundles a compatible 19.x, while VS2026 bundles 22.x, which they use only as a last resort and with a warning.
 
 With a configured build tree:
 
@@ -169,7 +182,7 @@ Point at a specific binary with `cmake -DCLANG_FORMAT_EXE=path\to\clang-format -
 
 ## Localization
 
-Needs `polib` (`pip install polib`). Background in [localization.md](./localization.md).
+Needs `polib`, which lives in the repo's `.venv` (see One-time setup). Background in [localization.md](./localization.md).
 
 ```
 python tools/localization.py sync                        # regenerate the tables from the catalogs
@@ -246,10 +259,10 @@ git tag v2026.09.14 && git push origin v2026.09.14
 
 ## Reproducing the CI build locally
 
-CI uses Ninja (for sccache) with GStreamer off and a flattened output dir. From a VS2022 developer command prompt:
+CI uses Ninja (for sccache) with GStreamer off and a flattened output dir. From a Visual Studio developer command prompt:
 
 ```
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DMIKAN_WITH_GSTREAMER=OFF -DCMAKE_UNITY_BUILD=ON -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=%CD%\build\bin ...
 ```
 
-plus the same dependency path variables as `GenerateProjectFiles_X64_VS2022.bat`; see `.github/workflows/build-and-test.yml` for the exact full invocation. Note the C# bindings and C# client test are skipped under Ninja.
+plus the same dependency path variables as `tools/GenerateProjectFiles_X64.bat`; see `.github/workflows/build-and-test.yml` for the exact full invocation. Note the C# bindings and C# client test are skipped under Ninja.

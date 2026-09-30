@@ -4,6 +4,12 @@
 
 #include "MkRendererFwd.h"
 
+// Finds the CUDA device the current GL context runs on, since CUDA can only share textures
+// with a GL context on its own device. Returns false when there is none, which on a
+// hybrid-GPU laptop means GL is on the integrated GPU. Needs a current GL context and
+// cuInit() already called.
+bool findCudaDeviceForCurrentGLContext(CUdevice& outDevice);
+
 // Zero-copy CUDA-GL interop for the decoded ARKit NV12 video frame (ticket
 // "Phase 6"): owns two IMkTextures - luma (MK_RED, 8-bit) at full resolution and
 // chroma (MK_RG, 8-bit) at half resolution, matching NV12's 4:2:0 plane layout -

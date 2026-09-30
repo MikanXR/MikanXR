@@ -1,5 +1,5 @@
 # Step into the subdirectories
-if(MIKAN_WITH_GSTREAMER)
+if(MIKAN_GSTREAMER_ENABLED)
   MESSAGE(STATUS "Stepping into MikanGStreamerVideo")
   add_subdirectory(MikanGStreamerVideo)
 endif()

@@ -2,11 +2,14 @@
 #include "MkMaterial.h"
 #include "IMkShader.h"
 #include "IMkShaderCode.h"
+#include "FatalStartupError.h"
 #include "Logger.h"
+
+class GlShaderCache;
 
 namespace InternalShaders
 {
-bool registerInternalShaders(IMkShaderCache* shaderCache);
+bool registerInternalShaders(GlShaderCache* shaderCache);
 }
 
 class GlShaderCache : public IMkShaderCache
@@ -82,18 +85,24 @@ public:
 		IMkShaderPtr program= createIMkShader(code);
 		if (program->compileProgram())
 		{
+			m_lastCompileLog.clear();
 			m_programCache[code->getProgramName()]= program;
 			return program;
 		}
 		else
 		{
-			// Clean up the program if it failed to compile
+			// Keep the driver's log past the failed program, which is discarded here
+			m_lastCompileLog= program->getCompileLog();
 			return nullptr;
 		}
 	}
 
+	// The driver info log of the last failed compile, empty after a success
+	const std::string& getLastCompileLog() const { return m_lastCompileLog; }
+
 private:
 	IMkGraphicsContext* m_ownerContext;
+	std::string m_lastCompileLog;
 	std::map<std::string, IMkShaderPtr> m_programCache;
 	std::map<std::string, MkMaterialPtr> m_materialCache;
 };
@@ -1218,8 +1227,15 @@ IMkShaderCodeConstPtr getPM5544TestCardShaderCode()
 				uniform vec2  screenSize;
 				uniform float time;
 
-				#define color(a, b) ((b) ? 244. - (a) : (a)) / 255.
 				const vec2 R = vec2(768, 576);
+
+				// A function rather than a macro: some drivers try to expand a function-like
+				// macro wherever its name appears, even without a following '(', and this
+				// shader also uses 'color' as a parameter name
+				vec3 pmColor(vec3 a, bool b)
+				{
+					return (b ? 244. - a : a) / 255.;
+				}
 
 				// ---- CRT effects ------------------------------------------------
 
@@ -1309,10 +1325,10 @@ IMkShaderCodeConstPtr getPM5544TestCardShaderCode()
 						if (abs(i.x) > 8. || abs(i.y) > 6.) col = vec3(float(mod(i.x + i.y, 2.) < .5));
 						if (p.y > 41. || p.y < 1.) col = vec3(1);
 						if (q.x > 273. && q.x < 314. && q.y < 230.)
-							col = I.x > 0. ? color(vec3(122, 100, 233), I.y > 0.)
-							               : color(vec3(184,  90, 122), I.y > 0.);
+							col = I.x > 0. ? pmColor(vec3(122, 100, 233), I.y > 0.)
+							               : pmColor(vec3(184,  90, 122), I.y > 0.);
 						if (q.x > 232. && q.x < 273. && q.y > 148. && q.y < 230.)
-							col = color(vec3(157, 122, 30), I.y > 0.);
+							col = pmColor(vec3(157, 122, 30), I.y > 0.);
 						if (q.x < 271. || q.x > 275. || q.y < 148. || q.y > 230.)
 						{
 							if (p.x > 40. || p.x < 2.) col = (col + 2.) / 3.;
@@ -1641,7 +1657,7 @@ IMkShaderCodeConstPtr getPTLinearToSRGBShaderCode()
 	return x_shaderCode;
 }
 
-bool registerInternalShaders(IMkShaderCache* shaderCache)
+bool registerInternalShaders(GlShaderCache* shaderCache)
 {
 	std::vector<IMkShaderCodeConstPtr> internalShaders= {
 		getPTTexturedFullScreenRGBQuad(),
@@ -1676,6 +1692,10 @@ bool registerInternalShaders(IMkShaderCache* shaderCache)
 		{
 			MIKAN_LOG_ERROR("InternalShaders::registerInternalShaders()")
 				<< "Failed to compile " << code->getProgramName();
+
+			// Every internal shader is required, so the app cannot launch without this one
+			FatalStartupError::report(eFatalStartupErrorType::internalShaderCompile, code->getProgramName(),
+									  shaderCache->getLastCompileLog());
 			bSuccess= false;
 		}
 	}

@@ -106,7 +106,7 @@ SET_TARGET_PROPERTIES(unit_test_suite_cpp PROPERTIES FOLDER Test)
 # Create the command to run RefurekuGenerator
 add_custom_target(unit_test_suite_reflection
 					WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
-					COMMAND "${RFK_GENERATOR_EXE}" "${CMAKE_CURRENT_LIST_DIR}/RefurekuSettings.toml") 
+					COMMAND "${RFK_GENERATOR_EXE}" ${RFK_GENERATOR_ARGS} "${CMAKE_CURRENT_LIST_DIR}/RefurekuSettings.toml") 
 set_target_properties(unit_test_suite_reflection PROPERTIES FOLDER Test)
 add_dependencies(unit_test_suite_reflection RefurekuGeneratorRuntime)
 

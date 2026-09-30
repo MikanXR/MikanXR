@@ -184,6 +184,16 @@ void SdlWindowContextManager::setMouseCursor(const std::string& cursor_name)
 		SDL_SetCursor(cursor);
 }
 
+void SdlWindowContextManager::showErrorMessageBox(const std::string& title, const std::string& message)
+{
+	// SDL shows a message box before SDL_Init and without a parent window
+	if (SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title.c_str(), message.c_str(), nullptr) != 0)
+	{
+		MIKAN_LOG_ERROR("SdlWindowContextManager::showErrorMessageBox")
+			<< "Unable to show message box: " << SDL_GetError();
+	}
+}
+
 void SdlWindowContextManager::pushCurrentWindowContext(IMkWindowContext* window)
 {
 	if (m_mkWindowContextStack.size() == 0 || m_mkWindowContextStack.back() != window)

@@ -6,30 +6,14 @@
 #   cmake --build build --target FormatFix     # reformat all sources in place
 #   cmake --build build --target FormatCheck   # verify formatting (fails on violations)
 #
-# The targets are ALWAYS created so they show up in the IDE. clang-format is
-# often not on PATH on Windows but ships with Visual Studio under
-# VC/Tools/Llvm/bin, so we search there too. If it still can't be found at
-# configure time, the targets are left in place and RunClangFormat.cmake emits
-# a clear error only if/when they are actually built -- a normal build that
-# never invokes them is unaffected.
-
-file(GLOB _vs_llvm_dirs
-	"$ENV{ProgramFiles}/Microsoft Visual Studio/*/*/VC/Tools/Llvm/bin"
-	"$ENV{ProgramW6432}/Microsoft Visual Studio/*/*/VC/Tools/Llvm/bin"
-	"$ENV{ProgramFiles\(x86\)}/Microsoft Visual Studio/*/*/VC/Tools/Llvm/bin")
-find_program(CLANG_FORMAT_EXE
-	NAMES clang-format
-	HINTS ${_vs_llvm_dirs}
-	PATHS
-		"$ENV{ProgramFiles}/LLVM/bin"
-		"$ENV{ProgramW6432}/LLVM/bin")
+# The targets are ALWAYS created so they show up in the IDE. Locating
+# clang-format is left to RunClangFormat.cmake when the targets are built, so
+# a normal build that never invokes them is unaffected. Setting
+# CLANG_FORMAT_EXE at configure time forwards that path instead.
 
 if(CLANG_FORMAT_EXE)
-	message(STATUS "clang-format found: ${CLANG_FORMAT_EXE} ('format'/'format-check' targets enabled)")
-	# Forward the resolved path so the targets don't have to re-discover it.
 	set(_cf_arg "-DCLANG_FORMAT_EXE=${CLANG_FORMAT_EXE}")
 else()
-	message(STATUS "clang-format not found at configure time; 'format'/'format-check' targets will look for it on PATH when built.")
 	set(_cf_arg "")
 endif()
 

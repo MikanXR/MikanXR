@@ -26,6 +26,9 @@ public:
 	// at the same apparent size on a high DPI display.
 	virtual float getPrimaryDisplayContentScale() const= 0;
 	virtual void setMouseCursor(const std::string& cursorName)= 0;
+	// A native OS error dialog that blocks until dismissed. Needs no window or graphics
+	// context, so it can report a failure that prevented either from starting.
+	virtual void showErrorMessageBox(const std::string& title, const std::string& message)= 0;
 
 	virtual void pushCurrentWindowContext(IMkWindowContext* window)= 0;
 	virtual IMkWindowContext* getCurrentWindowContext() const= 0;
