@@ -136,12 +136,12 @@ bool BoxStencilSystem::isStencilFacingCamera(StencilComponentConstPtr stencil, c
 // -- IPropertyInterface ----
 void BoxStencilSystem::getPropertyDescriptors(std::vector<PropertyDescriptorConstPtr>& outDescriptors)
 {
-	MikanObjectSystem::getPropertyDescriptors(outDescriptors);
+	Super::getPropertyDescriptors(outDescriptors);
 }
 
 bool BoxStencilSystem::getPropertyValue(const std::string& propertyName, MikanVariant& outValue) const
 {
-	return MikanObjectSystem::getPropertyValue(propertyName, outValue);
+	return Super::getPropertyValue(propertyName, outValue);
 }
 
 bool BoxStencilSystem::setPropertyValue(const std::string& propertyName, const MikanVariant& inValue)

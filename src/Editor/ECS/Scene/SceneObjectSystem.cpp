@@ -156,7 +156,7 @@ Serialization::StructTypeHandle SceneObjectSystem::getClientAPIValuesStructType(
 // -- IPropertyInterface ----
 void SceneObjectSystem::getPropertyDescriptors(std::vector<PropertyDescriptorConstPtr>& outDescriptors)
 {
-	MikanObjectSystem::getPropertyDescriptors(outDescriptors);
+	Super::getPropertyDescriptors(outDescriptors);
 
 	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(
 		SceneObjectSystemDefinition::k_currentSceneIdPropertyId, MikanVariantType::INT));
@@ -170,7 +170,7 @@ bool SceneObjectSystem::getPropertyValue(const std::string& propertyName, MikanV
 		return true;
 	}
 
-	return MikanObjectSystem::getPropertyValue(propertyName, outValue);
+	return Super::getPropertyValue(propertyName, outValue);
 }
 
 bool SceneObjectSystem::setPropertyValue(const std::string& propertyName, const MikanVariant& inValue)
