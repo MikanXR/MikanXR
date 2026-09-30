@@ -672,9 +672,21 @@ bool MikanARKitVideoDevice::ensureCudaContext()
 	if (!checkCudaResult(cuInit(0), "cuInit"))
 		return false;
 
+	// The context must live on the device the GL context runs on, since the decoded frame is
+	// copied into GL textures registered with CUDA. updateColorTexture() calls this on the
+	// GL context's thread.
 	CUdevice device;
-	if (!checkCudaResult(cuDeviceGet(&device, 0), "cuDeviceGet"))
+	if (!findCudaDeviceForCurrentGLContext(device))
+	{
+		if (!m_bLoggedNoCudaDeviceForGL)
+		{
+			MIKAN_LOG_ERROR("MikanARKitVideoDevice::ensureCudaContext")
+				<< "OpenGL is running on a GPU with no CUDA device, so ARKit video frames cannot be shared "
+				   "with it. On a hybrid-GPU laptop, set Mikan to the discrete GPU in Windows Graphics settings.";
+			m_bLoggedNoCudaDeviceForGL= true;
+		}
 		return false;
+	}
 
 	// 4-arg cuCtxCreate (cuCtxCreate_v4, adds a CUctxCreateParams* param as of CUDA
 	// 13.1) - nullptr for that param matches every other call site in this codebase

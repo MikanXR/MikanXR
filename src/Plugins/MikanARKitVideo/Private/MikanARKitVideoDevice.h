@@ -175,5 +175,9 @@ private:
 	// independent of whatever context nvcodec's pipeline owns internally.
 	CUcontext m_cudaContext= nullptr;
 
+	// ensureCudaContext() runs every frame, so a GL context with no CUDA device behind it
+	// is reported once rather than per frame
+	bool m_bLoggedNoCudaDeviceForGL= false;
+
 	CudaGLColorTexture m_colorTexture;
 };

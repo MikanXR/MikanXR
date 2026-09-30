@@ -135,16 +135,13 @@ void cudaGlInteropTestDestroyHiddenGLContext(HWND window, HDC dc, HGLRC glrc)
 		DestroyWindow(window);
 }
 
-bool cudaGlInteropTestCudaDeviceAvailable(CUdevice& outDevice)
+bool cudaGlInteropTestCudaAvailable()
 {
 	if (cuInit(0) != CUDA_SUCCESS)
 		return false;
 
 	int deviceCount= 0;
-	if (cuDeviceGetCount(&deviceCount) != CUDA_SUCCESS || deviceCount <= 0)
-		return false;
-
-	return cuDeviceGet(&outDevice, 0) == CUDA_SUCCESS;
+	return cuDeviceGetCount(&deviceCount) == CUDA_SUCCESS && deviceCount > 0;
 }
 } // namespace
 
@@ -165,9 +162,19 @@ static bool arkit_cuda_gl_interop_test_writeback_visible_via_gl_readback()
 		UNIT_TEST_COMPLETE()
 	}
 
-	CUdevice device;
-	if (!cudaGlInteropTestCudaDeviceAvailable(device))
+	if (!cudaGlInteropTestCudaAvailable())
 	{
+		cudaGlInteropTestDestroyHiddenGLContext(window, dc, glrc);
+		UNIT_TEST_COMPLETE()
+	}
+
+	// The same device choice the plugin makes. A GL context on a GPU with no CUDA device
+	// behind it (an integrated GPU on a hybrid laptop) cannot share textures with CUDA at
+	// all, which is an environment limit rather than a failure of this test.
+	CUdevice device;
+	if (!findCudaDeviceForCurrentGLContext(device))
+	{
+		fprintf(stdout, "      skipped - OpenGL is running on a GPU with no CUDA device\n");
 		cudaGlInteropTestDestroyHiddenGLContext(window, dc, glrc);
 		UNIT_TEST_COMPLETE()
 	}
