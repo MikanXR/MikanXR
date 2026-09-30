@@ -104,6 +104,8 @@ MikanClientTestCPP.exe -vk
 
 `-dump <png>` writes the connected camera's color target five seconds in, and beside it `<png>.spout.png` and `<png>.depth.spout.png`, the color and packed-depth frames read back from the client's own Spout senders through the editor's receiver path, so a headless drive compares what the client rendered against what the editor receives without depending on a compositor graph. `-cube <x> <y> <z>` places the cube in meters from the camera (x right, y up, z forward) instead of the default 10 m ahead, which is how a drive puts it at a stencil's distance for a depth mask check. `MIKAN_VULKAN_VALIDATION=1` enables the Khronos validation layer on the `-vk` path when one is installed.
 
+`MikanClientTestCPP.exe -probe <sender> <png>` reads any Spout sender by name through the editor's receiver path and writes it as a PNG, then exits without a window or a client connection: how a drive sees what another client (a game engine) is publishing, independent of any compositor graph. A client's color sender is named `<clientName>_camera<cameraId>_color`.
+
 ---
 
 ## ML models and headless capture
