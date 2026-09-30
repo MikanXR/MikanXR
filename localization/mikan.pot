@@ -5097,6 +5097,17 @@ msgctxt "scriptErrors.traceback"
 msgid "Traceback"
 msgstr ""
 
+#. Section: startupError
+#, c-format
+msgctxt "startupError.internalShaderCompileFailedFmt"
+msgid "Internal Shader: %s failed to compile with error: %s. App cannot launch. See log for details."
+msgstr ""
+
+#. Section: startupError
+msgctxt "startupError.title"
+msgid "MikanXR Cannot Launch"
+msgstr ""
+
 #. Section: stencilAlignment
 msgctxt "stencilAlignment.alignmentComplete"
 msgid "Stencil alignment complete!"

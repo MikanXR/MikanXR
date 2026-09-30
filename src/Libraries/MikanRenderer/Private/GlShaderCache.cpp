@@ -2,11 +2,14 @@
 #include "MkMaterial.h"
 #include "IMkShader.h"
 #include "IMkShaderCode.h"
+#include "FatalStartupError.h"
 #include "Logger.h"
+
+class GlShaderCache;
 
 namespace InternalShaders
 {
-bool registerInternalShaders(IMkShaderCache* shaderCache);
+bool registerInternalShaders(GlShaderCache* shaderCache);
 }
 
 class GlShaderCache : public IMkShaderCache
@@ -82,18 +85,24 @@ public:
 		IMkShaderPtr program= createIMkShader(code);
 		if (program->compileProgram())
 		{
+			m_lastCompileLog.clear();
 			m_programCache[code->getProgramName()]= program;
 			return program;
 		}
 		else
 		{
-			// Clean up the program if it failed to compile
+			// Keep the driver's log past the failed program, which is discarded here
+			m_lastCompileLog= program->getCompileLog();
 			return nullptr;
 		}
 	}
 
+	// The driver info log of the last failed compile, empty after a success
+	const std::string& getLastCompileLog() const { return m_lastCompileLog; }
+
 private:
 	IMkGraphicsContext* m_ownerContext;
+	std::string m_lastCompileLog;
 	std::map<std::string, IMkShaderPtr> m_programCache;
 	std::map<std::string, MkMaterialPtr> m_materialCache;
 };
@@ -1648,7 +1657,7 @@ IMkShaderCodeConstPtr getPTLinearToSRGBShaderCode()
 	return x_shaderCode;
 }
 
-bool registerInternalShaders(IMkShaderCache* shaderCache)
+bool registerInternalShaders(GlShaderCache* shaderCache)
 {
 	std::vector<IMkShaderCodeConstPtr> internalShaders= {
 		getPTTexturedFullScreenRGBQuad(),
@@ -1683,6 +1692,10 @@ bool registerInternalShaders(IMkShaderCache* shaderCache)
 		{
 			MIKAN_LOG_ERROR("InternalShaders::registerInternalShaders()")
 				<< "Failed to compile " << code->getProgramName();
+
+			// Every internal shader is required, so the app cannot launch without this one
+			FatalStartupError::report(eFatalStartupErrorType::internalShaderCompile, code->getProgramName(),
+									  shaderCache->getLastCompileLog());
 			bSuccess= false;
 		}
 	}

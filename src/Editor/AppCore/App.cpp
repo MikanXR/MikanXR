@@ -5,6 +5,7 @@
 #include "CommonConfig.h"
 #include "CrashHandler.h"
 #include "EventBus.h"
+#include "FatalStartupError.h"
 #include "FrameTimer.h"
 #include "Graphs/CompositorNodeGraph.h"
 #include "Graphs/MaterialNodeGraph.h"
@@ -16,6 +17,7 @@
 #include "MkGuiContext.h"
 #include "MkStateStack.h"
 #include "LocalizationManager.h"
+#include "LocText.h"
 #include "Logger.h"
 #include "MainWindow.h"
 #include "MikanModuleManager.h"
@@ -44,6 +46,27 @@
 
 //-- static members -----
 App* App::m_instance= nullptr;
+
+//-- private helpers -----
+namespace
+{
+// The user-facing explanation of a fatal startup error, or an empty string when
+// none was reported or its type has no message
+std::string buildFatalStartupErrorMessage(const FatalStartupErrorInfo& error)
+{
+	// Driver logs end in newlines, which would leave a gap before the rest of the sentence
+	std::string detail= error.detail;
+	detail.erase(detail.find_last_not_of(" \t\r\n") + 1);
+
+	switch (error.type)
+	{
+	case eFatalStartupErrorType::internalShaderCompile:
+		return locFormat("startupError.internalShaderCompileFailedFmt", error.subject.c_str(), detail.c_str());
+	default:
+		return std::string();
+	}
+}
+} // namespace
 
 //-- App -----
 App::App()
@@ -91,6 +114,14 @@ int App::exec(int argc, char** argv)
 	{
 		MIKAN_LOG_ERROR("App::exec") << "Failed to initialize application!";
 		result= -1;
+
+		// The failure left no window to draw a modal in, so explain it with a native dialog.
+		// Dismissing it falls through to shutdown, closing the app.
+		const std::string fatalMessage= buildFatalStartupErrorMessage(FatalStartupError::get());
+		if (!fatalMessage.empty())
+		{
+			m_windowManager->showErrorMessageBox(locText("startupError.title"), fatalMessage);
+		}
 	}
 
 	shutdown();

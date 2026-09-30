@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1062,
-		"translatedCount": 1062,
-		"reviewedCount": 1062
+		"stringCount": 1064,
+		"translatedCount": 1064,
+		"reviewedCount": 1064
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -1066,6 +1066,10 @@
 		"openInEditor": "Open in editor",
 		"title": "Script Errors",
 		"traceback": "Traceback"
+	},
+	"startupError": {
+		"internalShaderCompileFailedFmt": "Internal Shader: %s failed to compile with error: %s. App cannot launch. See log for details.",
+		"title": "MikanXR Cannot Launch"
 	},
 	"stencilAlignment": {
 		"alignmentComplete": "Stencil alignment complete!",
