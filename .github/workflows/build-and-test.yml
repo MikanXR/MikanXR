@@ -62,7 +62,7 @@ jobs:
           submodules: false
 
       - name: Install polib
-        run: pip install polib
+        run: pip install -r tools/requirements.txt
 
       - name: Check localization tables
         run: python tools/localization.py check

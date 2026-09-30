@@ -26,7 +26,7 @@ The JSON tables keep the shape they have always had, so a build that predates th
 
 ## The generator
 
-`tools/localization.py` is the only thing that writes the generated files. It needs `polib` (`pip install polib`).
+`tools/localization.py` is the only thing that writes the generated files. It needs `polib`, which `tools/SetupDevEnvironment.bat` installs into the repo's `.venv` from `tools/requirements.txt`. The `LocalizationSync`/`LocalizationCheck` targets and `SyncLocalizationFiles.bat` use that interpreter when it exists.
 
 - `sync`: normalize `en.json`, rebuild `mikan.pot`, merge it into every `.po`, then write each `<code>.json` and `manifest.json`. Idempotent, so running it twice writes nothing the second time.
 - `check`: run `sync` in memory and fail if any file on disk differs, or if any string breaks a rule. This is the CI gate, and it is what a translator runs locally.

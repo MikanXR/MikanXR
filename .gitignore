@@ -29,6 +29,8 @@
 # Python bytecode from the tools/ developer scripts
 __pycache__/
 *.pyc
+# Repo-local Python environment created by tools/SetupDevEnvironment.bat
+/.venv/
 
 # Deep Neural Network Models
 *.pt

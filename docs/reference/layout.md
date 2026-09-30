@@ -26,6 +26,7 @@ MikanXR/
 ├── resources/                          # runtime assets: calibration patterns, config, dnn models, fonts, icons, gui_styles, localization, lua-definitions
 ├── localization/                       # gettext catalogs translators own; resources/localization is generated from them
 ├── models/                             # ONNX checkpoints for the ML capture tools (gitignored, produced by tools/*.py)
+├── .venv/                              # repo-local Python environment created by tools/SetupDevEnvironment.bat (gitignored)
 ├── templates/                          # installer_win64.iss.in (Inno Setup script template, filled in by cmake/Installer.cmake)
 ├── tools/                              # checked-in helper tools: 7zip/7za.exe (used by InitialSetup), Spout2, and the Python model tools
 └── docs/                               # documentation, including this reference set
@@ -37,7 +38,7 @@ MikanXR/
 
 - `build/` layout depends on the generator: the VS generator puts executables in per-target per-config folders (e.g. `build\src\Editor\Release\Mikan.exe`), while CI flattens everything to `build\bin` via `CMAKE_RUNTIME_OUTPUT_DIRECTORY`. Refureku reflection codegen output lands in `build/RfkGenerated/<Library>`.
 
-- `tools/` mixes two unrelated things. `7zip/` and `Spout2/` are checked-in binaries the build depends on, and `GenerateProjectFiles_X64.bat` is the shared body of the root generate scripts. The `*.py` scripts are developer-only: they export or fetch the ONNX checkpoints into `models/`, and they are the reference implementations the C++ ports are validated against. Neither ships with Mikan nor runs at runtime. See [scene-lighting.md](./scene-lighting.md) and [depth-proxy-mesh.md](./depth-proxy-mesh.md).
+- `tools/` mixes two unrelated things. `7zip/` and `Spout2/` are checked-in binaries the build depends on, and `GenerateProjectFiles_X64.bat` is the shared body of the root generate scripts. `SetupDevEnvironment.bat` installs the machine-level development tools and the `.venv`, whose packages `requirements.txt` pins. The `*.py` scripts are developer-only: they export or fetch the ONNX checkpoints into `models/`, and they are the reference implementations the C++ ports are validated against. Neither ships with Mikan nor runs at runtime. See [scene-lighting.md](./scene-lighting.md) and [depth-proxy-mesh.md](./depth-proxy-mesh.md).
 
 - `models/` holds the ONNX checkpoints (`marigold/`, `moge2/`, roughly 8GB together). It is gitignored and `InitialSetup_x64.bat` does not create it; the tools above do.
 

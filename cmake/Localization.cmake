@@ -14,9 +14,24 @@
 # is missing at build time the script says so; a normal build that never
 # invokes them is unaffected.
 
-find_package(Python3 COMPONENTS Interpreter QUIET)
+# The repo-local virtual environment tools/SetupDevEnvironment.bat creates carries
+# polib, so it wins over whatever Python is on PATH.
+if(WIN32)
+	set(_loc_venv_python "${CMAKE_SOURCE_DIR}/.venv/Scripts/python.exe")
+else()
+	set(_loc_venv_python "${CMAKE_SOURCE_DIR}/.venv/bin/python")
+endif()
 
-if(Python3_Interpreter_FOUND)
+if(EXISTS "${_loc_venv_python}")
+	set(_loc_python "${_loc_venv_python}")
+	message(STATUS "Python found: ${_loc_python} (repo .venv; 'LocalizationSync'/'LocalizationCheck' targets enabled)")
+else()
+	find_package(Python3 COMPONENTS Interpreter QUIET)
+endif()
+
+if(_loc_python)
+	# Set from the venv above
+elseif(Python3_Interpreter_FOUND)
 	set(_loc_python "${Python3_EXECUTABLE}")
 	message(STATUS "Python found: ${_loc_python} ('LocalizationSync'/'LocalizationCheck' targets enabled)")
 else()

@@ -7,6 +7,13 @@ Handy commands for working in the MikanXR repo, all run from the repo root unles
 ## One-time setup
 
 ```
+tools\SetupDevEnvironment.bat
+tools\SetupDevEnvironment.bat -innosetup
+```
+
+Installs the machine-level tools through winget, skipping any already present: Git, CMake, Node.js LTS, Python 3.12, and with `-innosetup` Inno Setup for installer packaging. It adds the C++ and .NET desktop components to any Visual Studio 2022 or newer that lacks them, and stops if no such Visual Studio is installed. It also creates a repo-local Python environment at `.venv` with `tools/requirements.txt` installed. Run the Python commands on this page with `.venv\Scripts\python`, or after `.venv\Scripts\activate`. Open a new terminal afterwards so the installed tools are on PATH.
+
+```
 InitialSetup_x64.bat
 ```
 
@@ -170,7 +177,7 @@ Point at a specific binary with `cmake -DCLANG_FORMAT_EXE=path\to\clang-format -
 
 ## Localization
 
-Needs `polib` (`pip install polib`). Background in [localization.md](./localization.md).
+Needs `polib`, which lives in the repo's `.venv` (see One-time setup). Background in [localization.md](./localization.md).
 
 ```
 python tools/localization.py sync                        # regenerate the tables from the catalogs
