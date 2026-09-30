@@ -15,8 +15,9 @@ jobs:
   # it runs on Linux in well under a minute and is independent of the
   # Windows build job below.
   #
-  # The clang-format version is PINNED to match the copy bundled with
-  # Visual Studio 2022 (19.1.x). clang-format output changes between
+  # The clang-format version is PINNED to the 19.1.5 that
+  # InitialSetup_x64.bat puts in deps/clang-format, a version Visual
+  # Studio 2022 also bundles. clang-format output changes between
   # major versions, so local and CI must agree or a locally-formatted
   # file could still fail here. cmake -P runs the exact same script that
   # backs the local `format-check` target (cmake/RunClangFormat.cmake).

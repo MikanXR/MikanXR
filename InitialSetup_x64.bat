@@ -139,6 +139,22 @@ IF %ERRORLEVEL% NEQ 0 (
   goto failure
 )
 
+:: clang-format pinned to the 19.1.x that CI's format check runs, since the copy Visual Studio
+:: bundles is a different major version in VS 2026 and formats differently. A wheel is a zip,
+:: and only the exe inside it is wanted.
+echo "Downloading clang-format 19.1.5..."
+curl -L https://files.pythonhosted.org/packages/b2/3b/a52d1ecf156e2dcab803d04ff317e898b8edc39e832ca76b6f2158ddc2f9/clang_format-19.1.5-py2.py3-none-win_amd64.whl --output clang-format.whl
+IF %ERRORLEVEL% NEQ 0 (
+  echo "Error downloading clang_format-19.1.5-py2.py3-none-win_amd64.whl"
+  goto failure
+)
+%UNZIP_EXE% e clang-format.whl -oclang-format clang-format.exe -r -y > nul
+IF %ERRORLEVEL% NEQ 0 (
+  echo "Error unzipping clang_format-19.1.5-py2.py3-none-win_amd64.whl"
+  goto failure
+)
+del clang-format.whl
+
 :: Download pre-compiled libharu library (PDF generator)
 echo "Downloading libharu..."
 curl -L https://github.com/MikanXR/libharu/releases/download/2.4.5/libharu-2.4.5-static.zip --output libharu-2.4.5-static.zip

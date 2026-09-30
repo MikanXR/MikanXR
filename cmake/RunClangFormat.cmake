@@ -29,24 +29,62 @@ foreach(i RANGE 0 ${_argc_minus_1})
 endforeach()
 
 # -- Locate clang-format ----------------------------------------------------
-# clang-format is often not on PATH on Windows but ships with Visual Studio
-# under VC/Tools/Llvm/bin, so search there too.
+# CI formats with clang-format 19.1.x and other major versions format
+# differently, so the first 19.x among the candidates wins. In order:
+# the copy InitialSetup_x64.bat puts in deps/, PATH, the copies Visual Studio
+# bundles (VC/Tools/Llvm/bin in 2022, VC/Tools/Llvm/x64/bin in 2026), and a
+# standalone LLVM install. An explicit -DCLANG_FORMAT_EXE skips the search.
+set(REQUIRED_CLANG_FORMAT_MAJOR 19)
 if(NOT CLANG_FORMAT_EXE)
-	file(GLOB _vs_llvm_dirs
-		"$ENV{ProgramFiles}/Microsoft Visual Studio/*/*/VC/Tools/Llvm/bin"
-		"$ENV{ProgramW6432}/Microsoft Visual Studio/*/*/VC/Tools/Llvm/bin"
-		"$ENV{ProgramFiles\(x86\)}/Microsoft Visual Studio/*/*/VC/Tools/Llvm/bin")
-	find_program(CLANG_FORMAT_EXE
-		NAMES clang-format
-		HINTS ${_vs_llvm_dirs}
-		PATHS
-			"$ENV{ProgramFiles}/LLVM/bin"
-			"$ENV{ProgramW6432}/LLVM/bin")
+	set(_cf_candidates "")
+	foreach(_cf_path
+			"${REPO_ROOT}/deps/clang-format/clang-format.exe"
+			"${REPO_ROOT}/deps/clang-format/clang-format")
+		if(EXISTS "${_cf_path}")
+			list(APPEND _cf_candidates "${_cf_path}")
+		endif()
+	endforeach()
+
+	find_program(_cf_on_path NAMES clang-format NO_CACHE)
+	if(_cf_on_path)
+		list(APPEND _cf_candidates "${_cf_on_path}")
+	endif()
+
+	# One glob per location, since a single glob returns its matches sorted
+	# and would put a standalone LLVM ahead of Visual Studio.
+	foreach(_cf_pattern
+			"$ENV{ProgramFiles}/Microsoft Visual Studio/*/*/VC/Tools/Llvm/bin/clang-format.exe"
+			"$ENV{ProgramFiles}/Microsoft Visual Studio/*/*/VC/Tools/Llvm/x64/bin/clang-format.exe"
+			"$ENV{ProgramFiles\(x86\)}/Microsoft Visual Studio/*/*/VC/Tools/Llvm/bin/clang-format.exe"
+			"$ENV{ProgramFiles\(x86\)}/Microsoft Visual Studio/*/*/VC/Tools/Llvm/x64/bin/clang-format.exe"
+			"$ENV{ProgramFiles}/LLVM/bin/clang-format.exe")
+		file(GLOB _cf_installed "${_cf_pattern}")
+		list(APPEND _cf_candidates ${_cf_installed})
+	endforeach()
+	list(REMOVE_DUPLICATES _cf_candidates)
+
+	foreach(_cf_candidate IN LISTS _cf_candidates)
+		execute_process(COMMAND "${_cf_candidate}" --version
+			OUTPUT_VARIABLE _cf_candidate_version OUTPUT_STRIP_TRAILING_WHITESPACE
+			RESULT_VARIABLE _cf_rv)
+		if(_cf_rv EQUAL 0 AND _cf_candidate_version MATCHES "version ${REQUIRED_CLANG_FORMAT_MAJOR}\\.")
+			set(CLANG_FORMAT_EXE "${_cf_candidate}")
+			break()
+		endif()
+	endforeach()
+
+	if(NOT CLANG_FORMAT_EXE AND _cf_candidates)
+		list(GET _cf_candidates 0 CLANG_FORMAT_EXE)
+		message(WARNING
+			"No clang-format ${REQUIRED_CLANG_FORMAT_MAJOR}.x found, using ${CLANG_FORMAT_EXE}. "
+			"CI checks with clang-format 19.1.x, so its results can differ. "
+			"Rerun InitialSetup_x64.bat to get deps/clang-format.")
+	endif()
 endif()
 if(NOT CLANG_FORMAT_EXE)
 	message(FATAL_ERROR
-		"clang-format not found. Install it (e.g. `pip install clang-format==19.1.5`, "
-		"or use the copy bundled with Visual Studio 2022) and ensure it is on PATH, "
+		"clang-format not found. Rerun InitialSetup_x64.bat to get deps/clang-format, "
+		"install clang-format 19.1.5 on PATH (e.g. `pip install clang-format==19.1.5`), "
 		"or pass -DCLANG_FORMAT_EXE=/path/to/clang-format.")
 endif()
 

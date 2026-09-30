@@ -16,12 +16,16 @@ by CI on every push and pull request.
 Use **clang-format 19.1.x** to match what CI uses. clang-format output changes between
 major versions, so a different version can reformat files in ways CI then rejects.
 
-- **Visual Studio 2022** already bundles a compatible copy at
-  `VC\Tools\Llvm\bin\clang-format.exe`.
-- Otherwise install the pinned wheel: `pip install clang-format==19.1.5`
+- **`InitialSetup_x64.bat`** puts a pinned 19.1.5 in `deps\clang-format`, which the
+  format targets use first.
+- **Visual Studio 2022** also bundles a compatible copy at
+  `VC\Tools\Llvm\bin\clang-format.exe`. Visual Studio 2026 bundles 22.x, which is not
+  compatible.
+- Otherwise install the pinned wheel on your `PATH`: `pip install clang-format==19.1.5`
   (or `pipx install clang-format==19.1.5`).
 
-Make sure the chosen `clang-format` is on your `PATH`.
+The format targets pick the first 19.x among those, and warn when they can only find
+another version.
 
 ### Fixing formatting
 

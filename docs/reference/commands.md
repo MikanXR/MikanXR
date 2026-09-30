@@ -148,7 +148,7 @@ Run it after editing a bundled material graph outside the editor, since `MikanCm
 
 ## Formatting
 
-Only `src/` is formatted; `thirdparty/` is never touched. Use clang-format 19.1.x to match CI (VS2022 bundles a compatible copy under `VC\Tools\Llvm\bin\clang-format.exe`, which the CMake scripts find automatically; otherwise `pip install clang-format==19.1.5`).
+Only `src/` is formatted; `thirdparty/` is never touched. Use clang-format 19.1.x to match CI. `InitialSetup_x64.bat` puts a pinned 19.1.5 in `deps/clang-format`, and the CMake scripts pick the first 19.x among that copy, PATH, the Visual Studio bundled copies, and a standalone LLVM install. VS2022 bundles a compatible 19.x, while VS2026 bundles 22.x, which they use only as a last resort and with a warning.
 
 With a configured build tree:
 

@@ -18,7 +18,9 @@ How MikanXR is configured and built: toolchain, dependency setup, CMake targets,
 
 ## First-time setup
 
-`InitialSetup_x64.bat` (run from the repo root) deletes any existing `build/` and `deps/` folders, then downloads and unpacks prebuilt dependencies into `deps/` using `tools/7zip/7za.exe`: SDL2 2.30.10, SDL2_image 2.8.8, SDL2_ttf 2.24.0 (the devel zips, which carry the runtime DLLs; SDL2_ttf 2.24 statically links freetype so no separate `libfreetype-6.dll`/`zlib1.dll` ship anymore), OpenCV 4.10.0, GLEW 2.2.0, Spout2 2.007h, easy_profiler 2.1.0, libharu 2.4.5, CEF (Chromium 145 binary distribution), ONNX Runtime 1.20.1 (DirectML flavor) and DirectML 1.15.4 (both from NuGet packages), `nuget.exe`, and the DirectX Shader Compiler v1.9.2607 release (`dxc_2026_07_29.zip`, unpacked to `deps/dxc`).
+`InitialSetup_x64.bat` (run from the repo root) deletes any existing `build/` and `deps/` folders, then downloads and unpacks prebuilt dependencies into `deps/` using `tools/7zip/7za.exe`: SDL2 2.30.10, SDL2_image 2.8.8, SDL2_ttf 2.24.0 (the devel zips, which carry the runtime DLLs; SDL2_ttf 2.24 statically links freetype so no separate `libfreetype-6.dll`/`zlib1.dll` ship anymore), OpenCV 4.10.0, GLEW 2.2.0, Spout2 2.007h, easy_profiler 2.1.0, libharu 2.4.5, CEF (Chromium 145 binary distribution), ONNX Runtime 1.20.1 (DirectML flavor) and DirectML 1.15.4 (both from NuGet packages), `nuget.exe`, the DirectX Shader Compiler v1.9.2607 release (`dxc_2026_07_29.zip`, unpacked to `deps/dxc`), and clang-format 19.1.5 (the `clang-format.exe` out of the PyPI Windows wheel, unpacked to `deps/clang-format`).
+
+The clang-format copy exists because CI checks formatting with 19.1.x and other major versions format differently. VS2022 bundles a 19.x, but VS2026 bundles 22.x, so the pinned copy gives every machine the CI version without a system install. `cmake/RunClangFormat.cmake` is the one place that locates clang-format. It takes the first 19.x among `deps/clang-format`, PATH, the Visual Studio bundled copies (`VC/Tools/Llvm/bin` in 2022, `VC/Tools/Llvm/x64/bin` in 2026), and a standalone LLVM install, and falls back to the first candidate found, with a warning, only when none is 19.x.
 
 Refureku is not among them. It builds from source as part of the tree, out of the `thirdparty/Refureku` submodule, so it arrives with `git submodule update --init --recursive` rather than through the setup script. See the Refureku section below.
 
@@ -54,7 +56,7 @@ Notable CMake options (defined in `cmake/ThirdParty.cmake` unless noted):
 
 - `CUDA_PATH` (environment): when set with GStreamer enabled, locates the CUDA Toolkit headers and `cuda.lib` for the ARKit plugin's CUDA-GL interop. Toolkit 13 or newer: the plugin uses the four-argument `cuCtxCreate` that 13.0 introduced, so an older Toolkit is read as absent and `MIKAN_WITH_ARKIT_VIDEO` stays off rather than failing the compile. The version comes from `CUDA_VERSION` in the Toolkit's own `cuda.h`. The release workflow installs 13.1.
 
-- `CLANG_FORMAT_EXE`: overrides clang-format discovery for the format targets.
+- `CLANG_FORMAT_EXE`: overrides clang-format discovery for the format targets. When unset, `RunClangFormat.cmake` searches at build time.
 
 Third-party source builds: `thirdparty/CMakeLists.txt` builds `fast_obj_lib`, `ixwebsocket`, and CEF's `libcef_dll_wrapper` (forced to `/MD` to match Mikan's dynamic CRT). `dylib` is fetched via `FetchContent` at configure time.
 
@@ -135,7 +137,7 @@ Release builds compile with `/Z7` and link with `/DEBUG:FULL /OPT:REF /OPT:ICF` 
 
 `.github/workflows/build-and-test.yml` has three jobs:
 
-- `format-check` (Linux, no build tree): `pipx install clang-format==19.1.5`, then `cmake -P cmake/RunClangFormat.cmake -- --check`. The version is pinned to match the clang-format 19.1.x bundled with VS2022; other major versions format differently.
+- `format-check` (Linux, no build tree): `pipx install clang-format==19.1.5`, then `cmake -P cmake/RunClangFormat.cmake -- --check`. The version matches the 19.1.5 that `InitialSetup_x64.bat` puts in `deps/clang-format`; other major versions format differently.
 
 - `localization-check` (Linux, no build tree): `pip install polib`, then `python tools/localization.py check`. Fails when a committed string table is not what the generator produces from the catalogs, or when a translation breaks a loader rule. See [localization.md](./localization.md).
 
