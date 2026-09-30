@@ -144,9 +144,8 @@ jobs:
       # Cache the deps folder keyed on InitialSetup_x64.bat so that
       # the heavy downloads (OpenCV, CEF, SDL, etc.) are only fetched
       # on the first run or when the setup script changes.
-      # GStreamer MSIs are excluded — they install system-wide and
-      # can't be restored from a folder cache, and we skip them anyway
-      # via SKIP_GSTREAMER since no test depends on GStreamer.
+      # GStreamer is not installed at all: its MSIs are
+      # tools/SetupDevEnvironment.bat's, and no test depends on it.
       # ---------------------------------------------------------------
       - name: Cache dependencies
         id: cache-deps
@@ -161,17 +160,13 @@ jobs:
             deps-${{ runner.os }}-
 
       # ---------------------------------------------------------------
-      # Only fetch deps on a cache miss. SKIP_GSTREAMER=1 tells
-      # InitialSetup_x64.bat to skip the GStreamer MSI downloads and
-      # installs, and with them the CUDA Toolkit that only the ARKit
-      # plugin needs - none of the test targets depend on GStreamer, and
-      # skipping it saves several hundred MB of download on first run.
+      # Only fetch deps on a cache miss. InitialSetup_x64.bat downloads
+      # the prebuilt dependencies into deps and installs nothing
+      # system-wide.
       # ---------------------------------------------------------------
       - name: Fetch dependencies
         if: steps.cache-deps.outputs.cache-hit != 'true'
         shell: cmd
-        env:
-          SKIP_GSTREAMER: "1"
         run: |
           call InitialSetup_x64.bat
           if %ERRORLEVEL% NEQ 0 (

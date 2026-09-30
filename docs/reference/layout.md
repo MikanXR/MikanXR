@@ -91,10 +91,10 @@ Each is a target of the same name, shared unless noted:
 Optional backends, each built as a separate `SHARED` DLL and copied next to the executables post-build:
 
 - `MikanWMFVideo`: USB webcam video source via Windows Media Foundation
-- `MikanGStreamerVideo`: GStreamer-based network video source (built only when `MIKAN_WITH_GSTREAMER=ON`)
+- `MikanGStreamerVideo`: GStreamer-based network video source (built only when GStreamer is enabled, see `MIKAN_WITH_GSTREAMER`)
 - `MikanSteamVR`: SteamVR/OpenVR tracking device integration
 
-- `MikanARKitVideo`: iOS ARKit network video source (RTP video + pose, CUDA-GL interop), gated behind `MIKAN_WITH_ARKIT_VIDEO`, which needs a CUDA Toolkit on top of `MIKAN_WITH_GSTREAMER`
+- `MikanARKitVideo`: iOS ARKit network video source (RTP video + pose, CUDA-GL interop), gated behind `MIKAN_WITH_ARKIT_VIDEO`, which needs a CUDA Toolkit on top of GStreamer
 
 File video sources are not a plugin: they decode in-process through OpenCV's ffmpeg videoio backend, and takes are recorded through OpenCV's Media Foundation videoio backend, two plugin DLLs the Editor's CMake copies beside the executables.
 

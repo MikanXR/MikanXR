@@ -240,9 +240,32 @@ option(IXWEBSOCKET_INSTALL "Install IXWebSocket" FALSE)
 set (IXWEBSOCKET_DIR ${ROOT_DIR}/thirdparty/IXWebSocket/)
 set (IXWEBSOCKET_INCLUDE_DIR ${IXWEBSOCKET_DIR})
 
-# GStreamer (optional — disable for test-only / CI builds with -DMIKAN_WITH_GSTREAMER=OFF)
-option(MIKAN_WITH_GSTREAMER "Build the GStreamer video plugin" ON)
-if(MIKAN_WITH_GSTREAMER)
+# GStreamer. AUTO builds the GStreamer video plugins when GStreamer is installed and skips
+# them otherwise, ON makes a missing GStreamer a configure error (release builds), and OFF
+# skips them (CI's test build). MIKAN_GSTREAMER_ENABLED is the resolved answer everything
+# downstream reads: MIKAN_WITH_GSTREAMER itself holds the string AUTO, which if() reads as true.
+set(MIKAN_WITH_GSTREAMER AUTO CACHE STRING "Build the GStreamer video plugins: AUTO, ON or OFF")
+set_property(CACHE MIKAN_WITH_GSTREAMER PROPERTY STRINGS AUTO ON OFF)
+
+set(MIKAN_GSTREAMER_ENABLED OFF)
+if(MIKAN_WITH_GSTREAMER STREQUAL "AUTO")
+  find_package(GStreamer QUIET COMPONENTS base)
+  find_package(GLIB2 QUIET)
+  find_package(GObject QUIET)
+  if(GSTREAMER_FOUND AND GLIB2_FOUND AND GOBJECT_LIBRARIES)
+    set(MIKAN_GSTREAMER_ENABLED ON)
+    MESSAGE(STATUS "GStreamer found - building the GStreamer video plugins")
+  else()
+    MESSAGE(STATUS "GStreamer not found - building without MikanGStreamerVideo and MikanARKitVideo (install it with tools/SetupDevEnvironment.bat)")
+  endif()
+elseif(MIKAN_WITH_GSTREAMER)
+  set(MIKAN_GSTREAMER_ENABLED ON)
+  MESSAGE(STATUS "GStreamer required (MIKAN_WITH_GSTREAMER=ON)")
+else()
+  MESSAGE(STATUS "GStreamer disabled (MIKAN_WITH_GSTREAMER=OFF)")
+endif()
+
+if(MIKAN_GSTREAMER_ENABLED)
   find_package(GStreamer REQUIRED COMPONENTS base)
   find_package(GStreamerPluginsBase COMPONENTS app)
   find_package(GStreamerPluginsBase COMPONENTS video)

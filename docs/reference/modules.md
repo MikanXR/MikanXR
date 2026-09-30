@@ -71,9 +71,9 @@ Each plugin is a `SHARED` DLL with hidden symbol visibility that links only low-
 
 - `MikanWMFVideo`: USB webcams via Windows Media Foundation (`mfplat`, `mf`, `mfuuid`, `mfreadwrite`, `wmcodecdspuuid`). Module class implements `IUsbVideoDeviceModule`. Links `MikanCoreApp`, `MikanUtility`. Loaded by `USBVideoSourceSystem`.
 
-- `MikanGStreamerVideo`: network video sources via GStreamer (core/app/base/video plus GLib/GObject). Implements `INetworkVideoDeviceModule`. Links `MikanCoreApp`, `MikanUtility`. Loaded by `NetworkVideoSourceSystem`. Only built when `MIKAN_WITH_GSTREAMER=ON` (off in CI).
+- `MikanGStreamerVideo`: network video sources via GStreamer (core/app/base/video plus GLib/GObject). Implements `INetworkVideoDeviceModule`. Links `MikanCoreApp`, `MikanUtility`. Loaded by `NetworkVideoSourceSystem`. Only built when GStreamer is enabled: `MIKAN_WITH_GSTREAMER` defaults to `AUTO`, which builds it when GStreamer is installed, and CI sets it `OFF`.
 
-- `MikanARKitVideo`: iOS ARKit camera streaming (RTP over GStreamer, with a pose payload in the RTP stream). Uses GStreamer core/app/base/video/rtp/cuda, the CUDA Driver API (`Private/Cuda/CudaGLInterop` for CUDA-GL texture registration and plane copies), and GLEW. Implements `IARKitVideoDeviceModule`. Links `MikanCoreApp`, `MikanRenderer`, `MikanUtility`. Loaded by `ARKitVideoDeviceManagerLoader`. Only built when `MIKAN_WITH_ARKIT_VIDEO` is on, which is `MIKAN_WITH_GSTREAMER=ON` plus an installed CUDA Toolkit ([build.md](./build.md)).
+- `MikanARKitVideo`: iOS ARKit camera streaming (RTP over GStreamer, with a pose payload in the RTP stream). Uses GStreamer core/app/base/video/rtp/cuda, the CUDA Driver API (`Private/Cuda/CudaGLInterop` for CUDA-GL texture registration and plane copies), and GLEW. Implements `IARKitVideoDeviceModule`. Links `MikanCoreApp`, `MikanRenderer`, `MikanUtility`. Loaded by `ARKitVideoDeviceManagerLoader`. Only built when `MIKAN_WITH_ARKIT_VIDEO` is on, which is GStreamer enabled plus an installed CUDA Toolkit ([build.md](./build.md)).
 
 - `MikanSteamVR`: VR tracker/HMD poses via OpenVR (`${OPENVR_LIBRARY}`). Implements `IVRDeviceModule`. Links `MikanCoreApp`, `MikanRenderer`, `MikanWindow`, `MikanUtility`. Loaded by `VRObjectSystem`.
 
@@ -87,7 +87,7 @@ Each plugin is a `SHARED` DLL with hidden symbol visibility that links only low-
 	- `MikanClientLanguageGen.h`/`.cpp`: the generator base class and the reflection helpers every language needs
 	- `MikanClientCSharpGen.cpp` and `MikanClientTypeScriptGen.cpp`: one target language each, reached only through the factory the seam declares
 
-- `Tests/UnitTests` (target `unit_test_suite_cpp`): C++ unit test executable. Links the client libraries plus `MikanMath` and `MikanOnnx` (the latter for the spherical harmonic fit and ONNX session modules). Has its own Refureku pre-build target. It additionally compiles `ARKitVideoDeviceManagerLoader` from the editor tree and, when `MIKAN_WITH_GSTREAMER=ON`, the plugin's `CudaGLInterop` sources directly; its CMakeLists documents why `ARKitRTPHeaderExtension` must not be dual-compiled (GObject type registration is process-global).
+- `Tests/UnitTests` (target `unit_test_suite_cpp`): C++ unit test executable. Links the client libraries plus `MikanMath` and `MikanOnnx` (the latter for the spherical harmonic fit and ONNX session modules). Has its own Refureku pre-build target. It additionally compiles `ARKitVideoDeviceManagerLoader` from the editor tree and, when `MIKAN_WITH_ARKIT_VIDEO` is on, the plugin's `CudaGLInterop` sources directly; its CMakeLists documents why `ARKitRTPHeaderExtension` must not be dual-compiled (GObject type registration is process-global).
 
 - `Tests/MikanClientTestCPP`: interactive client test app exercising the client API end to end, with DirectX 11, OpenGL, and Vulkan render paths (`-dx`, `-gl`, `-vk`; SDL2 window, `d3d11`/`d3dcompiler`, and volk over a Vulkan 1.3 device whose cube shader dxc compiles to SPIR-V at build time).
 

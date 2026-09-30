@@ -104,9 +104,10 @@ jobs:
       # ---------------------------------------------------------------
       # Unlike the test build, a release needs GStreamer: the shipped
       # tree carries the MikanGStreamerVideo and MikanARKitVideo
-      # plugins. On a cache miss the full setup runs with SKIP_GSTREAMER
-      # unset. On a cache hit everything else is already on disk, so
-      # only the system-wide MSI install has to happen.
+      # plugins. The deps folder is fetched only on a cache miss, but
+      # the MSIs install system-wide and are never in the cache, so
+      # GStreamer installs on every run. tools/InstallGStreamer.bat is
+      # the same install tools/SetupDevEnvironment.bat runs locally.
       # ---------------------------------------------------------------
       - name: Fetch dependencies
         if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -119,14 +120,11 @@ jobs:
           )
 
       - name: Install GStreamer
-        if: steps.cache-deps.outputs.cache-hit == 'true'
         shell: cmd
-        env:
-          GSTREAMER_ONLY: "1"
         run: |
-          call InitialSetup_x64.bat
+          call tools\InstallGStreamer.bat
           if %ERRORLEVEL% NEQ 0 (
-            echo InitialSetup_x64.bat failed
+            echo tools\InstallGStreamer.bat failed
             exit /b 1
           )
 

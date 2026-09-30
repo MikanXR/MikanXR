@@ -837,7 +837,7 @@ function(copy_mikan_runtime_deps mikan_target)
   add_custom_command(
     TARGET ${mikan_target} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${OpenCV_DIR}/x64/vc16/bin/opencv_videoio_msmf4100_64d.dll $<TARGET_FILE_DIR:${mikan_target}>)
-  if(MIKAN_WITH_GSTREAMER)
+  if(MIKAN_GSTREAMER_ENABLED)
     add_custom_command(
       TARGET ${mikan_target} POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE_DIR:MikanGStreamerVideo>/MikanGStreamerVideo.dll $<TARGET_FILE_DIR:${mikan_target}>)
