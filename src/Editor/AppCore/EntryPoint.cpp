@@ -1,11 +1,14 @@
 //-- includes -----
 #include "App.h"
+#include "DiscreteGpuPreference.h"
 #include "MikanCefApp.h"
 #include "ThreadUtils.h"
 
 #ifdef WIN32
 #include <windows.h>
 #endif
+
+MIKAN_REQUEST_DISCRETE_GPU()
 
 //-- entry point -----
 #ifdef WIN32

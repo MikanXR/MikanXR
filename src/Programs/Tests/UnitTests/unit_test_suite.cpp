@@ -1,7 +1,11 @@
 //-- includes -----
 #include <stdio.h>
 #include <stdlib.h>
+#include "DiscreteGpuPreference.h"
 #include "unit_test.h"
+
+// The CUDA-GL interop module needs OpenGL on the same GPU as CUDA
+MIKAN_REQUEST_DISCRETE_GPU()
 
 //-- prototypes -----
 

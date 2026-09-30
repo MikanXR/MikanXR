@@ -1,12 +1,17 @@
 #include "TestApp.h"
 #include "TestFrameDump.h"
 #include "TestSpoutProbe.h"
+#include "DiscreteGpuPreference.h"
 #include "Logger.h"
 #include <SDL.h>
 
 #include <cstring>
 #include <string>
 #include <vector>
+
+// Shared textures only reach the editor from the same GPU, and the editor asks for the
+// discrete one
+MIKAN_REQUEST_DISCRETE_GPU()
 
 // -probe <sender> <png>: read any Spout sender by name through the editor's receiver path and
 // write it as a PNG, then exit. No window, no client connection: a drive uses it to see what
