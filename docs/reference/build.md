@@ -69,6 +69,10 @@ The reflection library and its generator build from the `thirdparty/Refureku` su
 - `RFK_GENERATOR_EXE`: `$<TARGET_FILE:RefurekuGenerator>`
 - `RFK_SHARED_LIBRARIES`: `$<TARGET_FILE:Refureku>`
 
+It also exports `RFK_GENERATOR_ARGS`, which every `*Reflection` target passes to the generator ahead of its settings toml.
+
+The generator parses with the `libclang.dll` that the Kodgen fork carries (LLVM 23.1.2), against the MSVC standard library headers. Left to itself, Kodgen asks vswhere for the newest Visual Studio install and adds the include folder of every toolset in it, so with VS2022 and VS2026 side by side a VS2022 build would parse the VS2026 headers. Under MSVC, `RFK_GENERATOR_ARGS` therefore carries `--native-include-dir <toolset>/include`, derived from `CMAKE_CXX_COMPILER` (`cl.exe` sits at `<toolset>/bin/Host<arch>/<arch>/cl.exe`), which replaces the vswhere query and pins parsing to the toolset the build compiles with. The libclang version matters too: the VS2026 (14.5x) STL headers reject any Clang older than 20 with error STL1000, while the VS2022 (14.4x) headers accept 19 or newer. Kodgen counts any clang error diagnostic as a parse error, and the generator exits non-zero when parsing or generation fails, so a header that does not compile under libclang fails the reflection step, and the build, instead of producing code from an incomplete parse.
+
 Four things about the integration are load-bearing, and each exists because the submodule's CMake assumes it is the top-level project:
 
 - **The submodule's own `Refureku/CMakeLists.txt` is skipped.** `ThirdParty.cmake` adds `Generator/` and `Library/` directly. The file in between hardcodes the output directories to `${CMAKE_BINARY_DIR}/Bin` and `/Lib`, and it also carries an `include(CTest)` and the `Dist` target that assembled the prebuilt package this replaced.
@@ -77,7 +81,7 @@ Four things about the integration are load-bearing, and each exists because the 
 
 - **`CMAKE_UNITY_BUILD` drops to `OFF` for the subtree.** Both local generation and CI configure with it on as a cache entry, and toml11 does not compile with its translation units concatenated.
 
-- **`RefurekuGeneratorRuntime` stages `libclang.dll` and `vswhere.exe` beside the generator.** Kodgen copies both next to its own output directory, which is not where `RefurekuGenerator.exe` lands. The generator loads libclang at startup and shells out to vswhere to locate the MSVC toolchain; without vswhere it fails with `ParsingSettings::compilerExeName must be set to parse files` even though the toml sets it. Each `*Reflection` target depends on this staging target rather than on `RefurekuGenerator` directly.
+- **`RefurekuGeneratorRuntime` stages `libclang.dll` and `vswhere.exe` beside the generator.** Kodgen copies both next to its own output directory, which is not where `RefurekuGenerator.exe` lands. The generator loads libclang at startup and shells out to vswhere to confirm an MSVC toolchain is installed; without vswhere it fails with `ParsingSettings::compilerExeName must be set to parse files` even though the toml sets it. Each `*Reflection` target depends on this staging target rather than on `RefurekuGenerator` directly.
 
 `ThirdParty.cmake` is `include()`d rather than added as a subdirectory, so it shares the root's variable scope and every override above is saved and restored around the two `add_subdirectory` calls. Everything except `Refureku` and `RefurekuGenerator` is `EXCLUDE_FROM_ALL`, so the submodule's `LibraryGenerator`, examples, and tests cost nothing.
 
@@ -156,6 +160,8 @@ CI then builds `MikanCmd` and `unit_test_suite_cpp`, runs `build\bin\MikanCmd.ex
 - Unity build: `CMAKE_UNITY_BUILD=ON` concatenates unrelated translation units, so a transitively included `windows.h` can rewrite a same-named method via macro (e.g. `GetObject` becomes `GetObjectA`) and produce an `LNK2019` far from the actual conflict. Avoid method names that collide with Win32 macros (`GetObject`, `SendMessage`, `CreateWindow`, ...). Files with inclusion-order problems are opted out via `SKIP_UNITY_BUILD_INCLUSION` in `src/Editor/CMakeLists.txt`.
 
 - C# is only supported by Visual Studio generators. `bindings/csharp` and `src/Programs/Tests/MikanClientTestCSharp` are skipped under Ninja (`if(CMAKE_GENERATOR MATCHES "Visual Studio")` in `bindings/CMakeLists.txt` and `src/Programs/Tests/CMakeLists.txt`), so CI never builds them.
+
+- OpenCV's Windows pack maps `MSVC_VERSION` to a runtime folder only up to 194x (VS2022), so under the VS2026 compiler its `OpenCVConfig.cmake` finds no binaries and OpenCV silently drops out, surfacing later as missing `opencv2/*.hpp` includes. `cmake/ThirdParty.cmake` presets `OpenCV_ARCH`/`OpenCV_RUNTIME` to `x64`/`vc16` for `MSVC_VERSION` 1950 and newer, the only runtime the pack ships.
 
 - The TypeScript binding targets require `npm` on PATH; if it is missing, configuration emits a warning and skips them.
 

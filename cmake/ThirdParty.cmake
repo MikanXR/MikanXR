@@ -44,6 +44,13 @@ FetchContent_MakeAvailable(dylib)
 
 # OpenCV
 # Override by adding "-DOpenCV_DIR=C:\path\to\opencv\build" to your cmake command
+# The Windows pack's OpenCVConfig.cmake maps MSVC_VERSION to a runtime folder only up to
+# 194x (VS2022) and finds no binaries for the VS2026 compiler. The pack ships vc16 binaries,
+# which toolsets since VS2015 link against, so name them directly for newer compilers.
+if (MSVC AND MSVC_VERSION GREATER_EQUAL 1950 AND NOT DEFINED OpenCV_RUNTIME)
+	set (OpenCV_ARCH x64)
+	set (OpenCV_RUNTIME vc16)
+endif()
 find_package(OpenCV REQUIRED)
 
 # OpenVR
@@ -162,6 +169,23 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${RFK_SAVED_RUNTIME_OUT}")
 set (RFK_LIBRARIES Refureku)
 set (RFK_GENERATOR_EXE $<TARGET_FILE:RefurekuGenerator>)
 set (RFK_SHARED_LIBRARIES $<TARGET_FILE:Refureku>)
+
+# Left to itself the generator parses against the headers of every MSVC toolset in the newest
+# Visual Studio install, which with 2022 and 2026 side by side is not the toolset this build
+# compiles with. Pin it to the include directory of the toolset CMake picked instead:
+# cl.exe lives at <toolset>/bin/Host<arch>/<arch>/cl.exe.
+set (RFK_GENERATOR_ARGS "")
+if (MSVC)
+	get_filename_component(RFK_MSVC_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+	get_filename_component(RFK_MSVC_TOOLSET_DIR "${RFK_MSVC_BIN_DIR}/../../.." ABSOLUTE)
+	if (EXISTS "${RFK_MSVC_TOOLSET_DIR}/include/yvals_core.h")
+		set (RFK_GENERATOR_ARGS --native-include-dir "${RFK_MSVC_TOOLSET_DIR}/include")
+		message(STATUS "Refureku generator parses against ${RFK_MSVC_TOOLSET_DIR}/include")
+	else()
+		message(WARNING "No MSVC include directory found beside ${CMAKE_CXX_COMPILER}; "
+			"the Refureku generator will use the headers of the newest installed Visual Studio")
+	endif()
+endif()
 
 # Keep the submodule's targets out of the solution's top level
 foreach (rfk_target Refureku RefurekuGenerator RefurekuGeneratorRuntime Kodgen LibraryGenerator
