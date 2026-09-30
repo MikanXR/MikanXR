@@ -31,9 +31,10 @@ The second command (once per clone) makes `git blame` skip the repo-wide clang-f
 
 ```
 GenerateProjectFiles_X64_VS2022.bat
+GenerateProjectFiles_X64_VS2026.bat
 ```
 
-Configures `build/` with the `Visual Studio 17 2022` generator and produces `build/Mikan.sln`. Rerun after `InitialSetup_x64.bat` (which wipes `build/`).
+Run the one matching the installed Visual Studio. Each configures `build/` with its `Visual Studio 17 2022` or `Visual Studio 18 2026` generator and produces `build/Mikan.sln`. Both need `cmake` on PATH, and the 2026 generator needs CMake 4.2 or newer: install CMake, or run from a Visual Studio Developer Command Prompt, which puts the bundled copy on PATH. Rerun after `InitialSetup_x64.bat` (which wipes `build/`).
 
 ---
 
@@ -47,7 +48,7 @@ cmake --build build --target MikanCmd --config Release --parallel
 cmake --build build --target unit_test_suite_cpp --config Release --parallel
 ```
 
-Or open `build\Mikan.sln` in Visual Studio 2022 and build there.
+Or open `build\Mikan.sln` in Visual Studio and build there.
 
 Building `MikanCmd` also builds `Mikan` (dependency) and copies all runtime DLLs and plugin DLLs into the shared output folder.
 
@@ -246,10 +247,10 @@ git tag v2026.09.14 && git push origin v2026.09.14
 
 ## Reproducing the CI build locally
 
-CI uses Ninja (for sccache) with GStreamer off and a flattened output dir. From a VS2022 developer command prompt:
+CI uses Ninja (for sccache) with GStreamer off and a flattened output dir. From a Visual Studio developer command prompt:
 
 ```
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DMIKAN_WITH_GSTREAMER=OFF -DCMAKE_UNITY_BUILD=ON -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=%CD%\build\bin ...
 ```
 
-plus the same dependency path variables as `GenerateProjectFiles_X64_VS2022.bat`; see `.github/workflows/build-and-test.yml` for the exact full invocation. Note the C# bindings and C# client test are skipped under Ninja.
+plus the same dependency path variables as `tools/GenerateProjectFiles_X64.bat`; see `.github/workflows/build-and-test.yml` for the exact full invocation. Note the C# bindings and C# client test are skipped under Ninja.

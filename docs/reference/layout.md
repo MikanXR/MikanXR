@@ -10,7 +10,8 @@ Annotated map of the MikanXR directory hierarchy: where source, generated code, 
 MikanXR/
 ├── CMakeLists.txt                      # top-level CMake: includes cmake/*.cmake, adds src/, bindings/, thirdparty/
 ├── InitialSetup_x64.bat                # first-time setup: wipes build/ and deps/, downloads prebuilt deps into deps/
-├── GenerateProjectFiles_X64_VS2022.bat # configures build/ with the "Visual Studio 17 2022" generator
+├── GenerateProjectFiles_X64_VS2022.bat # configures build/ with the "Visual Studio 17 2022" generator (via tools/GenerateProjectFiles_X64.bat)
+├── GenerateProjectFiles_X64_VS2026.bat # configures build/ with the "Visual Studio 18 2026" generator (via tools/GenerateProjectFiles_X64.bat)
 ├── CLAUDE.md / README.md / CONTRIBUTING.md / LICENSE
 ├── .github/workflows/build-and-test.yml # CI: Linux format-check and localization-check jobs + Windows Ninja build/test job
 ├── .github/workflows/release.yml       # tag-triggered release: Release build with GStreamer, tests, app zip + symbols zip + installer as a draft release
@@ -36,7 +37,7 @@ MikanXR/
 
 - `build/` layout depends on the generator: the VS generator puts executables in per-target per-config folders (e.g. `build\src\Editor\Release\Mikan.exe`), while CI flattens everything to `build\bin` via `CMAKE_RUNTIME_OUTPUT_DIRECTORY`. Refureku reflection codegen output lands in `build/RfkGenerated/<Library>`.
 
-- `tools/` mixes two unrelated things. `7zip/` and `Spout2/` are checked-in binaries the build depends on. The `*.py` scripts are developer-only: they export or fetch the ONNX checkpoints into `models/`, and they are the reference implementations the C++ ports are validated against. Neither ships with Mikan nor runs at runtime. See [scene-lighting.md](./scene-lighting.md) and [depth-proxy-mesh.md](./depth-proxy-mesh.md).
+- `tools/` mixes two unrelated things. `7zip/` and `Spout2/` are checked-in binaries the build depends on, and `GenerateProjectFiles_X64.bat` is the shared body of the root generate scripts. The `*.py` scripts are developer-only: they export or fetch the ONNX checkpoints into `models/`, and they are the reference implementations the C++ ports are validated against. Neither ships with Mikan nor runs at runtime. See [scene-lighting.md](./scene-lighting.md) and [depth-proxy-mesh.md](./depth-proxy-mesh.md).
 
 - `models/` holds the ONNX checkpoints (`marigold/`, `moge2/`, roughly 8GB together). It is gitignored and `InitialSetup_x64.bat` does not create it; the tools above do.
 

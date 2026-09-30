@@ -8,7 +8,7 @@ How MikanXR is configured and built: toolchain, dependency setup, CMake targets,
 
 - Windows only in practice (Win10/11). The CMake files carry Linux/Darwin branches but the Windows-specific install/copy steps and prebuilt deps make MSVC the supported path.
 
-- MSVC via Visual Studio 2022. CMake minimum 3.15 (`cmake_minimum_required` in the root `CMakeLists.txt`).
+- MSVC via Visual Studio 2022 or 2026. CMake minimum 3.15 (`cmake_minimum_required` in the root `CMakeLists.txt`), but the `Visual Studio 18 2026` generator needs CMake 4.2 or newer.
 
 - C++20 (`CMAKE_CXX_STANDARD 20` in `cmake/Environment.cmake`), `/W4` with a suppression list, `/MP`, `NOMINMAX` and `_CRT_SECURE_NO_WARNINGS` defined globally.
 
@@ -40,7 +40,7 @@ The repo's batch files must keep CRLF line endings. `cmd` seeks by byte offset w
 
 ## Configuring
 
-`GenerateProjectFiles_X64_VS2022.bat` configures `build/` with `-G "Visual Studio 17 2022" -A x64` and produces `build/Mikan.sln`. It passes the dependency locations as cache variables: `CEF_ROOT`, `OpenCV_DIR`, `OPENVR_ROOT_DIR`/`OPENVR_HEADERS_ROOT_DIR` (from `thirdparty/openvr`), the `SDL2*_LIBRARY`/`SDL2*_INCLUDE_DIR` pairs, `CMAKE_PREFIX_PATH` for easy_profiler, `NUGET_PATH`, `CMAKE_INSTALL_PREFIX=dist/Win64`, and `-DCMAKE_UNITY_BUILD=ON`.
+`GenerateProjectFiles_X64_VS2022.bat` and `GenerateProjectFiles_X64_VS2026.bat` are thin wrappers around `tools/GenerateProjectFiles_X64.bat`, which takes the generator name (`Visual Studio 17 2022` or `Visual Studio 18 2026`), configures `build/` with it and `-A x64`, and produces `build/Mikan.sln`. Neither passes `-T`, so each builds with its Visual Studio's default toolset. The helper stops early when `cmake` is not on PATH, since Visual Studio only puts its bundled CMake there inside a Developer Command Prompt. It passes the dependency locations as cache variables: `CEF_ROOT`, `OpenCV_DIR`, `OPENVR_ROOT_DIR`/`OPENVR_HEADERS_ROOT_DIR` (from `thirdparty/openvr`), the `SDL2*_LIBRARY`/`SDL2*_INCLUDE_DIR` pairs, `CMAKE_PREFIX_PATH` for easy_profiler, `NUGET_PATH`, `CMAKE_INSTALL_PREFIX=dist/Win64`, and `-DCMAKE_UNITY_BUILD=ON`.
 
 Notable CMake options (defined in `cmake/ThirdParty.cmake` unless noted):
 
