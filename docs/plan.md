@@ -3,7 +3,7 @@
 The living plan: what is in flight now, what comes next, and the open questions. Completed items are removed rather than checked off. Resolved questions are removed. Deferred work enters here at the moment of deferral.
 
 ## Now
-- [ ] Verify the VS2022/VS2026 build support on a VS2022-only machine: `GenerateProjectFiles_X64_VS2022.bat`, a Release build of `MikanCmd` and `unit_test_suite_cpp`, both test suites, and `FormatCheck`. It was verified under VS2026 only, where configuring with `-T v143` stood in for the VS2022 toolset's headers but not for the `Visual Studio 17 2022` generator itself.
+- [ ] Verify `GenerateProjectFiles_X64_VS2022.bat` on a VS2022-only machine: configure, then build `build/Mikan.sln` in Visual Studio. The VS2022 compiler and headers are covered by CI's manual `vs=2022` run, but CI configures with Ninja, so the `Visual Studio 17 2022` generator itself has not run.
 - [ ] Node editor snapshot history commits a step on nearly every mouse release while the compositor runs, because a node's live `float_defaults/time` value serializes into the graph snapshot and the commit dedup sees a changed graph. A plain click on empty canvas after an undo adds a step. Keep runtime-fed values out of the snapshot, or dedup on the persisted fields only.
 - [ ] Cursor feedback in the interactive browser window: `CefDisplayHandler::OnCursorChange` fires but nothing consumes it, so the pointer stays an arrow over links and text fields. Deferred because it needs a new `IMkWindowContext::setCursor` plus an SDL system-cursor cache, and because ImGui's SDL2 backend calls `SDL_SetCursor` from `ImGui_ImplSDL2_UpdateMouseCursor` every `NewFrame` and would immediately overwrite it. Doing it means toggling `ImGuiConfigFlags_NoMouseCursorChange` on that window's io while the pointer is over the page area.
 
@@ -58,7 +58,7 @@ The living plan: what is in flight now, what comes next, and the open questions.
 - [ ] Scene lighting: decide whether a single global probe suffices or region-of-interest probes near the character are needed. `LightEnvironmentComponent` already carries a world position, so this needs no wire-format change. Answerable only from the end-to-end look in Unreal.
 - [ ] Scene lighting: calibrate the exposure scalar automatically instead of by hand per shoot.
 - [ ] Depth proxy mesh: refine residual metric scale against tracked anchors or the floor plane, so a capture needs no ArUco marker in frame.
-- [ ] Depth proxy mesh: occlusion-grade silhouette edges. The current proxy is a shadow catcher; it cannot occlude a character walking behind real furniture.
+- [ ] Depth proxy mesh: occlusion-grade silhouette edges. The current proxy is a shadow catcher; it cannot occlude a character walking behind real furniture. Design decided and handed off in [occlusion-mesh.md](./proposals/occlusion-mesh.md): LiDAR recorded by MikanARStreamer, TSDF fusion, image-space edge refinement.
 - [ ] Stereo calibration: `MikanStereoIntrinsics` and the rectification math exist but no stereo calibration AppStage does.
 - [ ] Video recording: `eSupportedCodec` in `CompositorConstants.h` is defined but nothing records the composited output to a file.
 - [ ] File video source hardware decode: `MovieDecoder` decodes on the CPU through OpenCV's ffmpeg backend. `cv::CAP_PROP_HW_ACCELERATION` can ask that backend for D3D11VA or CUDA decode with no other code change, worth measuring on a 4K phone recording before the software decode becomes the editor's tick budget.
