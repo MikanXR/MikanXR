@@ -13,3 +13,5 @@ else()
 endif()
 MESSAGE(STATUS "Stepping into UnitTests")
 add_subdirectory(UnitTests)
+# ClientSdkConsumer is deliberately not stepped into: it is a standalone project that
+# builds against the installed client SDK rather than the source tree.

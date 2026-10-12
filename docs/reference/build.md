@@ -121,9 +121,29 @@ Kodgen's own post-build step still copies `libclang.dll` into `build/Bin/<Config
 
 - `INSTALL`: installs exes, DLLs, bindings, and the bundled `resources/` tree into `dist/Win64`, and every executable and DLL PDB into `dist/symbols/Win64`. The client API headers it installs are gathered by a configure-time glob, so a header added to `MikanClientAPI/Public` reaches `dist/Win64/include` only after a reconfigure (`cmake -B build`). The resources filter ships the graph, material, shader, and model sources as well as images, fonts, scripts, and ONNX models, since a project reads the bundled assets in place rather than owning copies.
 
+- `INSTALL_CLIENT_SDK` (`cmake/ClientSdk.cmake`): builds the client libraries and bindings and installs only the client SDK, described below. `INSTALL` installs it too.
+
 - `PACKAGE_APP` / `PACKAGE_SYMBOLS` (`cmake/Symbols.cmake`): zip `dist/Win64` and `dist/symbols/Win64` into `dist/Mikan_<version>_Win64.zip` and `dist/Mikan_<version>_Win64_symbols.zip`. Both assume `INSTALL` has run.
 
 Output locations: under the VS generator, executables land in per-target config folders (`build\src\Editor\<Config>\Mikan.exe`, `build\src\Programs\Tests\UnitTests\<Config>\unit_test_suite_cpp.exe`). CI overrides this with `CMAKE_RUNTIME_OUTPUT_DIRECTORY=build\bin`.
+
+---
+
+## Client SDK
+
+`cmake/ClientSdk.cmake` installs what a client compiles, links, and loads into `dist/ClientSDK/Win64`, apart from the app tree:
+
+- `include/`: the headers named in `MIKAN_CLIENT_SDK_HEADERS`
+- `lib/`: the import libraries of `MikanClientAPI`, `MikanClientCore`, and `MikanSerialization`, the DLLs those headers export from
+- `bin/`: `MikanClientAPI.dll` and the DLLs it loads, apart from the system `D3DCOMPILER_47.dll`
+- `bindings/csharp/`: `MikanClientCSharp.dll` and its references, under the Visual Studio generator only
+- `bindings/typescript/`: `package.json` and the compiled `dist/`, when npm was found
+- `symbols/`: the PDBs of the Mikan DLLs in `bin/`
+- `version.txt`
+
+The header list is explicit, so a header reaches clients only by being named there, and the file holds every SDK rule. Its rules use `install(FILES)` with target generator expressions rather than `install(TARGETS)`, which would fall back to default destinations under `CMAKE_INSTALL_PREFIX` for each library's `PUBLIC_HEADER` set. They belong to two components. `ClientSDK` first clears the tree, so a file dropped from a list does not survive a reinstall, then installs everything but the C# bindings. `ClientSDKCSharp` installs the C# bindings into the existing tree. A `ClientSDK`-only install therefore leaves no C# bindings, and `INSTALL_CLIENT_SDK` runs both in order.
+
+`src/Programs/Tests/ClientSdkConsumer` is a standalone project, never added to the main build, that builds against an installed SDK the way a client does. It compiles each installed header in a translation unit of its own, against only the SDK's `include/` and `thirdparty/Vulkan-Headers` (which `MikanCoreVulkanTypes.h` needs from the client), and links an executable that calls into all three import libraries. A header that includes an unlisted repo header, or a missing import library, fails it. CI installs the SDK and builds the consumer after the test targets.
 
 ---
 
@@ -153,7 +173,7 @@ Release builds compile with `/Z7` and link with `/DEBUG:FULL /OPT:REF /OPT:ICF` 
 -DCMAKE_UNITY_BUILD=ON
 ```
 
-CI then builds `MikanCmd` and `unit_test_suite_cpp`, runs `build\bin\MikanCmd.exe -runTests` (dumping `MikanCmd.log` afterwards) and `build\bin\unit_test_suite_cpp.exe`, crashes `MikanCmd` on purpose with `-crash=access` and requires the report files to appear, and uploads `build\bin` (PDBs included) as an artifact on `main` pushes.
+CI then builds `MikanCmd` and `unit_test_suite_cpp`, builds `INSTALL_CLIENT_SDK` and the `ClientSdkConsumer` project against the installed SDK, runs `build\bin\MikanCmd.exe -runTests` (dumping `MikanCmd.log` afterwards) and `build\bin\unit_test_suite_cpp.exe`, crashes `MikanCmd` on purpose with `-crash=access` and requires the report files to appear, and uploads `build\bin` (PDBs included) as an artifact on `main` pushes.
 
 The `build` job keeps that exact name because `main`'s branch protection requires a check called `build`. Moving it into a reusable workflow would rename the check and block every pull request. Its runner comes from the workflow's `vs` input instead. Pushes and pull requests have no input and run on `windows-2025-vs2026`, and a manual run (`gh workflow run build-and-test.yml -f vs=2022`, or the Actions tab) runs the same job on `windows-2022` to check that Visual Studio 2022 still builds. The explicit `windows-2025-vs2026` label is used rather than `windows-2025` or `windows-latest`, which serve the same image today, so that a future relabel cannot change the toolchain unnoticed. `ilammy/msvc-dev-cmd` puts the image's newest Visual Studio on PATH, and sccache keys its cache on the compiler binary, so the two toolchains never share objects.
 

@@ -241,6 +241,14 @@ cmake --build build --target PACKAGE_SYMBOLS --config Release   # zip dist\symbo
 cmake --build build --target CREATE_INSTALLER                   # build dist\Mikan_<version>_Win64_Setup.exe (requires Inno Setup 6)
 ```
 
+The client SDK installs with `INSTALL`, or alone, which is the quick loop while iterating on the client API. The consumer build then checks the installed tree is complete:
+
+```
+cmake --build build --target INSTALL_CLIENT_SDK --config Release   # build and install dist\ClientSDK\Win64 only
+cmake -S src/Programs/Tests/ClientSdkConsumer -B build/ClientSdkConsumer
+cmake --build build/ClientSdkConsumer --config Release             # fails on a header or import library the SDK lacks
+```
+
 The packaging targets assume `INSTALL` has run. `CREATE_INSTALLER` only exists if `ISCC.exe` was found at configure time (`cmake/Installer.cmake`); it compiles `templates/installer_win64.iss.in` with the version and paths filled in.
 
 ---

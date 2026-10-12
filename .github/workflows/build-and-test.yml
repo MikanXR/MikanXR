@@ -278,6 +278,36 @@ jobs:
           )
 
       # ---------------------------------------------------------------
+      # Install the client SDK to dist\ClientSDK\Win64 and build a
+      # client against that tree alone. A header or import library the
+      # SDK is missing fails the consumer build, the way it would fail
+      # every client. The C# bindings are skipped under Ninja, so this
+      # covers the native SDK only.
+      # ---------------------------------------------------------------
+      - name: Install the client SDK
+        shell: cmd
+        run: |
+          cmake --build build --target INSTALL_CLIENT_SDK --parallel
+          if %ERRORLEVEL% NEQ 0 (
+            echo Client SDK install failed
+            exit /b 1
+          )
+
+      - name: Build against the client SDK
+        shell: cmd
+        run: |
+          cmake -S src\Programs\Tests\ClientSdkConsumer -B build\ClientSdkConsumer -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+          if %ERRORLEVEL% NEQ 0 (
+            echo Client SDK consumer configure failed
+            exit /b 1
+          )
+          cmake --build build\ClientSdkConsumer --parallel
+          if %ERRORLEVEL% NEQ 0 (
+            echo Client SDK consumer build failed
+            exit /b 1
+          )
+
+      # ---------------------------------------------------------------
       # Print sccache stats so cache hit/miss behavior is visible in the
       # run logs. After the first run populates the GHA cache, subsequent
       # runs should show a non-zero "Cache hits" count here.

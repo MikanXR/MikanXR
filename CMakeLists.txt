@@ -33,5 +33,6 @@ add_subdirectory(src)
 add_subdirectory(bindings)
 add_subdirectory(thirdparty)
 
-# Walks the targets defined above, so it has to come after them
+# Both name the targets defined above, so they have to come after them
+include(cmake/ClientSdk.cmake)
 include(cmake/Symbols.cmake)

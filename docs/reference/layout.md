@@ -16,13 +16,13 @@ MikanXR/
 ├── .github/workflows/build-and-test.yml # CI: Linux format-check and localization-check jobs + Windows Ninja build/test job
 ├── .github/workflows/release.yml       # tag-triggered release: Release build with GStreamer, tests, app zip + symbols zip + installer as a draft release
 ├── .gitmodules                         # submodule list (all under thirdparty/)
-├── cmake/                              # CMake modules: Environment, Version, ThirdParty, Installer, Symbols, ClangFormat, Localization, Find*.cmake
+├── cmake/                              # CMake modules: Environment, Version, ThirdParty, Installer, ClientSdk, Symbols, ClangFormat, Localization, Find*.cmake
 ├── src/                                # all first-party C++ source (the only tree clang-format touches)
 ├── bindings/                           # generated client bindings for C# and TypeScript
 ├── thirdparty/                         # git submodules + a few vendored libs, built from source or used header-only
 ├── deps/                               # prebuilt binary dependencies downloaded by InitialSetup_x64.bat (not in git)
 ├── build/                              # CMake binary dir (build/Mikan.sln, object files, built exes; not in git)
-├── dist/                               # install prefix (dist/Win64, PDBs under dist/symbols) written by the INSTALL target; version.txt; the packaging zips and the installer
+├── dist/                               # install prefix (dist/Win64, PDBs under dist/symbols, the client SDK under dist/ClientSDK) written by the INSTALL target; version.txt; the packaging zips and the installer
 ├── resources/                          # runtime assets: calibration patterns, config, dnn models, fonts, icons, gui_styles, localization, lua-definitions
 ├── localization/                       # gettext catalogs translators own; resources/localization is generated from them
 ├── models/                             # ONNX checkpoints for the ML capture tools (gitignored, produced by tools/*.py)
@@ -104,6 +104,7 @@ File video sources are not a plugin: they decode in-process through OpenCV's ffm
 - `Tests/UnitTests`: `unit_test_suite_cpp` C++ unit test executable
 - `Tests/MikanClientTestCPP`: C++ client API test app (`DirectX/`, `OpenGL/`, and `Vulkan/` render backends, the last with its HLSL under `Vulkan/Shaders/`)
 - `Tests/MikanClientTestCSharp`: C# client test app (Visual Studio generator only)
+- `Tests/ClientSdkConsumer`: standalone project that builds against the installed client SDK, outside the main build
 
 ---
 
