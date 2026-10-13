@@ -45,7 +45,6 @@ add_library(MikanClientAPI SHARED ${MIKAN_CLIENT_API_SRC})
 target_include_directories(MikanClientAPI PRIVATE ${MIKAN_CLIENT_API_INCL_DIRS})
 target_link_libraries(MikanClientAPI PRIVATE ${MIKAN_CLIENT_API_REQ_LIBS})
 set_target_properties(MikanClientAPI PROPERTIES FOLDER ClientAPI)
-set_target_properties(MikanClientAPI PROPERTIES PUBLIC_HEADER "${MIKAN_CLIENT_API_HEADER}")
 set_target_properties(MikanClientAPI PROPERTIES CXX_VISIBILITY_PRESET hidden)
 target_compile_definitions(MikanClientAPI PRIVATE MIKAN_API_EXPORTS)
 target_compile_definitions(MikanClientAPI PRIVATE ENABLE_MIKANAPI_REFLECTION)
@@ -77,10 +76,7 @@ add_dependencies(MikanClientAPI MikanClientAPIReflection)
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows") 
     	  
   install(TARGETS MikanClientAPI
-      RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH}
-      LIBRARY DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib
-      ARCHIVE DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib
-      PUBLIC_HEADER DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/include)	  
+      RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH})	  
 
 ELSE() #Linux/Darwin
 ENDIF()

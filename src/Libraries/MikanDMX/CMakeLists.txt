@@ -33,4 +33,3 @@ if(WIN32)
 endif()
 
 set_target_properties(MikanDMX PROPERTIES FOLDER MikanLibraries)
-set_target_properties(MikanDMX PROPERTIES PUBLIC_HEADER "${MIKAN_DMX_HEADER}")

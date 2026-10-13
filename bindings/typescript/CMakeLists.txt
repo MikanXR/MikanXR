@@ -78,20 +78,6 @@ add_dependencies(${PROJECT_NAME} MikanTypeScriptNpmInstall)
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ClientAPI)
 set_target_properties(MikanTypeScriptNpmInstall PROPERTIES FOLDER ClientAPI)
 
-# Install the compiled JavaScript files
-IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/"
-        DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/bindings/typescript
-        FILES_MATCHING
-        PATTERN "*.js"
-        PATTERN "*.js.map"
-        PATTERN "*.d.ts"
-        PATTERN "package.json"
-        PATTERN "node_modules" EXCLUDE
-    )
-ELSE() #Linux/Darwin
-ENDIF()
-
 # Step into the subdirectories (if Tests/CMakeLists.txt exists)
 if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/Tests/CMakeLists.txt")
     MESSAGE(STATUS "Stepping into Tests")

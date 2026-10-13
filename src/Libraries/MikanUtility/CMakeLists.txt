@@ -33,14 +33,10 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 ENDIF()
 target_compile_definitions(MikanUtility PRIVATE MIKAN_UTILITY_EXPORTS)
 set_target_properties(MikanUtility PROPERTIES FOLDER MikanLibraries)
-set_target_properties(MikanUtility PROPERTIES PUBLIC_HEADER "${MIKAN_UTILITY_HEADER}")
 
 # Install - copy runtime dependencies to dist folder (for release)
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   install(TARGETS MikanUtility
-      RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH}
-      LIBRARY DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib
-      ARCHIVE DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib
-      PUBLIC_HEADER DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/include)
+      RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH})
 ELSE() #Linux/Darwin
 ENDIF()

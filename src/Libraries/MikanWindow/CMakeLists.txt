@@ -47,7 +47,6 @@ target_link_libraries(MikanWindow ${MIKAN_WINDOW_REQ_LIBS})
 target_include_directories(MikanWindow PRIVATE ${MIKAN_WINDOW_INCL_DIRS})
 target_compile_definitions(MikanWindow PRIVATE MIKAN_WINDOW_EXPORTS)
 set_target_properties(MikanWindow PROPERTIES FOLDER MikanLibraries)
-set_target_properties(MikanWindow PROPERTIES PUBLIC_HEADER "${MIKAN_WINDOW_HEADER}")
 
 # Install - copy runtime dependencies to dist folder (for release)
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")

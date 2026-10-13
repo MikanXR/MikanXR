@@ -41,7 +41,6 @@ target_include_directories(MikanCoreApp PRIVATE ${MIKAN_CORE_APP_INCL_DIRS})
 target_compile_definitions(MikanCoreApp PRIVATE MIKAN_COREAPP_EXPORTS)
 target_link_libraries(MikanCoreApp PRIVATE ${MIKAN_CORE_APP_REQ_LIBS})
 set_target_properties(MikanCoreApp PROPERTIES FOLDER MikanLibraries)
-set_target_properties(MikanCoreApp PROPERTIES PUBLIC_HEADER "${MIKAN_CORE_APP_HEADER}")
 
 # Add dependencies
 add_dependencies(MikanCoreApp MikanUtility)
@@ -49,9 +48,6 @@ add_dependencies(MikanCoreApp MikanUtility)
 # Install - copy runtime dependencies to dist folder (for release)
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   install(TARGETS MikanCoreApp
-      RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH}
-      LIBRARY DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib
-      ARCHIVE DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib
-      PUBLIC_HEADER DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/include)
+      RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH})
 ELSE() #Linux/Darwin
 ENDIF()

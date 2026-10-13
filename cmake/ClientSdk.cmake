@@ -135,9 +135,8 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 		DESTINATION "${MIKAN_CLIENT_SDK_INSTALL_PATH}/include"
 		COMPONENT ClientSDK)
 
-	# install(FILES) rather than install(TARGETS): the latter falls back to default
-	# destinations under CMAKE_INSTALL_PREFIX for any artifact kind it is not given one for,
-	# which would scatter each library's PUBLIC_HEADER set outside the SDK.
+	# Each target installs a second time here, beside its app tree RUNTIME rule. install(FILES)
+	# keeps the DLL, import library, and PDB rules in one form.
 	foreach(target IN LISTS MIKAN_CLIENT_SDK_LINKED_TARGETS)
 		install(FILES $<TARGET_LINKER_FILE:${target}>
 			DESTINATION "${MIKAN_CLIENT_SDK_INSTALL_PATH}/lib"

@@ -55,7 +55,6 @@ target_link_libraries(MikanRenderer ${MIKAN_RENDERER_REQ_LIBS})
 target_include_directories(MikanRenderer PRIVATE ${MIKAN_RENDERER_INCL_DIRS})
 target_compile_definitions(MikanRenderer PRIVATE MIKAN_RENDERER_EXPORTS)
 set_target_properties(MikanRenderer PROPERTIES FOLDER MikanLibraries)
-set_target_properties(MikanRenderer PROPERTIES PUBLIC_HEADER "${MIKAN_RENDERER_HEADER}")
 
 # Install - copy runtime dependencies to dist folder (for release)
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")

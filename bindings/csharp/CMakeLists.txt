@@ -70,13 +70,12 @@ add_dependencies(MikanCSharpCodeGen MikanClientCodeGen)
 # Run the RefurekuGenerator BEFORE building the project to refresh generated files
 add_dependencies(${PROJECT_NAME} MikanCSharpCodeGen)
 
-# Install
+# Install beside MikanClientTestCSharp, which loads the assembly from its own folder.
+# Clients take it from the client SDK (cmake/ClientSdk.cmake).
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows") 
   install(TARGETS ${PROJECT_NAME} 
 	  EXPORT ${PROJECT_NAME}Config
-      RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH}
-      LIBRARY DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib
-      ARCHIVE DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib)
+      RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH})
 ELSE() #Linux/Darwin
 ENDIF()
 

@@ -80,7 +80,6 @@ add_library(MikanSharedTexture SHARED ${MIKAN_SHARED_TEXTURE_LIBRARY_SRC})
 target_include_directories(MikanSharedTexture PRIVATE ${MIKAN_SHARED_TEXTURE_INCL_DIRS})
 target_link_libraries(MikanSharedTexture PRIVATE ${MIKAN_INTERPROCESS_REQ_LIBS})
 set_target_properties(MikanSharedTexture PROPERTIES FOLDER MikanLibraries)
-set_target_properties(MikanSharedTexture PROPERTIES PUBLIC_HEADER "${MIKAN_SHARED_TEXTURE_PUBLIC}")
 set_target_properties(MikanSharedTexture PROPERTIES CXX_VISIBILITY_PRESET hidden)
 set_target_properties(MikanSharedTexture PROPERTIES C_VISIBILITY_PRESET hidden)
 target_compile_definitions(MikanSharedTexture PRIVATE MIKAN_SHAREDTEXTURE_EXPORTS VK_NO_PROTOTYPES VK_USE_PLATFORM_WIN32_KHR)
@@ -88,9 +87,6 @@ target_compile_definitions(MikanSharedTexture PRIVATE MIKAN_SHAREDTEXTURE_EXPORT
 # Install - copy runtime dependencies to dist folder (for release)
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   install(TARGETS MikanSharedTexture
-      RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH}
-      LIBRARY DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib
-      ARCHIVE DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib
-      PUBLIC_HEADER DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/include)
+      RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH})
 ELSE() #Linux/Darwin
 ENDIF()

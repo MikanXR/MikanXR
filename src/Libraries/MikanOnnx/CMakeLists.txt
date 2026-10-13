@@ -37,4 +37,3 @@ target_link_libraries(MikanOnnx
 )
 
 set_target_properties(MikanOnnx PROPERTIES FOLDER MikanLibraries)
-set_target_properties(MikanOnnx PROPERTIES PUBLIC_HEADER "${MIKAN_ONNX_HEADER}")

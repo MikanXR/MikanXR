@@ -1,6 +1,6 @@
 # Proposal: A separate client SDK tree, and a client SDK release asset
 
-Design agreed. Part 1 is implemented. Three parts, each building on the last:
+Design agreed. Parts 1 and 2 are implemented. Three parts, each building on the last:
 
 - Part 1: install the client SDK to its own tree, `dist/ClientSDK/Win64`, holding only what a client compiles, links, and loads.
 - Part 2: stop shipping headers and import libraries in the app tree, `dist/Win64`.
@@ -125,11 +125,11 @@ CI runs it after the install step. The Ninja CI configuration does not build the
 
 Once clients read from the SDK tree, `dist/Win64/include` and `dist/Win64/lib` have no consumer. The app never compiles or links against its own install. Dropping them:
 
-- [ ] Remove the `PUBLIC_HEADER DESTINATION` and `ARCHIVE DESTINATION` clauses from every library and plugin install rule, keeping `RUNTIME`.
-- [ ] Move the C# bindings' install out of `dist/Win64/lib` into the SDK tree only, since the app does not load them. `MikanClientTestCSharp` is the exception to check: it runs from `dist/Win64` and needs the assembly beside it, which is its own `RUNTIME` rule's concern.
-- [ ] Move `dist/Win64/bindings/typescript` to the SDK tree only. Nothing in `src/` or `resources/` references it, which is confirmed again at implementation time.
+- [x] Remove the `PUBLIC_HEADER DESTINATION` and `ARCHIVE DESTINATION` clauses from every library and plugin install rule, keeping `RUNTIME`.
+- [x] Move the C# bindings' install out of `dist/Win64/lib` into the SDK tree only, since the app does not load them. `MikanClientTestCSharp` is the exception to check: it runs from `dist/Win64` and needs the assembly beside it, which is its own `RUNTIME` rule's concern.
+- [x] Move `dist/Win64/bindings/typescript` to the SDK tree only. Nothing in `src/` or `resources/` references it, which is confirmed again at implementation time.
 
-The end-user app zip and installer then carry no headers or import libraries, and `DiscreteGpuPreference.h` stops shipping anywhere. Part 2 lands together with part 1, since breaking the old `dist/Win64` layout is acceptable, and the consumers move to the SDK tree in the same pass.
+The end-user app zip and installer then carry no headers or import libraries, and `DiscreteGpuPreference.h` stops shipping anywhere. Breaking the old `dist/Win64` layout is acceptable, and the consumers move to the SDK tree as part 2 lands.
 
 ---
 

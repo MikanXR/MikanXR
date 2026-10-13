@@ -85,7 +85,6 @@ IF(WIN32)
     INTERFACE "IMGUI_API=__declspec(dllimport)" "IMGUI_NODE_EDITOR_API=__declspec(dllimport)")
 ENDIF()
 set_target_properties(MikanGUI PROPERTIES FOLDER MikanLibraries)
-set_target_properties(MikanGUI PROPERTIES PUBLIC_HEADER "${MIKAN_GUI_HEADER}")
 
 # Install - copy runtime dependencies to dist folder (for release)
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")

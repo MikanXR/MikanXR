@@ -37,7 +37,6 @@ target_include_directories(MikanMath PRIVATE ${MIKAN_MATH_INCL_DIRS})
 target_link_libraries(MikanMath PRIVATE ${MIKAN_MATH_REQ_LIBS})
 target_compile_definitions(MikanMath PRIVATE MIKAN_MATH_EXPORTS)
 set_target_properties(MikanMath PROPERTIES FOLDER MikanLibraries)
-set_target_properties(MikanMath PROPERTIES PUBLIC_HEADER "${MIKAN_MATH_HEADER}")
 
 # Install - copy runtime dependencies to dist folder (for release)
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")

@@ -38,16 +38,12 @@ add_library(MikanWMFVideo SHARED ${MIKAN_WMF_VIDEO_SRC})
 target_include_directories(MikanWMFVideo PRIVATE ${MIKAN_WMF_VIDEO_INCL_DIRS})
 target_link_libraries(MikanWMFVideo PRIVATE ${MIKAN_WMF_VIDEO_REQ_LIBS})
 set_target_properties(MikanWMFVideo PROPERTIES FOLDER Plugins)
-set_target_properties(MikanWMFVideo PROPERTIES PUBLIC_HEADER "${MIKAN_WMF_VIDEO_HEADER}")
 set_target_properties(MikanWMFVideo PROPERTIES CXX_VISIBILITY_PRESET hidden)
 target_compile_definitions(MikanWMFVideo PRIVATE MIKAN_WMF_VIDEO_EXPORTS)
 
 # Install - copy runtime dependencies to dist folder (for release)
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	install(TARGETS MikanWMFVideo
-		RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH}
-		LIBRARY DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib
-		ARCHIVE DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib
-		PUBLIC_HEADER DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/include)
+		RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH})
 ELSE() #Linux/Darwin
 ENDIF()

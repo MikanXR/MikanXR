@@ -42,7 +42,6 @@ add_library(MikanSteamVR SHARED ${MIKAN_STEAMVR_SRC})
 target_include_directories(MikanSteamVR PRIVATE ${MIKAN_STEAMVR_INCL_DIRS})
 target_link_libraries(MikanSteamVR PRIVATE ${MIKAN_GSTREAMER_REQ_LIBS})
 set_target_properties(MikanSteamVR PROPERTIES FOLDER Plugins)
-set_target_properties(MikanSteamVR PROPERTIES PUBLIC_HEADER "${MIKAN_STEAMVR_HEADER}")
 set_target_properties(MikanSteamVR PROPERTIES CXX_VISIBILITY_PRESET hidden)
 target_compile_definitions(MikanSteamVR PRIVATE MIKAN_STEAMVR_EXPORTS)
 
@@ -50,9 +49,6 @@ target_compile_definitions(MikanSteamVR PRIVATE MIKAN_STEAMVR_EXPORTS)
 # Install - copy runtime dependencies to dist folder (for release)
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	install(TARGETS MikanSteamVR
-		RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH}
-		LIBRARY DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib
-		ARCHIVE DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib
-		PUBLIC_HEADER DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/include)
+		RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH})
 ELSE() #Linux/Darwin
 ENDIF()

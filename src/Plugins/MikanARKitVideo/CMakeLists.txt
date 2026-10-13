@@ -65,16 +65,12 @@ add_library(MikanARKitVideo SHARED ${MIKAN_ARKIT_VIDEO_SRC})
 target_include_directories(MikanARKitVideo PRIVATE ${MIKAN_ARKIT_VIDEO_INCL_DIRS})
 target_link_libraries(MikanARKitVideo PRIVATE ${MIKAN_ARKIT_VIDEO_REQ_LIBS})
 set_target_properties(MikanARKitVideo PROPERTIES FOLDER Plugins)
-set_target_properties(MikanARKitVideo PROPERTIES PUBLIC_HEADER "${MIKAN_ARKIT_VIDEO_HEADER}")
 set_target_properties(MikanARKitVideo PROPERTIES CXX_VISIBILITY_PRESET hidden)
 target_compile_definitions(MikanARKitVideo PRIVATE MIKAN_ARKIT_VIDEO_EXPORTS)
 
 # Install - copy runtime dependencies to dist folder (for release)
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	install(TARGETS MikanARKitVideo
-		RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH}
-		LIBRARY DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib
-		ARCHIVE DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib
-		PUBLIC_HEADER DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/include)
+		RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH})
 ELSE() #Linux/Darwin
 ENDIF()
