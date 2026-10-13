@@ -1,6 +1,6 @@
 # Proposal: A separate client SDK tree, and a client SDK release asset
 
-Design agreed. Parts 1 and 2 are implemented. Three parts, each building on the last:
+Design agreed. Parts 1 and 2 are implemented, and part 3 is implemented pending its dry run. Three parts, each building on the last:
 
 - Part 1: install the client SDK to its own tree, `dist/ClientSDK/Win64`, holding only what a client compiles, links, and loads.
 - Part 2: stop shipping headers and import libraries in the app tree, `dist/Win64`.
@@ -151,11 +151,11 @@ The release build configures with Ninja, which skips the C# bindings. `release.y
 
 ### Steps
 
-- [ ] Add `PACKAGE_CLIENT_SDK` to the packaging targets.
+- [x] Add `PACKAGE_CLIENT_SDK` to the packaging targets.
 - [x] Give the C# install rules the `ClientSDKCSharp` component.
-- [ ] Add the Visual Studio configure, the C# build and component install, the packaging step, and the zip to the artifact and release file lists in `release.yml`.
+- [x] Add the Visual Studio configure, the C# build and component install, the packaging step, and the zip to the artifact and release file lists in `release.yml`.
 - [ ] Run a manual release dry run and unpack the SDK zip into clean checkouts of both consumers to confirm they build.
-- [ ] Update `docs/reference/build.md` for the new packaging target, the C# release step, and the release asset.
+- [x] Update `docs/reference/build.md` for the new packaging target, the C# release step, and the release asset.
 
 ---
 

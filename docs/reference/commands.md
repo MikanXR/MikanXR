@@ -235,10 +235,11 @@ To drop a session the attribution rule wrongly claimed, add its id to the ledger
 ## Install, packaging, and the installer
 
 ```
-cmake --build build --target INSTALL --config Release           # exes/DLLs/bindings/resources into dist\Win64, PDBs into dist\symbols\Win64
-cmake --build build --target PACKAGE_APP --config Release       # zip dist\Win64 into dist\Mikan_<version>_Win64.zip
-cmake --build build --target PACKAGE_SYMBOLS --config Release   # zip dist\symbols\Win64 into dist\Mikan_<version>_Win64_symbols.zip
-cmake --build build --target CREATE_INSTALLER                   # build dist\Mikan_<version>_Win64_Setup.exe (requires Inno Setup 6)
+cmake --build build --target INSTALL --config Release              # exes/DLLs/resources into dist\Win64, PDBs into dist\symbols\Win64, the client SDK into dist\ClientSDK\Win64
+cmake --build build --target PACKAGE_APP --config Release          # zip dist\Win64 into dist\Mikan_<version>_Win64.zip
+cmake --build build --target PACKAGE_SYMBOLS --config Release      # zip dist\symbols\Win64 into dist\Mikan_<version>_Win64_symbols.zip
+cmake --build build --target PACKAGE_CLIENT_SDK --config Release   # zip dist\ClientSDK\Win64 into dist\Mikan_<version>_Win64_ClientSDK.zip
+cmake --build build --target CREATE_INSTALLER                      # build dist\Mikan_<version>_Win64_Setup.exe (requires Inno Setup 6)
 ```
 
 The client SDK installs with `INSTALL`, or alone, which is the quick loop while iterating on the client API. The consumer build then checks the installed tree is complete:
@@ -261,9 +262,9 @@ Versions are calendar dates. Set `MIKAN_RELEASE_VERSION_YEAR`, `MONTH`, and `DAY
 git tag v2026.09.14 && git push origin v2026.09.14
 ```
 
-`.github/workflows/release.yml` fails unless the tag matches the header. It builds Release with GStreamer on, runs both suites and the crash check, and drafts a GitHub release carrying the app zip, the setup exe, and the symbols zip. Publish the draft after checking the assets. Every published build keeps its symbols zip: a crash dump from that build cannot be read without it.
+`.github/workflows/release.yml` fails unless the tag matches the header. It builds Release with GStreamer on, runs both suites and the crash check, and drafts a GitHub release carrying the app zip, the setup exe, the symbols zip, and the client SDK zip. Publish the draft after checking the assets. Every published build keeps its symbols zip: a crash dump from that build cannot be read without it.
 
-To try the release build without a tag, run it by hand. It builds, tests, and packages the same way, uploads the three files as the `MikanXR-Release` workflow artifact, and skips the tag check and the draft release:
+To try the release build without a tag, run it by hand. It builds, tests, and packages the same way, uploads the four files as the `MikanXR-Release` workflow artifact, and skips the tag check and the draft release:
 
 ```
 gh workflow run release.yml

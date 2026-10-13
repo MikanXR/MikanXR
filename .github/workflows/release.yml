@@ -1,7 +1,7 @@
 name: Release
 
 # Pushing a vYYYY.MM.DD tag builds the shipping configuration and drafts a GitHub release
-# from it. The draft is never published automatically: the release notes and the three
+# from it. The draft is never published automatically: the release notes and the four
 # attached artifacts get a human read before anyone can download them.
 #
 # A manual run is a dry run: it builds, tests, packages and uploads the same files as a
@@ -326,6 +326,58 @@ jobs:
           fi
 
       # ---------------------------------------------------------------
+      # The client SDK's C# bindings. CMake builds C# only under a
+      # Visual Studio generator, which the Ninja build above cannot be,
+      # so a second build tree configures with one and builds just
+      # MikanClientCSharp. Its ClientSDKCSharp component adds the
+      # assembly and its references to the dist\ClientSDK\Win64 tree
+      # the install step wrote, leaving that tree's native DLLs, whose
+      # PDBs are the ones in the symbols zip, untouched. The C# target
+      # depends on the C# codegen, so this tree compiles the code
+      # generator and the client libraries again, outside sccache.
+      # ---------------------------------------------------------------
+      - name: Generate the C# bindings project files
+        shell: cmd
+        run: |
+          set DEPS_ROOT_PATH=%GITHUB_WORKSPACE%\deps
+          set THIRDPARTY_ROOT_PATH=%GITHUB_WORKSPACE%\thirdparty
+
+          cmake -S . -B build-csharp -G "Visual Studio 18 2026" -A x64 ^
+            -DCEF_ROOT="%DEPS_ROOT_PATH%/cef/cef_binary_145.0.27+g4ddda2e+chromium-145.0.7632.117_windows64" ^
+            -DOpenCV_DIR=%DEPS_ROOT_PATH%\opencv\build ^
+            -DOPENVR_ROOT_DIR=%THIRDPARTY_ROOT_PATH%\openvr ^
+            -DOPENVR_HEADERS_ROOT_DIR=%THIRDPARTY_ROOT_PATH%\openvr\include ^
+            -DSDL2_LIBRARY="%DEPS_ROOT_PATH%\SDL2-2.30.10\lib\x64\sdl2.lib" ^
+            -DSDL2_INCLUDE_DIR="%DEPS_ROOT_PATH%\SDL2-2.30.10\include" ^
+            -DSDL2TTF_LIBRARY="%DEPS_ROOT_PATH%\SDL2_ttf-2.24.0\lib\x64\sdl2_ttf.lib" ^
+            -DSDL2TTF_INCLUDE_DIR="%DEPS_ROOT_PATH%\SDL2_ttf-2.24.0\include" ^
+            -DSDL2_IMAGE_LIBRARY="%DEPS_ROOT_PATH%\SDL2_image-2.8.8\lib\x64\sdl2_image.lib" ^
+            -DSDL2_IMAGE_INCLUDE_DIR="%DEPS_ROOT_PATH%\SDL2_image-2.8.8\include" ^
+            -DCMAKE_PREFIX_PATH="%DEPS_ROOT_PATH%\easy_profiler\lib\cmake\easy_profiler" ^
+            -DNUGET_PATH="%DEPS_ROOT_PATH%" ^
+            -DMIKAN_WITH_GSTREAMER=OFF ^
+            -DCMAKE_UNITY_BUILD=ON
+
+          if %ERRORLEVEL% NEQ 0 (
+            echo C# bindings configure failed
+            exit /b 1
+          )
+
+      - name: Build and install the C# bindings
+        shell: cmd
+        run: |
+          cmake --build build-csharp --target MikanClientCSharp --config Release --parallel
+          if %ERRORLEVEL% NEQ 0 (
+            echo MikanClientCSharp build failed
+            exit /b 1
+          )
+          cmake --install build-csharp --config Release --component ClientSDKCSharp
+          if %ERRORLEVEL% NEQ 0 (
+            echo C# bindings install failed
+            exit /b 1
+          )
+
+      # ---------------------------------------------------------------
       # The packaging targets zip what the install step already wrote,
       # so they are cheap and order-independent among themselves.
       # ---------------------------------------------------------------
@@ -347,6 +399,15 @@ jobs:
             exit /b 1
           )
 
+      - name: Package client SDK
+        shell: cmd
+        run: |
+          cmake --build build --target PACKAGE_CLIENT_SDK
+          if %ERRORLEVEL% NEQ 0 (
+            echo PACKAGE_CLIENT_SDK failed
+            exit /b 1
+          )
+
       - name: Build installer
         shell: cmd
         run: |
@@ -358,7 +419,7 @@ jobs:
 
       # Upload the payload as a workflow artifact as well as attaching it
       # to the release, so a failure in the draft step still leaves the
-      # three files somewhere they can be inspected.
+      # four files somewhere they can be inspected.
       - name: Upload release artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -368,6 +429,7 @@ jobs:
             dist/Mikan_*_Win64.zip
             dist/Mikan_*_Win64_symbols.zip
             dist/Mikan_*_Win64_Setup.exe
+            dist/Mikan_*_Win64_ClientSDK.zip
           if-no-files-found: ignore
           retention-days: 14
 
@@ -382,3 +444,4 @@ jobs:
             dist/Mikan_*_Win64.zip
             dist/Mikan_*_Win64_symbols.zip
             dist/Mikan_*_Win64_Setup.exe
+            dist/Mikan_*_Win64_ClientSDK.zip

@@ -17,6 +17,7 @@
 # the SDK alone:
 #
 #   cmake --build build --target INSTALL_CLIENT_SDK --config Release
+#   cmake --build build --target PACKAGE_CLIENT_SDK                    # zip the installed SDK
 #
 # Every rule belongs to one of two components. ClientSDK clears the tree and installs
 # everything but the C# bindings. ClientSDKCSharp adds the C# bindings to an existing tree, so
@@ -207,4 +208,15 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 		add_dependencies(INSTALL_CLIENT_SDK MikanClientCSharp)
 	endif()
 	set_target_properties(INSTALL_CLIENT_SDK PROPERTIES FOLDER "Packaging")
+
+	# Zips whatever the last SDK install wrote, from inside the tree so include/, lib/, and
+	# bin/ sit at the root of the archive. Like PACKAGE_APP, it builds and installs nothing.
+	file(MAKE_DIRECTORY "${MIKAN_CLIENT_SDK_INSTALL_PATH}")
+	add_custom_target(PACKAGE_CLIENT_SDK
+		COMMAND ${CMAKE_COMMAND} -E tar cf
+			"${MIKAN_ROOT_INSTALL_PATH}/Mikan_${MIKAN_VERSION_STRING}_${ARCH_LABEL}_ClientSDK.zip"
+			--format=zip -- .
+		WORKING_DIRECTORY "${MIKAN_CLIENT_SDK_INSTALL_PATH}"
+		COMMENT "Packaging the installed client SDK")
+	set_target_properties(PACKAGE_CLIENT_SDK PROPERTIES FOLDER "Packaging")
 ENDIF()
