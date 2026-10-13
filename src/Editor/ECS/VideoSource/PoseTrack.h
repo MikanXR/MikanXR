@@ -29,7 +29,10 @@ class PoseTrack
 {
 public:
 	inline static const std::string k_formatName= "mikan-pose-track";
-	static constexpr int k_supportedVersion= 1;
+	// Version 2 added the optional depth sidecar header; the frame records are
+	// unchanged, so both versions load through the same path
+	static constexpr int k_minSupportedVersion= 1;
+	static constexpr int k_maxSupportedVersion= 2;
 
 	bool loadFromFile(const std::filesystem::path& path);
 	// Validates the header and every frame, and sorts the frames by time. On
@@ -41,6 +44,13 @@ public:
 	const std::string& getSessionId() const;
 	int getImageWidth() const;
 	int getImageHeight() const;
+	// Whether <stem>.depth.bin and <stem>.conf.bin were recorded beside the
+	// media: one record per frame, indexed like the frames, sized as below
+	bool hasDepthTrack() const;
+	int getDepthWidth() const;
+	int getDepthHeight() const;
+	// Millimetres per depth unit in the uint16 depth records
+	double getDepthUnitMm() const;
 	size_t getFrameCount() const;
 	const PoseTrackFrame& getFrame(size_t index) const;
 
@@ -56,6 +66,9 @@ private:
 	std::string m_sessionId;
 	int m_imageWidth= 0;
 	int m_imageHeight= 0;
+	int m_depthWidth= 0;
+	int m_depthHeight= 0;
+	double m_depthUnitMm= 0.0;
 	std::vector<PoseTrackFrame> m_frames;
 	bool m_bIsLoaded= false;
 };

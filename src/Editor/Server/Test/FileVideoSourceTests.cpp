@@ -83,13 +83,19 @@ bool centrePixelMatches(const cv::Mat& frame, const cv::Scalar& expected, int to
 	return true;
 }
 
-std::string makePoseTrackJson(const std::string& format, int version, const std::string& frames)
+// extraHeader is spliced in after the image size, for the optional version 2 keys
+std::string makePoseTrackJson(const std::string& format, int version, const std::string& frames,
+							  const std::string& extraHeader= "")
 {
 	std::string json= "{";
 	json+= "\"format\": \"" + format + "\", ";
 	json+= "\"version\": " + std::to_string(version) + ", ";
 	json+= "\"session_id\": \"7c1d1a2e-1111-4a4a-9b9b-0123456789ab\", ";
 	json+= "\"image_width\": 1920, \"image_height\": 1440, ";
+	if (!extraHeader.empty())
+	{
+		json+= extraHeader + ", ";
+	}
 	json+= "\"first_capture_timestamp_us\": 123456789";
 	if (!frames.empty())
 	{
@@ -383,15 +389,50 @@ bool file_video_source_test_pose_track()
 			  && unsortedTrack.getFrame(1).timeUs == 33333 && unsortedTrack.getFrame(2).timeUs == 66666;
 	assert(success);
 
+	// A version 1 track carries no depth
+	success&= !track.hasDepthTrack() && track.getDepthWidth() == 0 && track.getDepthUnitMm() == 0.0;
+	assert(success);
+
+	// Version 2 loads with or without the depth header, which is all it adds
+	PoseTrack v2Track;
+	success&= v2Track.loadFromJSON(parsePoseTrackJson(makePoseTrackJson(PoseTrack::k_formatName, 2, sortedFrames)));
+	assert(success);
+	success&= v2Track.isLoaded() && v2Track.getFrameCount() == 3 && !v2Track.hasDepthTrack();
+	assert(success);
+	success&= v2Track.loadFromJSON(
+		parsePoseTrackJson(makePoseTrackJson(PoseTrack::k_formatName, 2, sortedFrames,
+											 "\"depth_width\": 256, \"depth_height\": 192, \"depth_unit_mm\": 1")));
+	assert(success);
+	success&= v2Track.hasDepthTrack() && v2Track.getDepthWidth() == 256 && v2Track.getDepthHeight() == 192
+			  && v2Track.getDepthUnitMm() == 1.0;
+	assert(success);
+	// The unit defaults to millimetres when only the size is given
+	success&= v2Track.loadFromJSON(parsePoseTrackJson(
+		makePoseTrackJson(PoseTrack::k_formatName, 2, sortedFrames, "\"depth_width\": 256, \"depth_height\": 192")));
+	assert(success);
+	success&= v2Track.hasDepthTrack() && v2Track.getDepthUnitMm() == 1.0;
+	assert(success);
+	// Half a depth size, or a non-positive one, is a structural error
+	success&= !v2Track.loadFromJSON(
+		parsePoseTrackJson(makePoseTrackJson(PoseTrack::k_formatName, 2, sortedFrames, "\"depth_width\": 256")));
+	assert(success);
+	success&= !v2Track.isLoaded() && !v2Track.hasDepthTrack();
+	assert(success);
+	success&= !v2Track.loadFromJSON(parsePoseTrackJson(
+		makePoseTrackJson(PoseTrack::k_formatName, 2, sortedFrames, "\"depth_width\": 0, \"depth_height\": 192")));
+	assert(success);
+
 	// A bad header leaves the track empty
 	PoseTrack badTrack;
 	success&= !badTrack.loadFromJSON(parsePoseTrackJson(makePoseTrackJson("not-a-pose-track", 1, sortedFrames)));
 	assert(success);
 	success&= !badTrack.isLoaded() && badTrack.getFrameCount() == 0;
 	assert(success);
-	success&= !badTrack.loadFromJSON(parsePoseTrackJson(makePoseTrackJson(PoseTrack::k_formatName, 2, sortedFrames)));
+	success&= !badTrack.loadFromJSON(parsePoseTrackJson(makePoseTrackJson(PoseTrack::k_formatName, 3, sortedFrames)));
 	assert(success);
 	success&= !badTrack.isLoaded();
+	assert(success);
+	success&= !badTrack.loadFromJSON(parsePoseTrackJson(makePoseTrackJson(PoseTrack::k_formatName, 0, sortedFrames)));
 	assert(success);
 	success&= !badTrack.loadFromJSON(parsePoseTrackJson(makePoseTrackJson(PoseTrack::k_formatName, 1, "")));
 	assert(success);
