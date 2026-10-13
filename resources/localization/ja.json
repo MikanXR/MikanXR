@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1064,
+		"stringCount": 1066,
 		"translatedCount": 899,
 		"reviewedCount": 0
 	},
@@ -99,6 +99,7 @@
 		"deleteConfirmFmt": "%s を削除しますか?",
 		"deleteConfirmTitle": "削除の確認",
 		"deleteRefusedFmt": "'%s' は使用中のため削除できません。使用元:",
+		"depthTrackFilterDescription": "Depth Track Files (*.depth.bin, *.conf.bin)",
 		"empty": "このフォルダーにアセットはありません",
 		"folderCompositorMaterials": "コンポジターマテリアル",
 		"folderCompositors": "コンポジターグラフ",
@@ -118,6 +119,7 @@
 		"importUnsupportedFileFmt": "'%s' はこのフォルダーでサポートされていないファイル形式です",
 		"loadCompositorGraphDialogTitle": "コンポジターグラフを読み込む",
 		"loadCompositorMaterialDialogTitle": "コンポジターマテリアルを読み込む",
+		"loadDepthTrackDialogTitle": "Load Depth Track",
 		"loadFontDialogTitle": "フォントを読み込む",
 		"loadMediaDialogTitle": "Load Movie or Image",
 		"loadMovieDialogTitle": "Load Movie",

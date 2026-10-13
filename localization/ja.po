@@ -500,6 +500,11 @@ msgid "'%s' is still in use and cannot be deleted. Used by:"
 msgstr "'%s' は使用中のため削除できません。使用元:"
 
 #. Section: assets
+msgctxt "assets.depthTrackFilterDescription"
+msgid "Depth Track Files (*.depth.bin, *.conf.bin)"
+msgstr ""
+
+#. Section: assets
 #, fuzzy
 msgctxt "assets.empty"
 msgid "No assets in this folder"
@@ -611,6 +616,11 @@ msgstr "コンポジターグラフを読み込む"
 msgctxt "assets.loadCompositorMaterialDialogTitle"
 msgid "Load Compositor Material"
 msgstr "コンポジターマテリアルを読み込む"
+
+#. Section: assets
+msgctxt "assets.loadDepthTrackDialogTitle"
+msgid "Load Depth Track"
+msgstr ""
 
 #. Section: assets
 #, fuzzy

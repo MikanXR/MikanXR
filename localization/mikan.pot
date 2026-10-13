@@ -427,6 +427,11 @@ msgid "'%s' is still in use and cannot be deleted. Used by:"
 msgstr ""
 
 #. Section: assets
+msgctxt "assets.depthTrackFilterDescription"
+msgid "Depth Track Files (*.depth.bin, *.conf.bin)"
+msgstr ""
+
+#. Section: assets
 msgctxt "assets.empty"
 msgid "No assets in this folder"
 msgstr ""
@@ -523,6 +528,11 @@ msgstr ""
 #. Section: assets
 msgctxt "assets.loadCompositorMaterialDialogTitle"
 msgid "Load Compositor Material"
+msgstr ""
+
+#. Section: assets
+msgctxt "assets.loadDepthTrackDialogTitle"
+msgid "Load Depth Track"
 msgstr ""
 
 #. Section: assets

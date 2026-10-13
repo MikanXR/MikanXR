@@ -17,6 +17,7 @@
 #include "PathUtils.h"
 #include "PixelContentAssetReference.h"
 #include "MovieAssetReference.h"
+#include "DepthTrackAssetReference.h"
 #include "PoseTrackAssetReference.h"
 #include "ProjectManager.h"
 #include "ScriptAssetReference.h"
@@ -124,14 +125,15 @@ const std::vector<ProjectAssetFolderDesc>& ProjectAssetCatalog::getFolderDescs()
 							 AssetReferenceFactory::createFactory<PoseTrackAssetReferenceFactory>()};
 		s_descs.push_back(textures);
 
-		// Recorded takes and the pose tracks a phone writes next to them
+		// Recorded takes and the pose and depth sidecars a phone writes next to them
 		ProjectAssetFolderDesc movies;
 		movies.id= "movies";
 		movies.locKey= "assets.folderMovies";
 		movies.projectSubfolder= "movies";
 		movies.bPreviewTiles= true;
 		movies.factories= {AssetReferenceFactory::createFactory<MovieAssetReferenceFactory>(),
-						   AssetReferenceFactory::createFactory<PoseTrackAssetReferenceFactory>()};
+						   AssetReferenceFactory::createFactory<PoseTrackAssetReferenceFactory>(),
+						   AssetReferenceFactory::createFactory<DepthTrackAssetReferenceFactory>()};
 		s_descs.push_back(movies);
 
 		ProjectAssetFolderDesc fonts;

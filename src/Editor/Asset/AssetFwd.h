@@ -52,3 +52,7 @@ using MovieAssetReferenceConstPtr= std::shared_ptr<const MovieAssetReference>;
 class PoseTrackAssetReference;
 using PoseTrackAssetReferencePtr= std::shared_ptr<PoseTrackAssetReference>;
 using PoseTrackAssetReferenceConstPtr= std::shared_ptr<const PoseTrackAssetReference>;
+
+class DepthTrackAssetReference;
+using DepthTrackAssetReferencePtr= std::shared_ptr<DepthTrackAssetReference>;
+using DepthTrackAssetReferenceConstPtr= std::shared_ptr<const DepthTrackAssetReference>;

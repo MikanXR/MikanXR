@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1064,
-		"translatedCount": 1064,
-		"reviewedCount": 1064
+		"stringCount": 1066,
+		"translatedCount": 1066,
+		"reviewedCount": 1066
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -99,6 +99,7 @@
 		"deleteConfirmFmt": "Delete '%s'?",
 		"deleteConfirmTitle": "Confirm Delete",
 		"deleteRefusedFmt": "'%s' is still in use and cannot be deleted. Used by:",
+		"depthTrackFilterDescription": "Depth Track Files (*.depth.bin, *.conf.bin)",
 		"empty": "No assets in this folder",
 		"folderCompositorMaterials": "Compositor Materials",
 		"folderCompositors": "Compositor Graphs",
@@ -118,6 +119,7 @@
 		"importUnsupportedFileFmt": "'%s' is not a supported file type for this folder",
 		"loadCompositorGraphDialogTitle": "Load Compositor Graph",
 		"loadCompositorMaterialDialogTitle": "Load Compositor Material",
+		"loadDepthTrackDialogTitle": "Load Depth Track",
 		"loadFontDialogTitle": "Load Font",
 		"loadMediaDialogTitle": "Load Movie or Image",
 		"loadMovieDialogTitle": "Load Movie",
