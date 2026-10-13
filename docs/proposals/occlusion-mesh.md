@@ -1,6 +1,6 @@
 # Proposal: Occlusion mesh from MikanARStreamer LiDAR recordings
 
-Design decided, implementation not started. This document is the handoff: it carries the decision, the evidence behind it, what already exists on both sides, the pieces in order, and the open questions. A reader starting from it should not need the conversation that produced it.
+Design decided, Part 1 implemented. This document is the handoff: it carries the decision, the evidence behind it, what already exists on both sides, the pieces in order, and the open questions. A reader starting from it should not need the conversation that produced it.
 
 ## Goal
 
@@ -10,7 +10,7 @@ A character composited into the video must be occluded by real furniture it walk
 
 The occlusion mesh is built from the iPhone's LiDAR, recorded by MikanARStreamer alongside the video it already records: ARKit `sceneDepth` (256x192, metres), its confidence map, and the per-frame pose and intrinsics the pose track already carries. A TSDF fuses the sweep into one mesh. No learned depth model is involved. The mesh is a coarse depth prior: at composite time it is rendered from the tracked camera into a depth map, and an image-space refinement step snaps the resulting mask to the video frame's edges within a band of a few pixels. Silhouette quality is decided in that last step and by pose accuracy, not by mesh detail.
 
-The decision rests on a comparison run in the ReconstructionExperiments repo (`C:\GitHub\BrendanWalker\ReconstructionExperiments`, see its README "Decision" and `NOTES.md`), on ten Stray Scanner captures (one hotel room, nine cluttered tabletops) with four candidate depth models (Prompt Depth Anything, Depth Anything 3, MapAnything, MILo) against a LiDAR-only baseline, all fused by the same TSDF and scored against held-out LiDAR frames:
+The decision rests on a comparison run in the ReconstructionExperiments repo (`D:\Github\git-MikanXR\ReconstructionExperiments`, see its README "Decision" and `NOTES.md`), on ten Stray Scanner captures (one hotel room, nine cluttered tabletops) with four candidate depth models (Prompt Depth Anything, Depth Anything 3, MapAnything, MILo) against a LiDAR-only baseline, all fused by the same TSDF and scored against held-out LiDAR frames:
 
 - No model beat the LiDAR baseline on any capture. Means over ten: baseline 1.87 cm MAE and 8.7 px edge distance, the best model (MapAnything with LiDAR scale alignment) 1.88 cm and 8.4 px at 10 GB of VRAM and 145 s per capture, PromptDA 2.6 cm, DA3 8.0 cm, MILo worst and non-commercial.
 - The models' one visible gain, crisper small-object outlines at 8 mm voxels, is a depth-resolution effect, and fine-voxel LiDAR fusion recovers part of it for free.
@@ -30,7 +30,7 @@ On the MikanXR side ([videosources.md](../reference/videosources.md), [automatio
 - Model stencils (`ModelStencilComponent`) are OBJ meshes placed in stage space. `DepthMaskNode` renders the stencils in a compositor graph into a linear depth texture, and `WriteDepthNode` puts that depth into the working buffer so later layers depth test against it. The depth proxy capture (`AppStage_DepthMeshCapture`) already registers a captured mesh as a model stencil, parented under the active scene, with the OBJ written to `<project>/models/`.
 - Coordinate conventions, the single OpenCV-to-Mikan conversion points, and the Y-flip story are in [conventions.md](../reference/conventions.md). The depth proxy code converts model output (OpenCV camera axes) to Mikan camera space at exactly one place and documents why.
 
-On the experiments side (`C:\GitHub\BrendanWalker\ReconstructionExperiments`):
+On the experiments side (`D:\Github\git-MikanXR\ReconstructionExperiments`):
 
 - `recon/capture.py` loads Stray Scanner captures (poses are camera-to-world with OpenCV camera axes, no flip needed; verified by reprojecting LiDAR between frames to millimetres).
 - `recon/fusion.py` is the fusion reference: a dense GPU TSDF over the training LiDAR's bounding box, 1.5 cm voxels and 6 cm truncation by default (8 mm in `configs/fine.yaml` for tabletop scale), per-pixel weights from confidence (0, 0.5, 1 for ARKit 0, 1, 2), a relative-gradient cull of flying pixels at depth discontinuities, nearest-sign fill of unobserved voxels before marching cubes (without it every surface grows a spurious back face two voxels behind it), and connected-component island removal.
@@ -42,18 +42,21 @@ In dependency order. Each is a separate change and a separate review.
 
 ### Part 1: MikanARStreamer records `sceneDepth` and confidence
 
-- [ ] Enable `frameSemantics = [.sceneDepth]` on the session when recording (raw, not `.smoothedSceneDepth`, which blends across time and lags under motion). Confirm `isAutoFocusEnabled = false` during a take so intrinsics stay stable, if it is not already.
-- [ ] Per `ARFrame` the recorder accepts, copy `frame.sceneDepth.depthMap` (256x192 Float32 metres) and `frame.sceneDepth.confidenceMap` (256x192 UInt8, 0 low / 1 medium / 2 high) out of their pixel buffers, respecting `CVPixelBufferGetBytesPerRow`, and release the frame immediately. Write only for frames the encoder actually wrote, on the same path that appends the pose record, so the three stay in lockstep.
-- [ ] Sidecar layout, proposed: `<stem>.depth.bin` (uint16 millimetres, 256x192, one fixed-size record per written frame, zero where invalid) and `<stem>.conf.bin` (uint8, same shape and order), with the pose track bumped to version 2 carrying `depth_width`, `depth_height`, and `depth_unit_mm`. Record index in the binaries equals the index into `frames` in the pose track. uint16 millimetres halves the Float32 size and matches Stray Scanner, so the experiments repo loader needs one small addition. About 150 KB per frame, 9 MB/s at 60 fps, which the phone writes without trouble; compression can come later if takes get long.
-- [ ] Depth intrinsics are the colour intrinsics scaled by `256 / image_width` and `192 / image_height`. Store nothing extra; derive at load, as the experiments loader does.
-- [ ] Captures panel uploads the two new sidecars through the existing asset route. `AssetUploadRequestHandler` judges files by extension against the folder's factories, so the `movies` folder needs to accept `.depth.bin` and `.conf.bin` beside `.pose.json`. The same-name replacement rule already keeps a re-sent take together.
-- [ ] `record` over the debug channel reports whether depth is being recorded, and `stats` gains a depth-frames-written counter, so a drive script can verify a take without pulling it.
-- [ ] Verification before anything downstream: pull a take, load it with the experiments repo loader (Part 2), and run `check_pose_consistency` on it. Correct recording reprojects LiDAR between frames thirty apart to a few millimetres median. This step is blocked until a new streamer build can be tested on a device.
+Done. The format is documented in [videosources.md](../reference/videosources.md) ("Pose tracks" and "Depth tracks") and the streamer README. What was decided while building it:
+
+- The session runs with `.sceneDepth` and autofocus off only for the span of a video take (`ARCaptureController.sceneDepthEnabled`, re-running the configuration without a tracking reset). Streaming and the marker reference take never ask for the LiDAR.
+- The depth and confidence buffers are copied on ARKit's thread into a `DepthFrame` (uint16 millimetres, uint8 confidence) so the `ARFrame` is released at once; only the colour buffer travels on as a reference.
+- The sidecar files are created by the first depth frame, not at start. Frames the movie wrote before the sensor delivered are backfilled as zero records, so record index always equals pose index, and a take whose sensor never delivers leaves no sidecar and no `depth_*` keys.
+- The editor's `PoseTrack` loader accepts versions 1 and 2 (the original loader rejected anything but 1, so the bump alone would have broken playback). The editor's own recorder still writes version 1.
+- The `movies` folder gained `DepthTrackAssetReference` for the two files, so the upload route accepts them.
+- `record` and `record start` reply with `depth on|off`, `record stop` adds the sidecar paths and frame counts, `stats` carries `depthFramesWritten`, and `captures list` ends each line with `depth|-`.
+
+- Verified on a device: a 20 s room take (615 frames, 612 with depth, the first three zero records from sensor warm-up) uploaded whole and reprojects LiDAR between frames thirty apart at 1.7 to 5.8 mm median per pair, 5.3 mm over the take (`tools/check_take.py` in the experiments repo). The first pair has nothing to compare because the warm-up frames carry no high-confidence depth.
 
 ### Part 2: Validate takes in the experiments harness before any C++
 
-- [ ] Add a Mikan take loader to `recon/capture.py` (mp4 plus `.pose.json` plus the two binaries), producing the same `Capture` object as the Stray Scanner loader. The transform in the pose track is row-major camera-to-world in ARKit world space with ARKit camera axes (+Y up, +Z toward the viewer), so the loader applies the one 180 degree rotation about X that Stray Scanner bakes in, and nothing else. Verify with the reprojection check, not by eye.
-- [ ] Run `lidar_tsdf` on a few takes (tabletop and room). Expect numbers in the range of the Stray Scanner captures: under 1 cm MAE against held-out frames at tabletop scale, 1.5 to 2 cm at room scale. A take that does worse has a recording problem, which is cheaper to find here than in the editor.
+- [x] Add a Mikan take loader to `recon/capture.py` (mp4 plus `.pose.json` plus the two binaries), producing the same `Capture` object as the Stray Scanner loader. The transform in the pose track is row-major camera-to-world in ARKit world space with ARKit camera axes (+Y up, +Z toward the viewer), so the loader applies the one 180 degree rotation about X that Stray Scanner bakes in, and nothing else. `load_mikan_take(<take>.mp4)`, and `run.py --capture <path to the mp4>` picks it up. Verified by the reprojection check above, which would read tens of centimetres with the flip wrong.
+- [ ] Run `lidar_tsdf` on a few takes (tabletop and room). Expect numbers in the range of the Stray Scanner captures: under 1 cm MAE against held-out frames at tabletop scale, 1.5 to 2 cm at room scale. A take that does worse has a recording problem, which is cheaper to find here than in the editor. The first take (a 20 s room sweep, 1.38 cm MAE, 10.2 edge px, 99.8 percent completeness at 1.5 cm voxels, see the experiments repo `NOTES.md`) is in range. A tabletop take and a longer loop are still to do.
 
 ### Part 3: Pose refinement of the sweep
 

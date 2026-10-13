@@ -104,10 +104,11 @@ A pose track is the JSON sidecar the MikanARStreamer app writes beside every mov
 
 ```
 {
-  "format": "mikan-pose-track", "version": 1,
+  "format": "mikan-pose-track", "version": 2,
   "session_id": "<one UUID per ARKit world origin>",
   "image_width": 1920, "image_height": 1440,
   "first_capture_timestamp_us": 123456789,
+  "depth_width": 256, "depth_height": 192, "depth_unit_mm": 1,
   "frames": [
     {"time_us": 0, "capture_timestamp_us": 123456789,
      "transform": [16 floats, row-major camera-to-world in ARKit world space],
@@ -117,6 +118,12 @@ A pose track is the JSON sidecar the MikanARStreamer app writes beside every mov
 ```
 
 `time_us` is relative to the first appended frame and equals the container's presentation time, because the phone stamps each sample's presentation time with its capture clock and the mp4 rebases to zero. A photo's track has one frame at zero. The phone records a pose only for frames it actually wrote, so the track never drifts from the file. The transform is stored row-major like `ARKitPoseInRTPPayload` and transposed at load. Frames are sorted by time on load.
+
+The loader accepts versions 1 and 2. Version 2 adds the three optional `depth_*` keys and nothing else, so a version 1 track and a version 2 track without them load identically. The editor's own recorder writes version 1, since nothing it records carries depth. The depth keys declare the two binary sidecars below, and `PoseTrack::hasDepthTrack` reports whether they are present. `depth_width` and `depth_height` come together or the track is rejected. `depth_unit_mm` defaults to 1 when absent.
+
+### Depth tracks
+
+A video take recorded on a LiDAR phone also carries `<stem>.depth.bin` and `<stem>.conf.bin`, the ARKit `sceneDepth` and its confidence map for every frame of the movie. Both are headerless arrays of fixed-size records, one record per movie frame, in the same order as the pose track's `frames`: record `i` describes frame `i` and pose `i`. A depth record is `depth_width * depth_height` little-endian uint16 values, each `depth_unit_mm` millimetres, 0 where the sensor reported nothing. A confidence record is the same count of uint8 values, ARKit's 0 low, 1 medium, 2 high. The depth camera's intrinsics are the frame's colour intrinsics scaled by `depth_width / image_width` and `depth_height / image_height`. A frame that reached the movie before the sensor delivered is a zero record, so the files never fall out of step with the pose track. The phone records the raw per-frame depth rather than ARKit's temporally smoothed variant, and holds autofocus off for the span of the take so the recorded intrinsics stay stable. Nothing in the editor reads the depth yet: the `movies` folder accepts the two files (`DepthTrackAssetReference`, `src/Editor/Asset/DepthTrackAssetReference.h`) so a take arrives whole, and the occlusion mesh work in [occlusion-mesh.md](../proposals/occlusion-mesh.md) is their consumer.
 
 The component matches each decoded frame to its pose by nearest `time_us` within half a frame period. Frame index is never used: ffmpeg's frame counter is unreliable after a seek. On a hit it publishes the pose through `IFrameCoupledPoseProvider` with intrinsics built from the record's pinhole values (`createMonoIntrinsicsFromPinhole`), and on a miss it keeps the previous pose. The frame sequence it reports is a delivery counter that never resets on seek, loop, or stop, and unlike the ARKit source it never clears the alignment offset on a backwards sequence: a recording cannot restart its tracking session.
 
@@ -130,7 +137,7 @@ The MikanARStreamer app's Captures panel sends a take and its sidecar to the edi
 POST /assets/upload?folder=<folderId>&name=<fileName>    body: the raw file bytes
 ```
 
-`AssetUploadRequestHandler` (`src/Editor/Server/AssetUploadRequestHandler.h`) owns the route. A movie lands in `movies`, a photo in `textures`, and a `.pose.json` goes to its media's folder, since both folders accept pose tracks. The file type is judged by the name's extension against the folder's asset factories, the same gate the Assets panel's Add button applies. A file of the same name is replaced in place rather than given the numeric suffix `ProjectAssetCatalog::importAsset` applies to a colliding import: the same name is the same take sent again, and a suffix would part a take from its sidecar. Replacing a take a `FileVideoSourceComponent` is playing fails with 409, since the reader holds the file open. The reply is `{"storedPath": "movies/take.mp4", "replaced": false}` on 200 and `{"error": "..."}` otherwise.
+`AssetUploadRequestHandler` (`src/Editor/Server/AssetUploadRequestHandler.h`) owns the route. A movie lands in `movies`, a photo in `textures`, and a `.pose.json` goes to its media's folder, since both folders accept pose tracks. The `.depth.bin` and `.conf.bin` depth tracks follow their movie into `movies`. The file type is judged by the name's extension against the folder's asset factories, the same gate the Assets panel's Add button applies. A file of the same name is replaced in place rather than given the numeric suffix `ProjectAssetCatalog::importAsset` applies to a colliding import: the same name is the same take sent again, and a suffix would part a take from its sidecar. Replacing a take a `FileVideoSourceComponent` is playing fails with 409, since the reader holds the file open. The reply is `{"storedPath": "movies/take.mp4", "replaced": false}` on 200 and `{"error": "..."}` otherwise.
 
 The body is read on the connection thread and written to a hidden temporary file beside its destination, and only the validation and the final move into place cross the main thread, so an upload never stalls a frame. The server buffers a body in memory before the route sees it, so one upload transiently costs a few times its size in RAM, and a request has 300 s to arrive in full before the connection is dropped without a reply.
 
