@@ -18,6 +18,7 @@
 #include "ObjectSystemColliderQueries.h"
 #include "InputManager.h"
 #include "IEditorWindow.h"
+#include "ISelectionOutlineSource.h"
 #include "ProjectManager.h"
 #include "MathTypeConversion.h"
 #include "MathUtility.h"
@@ -1101,6 +1102,48 @@ SelectionComponentPtr EditorObjectSystem::getSelectedSceneActor() const
 	}
 
 	return currentSelection;
+}
+
+void EditorObjectSystem::getSelectionOutlineTargets(const RenderableObjectFilter& objectFilter,
+													std::vector<SelectionOutlineTarget>& outTargets) const
+{
+	MikanObjectPtr gizmoObject= m_gizmoObjectWeakPtr.lock();
+
+	auto addObjectTargets= [&](SelectionComponentPtr selectionComponent, eSelectionOutlineState state)
+	{
+		MikanObjectPtr ownerObject= selectionComponent->getOwnerObject();
+		if (!ownerObject || ownerObject == gizmoObject || (objectFilter && !objectFilter(ownerObject)))
+			return;
+
+		std::vector<IMkSceneRenderableConstPtr> renderables;
+		ownerObject->visitAllComponents(
+			[&renderables](MikanComponentPtr component)
+			{
+				if (auto outlineSource= std::dynamic_pointer_cast<ISelectionOutlineSource>(component))
+				{
+					outlineSource->getSelectionOutlineRenderables(renderables);
+				}
+			});
+
+		for (const IMkSceneRenderableConstPtr& renderable : renderables)
+		{
+			outTargets.push_back({renderable, state});
+		}
+	};
+
+	SelectionComponentPtr selectedComponent= getSelectedSceneActor();
+	if (selectedComponent)
+	{
+		addObjectTargets(selectedComponent, selectedComponent->getIsTransformGizmoAttached()
+												? eSelectionOutlineState::transformGizmoBound
+												: eSelectionOutlineState::selected);
+	}
+
+	SelectionComponentPtr hoveredComponent= m_hoverComponentWeakPtr.lock();
+	if (hoveredComponent && hoveredComponent != selectedComponent)
+	{
+		addObjectTargets(hoveredComponent, eSelectionOutlineState::hovered);
+	}
 }
 
 void EditorObjectSystem::setSelection(SelectionComponentPtr newSelectedComponentPtr)

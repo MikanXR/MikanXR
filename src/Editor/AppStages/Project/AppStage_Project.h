@@ -101,6 +101,8 @@ protected:
 
 	// Debug Rendering
 	void debugRenderOrigin() const;
+	void renderSelectionOutline(IMkGraphicsContext* graphicsContext, MikanCameraPtr viewportCamera,
+								EditorObjectSystemPtr editorSystem) const;
 
 	// MR camera-alignment debug overlay (toggled by EditorSettings::bDebugCameraAlignment)
 	void renderCameraAlignmentDebug(IMkGraphicsContext* graphicsContext, MikanCameraPtr viewportCamera) const;
@@ -172,6 +174,7 @@ protected:
 
 	MikanViewportPtr m_viewport;
 	IMkScenePtr m_mkScene;
+	std::unique_ptr<SelectionOutlineRenderer> m_selectionOutlineRenderer;
 
 	bool m_bAddingNewConfig= false;
 };

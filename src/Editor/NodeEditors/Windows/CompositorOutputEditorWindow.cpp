@@ -23,6 +23,7 @@
 #include "MainWindow.h"
 #include "MikanCamera.h"
 #include "MikanModelResourceManager.h"
+#include "MikanObject.h"
 #include "ObjectSystemRenderQueries.h"
 #include "MikanServer.h"
 #include "MikanTextRenderer.h"
@@ -117,6 +118,7 @@ bool CompositorOutputEditorWindow::startup()
 
 		// Create a mikan scene for 3d rendering
 		m_mkScene= std::make_shared<MkScene>();
+		m_selectionOutlineRenderer= std::make_unique<SelectionOutlineRenderer>(m_graphicsContext.get());
 	}
 
 	// Listen for scene activation and disposal
@@ -380,6 +382,26 @@ void CompositorOutputEditorWindow::render()
 
 						// Render the 3d scene
 						m_mkScene->render(m_viewCamera, stateStack);
+
+						// Outline the selection over it. Model stencils are the only outlined
+						// objects this overlay draws.
+						ModelStencilSystemPtr modelStencilSystem= m_modelStencilSystem.lock();
+						if (editorConfig.bDebugRenderModelStencils && modelStencilSystem)
+						{
+							std::vector<SelectionOutlineTarget> outlineTargets;
+							editorSystem->getSelectionOutlineTargets(
+								[&modelStencilSystem](MikanObjectConstPtr object)
+								{
+									return object->getOwnerSystem() == modelStencilSystem
+										   && isSceneGeometryRendered(object);
+								},
+								outlineTargets);
+
+							m_selectionOutlineRenderer->render(m_viewCamera,
+															   glm::i32vec4(0, 0, (int)m_mkWindowContext->getWidth(),
+																			(int)m_mkWindowContext->getHeight()),
+															   outlineTargets);
+						}
 					}
 				}
 			}
@@ -472,6 +494,7 @@ void CompositorOutputEditorWindow::shutdown()
 	m_backgroundQuad= nullptr;
 	m_viewCamera= nullptr;
 	m_mkScene= nullptr;
+	m_selectionOutlineRenderer= nullptr;
 
 	shutdownModelResourceManager();
 	shutdownTextureCache();

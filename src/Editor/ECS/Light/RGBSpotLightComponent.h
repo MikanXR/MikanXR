@@ -4,6 +4,7 @@
 #include "CommonConfig.h"
 #include "ComponentFwd.h"
 #include "DMXFixtureComponent.h"
+#include "ISelectionOutlineSource.h"
 #include "LightSystemFwd.h"
 #include "MikanLightTypes.h"
 #include "MikanRendererFwd.h"
@@ -44,7 +45,7 @@ protected:
 // RGBSpotLightComponent
 // ============================================================
 
-class RGBSpotLightComponent : public DMXFixtureComponent
+class RGBSpotLightComponent : public DMXFixtureComponent, public ISelectionOutlineSource
 {
 public:
 	RGBSpotLightComponent(MikanObjectWeakPtr owner);
@@ -62,12 +63,11 @@ public:
 	void updateConeColor();
 
 	// Selection event handlers
-	void onInteractionRayOverlapEnter(const ColliderRaycastHitResult& hitResult);
-	void onInteractionRayOverlapExit(const ColliderRaycastHitResult& hitResult);
-	void onInteractionSelected();
-	void onInteractionUnselected();
 	void onTransformGizmoBound();
 	void onTransformGizmoUnbound();
+
+	// -- ISelectionOutlineSource --
+	virtual void getSelectionOutlineRenderables(std::vector<IMkSceneRenderableConstPtr>& outRenderables) const override;
 
 	inline static const std::string k_componentClassName= "RGBSpotLightComponent";
 	virtual std::string getComponentClassName() const override { return k_componentClassName; }
@@ -127,7 +127,5 @@ protected:
 	std::vector<MeshColliderComponentPtr> m_colliderComponents;
 	IMkTriangulatedMeshPtr m_coneMesh;
 	static constexpr float k_coneAlpha= 0.15f;
-	bool m_bIsHovered= false;
-	bool m_bIsSelected= false;
 	bool m_bIsTransformGizmoBound= false;
 };

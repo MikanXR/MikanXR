@@ -104,11 +104,13 @@ void AppStage_PointCloudAlignment::enter()
 	m_frameBuffer->setFrameBufferType(IMkFrameBuffer::eFrameBufferType::COLOR);
 	m_frameBuffer->createResources();
 
-	// Add the stencil's wireframe meshes to the scene
+	// Add the stencil's wireframe meshes to the scene. The wireframe is this stage's view of the
+	// stencil whatever display mode the project view left it in.
 	if (m_targetStencilComponent)
 	{
 		for (IMkStaticMeshInstancePtr meshInstance : m_targetStencilComponent->getWireframeMeshes())
 		{
+			meshInstance->setVisible(true);
 			m_scene->addInstance(meshInstance);
 		}
 	}

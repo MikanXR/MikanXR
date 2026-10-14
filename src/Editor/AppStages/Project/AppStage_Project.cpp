@@ -105,6 +105,7 @@ void AppStage_Project::enter()
 	m_mkScene= std::make_shared<MkScene>();
 	m_mkScene->setLightColor(glm::vec4(1.f, 1.f, 1.f, 1.f));
 	m_mkScene->setLightDirection(glm::vec3(glm::normalize(glm::vec3(0.5f, -1.f, 0.5f))));
+	m_selectionOutlineRenderer= std::make_unique<SelectionOutlineRenderer>(getGraphicsContext());
 
 	// Cache a ref to the project
 	m_project= getProjectConfig();
@@ -224,6 +225,7 @@ void AppStage_Project::exit()
 
 	// Clean up the 3d scene
 	m_mkScene= nullptr;
+	m_selectionOutlineRenderer= nullptr;
 
 	// Clean up the GuiPanel Context (panels themselves are owned by AppStage::m_guiPanels)
 	delete m_projectGuiPanelContext;
@@ -788,14 +790,15 @@ void AppStage_Project::render(IMkViewportPtr targetViewport)
 			spotLightSystem->renderConeVolumes(graphicsContext, viewportCamera);
 	}
 
-	// The transform gizmo goes after every piece of scene geometry, so its
-	// occluded pass can read the finished depth buffer. Both the scene and the
-	// stage view can hold a selection (stage lights and cameras are pickable
-	// in either).
+	// The selection outline and then the transform gizmo go after every piece of
+	// scene geometry, so their occluded passes see the finished depth buffer, and
+	// the gizmo draws over the outline. Both the scene and the stage view can hold
+	// a selection (stage lights and cameras are pickable in either).
 	if (auto editorSystem= m_editorSystem.lock())
 	{
 		if (m_viewMode == eProjectViewMode::scene)
 		{
+			renderSelectionOutline(graphicsContext, viewportCamera, editorSystem);
 			editorSystem->renderGizmo(graphicsContext, viewportCamera);
 		}
 
@@ -811,6 +814,37 @@ void AppStage_Project::render(IMkViewportPtr targetViewport)
 	if (editorSettings.bDebugCameraAlignment)
 	{
 		renderCameraAlignmentDebug(graphicsContext, viewportCamera);
+	}
+}
+
+void AppStage_Project::renderSelectionOutline(IMkGraphicsContext* graphicsContext, MikanCameraPtr viewportCamera,
+											  EditorObjectSystemPtr editorSystem) const
+{
+	const EditorSettings& editorSettings= editorSystem->getEditorSettings();
+	ModelStencilSystemPtr modelStencilSystem= m_modelStencilSystem.lock();
+
+	// Outline only what the viewport is drawing: the outliner can select a hidden scene's actor
+	std::vector<SelectionOutlineTarget> outlineTargets;
+	editorSystem->getSelectionOutlineTargets(
+		[&editorSettings, &modelStencilSystem](MikanObjectConstPtr object)
+		{
+			if (!isSceneGeometryRendered(object))
+				return false;
+			if (modelStencilSystem && object->getOwnerSystem() == modelStencilSystem)
+				return editorSettings.bDebugRenderModelStencils;
+			return true;
+		},
+		outlineTargets);
+	if (outlineTargets.empty())
+		return;
+
+	glm::i32vec2 viewportOrigin, viewportSize;
+	IMkViewportPtr renderingViewport= graphicsContext->getRenderingViewport();
+	if (renderingViewport && renderingViewport->getRenderingViewport(viewportOrigin, viewportSize))
+	{
+		m_selectionOutlineRenderer->render(
+			viewportCamera, glm::i32vec4(viewportOrigin.x, viewportOrigin.y, viewportSize.x, viewportSize.y),
+			outlineTargets);
 	}
 }
 

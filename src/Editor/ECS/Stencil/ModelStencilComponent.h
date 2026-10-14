@@ -3,6 +3,7 @@
 #include "AssetFwd.h"
 #include "ColliderQuery.h"
 #include "ComponentFwd.h"
+#include "ISelectionOutlineSource.h"
 #include "MikanStencilTypes.h"
 #include "MikanRendererFwd.h"
 #include "StencilComponent.h"
@@ -35,7 +36,7 @@ private:
 	AssetReferenceConfigPtr m_modelAssetRefConfig;
 };
 
-class ModelStencilComponent : public StencilComponent
+class ModelStencilComponent : public StencilComponent, public ISelectionOutlineSource
 {
 public:
 	ModelStencilComponent(MikanObjectWeakPtr owner);
@@ -55,18 +56,16 @@ public:
 	inline const std::vector<IMkStaticMeshInstancePtr>& getWireframeMeshes() const { return m_wireframeMeshes; }
 	inline const std::vector<MeshColliderComponentPtr>& getColliderComponents() const { return m_colliderComponents; }
 
-	void setRenderStencilsFlag(bool flag);
 	void setModelPath(const std::filesystem::path& path);
 	void disposeMeshComponents();
 	void rebuildMeshComponents();
 
 	// Selection Events
-	void onInteractionRayOverlapEnter(const ColliderRaycastHitResult& hitResult);
-	void onInteractionRayOverlapExit(const ColliderRaycastHitResult& hitResult);
-	void onInteractionSelected();
-	void onInteractionUnselected();
 	void onTransformGizmoBound();
 	void onTransformGizmoUnbound();
+
+	// -- ISelectionOutlineSource ----
+	virtual void getSelectionOutlineRenderables(std::vector<IMkSceneRenderableConstPtr>& outRenderables) const override;
 
 	// -- IEntityAccessor ----
 	virtual Serialization::StructTypeHandle getClientAPIValuesStructType() const override;
@@ -87,7 +86,6 @@ public:
 	static void bindLuaFunctions(struct lua_State* L);
 
 protected:
-	void updateWireframeMeshColor();
 	void onStencilDefinitionMarkedDirty(CommonConfigPtr configPtr, const ConfigPropertyChangeSet& changedPropertySet);
 
 protected:
@@ -98,7 +96,5 @@ protected:
 	std::vector<TransformComponentPtr> m_meshComponents;
 	std::vector<StaticMeshComponentPtr> m_triMeshComponents;
 	std::vector<MeshColliderComponentPtr> m_colliderComponents;
-	bool m_bIsHovered= false;
-	bool m_bIsSelected= false;
 	bool m_bIsTransformGizmoBound= false;
 };

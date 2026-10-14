@@ -7,6 +7,7 @@
 #include "EditorWindow.h"
 #include "MikanRendererFwd.h"
 #include "ObjectSystemConfigFwd.h"
+#include "SelectionOutlineRenderer.h"
 
 #include <memory>
 
@@ -45,6 +46,7 @@ private:
 	CompositorComponentWeakPtr m_compositorComponent;
 	MikanCameraPtr m_viewCamera; // scene rendering camera
 	IMkScenePtr m_mkScene;
+	std::unique_ptr<SelectionOutlineRenderer> m_selectionOutlineRenderer;
 	IMkTriangulatedMeshPtr m_compositedFrameQuad; // fullscreen quad for compositor texture
 	IMkTriangulatedMeshPtr m_backgroundQuad;      // fullscreen quad for scrolling background
 	float m_shaderTime= 0.f;

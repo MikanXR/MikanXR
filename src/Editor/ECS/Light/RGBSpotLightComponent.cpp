@@ -113,14 +113,6 @@ void RGBSpotLightComponent::init()
 	SelectionComponentPtr selectionComponentPtr= getOwnerObject()->getComponentOfType<SelectionComponent>();
 	if (selectionComponentPtr)
 	{
-		selectionComponentPtr->OnInteractionRayOverlapEnter+=
-			MakeDelegate(this, &RGBSpotLightComponent::onInteractionRayOverlapEnter);
-		selectionComponentPtr->OnInteractionRayOverlapExit+=
-			MakeDelegate(this, &RGBSpotLightComponent::onInteractionRayOverlapExit);
-		selectionComponentPtr->OnInteractionSelected+=
-			MakeDelegate(this, &RGBSpotLightComponent::onInteractionSelected);
-		selectionComponentPtr->OnInteractionUnselected+=
-			MakeDelegate(this, &RGBSpotLightComponent::onInteractionUnselected);
 		selectionComponentPtr->OnTransformGizmoBound+=
 			MakeDelegate(this, &RGBSpotLightComponent::onTransformGizmoBound);
 		selectionComponentPtr->OnTransformGizmoUnbound+=
@@ -137,14 +129,6 @@ void RGBSpotLightComponent::dispose()
 	SelectionComponentPtr selectionComponentPtr= m_selectionComponent.lock();
 	if (selectionComponentPtr)
 	{
-		selectionComponentPtr->OnInteractionRayOverlapEnter-=
-			MakeDelegate(this, &RGBSpotLightComponent::onInteractionRayOverlapEnter);
-		selectionComponentPtr->OnInteractionRayOverlapExit-=
-			MakeDelegate(this, &RGBSpotLightComponent::onInteractionRayOverlapExit);
-		selectionComponentPtr->OnInteractionSelected-=
-			MakeDelegate(this, &RGBSpotLightComponent::onInteractionSelected);
-		selectionComponentPtr->OnInteractionUnselected-=
-			MakeDelegate(this, &RGBSpotLightComponent::onInteractionUnselected);
 		selectionComponentPtr->OnTransformGizmoBound-=
 			MakeDelegate(this, &RGBSpotLightComponent::onTransformGizmoBound);
 		selectionComponentPtr->OnTransformGizmoUnbound-=
@@ -248,27 +232,11 @@ void RGBSpotLightComponent::rebuildMeshComponents()
 
 void RGBSpotLightComponent::updateWireframeMeshColor()
 {
-	glm::vec3 color;
-
-	if (m_bIsTransformGizmoBound)
-	{
-		color= Colors::GreenYellow;
-	}
-	else if (m_bIsSelected)
-	{
-		color= Colors::Yellow;
-	}
-	else if (m_bIsHovered)
-	{
-		color= Colors::LightGray;
-	}
-	else
-	{
-		const float r= m_red / 255.0f;
-		const float g= m_green / 255.0f;
-		const float b= m_blue / 255.0f;
-		color= (r + g + b > 0.01f) ? glm::vec3(r, g, b) : Colors::DarkGray;
-	}
+	// The wireframe shows the light's color. Selection is shown by the viewport's outline.
+	const float r= m_red / 255.0f;
+	const float g= m_green / 255.0f;
+	const float b= m_blue / 255.0f;
+	const glm::vec3 color= (r + g + b > 0.01f) ? glm::vec3(r, g, b) : Colors::DarkGray;
 
 	for (IMkStaticMeshInstancePtr meshPtr : m_wireframeMeshes)
 	{
@@ -339,40 +307,21 @@ void RGBSpotLightComponent::updateConeColor()
 	m_coneMesh->getMaterialInstance()->setVec4BySemantic(eUniformSemantic::diffuseColorRGBA, col);
 }
 
-void RGBSpotLightComponent::onInteractionRayOverlapEnter(const ColliderRaycastHitResult& hitResult)
-{
-	m_bIsHovered= true;
-	updateWireframeMeshColor();
-}
+void RGBSpotLightComponent::onTransformGizmoBound() { m_bIsTransformGizmoBound= true; }
 
-void RGBSpotLightComponent::onInteractionRayOverlapExit(const ColliderRaycastHitResult& hitResult)
-{
-	m_bIsHovered= false;
-	updateWireframeMeshColor();
-}
+void RGBSpotLightComponent::onTransformGizmoUnbound() { m_bIsTransformGizmoBound= false; }
 
-void RGBSpotLightComponent::onInteractionSelected()
+// -- ISelectionOutlineSource ----
+void RGBSpotLightComponent::getSelectionOutlineRenderables(
+	std::vector<IMkSceneRenderableConstPtr>& outRenderables) const
 {
-	m_bIsSelected= true;
-	updateWireframeMeshColor();
-}
-
-void RGBSpotLightComponent::onInteractionUnselected()
-{
-	m_bIsSelected= false;
-	updateWireframeMeshColor();
-}
-
-void RGBSpotLightComponent::onTransformGizmoBound()
-{
-	m_bIsTransformGizmoBound= true;
-	updateWireframeMeshColor();
-}
-
-void RGBSpotLightComponent::onTransformGizmoUnbound()
-{
-	m_bIsTransformGizmoBound= false;
-	updateWireframeMeshColor();
+	for (const StaticMeshComponentPtr& triMeshComponent : m_triMeshComponents)
+	{
+		if (IMkStaticMeshInstancePtr triMeshInstance= triMeshComponent->getStaticMesh())
+		{
+			outRenderables.push_back(triMeshInstance);
+		}
+	}
 }
 
 void RGBSpotLightComponent::setRed(uint8_t v) { setRGB(v, m_green, m_blue); }

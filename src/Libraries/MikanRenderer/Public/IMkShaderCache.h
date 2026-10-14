@@ -40,6 +40,10 @@
 #define INTERNAL_MATERIAL_P_SH_ENVIRONMENT "Internal_P_SHEnvironment"
 #define INTERNAL_MATERIAL_PT_LINEARIZE_RGB "Internal_PT_LinearizeRGB"
 #define INTERNAL_MATERIAL_PT_LINEAR_TO_SRGB "Internal_PT_LinearToSRGB"
+// The two passes of the editor's selection outline: an integer code per selected mesh written
+// into an R8 mask, then a dilation of that mask drawn as an outline over the viewport
+#define INTERNAL_MATERIAL_P_SELECTION_MASK "Internal_P_SelectionMask"
+#define INTERNAL_MATERIAL_PT_SELECTION_OUTLINE "Internal_PT_SelectionOutline"
 
 class IMkShaderCache
 {

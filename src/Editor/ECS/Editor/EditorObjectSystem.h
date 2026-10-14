@@ -9,7 +9,9 @@
 #include "ObjectSystemFwd.h"
 #include "ObjectSystemConfigFwd.h"
 #include "MikanRendererFwd.h"
+#include "ObjectSystemRenderQueries.h"
 #include "SceneFwd.h"
+#include "SelectionOutlineRenderer.h"
 
 #include <array>
 #include <map>
@@ -252,6 +254,10 @@ public:
 	SelectionComponentPtr getSelection() const { return m_selectedComponentWeakPtr.lock(); }
 	SelectionComponentPtr getSelectedSceneActor() const;
 	void setSelection(SelectionComponentPtr newComponentPtr);
+	// The outline renderables of the selected scene actor and the hovered object, each tagged
+	// with its object's outline state. Objects the filter rejects contribute nothing.
+	void getSelectionOutlineTargets(const RenderableObjectFilter& objectFilter,
+									std::vector<SelectionOutlineTarget>& outTargets) const;
 	MulticastDelegate<void()> OnSelectionChanged;
 	// Delete or Backspace pressed while no ImGui window holds the keyboard. The
 	// outliner owns the delete itself (confirmation and cascade rules), since its

@@ -98,11 +98,13 @@ void AppStage_StencilAlignment::enter()
 	m_frameBuffer->setFrameBufferType(IMkFrameBuffer::eFrameBufferType::COLOR);
 	m_frameBuffer->createResources();
 
-	// Add the stencil's wireframe meshes to the scene
+	// Add the stencil's wireframe meshes to the scene. The wireframe is this stage's view of the
+	// stencil whatever display mode the project view left it in.
 	if (m_targetStencilComponent)
 	{
 		for (IMkStaticMeshInstancePtr meshInstance : m_targetStencilComponent->getWireframeMeshes())
 		{
+			meshInstance->setVisible(true);
 			m_scene->addInstance(meshInstance);
 		}
 	}
@@ -135,6 +137,16 @@ void AppStage_StencilAlignment::exit()
 	MikanViewportPtr viewport= getFirstViewport();
 	viewport->OnMouseRayChanged-= MakeDelegate(this, &AppStage_StencilAlignment::onMouseRayChanged);
 	viewport->OnMouseRayButtonUp-= MakeDelegate(this, &AppStage_StencilAlignment::onMouseRayButtonUp);
+
+	// Hand the wireframe back in its idle color, since hovering here recolors it
+	if (m_targetStencilComponent)
+	{
+		for (IMkStaticMeshInstancePtr meshInstance : m_targetStencilComponent->getWireframeMeshes())
+		{
+			meshInstance->getMaterialInstance()->setVec4BySemantic(eUniformSemantic::diffuseColorRGBA,
+																   glm::vec4(Colors::DarkGray, 1.f));
+		}
+	}
 
 	// Forget about the stencil we were aligning
 	m_targetStencilComponent= nullptr;

@@ -1921,6 +1921,155 @@ IMkShaderCodeConstPtr getPTDepthEdgeRefineShaderCode()
 	return x_shaderCode;
 }
 
+// Selection outline pass 1: writes floatConstant0 as an integer code into an R8 mask.
+// Only the position attribute is declared, so any mesh whose layout starts with a vec3
+// position draws through its own vertex array. The depth bias lets a mesh pass the depth
+// test against its own copy of the scene depth, and is twice the wireframe shader's so it
+// also passes where only the mesh's (already biased) wireframe was drawn.
+IMkShaderCodeConstPtr getPSelectionMaskShaderCode()
+{
+	static IMkShaderCodePtr x_shaderCode= nullptr;
+
+	if (x_shaderCode == nullptr)
+	{
+		x_shaderCode= createIMkShaderCode(INTERNAL_MATERIAL_P_SELECTION_MASK,
+										  // vertex shader
+										  R""""(
+				#version 330 core
+				layout (location = 0) in vec3 aPos;
+
+				uniform mat4 mvpMatrix;
+
+				void main()
+				{
+					gl_Position = mvpMatrix * vec4(aPos, 1.0);
+					gl_Position.z -= 0.002 * gl_Position.w;
+				}
+				)"""",
+										  // fragment shader
+										  R""""(
+				#version 330 core
+				out vec4 FragColor;
+
+				// Mask code, an integer in [0, 255]
+				uniform float floatConstant0;
+
+				void main()
+				{
+					FragColor = vec4(floatConstant0 / 255.0, 0.0, 0.0, 1.0);
+				}
+				)"""");
+		x_shaderCode->addVertexAttribute("aPos", eVertexDataType::datatype_vec3, eVertexSemantic::position);
+		x_shaderCode->addUniform("mvpMatrix", eUniformSemantic::modelViewProjectionMatrix);
+		x_shaderCode->addUniform("floatConstant0", eUniformSemantic::floatConstant0);
+	}
+
+	return x_shaderCode;
+}
+
+// Selection outline pass 2: a mask code is (state * 2 + visible), state 1 = hovered,
+// 2 = selected, 3 = transform gizmo bound. Each pixel outside the mask takes the highest
+// code within floatConstant0 pixels, colored by its state and faded to floatConstant1
+// where occluded. Pixels inside the mask are left untouched.
+IMkShaderCodeConstPtr getPTSelectionOutlineShaderCode()
+{
+	static IMkShaderCodePtr x_shaderCode= nullptr;
+
+	if (x_shaderCode == nullptr)
+	{
+		x_shaderCode= createIMkShaderCode(INTERNAL_MATERIAL_PT_SELECTION_OUTLINE,
+										  // vertex shader
+										  R""""(
+				#version 330 core
+				layout (location = 0) in vec2 aPos;
+				layout (location = 1) in vec2 aTexCoords;
+
+				out vec2 TexCoords;
+
+				void main()
+				{
+					TexCoords = aTexCoords;
+					gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);
+				}
+				)"""",
+										  // fragment shader
+										  R""""(
+				#version 330 core
+				out vec4 FragColor;
+
+				in vec2 TexCoords;
+
+				uniform sampler2D maskTexture;
+				// Mask size in pixels
+				uniform vec2 screenSize;
+				// Outline radius in pixels
+				uniform float floatConstant0;
+				// Alpha scale for the occluded part of an outline
+				uniform float floatConstant1;
+				uniform vec4 hoverColor;
+				uniform vec4 selectedColor;
+				uniform vec4 gizmoColor;
+
+				int fetchCode(ivec2 p)
+				{
+					return int(texelFetch(maskTexture, p, 0).r * 255.0 + 0.5);
+				}
+
+				void main()
+				{
+					ivec2 last = ivec2(screenSize) - 1;
+					ivec2 p = clamp(ivec2(TexCoords * screenSize), ivec2(0), last);
+					if (fetchCode(p) != 0)
+						discard;
+
+					float radius = max(floatConstant0, 0.5);
+					int r = clamp(int(ceil(radius)), 1, 8);
+
+					int bestCode = 0;
+					float bestDist = 1e6;
+					for (int dy = -r; dy <= r; ++dy)
+					{
+						for (int dx = -r; dx <= r; ++dx)
+						{
+							float dist = length(vec2(dx, dy));
+							if (dist > radius + 0.5)
+								continue;
+
+							int code = fetchCode(clamp(p + ivec2(dx, dy), ivec2(0), last));
+							if (code > bestCode || (code == bestCode && dist < bestDist))
+							{
+								bestCode = code;
+								bestDist = dist;
+							}
+						}
+					}
+
+					if (bestCode == 0)
+						discard;
+
+					int state = bestCode / 2;
+					bool bVisible = (bestCode & 1) == 1;
+					vec4 color = (state >= 3) ? gizmoColor : ((state == 2) ? selectedColor : hoverColor);
+					float coverage = clamp(radius + 0.5 - bestDist, 0.0, 1.0);
+					float alpha = color.a * coverage * (bVisible ? 1.0 : floatConstant1);
+
+					FragColor = vec4(color.rgb, alpha);
+				}
+				)"""");
+		x_shaderCode->addVertexAttribute("aPos", eVertexDataType::datatype_vec2, eVertexSemantic::position);
+		x_shaderCode->addVertexAttribute("aTexCoords", eVertexDataType::datatype_vec2, eVertexSemantic::texCoord);
+		x_shaderCode->addUniform("maskTexture", eUniformSemantic::rgbTexture);
+		x_shaderCode->addUniform("screenSize", eUniformSemantic::screenSize);
+		x_shaderCode->addUniform("floatConstant0", eUniformSemantic::floatConstant0);
+		x_shaderCode->addUniform("floatConstant1", eUniformSemantic::floatConstant1);
+		x_shaderCode->addUniform("hoverColor", eUniformSemantic::float4Param);
+		x_shaderCode->addUniform("selectedColor", eUniformSemantic::float4Param);
+		x_shaderCode->addUniform("gizmoColor", eUniformSemantic::float4Param);
+	}
+
+	return x_shaderCode;
+}
+
 bool registerInternalShaders(GlShaderCache* shaderCache)
 {
 	std::vector<IMkShaderCodeConstPtr> internalShaders= {
@@ -1950,6 +2099,8 @@ bool registerInternalShaders(GlShaderCache* shaderCache)
 		getPTDepthMinMaxHShaderCode(),
 		getPTDepthMinMaxVShaderCode(),
 		getPTDepthEdgeRefineShaderCode(),
+		getPSelectionMaskShaderCode(),
+		getPTSelectionOutlineShaderCode(),
 	};
 
 	bool bSuccess= true;

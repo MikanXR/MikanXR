@@ -150,14 +150,6 @@ void ModelStencilComponent::init()
 	if (selectionComponentPtr)
 	{
 		// Bind selection events
-		selectionComponentPtr->OnInteractionRayOverlapEnter+=
-			MakeDelegate(this, &ModelStencilComponent::onInteractionRayOverlapEnter);
-		selectionComponentPtr->OnInteractionRayOverlapExit+=
-			MakeDelegate(this, &ModelStencilComponent::onInteractionRayOverlapExit);
-		selectionComponentPtr->OnInteractionSelected+=
-			MakeDelegate(this, &ModelStencilComponent::onInteractionSelected);
-		selectionComponentPtr->OnInteractionUnselected+=
-			MakeDelegate(this, &ModelStencilComponent::onInteractionUnselected);
 		selectionComponentPtr->OnTransformGizmoBound+=
 			MakeDelegate(this, &ModelStencilComponent::onTransformGizmoBound);
 		selectionComponentPtr->OnTransformGizmoUnbound+=
@@ -179,11 +171,12 @@ void ModelStencilComponent::customRender(IMkGraphicsContext* graphicsContext, Mi
 	// Apply the editor's model-stencil display mode. The solid (textured) and wireframe mesh
 	// instances are separate scene renderables; toggling visibility here lets the user drop to
 	// wireframe-only so the background video model shows through for alignment checks.
+	// Selection is shown by the viewport's outline, never by the wireframe.
 	if (editorObjectSystem)
 	{
 		const eStencilDisplayMode displayMode= editorObjectSystem->getEditorSettings().modelStencilDisplayMode;
 		const bool showSolid= (displayMode != eStencilDisplayMode::wireframe);
-		const bool showWireframe= (displayMode != eStencilDisplayMode::solid || m_bIsSelected || m_bIsHovered);
+		const bool showWireframe= (displayMode != eStencilDisplayMode::solid);
 
 		for (const StaticMeshComponentPtr& triMeshComponent : m_triMeshComponents)
 		{
@@ -225,14 +218,6 @@ void ModelStencilComponent::dispose()
 	SelectionComponentPtr selectionComponentPtr= m_selectionComponentWeakPtr.lock();
 	if (selectionComponentPtr)
 	{
-		selectionComponentPtr->OnInteractionRayOverlapEnter-=
-			MakeDelegate(this, &ModelStencilComponent::onInteractionRayOverlapEnter);
-		selectionComponentPtr->OnInteractionRayOverlapExit-=
-			MakeDelegate(this, &ModelStencilComponent::onInteractionRayOverlapExit);
-		selectionComponentPtr->OnInteractionSelected-=
-			MakeDelegate(this, &ModelStencilComponent::onInteractionSelected);
-		selectionComponentPtr->OnInteractionUnselected-=
-			MakeDelegate(this, &ModelStencilComponent::onInteractionUnselected);
 		selectionComponentPtr->OnTransformGizmoBound-=
 			MakeDelegate(this, &ModelStencilComponent::onTransformGizmoBound);
 		selectionComponentPtr->OnTransformGizmoUnbound-=
@@ -242,46 +227,6 @@ void ModelStencilComponent::dispose()
 	}
 
 	StencilComponent::dispose();
-}
-
-void ModelStencilComponent::setRenderStencilsFlag(bool flag)
-{
-	for (IMkStaticMeshInstancePtr mesh : m_wireframeMeshes)
-	{
-		mesh->setVisible(flag);
-	}
-}
-
-void ModelStencilComponent::updateWireframeMeshColor()
-{
-	glm::vec3 newColor= Colors::White;
-
-	if (m_bIsTransformGizmoBound)
-	{
-		newColor= Colors::GreenYellow;
-	}
-	else if (m_bIsSelected)
-	{
-		newColor= Colors::Yellow;
-	}
-	else if (m_bIsHovered)
-	{
-		newColor= Colors::LightGray;
-	}
-	else
-	{
-		newColor= Colors::DarkGray;
-	}
-
-	SelectionComponentPtr selectionComponentPtr= m_selectionComponentWeakPtr.lock();
-	if (selectionComponentPtr)
-	{
-		for (IMkStaticMeshInstancePtr meshPtr : m_wireframeMeshes)
-		{
-			meshPtr->getMaterialInstance()->setVec4BySemantic(eUniformSemantic::diffuseColorRGBA,
-															  glm::vec4(newColor, 1.f));
-		}
-	}
 }
 
 void ModelStencilComponent::onStencilDefinitionMarkedDirty(CommonConfigPtr configPtr,
@@ -397,6 +342,8 @@ void ModelStencilComponent::rebuildMeshComponents()
 			// Create a new (hidden) static mesh instance from the mesh resources
 			IMkStaticMeshInstancePtr wireframeMeshInstancePtr=
 				createMkStaticMeshInstance("wireframe", wireframeMeshPtr);
+			wireframeMeshInstancePtr->getMaterialInstance()->setVec4BySemantic(eUniformSemantic::diffuseColorRGBA,
+																			   glm::vec4(Colors::DarkGray, 1.f));
 			m_wireframeMeshes.push_back(wireframeMeshInstancePtr);
 
 			// Create a static mesh component to hold the mesh instance
@@ -406,9 +353,6 @@ void ModelStencilComponent::rebuildMeshComponents()
 			meshComponentPtr->attachToComponent(stencilComponentPtr);
 			m_meshComponents.push_back(meshComponentPtr);
 		}
-
-		// Update colors of all attached wireframe meshes
-		updateWireframeMeshColor();
 
 		// Initialize all of the newly created components
 		for (TransformComponentPtr childComponentPtr : m_meshComponents)
@@ -431,40 +375,21 @@ void ModelStencilComponent::rebuildMeshComponents()
 	}
 }
 
-void ModelStencilComponent::onInteractionRayOverlapEnter(const ColliderRaycastHitResult& hitResult)
-{
-	m_bIsHovered= true;
-	updateWireframeMeshColor();
-}
+void ModelStencilComponent::onTransformGizmoBound() { m_bIsTransformGizmoBound= true; }
 
-void ModelStencilComponent::onInteractionRayOverlapExit(const ColliderRaycastHitResult& hitResult)
-{
-	m_bIsHovered= false;
-	updateWireframeMeshColor();
-}
+void ModelStencilComponent::onTransformGizmoUnbound() { m_bIsTransformGizmoBound= false; }
 
-void ModelStencilComponent::onInteractionSelected()
+// -- ISelectionOutlineSource ----
+void ModelStencilComponent::getSelectionOutlineRenderables(
+	std::vector<IMkSceneRenderableConstPtr>& outRenderables) const
 {
-	m_bIsSelected= true;
-	updateWireframeMeshColor();
-}
-
-void ModelStencilComponent::onInteractionUnselected()
-{
-	m_bIsSelected= false;
-	updateWireframeMeshColor();
-}
-
-void ModelStencilComponent::onTransformGizmoBound()
-{
-	m_bIsTransformGizmoBound= true;
-	updateWireframeMeshColor();
-}
-
-void ModelStencilComponent::onTransformGizmoUnbound()
-{
-	m_bIsTransformGizmoBound= false;
-	updateWireframeMeshColor();
+	for (const StaticMeshComponentPtr& triMeshComponent : m_triMeshComponents)
+	{
+		if (IMkStaticMeshInstancePtr triMeshInstance= triMeshComponent->getStaticMesh())
+		{
+			outRenderables.push_back(triMeshInstance);
+		}
+	}
 }
 
 // -- IPropertyInterface ----
