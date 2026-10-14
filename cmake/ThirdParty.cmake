@@ -344,6 +344,9 @@ set(TINYFILEDIALOGS_SOURCE "${TINYFILEDIALOGS_DIR}/tinyfiledialogs.c")
 # fast_obj loader
 set (FAST_OBJ_LOADER_INCLUDE_DIRS ${ROOT_DIR}/thirdparty/fast_obj)
 
+# cgltf (header-only glTF 2.0 reader and writer)
+set (CGLTF_INCLUDE_DIR ${ROOT_DIR}/thirdparty/cgltf)
+
 # easy_profiler
 find_package(easy_profiler REQUIRED)
 

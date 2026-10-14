@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AssetReference.h"
+#include "LocText.h"
 
 class ModelAssetReference : public AssetReference
 {
@@ -26,9 +27,9 @@ public:
 	virtual char const* getFileDialogTitle() const { return "Load Model"; }
 	virtual char const* const* getFilterPatterns() const
 	{
-		static const char* filterItems[1]= {"*.obj"};
+		static const char* filterItems[3]= {"*.obj", "*.glb", "*.gltf"};
 		return filterItems;
 	}
-	virtual int getFilterPatternCount() const { return 1; }
-	virtual char const* getFilterDescription() const { return "Model Files (*.obj)"; }
+	virtual int getFilterPatternCount() const { return 3; }
+	virtual char const* getFilterDescription() const { return locText("assets.modelFilterDescription"); }
 };

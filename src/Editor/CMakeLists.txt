@@ -661,6 +661,7 @@ list(APPEND MIKAN_INCL_DIRS
   ${LUA_BRIDGE_INCLUDE_DIRS}
   ${ROOT_DIR}/thirdparty/lrdb/include
   ${FAST_OBJ_LOADER_INCLUDE_DIRS}
+  ${CGLTF_INCLUDE_DIR}
   ${libharu_SOURCE_DIR}/include
   ${libharu_BINARY_DIR}/include)
 
@@ -703,6 +704,7 @@ list(APPEND MIKAN_REQ_LIBS
 set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/Device/Enumerator/OpenCVCameraEnumerator.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 # Carries the editor's stb_image / stb_truetype implementations
 set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ECS/Light/DMXSequenceContent.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
+set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/Asset/GltfImplementation.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/Interprocess/AutomationSocket.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/Interprocess/WebsocketInterprocessMessageServer.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/Interprocess/HttpInterprocessMessageServer.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
@@ -973,7 +975,7 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     # the bundled ones through the asset overlay rather than owning copies
     FILES_MATCHING PATTERN "*.jpg" PATTERN "*.png" PATTERN "*.ttf" PATTERN "*.json" PATTERN "*.txt" PATTERN "*.lua" PATTERN "*.onnx"
       PATTERN "*.compgraph" PATTERN "*.shapegraph" PATTERN "*.matgraph" PATTERN "*.compmat" PATTERN "*.shapemat"
-      PATTERN "*.vert" PATTERN "*.frag" PATTERN "*.obj" PATTERN "*.mtl")
+      PATTERN "*.vert" PATTERN "*.frag" PATTERN "*.obj" PATTERN "*.mtl" PATTERN "*.glb")
 
   # Install CEF binary and resource files
   if(DEFINED CEF_ROOT)

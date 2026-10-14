@@ -11,6 +11,7 @@
 #include "MikanTextureCache.h"
 #include "IMkTriangulatedMesh.h"
 #include "IMkWireframeMesh.h"
+#include "ModelImportUtils.h"
 
 #include "fast_obj.h"
 
@@ -65,6 +66,20 @@ public:
 	inline const uint32_t* getIndexData() const { return m_indexData; }
 
 	inline void incTriangleCount() { m_triangleCount++; }
+
+	ModelImportUtils::TriMeshSourceData getSourceData() const
+	{
+		ModelImportUtils::TriMeshSourceData sourceData;
+		sourceData.meshName= m_materialName;
+		sourceData.materialInstance= m_materialInstance;
+		sourceData.positionAttribute= m_positionAttribute;
+		sourceData.vertexData= m_vertexData;
+		sourceData.vertexSize= m_vertexSize;
+		sourceData.vertexCount= m_vertexCount;
+		sourceData.indexData= m_indexData;
+		sourceData.indexCount= m_indexCount;
+		return sourceData;
+	}
 
 	void allocateBuffers(size_t sourcePositionCount)
 	{
@@ -159,10 +174,6 @@ using MaterialTriMeshDataConstPtr= std::shared_ptr<const MaterialTriMeshData>;
 
 MkMaterialInstancePtr createTriMeshMaterialInstance(IMkGraphicsContext* graphicsContext, MkMaterialConstPtr material,
 													const fastObjMesh* objMesh, const fastObjMaterial& objMaterial);
-IMkTriangulatedMeshPtr createTriangulatedMeshResource(IMkGraphicsContext* graphicsContext,
-													  MaterialTriMeshDataConstPtr triMeshData);
-IMkWireframeMeshPtr createWireframeMeshResource(IMkGraphicsContext* graphicsContext,
-												MaterialTriMeshDataConstPtr triMeshData);
 }; // namespace ObjUtils
 
 MikanRenderModelResourcePtr ObjModelImporter::importModelFromFile(const std::filesystem::path& modelPath,
@@ -306,8 +317,10 @@ MikanRenderModelResourcePtr ObjModelImporter::importModelFromFile(const std::fil
 		// Create the meshes for each material instance
 		for (ObjUtils::MaterialTriMeshDataPtr triMeshData : materialToTrimeshMap)
 		{
-			IMkTriangulatedMeshPtr trimesh= ObjUtils::createTriangulatedMeshResource(graphicsContext, triMeshData);
-			IMkWireframeMeshPtr wiremesh= ObjUtils::createWireframeMeshResource(graphicsContext, triMeshData);
+			const ModelImportUtils::TriMeshSourceData sourceData= triMeshData->getSourceData();
+			IMkTriangulatedMeshPtr trimesh=
+				ModelImportUtils::createTriangulatedMeshResource(graphicsContext, sourceData);
+			IMkWireframeMeshPtr wiremesh= ModelImportUtils::createWireframeMeshResource(graphicsContext, sourceData);
 
 			modelResource->addTriangulatedMesh(trimesh);
 			modelResource->addWireframeMesh(wiremesh);
@@ -408,122 +421,5 @@ MkMaterialInstancePtr createTriMeshMaterialInstance(IMkGraphicsContext* graphics
 								 eUniformSemantic::bumpTexture);
 
 	return materialInstance;
-}
-
-IMkTriangulatedMeshPtr createTriangulatedMeshResource(IMkGraphicsContext* graphicsContext,
-													  MaterialTriMeshDataConstPtr triMeshData)
-{
-	if (!triMeshData->isValid())
-	{
-		return IMkTriangulatedMeshPtr();
-	}
-
-	// Copy over the vertex data into a correctly size vertex buffer
-	const size_t vertexCount= triMeshData->getVertexCount();
-	const size_t vertexSize= triMeshData->getVertexSize();
-	const size_t vertexBufferSize= vertexCount * vertexSize;
-	uint8_t* vertexBuffer= new uint8_t[vertexBufferSize];
-	memcpy(vertexBuffer, triMeshData->getVertexData(), vertexBufferSize);
-
-	// Copy over the index data into a correctly size index buffer
-	const size_t indexCount= triMeshData->getIndexCount();
-	const size_t triangleCount= indexCount / 3;
-	const size_t indexSize= sizeof(uint32_t);
-	const size_t indexBufferSize= indexCount * indexSize;
-	uint8_t* indexBuffer= new uint8_t[indexBufferSize];
-	std::memcpy(indexBuffer, triMeshData->getIndexData(), indexBufferSize);
-
-	IMkTriangulatedMeshPtr triMesh= createMkTriangulatedMesh(
-		graphicsContext, triMeshData->getMaterialName(), (const uint8_t*)vertexBuffer, vertexSize,
-		(uint32_t)vertexCount, (const uint8_t*)indexBuffer, indexSize, (uint32_t)triangleCount,
-		true); // <-- triangulated mesh owns vertex data, cleans up on delete
-
-	// If the mesh fails to set the material instance or create resources
-	// then clean the mesh up and return nullptr
-	if (!triMesh->setMaterialInstance(triMeshData->getMaterialInstance()) || !triMesh->createResources())
-	{
-		triMesh= nullptr;
-	}
-
-	return triMesh;
-}
-
-IMkWireframeMeshPtr createWireframeMeshResource(IMkGraphicsContext* graphicsContext,
-												MaterialTriMeshDataConstPtr triMeshData)
-{
-	if (!triMeshData->isValid())
-	{
-		return IMkWireframeMeshPtr();
-	}
-
-	// Copy over the position data into the wireframe vertex buffer
-	const IMkVertexAttribute* posAttribute= triMeshData->getPositionAttribute();
-	const size_t posAttribSize= posAttribute->getAttributeSize();
-
-	const size_t writeVertexSize= posAttribSize; // [x, y, z], [x, y, z], ...
-	const size_t writeVertexCount= triMeshData->getVertexCount();
-	const size_t writeVertexBufferSize= writeVertexCount * writeVertexSize;
-	uint8_t* writeVertexData= new uint8_t[writeVertexBufferSize];
-
-	{
-		const size_t readVertexSize= triMeshData->getVertexSize();
-		const uint8_t* readPtr= triMeshData->getVertexData() + posAttribute->getOffset();
-
-		uint8_t* writePtr= writeVertexData + posAttribute->getOffset();
-
-		for (size_t vertexIndex= 0; vertexIndex < writeVertexCount; ++vertexIndex)
-		{
-			memcpy(writePtr, readPtr, posAttribSize);
-			readPtr+= readVertexSize;
-			writePtr+= writeVertexSize;
-		}
-	}
-
-	// Convert the triangle index list into a line index list
-	const size_t lineCount= triMeshData->getIndexCount(); // 3 indices per triangle, 3 lines per triangle
-	const size_t indexCount= lineCount * 2;
-	const size_t indexSize= sizeof(uint32_t);
-	const size_t indexBufferSize= indexCount * indexSize;
-	uint8_t* indexData= new uint8_t[indexBufferSize];
-
-	{
-		const size_t triangleCount= triMeshData->getIndexCount() / 3;
-		const uint32_t* readPtr= triMeshData->getIndexData();
-		uint32_t* writePtr= (uint32_t*)indexData;
-
-		for (size_t triangleIndex= 0; triangleIndex < triangleCount; triangleIndex++)
-		{
-			const uint32_t i0= readPtr[0];
-			const uint32_t i1= readPtr[1];
-			const uint32_t i2= readPtr[2];
-			readPtr+= 3;
-
-			writePtr[0]= i0;
-			writePtr[1]= i1;
-			writePtr[2]= i1;
-			writePtr[3]= i2;
-			writePtr[4]= i2;
-			writePtr[5]= i0;
-			writePtr+= 6;
-		}
-	}
-
-	IMkWireframeMeshPtr wireMesh= CreateMkWireframeMesh(
-		graphicsContext, triMeshData->getMaterialName(), (const uint8_t*)writeVertexData, writeVertexSize,
-		(uint32_t)writeVertexCount, (const uint8_t*)indexData, indexSize, (uint32_t)lineCount,
-		true); // <-- wireframe mesh owns vertex data, cleans up on delete
-
-	if (wireMesh->createResources())
-	{
-		auto matInstance= wireMesh->getMaterialInstance();
-
-		matInstance->setVec4BySemantic(eUniformSemantic::diffuseColorRGBA, glm::vec4(Colors::Yellow, 1.f));
-	}
-	else
-	{
-		wireMesh= nullptr;
-	}
-
-	return wireMesh;
 }
 }; // namespace ObjUtils
