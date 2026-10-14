@@ -1,4 +1,5 @@
 #include "GuiPanel_CompositorList.h"
+#include "AppStage.h"
 #include "CompositorComponent.h"
 #include "IconsForkAwesome.h"
 #include "LocText.h"

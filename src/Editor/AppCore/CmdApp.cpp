@@ -21,6 +21,7 @@
 #include "DMXSequenceTests.h"
 #include "DMXUniverseRLETests.h"
 #include "FileVideoSourceTests.h"
+#include "FrameRegistrationTests.h"
 #include "GlbMeshWriterTests.h"
 #include "HttpServerTests.h"
 #include "LegacyContentMigrationTests.h"
@@ -33,6 +34,7 @@
 #include "NodeGraphHistoryTests.h"
 #include "NodeGraphPropertyNameTests.h"
 #include "NodeLinkDirectionTests.h"
+#include "OcclusionMeshTests.h"
 #include "PixelGridLayoutTests.h"
 #include "ProjectAssetCatalogTests.h"
 #include "PropertyNotificationGuardTests.h"
@@ -40,6 +42,7 @@
 #include "ScriptEditorCommandTests.h"
 #include "ScriptHttpRouteTests.h"
 #include "ScriptVariablePersistenceTests.h"
+#include "TsdfVolumeTests.h"
 #include "VideoRecordingTests.h"
 
 #include "Graphs/MaterialNodeGraph.h"
@@ -73,6 +76,7 @@ bool run_all_editor_unit_tests()
 	success&= run_dmx_sequence_tests();
 	success&= run_dmx_universe_rle_tests();
 	success&= run_file_video_source_tests();
+	success&= run_frame_registration_unit_tests();
 	success&= run_glb_mesh_writer_tests();
 	success&= run_http_server_tests();
 	success&= run_legacy_content_migration_tests();
@@ -85,6 +89,7 @@ bool run_all_editor_unit_tests()
 	success&= run_node_graph_history_tests();
 	success&= run_node_graph_property_name_tests();
 	success&= run_node_link_direction_tests();
+	success&= run_occlusion_mesh_unit_tests();
 	success&= run_pixel_grid_layout_tests();
 	success&= run_project_asset_catalog_tests();
 	success&= run_property_notification_guard_tests();
@@ -92,6 +97,7 @@ bool run_all_editor_unit_tests()
 	success&= run_script_editor_command_tests();
 	success&= run_script_http_route_tests();
 	success&= run_script_variable_persistence_tests();
+	success&= run_tsdf_volume_unit_tests();
 	success&= run_video_recording_tests();
 	// Future: add more test modules here
 	return success;

@@ -226,6 +226,18 @@ file(GLOB MIKAN_CALIBRATION_TEST_SRC
 )
 source_group("Calibration\\Test" FILES ${MIKAN_CALIBRATION_TEST_SRC})
 
+# Reconstruction
+file(GLOB MIKAN_RECONSTRUCTION_SRC
+    "${CMAKE_CURRENT_LIST_DIR}/Reconstruction/*.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/Reconstruction/*.h"
+)
+source_group("Reconstruction" FILES ${MIKAN_RECONSTRUCTION_SRC})
+file(GLOB MIKAN_RECONSTRUCTION_TEST_SRC
+    "${CMAKE_CURRENT_LIST_DIR}/Reconstruction/Test/*.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/Reconstruction/Test/*.h"
+)
+source_group("Reconstruction\\Test" FILES ${MIKAN_RECONSTRUCTION_TEST_SRC})
+
 # Config
 file(GLOB MIKAN_CONFIG_SRC
     "${CMAKE_CURRENT_LIST_DIR}/Config/*.cpp"
@@ -553,6 +565,8 @@ set(MIKAN_SRC
     ${MIKAN_ASSET_TEST_SRC}
     ${MIKAN_CALIBRATION_SRC}
     ${MIKAN_CALIBRATION_TEST_SRC}
+    ${MIKAN_RECONSTRUCTION_SRC}
+    ${MIKAN_RECONSTRUCTION_TEST_SRC}
     ${MIKAN_COMPONENTS_SRC}
     ${MIKAN_CONFIG_SRC}
     ${MIKAN_DELEGATES_SRC}
@@ -586,6 +600,8 @@ list(APPEND MIKAN_INCL_DIRS
   ${CMAKE_CURRENT_LIST_DIR}/Asset/Test
   ${CMAKE_CURRENT_LIST_DIR}/Calibration
   ${CMAKE_CURRENT_LIST_DIR}/Calibration/Test
+  ${CMAKE_CURRENT_LIST_DIR}/Reconstruction
+  ${CMAKE_CURRENT_LIST_DIR}/Reconstruction/Test
   ${ROOT_DIR}/src/Programs/Tests/UnitTests
   ${CMAKE_CURRENT_LIST_DIR}/Config
   ${CMAKE_CURRENT_LIST_DIR}/Delegates
