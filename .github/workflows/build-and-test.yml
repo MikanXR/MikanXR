@@ -136,6 +136,7 @@ jobs:
             thirdparty/imgui \
             thirdparty/imgui-node-editor \
             thirdparty/fast_obj \
+            thirdparty/cgltf \
             thirdparty/IXWebSocket \
             thirdparty/readerwriterqueue \
             thirdparty/nlohmann_json \
