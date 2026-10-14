@@ -5,6 +5,7 @@
 #include "MkStateModifiers.h"
 #include "IMkTexture.h"
 #include "Logger.h"
+#include "MkError.h"
 
 #include <assert.h>
 
@@ -25,6 +26,8 @@ GLenum getGlColorTextureFormat(IMkFrameBuffer::eColorFormat colorFormat)
 		return GL_RGBA16;
 	case IMkFrameBuffer::eColorFormat::RGBA16F:
 		return GL_RGBA16F;
+	case IMkFrameBuffer::eColorFormat::R8:
+		return GL_R8;
 	default:
 		return GL_RGB;
 	}
@@ -42,6 +45,8 @@ GLenum getGlColorBufferFormat(IMkFrameBuffer::eColorFormat colorFormat)
 	case IMkFrameBuffer::eColorFormat::RGBA16:
 	case IMkFrameBuffer::eColorFormat::RGBA16F:
 		return GL_RGBA;
+	case IMkFrameBuffer::eColorFormat::R8:
+		return GL_RED;
 	default:
 		return GL_RGB;
 	}
@@ -51,21 +56,6 @@ GLenum getGlColorBufferFormat(IMkFrameBuffer::eColorFormat colorFormat)
 class GlFrameBuffer : public IMkFrameBuffer
 {
 public:
-	enum class eFrameBufferType
-	{
-		COLOR,
-		DEPTH,
-		COLOR_AND_DEPTH,
-	};
-
-	enum class eColorFormat
-	{
-		RGB,
-		RGBA,
-		RGB16,
-		RGBA16,
-	};
-
 	GlFrameBuffer()= default;
 	GlFrameBuffer(const std::string& name)
 		: m_name(name)
@@ -333,6 +323,32 @@ public:
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture->getGlTextureId(), 0);
 			glBindFramebuffer(GL_FRAMEBUFFER, prevFrameBufferID);
 		}
+	}
+
+	virtual bool copyDepthFromBoundFrameBuffer(int srcX, int srcY) override
+	{
+		if (m_glFrameBufferId == -1)
+			return false;
+
+		// GL errors are sticky, so log and clear any left by earlier calls. The check after
+		// the blit then reports the blit's own error rather than a stale one.
+		checkHasAnyMkError("GlFrameBuffer::copyDepthFromBoundFrameBuffer() pre-existing", __FILE__, __LINE__);
+
+		GLint prevReadFrameBufferID= 0;
+		GLint prevDrawFrameBufferID= 0;
+		glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prevReadFrameBufferID);
+		glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prevDrawFrameBufferID);
+
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, prevDrawFrameBufferID);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_glFrameBufferId);
+		glBlitFramebuffer(srcX, srcY, srcX + m_width, srcY + m_height, 0, 0, m_width, m_height, GL_DEPTH_BUFFER_BIT,
+						  GL_NEAREST);
+		const bool bSuccess= !checkHasAnyMkError("GlFrameBuffer::copyDepthFromBoundFrameBuffer()", __FILE__, __LINE__);
+
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, prevReadFrameBufferID);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prevDrawFrameBufferID);
+
+		return bSuccess;
 	}
 
 	virtual std::string getName() const override { return m_name; }

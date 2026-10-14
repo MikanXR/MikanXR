@@ -29,6 +29,8 @@ public:
 		// Half-float, the only format here that holds values outside [0,1]. A client
 		// publishing an HDR color buffer needs this to survive an intermediate pass.
 		RGBA16F,
+		// Single channel 8-bit, for masks
+		R8,
 	};
 
 	virtual ~IMkFrameBuffer() {}
@@ -49,6 +51,12 @@ public:
 	// otherwise the texture is stored and used when createResources() is next called.
 	// The texture will NOT be deleted by disposeResources().
 	virtual void attachColorTexture(IMkTexturePtr texture)= 0;
+
+	// Copy a framebuffer-sized block of depth, starting at (srcX, srcY), from the currently
+	// bound framebuffer into this one's depth attachment. Both depth formats must match, so
+	// this needs the COLOR type, whose depth/stencil matches the default framebuffer's.
+	// Returns false if the copy raised a GL error, which is logged.
+	virtual bool copyDepthFromBoundFrameBuffer(int srcX, int srcY)= 0;
 
 	virtual std::string getName() const= 0;
 	virtual uint32_t getMkFrameBufferId() const= 0;
