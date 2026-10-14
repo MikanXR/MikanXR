@@ -16,7 +16,7 @@ The decision rests on a comparison run in the ReconstructionExperiments repo (`D
 - The models' one visible gain, crisper small-object outlines at 8 mm voxels, is a depth-resolution effect, and fine-voxel LiDAR fusion recovers part of it for free.
 - At room scale the LiDAR mesh against its own held-out frames is 1.75 cm MAE and 11 px edge distance. That is ARKit pose drift across the sweep, every method inherits it, and it is now the dominant silhouette error.
 - Every model needed the LiDAR as input to produce metric depth at all (MapAnything without it: 11 cm MAE). Recording the LiDAR is the prerequisite either way.
-- Thin structures (chair legs) and anything that moves are absent from every static mesh. Image-space refinement cannot invent them. Per-frame depth at runtime is the only route to those and is a different architecture, out of scope here.
+- Thin structures (chair legs) and anything that moves are absent from every static mesh. Image-space refinement cannot invent them. Per-frame depth at runtime is the only route to those and is a different architecture, out of scope here. An open laptop lid on a desk is the same case: the LiDAR sees it frontally at high confidence, and the views that look past its edge carve it away, at any truncation.
 
 PromptDA stays in the experiments repo as an optional offline refinement for close-range hero objects. It is a Python preprocessing step, not a candidate for an in-editor port.
 
@@ -56,11 +56,14 @@ Done. The format is documented in [videosources.md](../reference/videosources.md
 ### Part 2: Validate takes in the experiments harness before any C++
 
 - [x] Add a Mikan take loader to `recon/capture.py` (mp4 plus `.pose.json` plus the two binaries), producing the same `Capture` object as the Stray Scanner loader. The transform in the pose track is row-major camera-to-world in ARKit world space with ARKit camera axes (+Y up, +Z toward the viewer), so the loader applies the one 180 degree rotation about X that Stray Scanner bakes in, and nothing else. `load_mikan_take(<take>.mp4)`, and `run.py --capture <path to the mp4>` picks it up. Verified by the reprojection check above, which would read tens of centimetres with the flip wrong.
-- [ ] Run `lidar_tsdf` on a few takes (tabletop and room). Expect numbers in the range of the Stray Scanner captures: under 1 cm MAE against held-out frames at tabletop scale, 1.5 to 2 cm at room scale. A take that does worse has a recording problem, which is cheaper to find here than in the editor. The first take (a 20 s room sweep, 1.38 cm MAE, 10.2 edge px, 99.8 percent completeness at 1.5 cm voxels, see the experiments repo `NOTES.md`) is in range. A tabletop take and a longer loop are still to do.
+- [x] Run `lidar_tsdf` on a few takes (tabletop and room). Three streamer takes, all recording correctly by the reprojection check, details in the experiments repo `NOTES.md`:
+	- A 20 s room sweep: 1.38 cm MAE, 10.2 edge px, 0.39 cm median held-out error.
+	- A tabletop (a desk with two open laptops): 0.56 cm median held-out error but 2.55 cm MAE, because the laptop lids are carved out of every fusion by the side and rear views, the thin-structure limit above with a desk example. Not a recording problem.
+	- A 57 s room loop over 16.6 m: 2.35 cm MAE, 8.7 edge px, 1.07 cm median held-out error. The median doubling against the short sweep of the same room is drift within the sweep. The loop closes to 31 mm and 0.9 degrees after ARKit's own relocalisation, so the error is spread along the path rather than sitting at the seam.
 
 ### Part 3: Pose refinement of the sweep
 
-The largest open design item. The measured drift (1.75 cm MAE, 11 px edge distance at 256x192, room scale) is what the refinement has to remove, and the harness measures the result directly. Options, not yet chosen:
+The largest open design item. The measured drift (1.75 cm MAE and 11 px edge distance on the Stray Scanner hotel room, 2.35 cm and 8.7 px with a 1.07 cm median on the streamer's room loop, both at 256x192) is what the refinement has to remove, and the harness measures the result directly. The streamer loop adds one fact: ARKit closes the loop itself to about 3 cm and 1 degree, so the residual is distributed along the sweep rather than concentrated at the seam, which favours a method that corrects every keyframe against the geometry over one that only adds loop constraints. Options, not yet chosen:
 
 - Frame-to-model ICP during integration: register each incoming LiDAR frame against the TSDF built so far before integrating it (the KinectFusion loop). Cheap, no feature tracks, but drifts the same way ARKit does on a long loop.
 - Keyframe bundle adjustment over the sweep with feature tracks from the video, poses initialised from ARKit and the LiDAR giving metric scale. Handles loop closure; more machinery.
@@ -92,7 +95,8 @@ Whatever is chosen runs offline on the recorded take, and its output is a refine
 
 - Pose refinement method (Part 3). Decide after Part 2 has real takes to measure on.
 - Whether fusion should run on the phone instead, using ARKit's own `sceneReconstruction` mesh as a free alternative. It costs nothing to export `ARMeshAnchor`s in the same take and compare them in the harness, and it would short-circuit Part 4 if the quality is enough. Worth adding to Part 1 as an optional export.
-- Voxel size per take: 1.5 cm for a room, 8 mm for a tabletop. A heuristic from the sweep's extent, or an operator setting.
+- Voxel size per take: 1.5 cm for a room, 8 mm for a tabletop. A heuristic from the sweep's extent, or an operator setting. On the tabletop take 8 mm changed nothing but the fusion time (five times longer) and the unsupported-surface fraction, so the measured case for 8 mm is still only the Stray Scanner small-object outlines.
+- Whether the fusion should weight free-space carving below surface votes, so a thin plate seen frontally many times survives the views that look past its edge. Untested; it would be an experiment in `recon/fusion.py` before it is a Part 4 decision.
 - Whether the editor keeps the fused volume for incremental updates (a second sweep extends the mesh) or always rebuilds from a take.
 
 ## References
