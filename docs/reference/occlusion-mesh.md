@@ -65,6 +65,10 @@ Drive scripts reach it with `function invoke FileVideoSourceSystem <componentId>
 
 `MikanCmd.exe -occlusionMesh -take=<take.mp4> [-glb=<path>] [-refinedTrack=<path>] [-voxel=<metres>] [-stride=<n>] [-noRegistration]` runs the same builder on a take outside the editor and writes the mesh and the refined track. It is the parity check against the Python harness in the experiments repo, which fuses the same take with `recon/fusion.py` and scores both.
 
+## Edge refinement
+
+The fused mesh is a coarse prior, and at composite time its silhouette is decided in image space: `DepthEdgeRefineNode` ([compositor.md](./compositor.md)) takes the depth mask rendered from the stencil and the video frame and moves the mask's edges to the picture's within a band, by classifying each pixel against the colour of the near and the far side of the depth edge, keeping the mask's own depth values. The same filter exists as `tools/edge_refine_eval.py` in the experiments repo, which renders a fused mesh at a take's held-out frames, refines it against the video, and scores both against the held-out LiDAR's edges, which is how the node's defaults were chosen: a 16 px band and a 0.2 colour threshold took the room loop's held-out edge distance from 9.44 to 9.00 px. The LiDAR's edges carry the sensor's own blur, so hand-marked frames are the finer measure and are tracked in `plan.md`.
+
 ## glTF models
 
 The mesh is written as a glTF binary rather than OBJ because a room is about a million triangles, which a text parser loads slowly and a binary buffer loads as a copy. `GltfModelImporter` (`src/Editor/Asset/Import`) reads `.glb` and `.gltf` through cgltf (`thirdparty/cgltf`): every triangle primitive in the scene becomes one triangulated mesh plus one wireframe mesh, node transforms are applied, and the base colour texture is loaded from the embedded image or its URI. glTF stores texture V down and the renderer samples V up, so the importer flips V at one point and `GlbMeshWriter` flips it back on the way out. `ModelAssetReference` lists all three extensions, and the model resource manager matches extensions case-insensitively.
