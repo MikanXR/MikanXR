@@ -137,6 +137,7 @@ bool PoseTrack::loadFromJSON(const configuru::Config& pt)
 			return false;
 		}
 
+		frame.fileIndex= frames.size();
 		frames.push_back(frame);
 	}
 
@@ -324,17 +325,33 @@ void PoseTrackWriter::append(int64_t timeUs, int64_t captureTimestampUs, const g
 	m_frames.push_back(frame);
 }
 
+void PoseTrackWriter::setDepthTrack(int depthWidth, int depthHeight, double depthUnitMm)
+{
+	m_depthWidth= depthWidth;
+	m_depthHeight= depthHeight;
+	m_depthUnitMm= depthUnitMm;
+}
+
 configuru::Config PoseTrackWriter::toConfig() const
 {
+	const bool bHasDepthTrack= m_depthWidth > 0 && m_depthHeight > 0;
+
 	configuru::Config pt= configuru::Config::object();
 	pt["format"]= PoseTrack::k_formatName;
-	// Nothing the editor records carries depth, so it writes the version every
-	// reader accepts rather than the newest one
-	pt["version"]= static_cast<int64_t>(PoseTrack::k_minSupportedVersion);
+	// Only the depth header needs version 2, so a track without one is written
+	// at the version every reader accepts
+	pt["version"]=
+		static_cast<int64_t>(bHasDepthTrack ? PoseTrack::k_maxSupportedVersion : PoseTrack::k_minSupportedVersion);
 	pt["session_id"]= m_sessionId;
 	pt["image_width"]= static_cast<int64_t>(m_imageWidth);
 	pt["image_height"]= static_cast<int64_t>(m_imageHeight);
 	pt["first_capture_timestamp_us"]= static_cast<int64_t>(m_frames.empty() ? 0 : m_frames.front().captureTimestampUs);
+	if (bHasDepthTrack)
+	{
+		pt["depth_width"]= static_cast<int64_t>(m_depthWidth);
+		pt["depth_height"]= static_cast<int64_t>(m_depthHeight);
+		pt["depth_unit_mm"]= m_depthUnitMm;
+	}
 
 	configuru::Config frames= configuru::Config::array();
 	for (const PoseTrackFrame& frame : m_frames)

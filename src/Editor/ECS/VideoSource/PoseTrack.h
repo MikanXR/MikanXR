@@ -11,6 +11,9 @@
 
 struct PoseTrackFrame
 {
+	// Position of the record in the file's frames array, which is also its
+	// record index in the depth sidecars. Survives the sort by time.
+	size_t fileIndex= 0;
 	// Relative to the first frame, matching the container's presentation time
 	int64_t timeUs= 0;
 	// The phone's absolute clock
@@ -87,6 +90,9 @@ public:
 	void append(int64_t timeUs, int64_t captureTimestampUs, const glm::mat4& cameraToWorld, double fx, double fy,
 				double cx, double cy);
 	size_t getFrameCount() const { return m_frames.size(); }
+	// Declare the depth sidecars that sit beside the media, which makes the
+	// track a version 2 track. Frames must be appended in sidecar record order.
+	void setDepthTrack(int depthWidth, int depthHeight, double depthUnitMm);
 
 	configuru::Config toConfig() const;
 	// Writes to a sibling temporary file and renames it into place, so a reader
@@ -97,5 +103,8 @@ private:
 	std::string m_sessionId;
 	int m_imageWidth;
 	int m_imageHeight;
+	int m_depthWidth= 0;
+	int m_depthHeight= 0;
+	double m_depthUnitMm= 0.0;
 	std::vector<PoseTrackFrame> m_frames;
 };

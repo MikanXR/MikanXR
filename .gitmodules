@@ -45,3 +45,6 @@
 [submodule "thirdparty/Refureku"]
 	path = thirdparty/Refureku
 	url = https://github.com/MikanXR/Refureku.git
+[submodule "thirdparty/cgltf"]
+	path = thirdparty/cgltf
+	url = https://github.com/jkuhlmann/cgltf.git
