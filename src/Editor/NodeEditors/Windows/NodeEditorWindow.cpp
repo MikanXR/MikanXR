@@ -29,6 +29,7 @@
 #include "MkStateModifiers.h"
 #include "MkWindowEvent.h"
 #include "IMkTexture.h"
+#include "Graphs/NodeConfigValueText.h"
 #include "Graphs/NodeGraph.h"
 #include "Graphs/NodeEvaluator.h"
 #include "Nodes/CommentNode.h"
@@ -94,6 +95,26 @@ static bool containsIgnoreCase(const std::string& text, const std::string& filte
 	}
 
 	return false;
+}
+
+// The entry of a graph snapshot's "nodes" array written for the given node, or null
+static configuru::Config* findNodeEntryInGraphSnapshot(configuru::Config& snapshot, t_node_id nodeId)
+{
+	if (!snapshot.is_object() || !snapshot.has_key("nodes") || !snapshot["nodes"].is_array())
+	{
+		return nullptr;
+	}
+
+	for (configuru::Config& nodeEntry : snapshot["nodes"].as_array())
+	{
+		if (nodeEntry.is_object() && nodeEntry.has_key("id") && nodeEntry["id"].is_int()
+			&& nodeEntry["id"].as_integer<int64_t>() == nodeId)
+		{
+			return &nodeEntry;
+		}
+	}
+
+	return nullptr;
 }
 
 //-- public methods -----
@@ -1764,15 +1785,22 @@ void NodeEditorWindow::updateHistoryCapture()
 		NodeGraphPtr nodeGraph= getNodeGraph();
 		if (nodeGraph)
 		{
-			const configuru::Config snapshotConfig= nodeGraph->saveToSnapshotConfig();
-			if (m_history.commit(configuru::dump_string(snapshotConfig, configuru::JSON)))
-			{
-				m_logWriter.writeSnapshotCommit(m_nextLogSequenceNumber++, snapshotConfig);
-				onGraphEdited();
-			}
+			commitHistorySnapshot(nodeGraph->saveToSnapshotConfig());
 		}
 		m_bCheckpointPending= false;
 	}
+}
+
+bool NodeEditorWindow::commitHistorySnapshot(const configuru::Config& snapshotConfig)
+{
+	if (!m_history.commit(configuru::dump_string(snapshotConfig, configuru::JSON)))
+	{
+		return false;
+	}
+
+	m_logWriter.writeSnapshotCommit(m_nextLogSequenceNumber++, snapshotConfig);
+	onGraphEdited();
+	return true;
 }
 
 void NodeEditorWindow::refreshCanvasUiScale()
@@ -2126,6 +2154,78 @@ bool NodeEditorWindow::automationDeletePage(t_graph_page_id pageId, std::string&
 	ownerApp->getWindowManager()->popCurrentWindowContext(windowContext);
 
 	return true;
+}
+
+bool NodeEditorWindow::automationSetNodeConfigValue(t_node_id nodeId, const std::string& key,
+													const std::string& valueText, std::string& outError)
+{
+	NodeGraphPtr nodeGraph= getNodeGraph();
+	if (!nodeGraph)
+	{
+		outError= "no graph loaded";
+		return false;
+	}
+
+	configuru::Config snapshot= nodeGraph->saveToSnapshotConfig();
+	configuru::Config* nodeEntry= findNodeEntryInGraphSnapshot(snapshot, nodeId);
+	if (nodeEntry == nullptr)
+	{
+		outError= "no node with id " + std::to_string(nodeId);
+		return false;
+	}
+
+	// Configs share storage on copy, so the edit lands in the snapshot itself
+	if (!NodeConfigValueText::applyToConfig(*nodeEntry, key, valueText, outError))
+	{
+		return false;
+	}
+
+	// Rebuilding from the edited snapshot is the undo path, so every node kind
+	// reads the new value the way it reads a loaded file
+	if (!restoreGraphSnapshot(configuru::dump_string(snapshot, configuru::JSON)))
+	{
+		outError= "failed to rebuild the graph";
+		return false;
+	}
+
+	// The restore swapped in a new graph instance
+	NodeGraphPtr restoredGraph= getNodeGraph();
+	if (restoredGraph)
+	{
+		commitHistorySnapshot(restoredGraph->saveToSnapshotConfig());
+	}
+
+	return true;
+}
+
+bool NodeEditorWindow::automationGetNodeConfigValue(t_node_id nodeId, const std::string& key, std::string& outText,
+													std::string& outError)
+{
+	NodeGraphPtr nodeGraph= getNodeGraph();
+	if (!nodeGraph)
+	{
+		outError= "no graph loaded";
+		return false;
+	}
+
+	configuru::Config snapshot= nodeGraph->saveToSnapshotConfig();
+	const configuru::Config* nodeEntry= findNodeEntryInGraphSnapshot(snapshot, nodeId);
+	if (nodeEntry == nullptr)
+	{
+		outError= "no node with id " + std::to_string(nodeId);
+		return false;
+	}
+
+	if (key.empty())
+	{
+		// Compact output keeps the whole entry on one reply line
+		configuru::FormatOptions compactJson= configuru::JSON;
+		compactJson.indentation= "";
+		outText= configuru::dump_string(*nodeEntry, compactJson);
+		return true;
+	}
+
+	return NodeConfigValueText::readFromConfig(*nodeEntry, key, outText, outError);
 }
 
 void NodeEditorWindow::onNodeGraphCreated()

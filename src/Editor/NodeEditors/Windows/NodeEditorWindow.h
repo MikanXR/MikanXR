@@ -84,6 +84,13 @@ public:
 	bool automationSetCurrentPage(t_graph_page_id pageId, std::string& outError);
 	bool automationCreatePage(const std::string& pageClassName, t_graph_page_id& outPageId, std::string& outError);
 	bool automationDeletePage(t_graph_page_id pageId, std::string& outError);
+	// One persisted config field of a node, edited through a snapshot rebuild so
+	// it lands as one undo step
+	bool automationSetNodeConfigValue(t_node_id nodeId, const std::string& key, const std::string& valueText,
+									  std::string& outError);
+	// The field's value as text, or with an empty key the node's whole config entry as one JSON line
+	bool automationGetNodeConfigValue(t_node_id nodeId, const std::string& key, std::string& outText,
+									  std::string& outError);
 
 	// Ask the app to tear this window down at the end of the frame
 	void requestClose() { m_bCloseRequested= true; }
@@ -200,6 +207,11 @@ protected:
 
 	// Clear the canvas node/link selection from outside the canvas frame scope
 	void clearCanvasSelection();
+
+private:
+	// Commit a graph snapshot as a history checkpoint and log it.
+	// @returns false when it matches the current checkpoint (nothing committed)
+	bool commitHistorySnapshot(const configuru::Config& snapshotConfig);
 
 protected:
 	NodeEditorState m_editorState;

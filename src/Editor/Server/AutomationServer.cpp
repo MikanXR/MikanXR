@@ -479,13 +479,25 @@ void AutomationServer::registerCoreNamespaces()
 							 std::bind(&AutomationServer::handleClientCommand, this, _1, _2, _3));
 
 	registerCommandNamespace("nodegraph",
-							 {"nodegraph open [compositorComponentId]", "nodegraph open material <graphPath>",
-							  "nodegraph open material new [compositor|shape]", "nodegraph close", "nodegraph info",
-							  "nodegraph list nodes|pins|links|properties|pages", "nodegraph page [pageId]",
-							  "nodegraph createpage <pageClassName>", "nodegraph deletepage <pageId>",
-							  "nodegraph createnode <nodeClassName> [x y]", "nodegraph deletenode <nodeId>",
-							  "nodegraph createlink <startPinId> <endPinId>", "nodegraph deletelink <linkId>",
-							  "nodegraph undo [n]", "nodegraph redo [n]", "nodegraph run on|off", "nodegraph compile",
+							 {"nodegraph open [compositorComponentId]",
+							  "nodegraph open material <graphPath>",
+							  "nodegraph open material new [compositor|shape]",
+							  "nodegraph close",
+							  "nodegraph info",
+							  "nodegraph list nodes|pins|links|properties|pages",
+							  "nodegraph page [pageId]",
+							  "nodegraph createpage <pageClassName>",
+							  "nodegraph deletepage <pageId>",
+							  "nodegraph createnode <nodeClassName> [x y]",
+							  "nodegraph deletenode <nodeId>",
+							  "nodegraph createlink <startPinId> <endPinId>",
+							  "nodegraph deletelink <linkId>",
+							  "nodegraph setconfig <nodeId> <key> <value>",
+							  "nodegraph getconfig <nodeId> [key]",
+							  "nodegraph undo [n]",
+							  "nodegraph redo [n]",
+							  "nodegraph run on|off",
+							  "nodegraph compile",
 							  "nodegraph renamevar <propertyId> <name...>",
 							  "nodegraph reordervar <movedPropertyId> <targetPropertyId>"},
 							 std::bind(&AutomationServer::handleNodeGraphCommand, this, _1, _2, _3));
@@ -988,7 +1000,7 @@ bool AutomationServer::handleNodeGraphCommand(const std::vector<std::string>& ar
 	if (args.empty())
 	{
 		outError= "usage: nodegraph open|close|info|list|page|createpage|deletepage|createnode|deletenode|"
-				  "createlink|deletelink|undo|redo|run|compile|renamevar|reordervar";
+				  "createlink|deletelink|setconfig|getconfig|undo|redo|run|compile|renamevar|reordervar";
 		return false;
 	}
 
@@ -1275,6 +1287,64 @@ bool AutomationServer::handleNodeGraphCommand(const std::vector<std::string>& ar
 				else
 				{
 					sendErrorReply("nodegraph deletelink: " + error);
+				}
+			});
+		return true;
+	}
+	else if (verb == "setconfig")
+	{
+		int nodeId= -1;
+		if (args.size() < 4 || !parseComponentId(args[1], nodeId))
+		{
+			outError= "usage: nodegraph setconfig <nodeId> <key> <value>";
+			return false;
+		}
+
+		const std::string key= args[2];
+		const std::string valueText= args[3];
+
+		// The graph rebuild needs the window's GL and gui contexts; the reply is sent from the task
+		m_bReplyDeferred= true;
+		window->enqueueAutomationTask(
+			[this, window, nodeId, key, valueText]()
+			{
+				std::string error;
+				if (window->automationSetNodeConfigValue(nodeId, key, valueText, error))
+				{
+					sendReply({});
+				}
+				else
+				{
+					sendErrorReply("nodegraph setconfig: " + error);
+				}
+			});
+		return true;
+	}
+	else if (verb == "getconfig")
+	{
+		int nodeId= -1;
+		if (args.size() < 2 || !parseComponentId(args[1], nodeId))
+		{
+			outError= "usage: nodegraph getconfig <nodeId> [key]";
+			return false;
+		}
+
+		const std::string key= args.size() >= 3 ? args[2] : "";
+
+		// Queued behind any pending setconfig so the read sees its result
+		m_bReplyDeferred= true;
+		window->enqueueAutomationTask(
+			[this, window, nodeId, key]()
+			{
+				std::string text;
+				std::string error;
+				if (window->automationGetNodeConfigValue(nodeId, key, text, error))
+				{
+					sendReply({text});
+				}
+				else
+				{
+					sendErrorReply("nodegraph getconfig: " + error);
 				}
 			});
 		return true;

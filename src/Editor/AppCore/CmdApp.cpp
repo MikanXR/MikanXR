@@ -33,6 +33,7 @@
 #include "ModelRepositoryTests.h"
 #include "ModelGeometryPayloadTests.h"
 #include "NodeGraphHistoryTests.h"
+#include "NodeConfigValueTextTests.h"
 #include "NodeGraphPropertyNameTests.h"
 #include "NodeLinkDirectionTests.h"
 #include "OcclusionMeshTests.h"
@@ -96,6 +97,7 @@ bool run_all_editor_unit_tests()
 
 	success&= run_model_repository_tests();
 	success&= run_node_graph_history_tests();
+	success&= run_node_config_value_text_tests();
 	success&= run_node_graph_property_name_tests();
 	success&= run_node_link_direction_tests();
 	success&= run_occlusion_mesh_unit_tests();
