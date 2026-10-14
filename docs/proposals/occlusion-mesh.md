@@ -76,16 +76,18 @@ The method is built and measured in the experiments repo (`fusion.frame_to_model
 
 Remaining on this part:
 
-- [ ] Write the refined poses out as a pose track file beside the original (the experiments repo keeps them as `poses_refined.npy` today).
+- [x] Write the refined poses out as a pose track file beside the original (the editor writes `<stem>.refined.pose.json`; the experiments repo keeps them as `poses_refined.npy`).
 - [ ] Record ARKit's per-frame tracking state in the pose track, so a fusion can skip limited-tracking frames outright instead of discovering them as rejected registrations.
 
 ### Part 4: TSDF fusion in Mikan
 
-- [ ] Entry point: an action on a file video source that carries depth sidecars, "Build occlusion mesh from take", alongside the existing recording and alignment tools, or a stage in the shape of `AppStage_DepthMeshCapture` with a worker thread and a progress readout. The capture stage's pattern (gather on the UI thread, work on a worker, poll for the result) carries over.
-- [ ] Algorithm as in `recon/fusion.py`: bounding box from the confidence-2 cloud, confidence weights, gradient cull, truncated signed distance with a running weighted average, nearest-sign fill of unobserved voxels, marching cubes, island removal. A CPU implementation is acceptable first (the room fused in 67 s on a GPU, mostly in marching cubes and cleanup, which were CPU anyway). A compute shader is the obvious later step.
-- [ ] Spaces: the take's poses are ARKit world space. The mesh is fused in that space and placed in the stage through the take's solved world-to-stage offset, so an unaligned take produces a mesh that cannot be placed and the tool says so. The vertices crossing from OpenCV camera convention into Mikan convention do so at one named point, as the depth proxy does.
-- [ ] Output: an OBJ under `<project>/models/` with a unique name per build, registered as a `ModelStencilComponent` under the active scene, counter-clockwise winding around outward normals (the Unreal client depends on it; the depth proxy doc records the lesson). Unlike the depth proxy the vertices are stage-space, not camera-local, so the stencil's transform is identity relative to the stage.
-- [ ] Unit tests in the `MikanCmd -runTests` suite for the TSDF (a synthetic plane and sphere fuse to the right surface, the back-shell case stays absent, the gradient cull drops a synthetic flying pixel).
+Done: [occlusion-mesh.md](../reference/occlusion-mesh.md) is the reference. Two decisions changed from the list below while building it: the mesh is written as a glTF binary rather than OBJ, since a room is a million triangles and OBJ parsing is slow, which brought `.glb` import into the editor through cgltf; and the vertices stay in ARKit world space with the stencil carrying `stageWorld * poseOffset`, so a re-solved alignment moves the stencil rather than forcing a rebuild.
+
+- [x] Entry point: an action on a file video source that carries depth sidecars, "Build occlusion mesh from take", alongside the existing recording and alignment tools, or a stage in the shape of `AppStage_DepthMeshCapture` with a worker thread and a progress readout. The capture stage's pattern (gather on the UI thread, work on a worker, poll for the result) carries over.
+- [x] Algorithm as in `recon/fusion.py`: bounding box from the confidence-2 cloud, confidence weights, gradient cull, truncated signed distance with a running weighted average, nearest-sign fill of unobserved voxels, marching cubes, island removal. A CPU implementation is acceptable first (the room fused in 67 s on a GPU, mostly in marching cubes and cleanup, which were CPU anyway). A compute shader is the obvious later step.
+- [x] Spaces: the take's poses are ARKit world space. The mesh is fused in that space and placed in the stage through the take's solved world-to-stage offset, so an unaligned take produces a mesh that cannot be placed and the tool says so. The vertices crossing from OpenCV camera convention into Mikan convention do so at one named point, as the depth proxy does.
+- [x] Output: an OBJ under `<project>/models/` with a unique name per build, registered as a `ModelStencilComponent` under the active scene, counter-clockwise winding around outward normals (the Unreal client depends on it; the depth proxy doc records the lesson). Unlike the depth proxy the vertices are stage-space, not camera-local, so the stencil's transform is identity relative to the stage.
+- [x] Unit tests in the `MikanCmd -runTests` suite for the TSDF (a synthetic plane and sphere fuse to the right surface, the back-shell case stays absent, the gradient cull drops a synthetic flying pixel).
 
 ### Part 5: Image-space edge refinement
 

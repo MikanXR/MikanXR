@@ -65,6 +65,18 @@ Reach the stage with `function invoke CameraObjectSystem <cameraId> align_camera
 
 Reach it with `function invoke <VideoSourceSystem> <componentId> show_video_source_settings`, since `app push VideoSourceSettings` gives the stage no source.
 
+`OcclusionMeshBuild` fuses a file video source's LiDAR take into a model stencil ([occlusion-mesh.md](./occlusion-mesh.md)):
+
+- `get_state` replies the menu state (`verifyTake`, `building`, `failed`, `verifyMesh`, `buildComplete`)
+- `get_take_info` replies `frames`, `depth_width`, `depth_height`, and `session_id` lines
+- `set_option <voxel_preset|keyframe_stride|frame_to_model|replace_pose_track> <value>` sets a build option while in `verifyTake` (`room`/`tabletop`, an integer, `on`/`off`)
+- `build` starts the worker, `get_progress` replies `phase`, `frames`, `total`, and `elapsed` lines while it runs
+- `get_summary` replies the triangle counts, grid, frames fused, registration counts, and the final correction once a mesh exists
+- `apply` creates the stencil, writes the refined pose track, and replies `created` or `failed`
+- `cancel` stops a build in progress or discards a result, `return` pops the stage
+
+Reach it with `function invoke FileVideoSourceSystem <componentId> build_occlusion_mesh`, which refuses a take without depth sidecars or without a solved alignment through a message box rather than entering the stage.
+
 ### Scene introspection (system, component, property, function)
 
 These reach every object system and component through the property and function databases ([objects.md](./objects.md)).

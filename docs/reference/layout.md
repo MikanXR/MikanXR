@@ -34,7 +34,7 @@ MikanXR/
 
 - `deps/` holds prebuilt downloads (SDL2, OpenCV, GLEW, Spout2, easy_profiler, libharu, CEF, nuget.exe, the DirectX Shader Compiler under `dxc/`, the pinned clang-format under `clang-format/`). It is recreated from scratch by `InitialSetup_x64.bat`; never edit it by hand. GStreamer is the exception: its MSIs install system-wide rather than into `deps/`.
 
-- `thirdparty/` holds git submodules (see `.gitmodules`: `openvr`, `glm`, `Configuru`, `stb`, `fast-cpp-csv-parser`, `LuaBridge3`, `imgui`, `imgui-node-editor`, `fast_obj`, `IXWebSocket`, `readerwriterqueue`, `nlohmann_json`, `Vulkan-Headers`, `volk`, `Refureku`) plus vendored non-submodule dirs (`lua` prebuilt binaries, `lrdb`, `tinyfiledialogs`). `thirdparty/CMakeLists.txt` builds `fast_obj_lib`, `ixwebsocket`, and CEF's `libcef_dll_wrapper`; the rest are consumed header-only or as source lists from `cmake/ThirdParty.cmake`. `Refureku` is the exception on both counts: it carries a nested `Kodgen` submodule of its own, and `cmake/ThirdParty.cmake` builds it rather than `thirdparty/CMakeLists.txt` ([build.md](./build.md)).
+- `thirdparty/` holds git submodules (see `.gitmodules`: `openvr`, `glm`, `Configuru`, `stb`, `fast-cpp-csv-parser`, `LuaBridge3`, `imgui`, `imgui-node-editor`, `fast_obj`, `IXWebSocket`, `readerwriterqueue`, `nlohmann_json`, `Vulkan-Headers`, `volk`, `Refureku`, `cgltf`) plus vendored non-submodule dirs (`lua` prebuilt binaries, `lrdb`, `tinyfiledialogs`). `thirdparty/CMakeLists.txt` builds `fast_obj_lib`, `ixwebsocket`, and CEF's `libcef_dll_wrapper`; the rest are consumed header-only or as source lists from `cmake/ThirdParty.cmake`. `Refureku` is the exception on both counts: it carries a nested `Kodgen` submodule of its own, and `cmake/ThirdParty.cmake` builds it rather than `thirdparty/CMakeLists.txt` ([build.md](./build.md)).
 
 - `build/` layout depends on the generator: the VS generator puts executables in per-target per-config folders (e.g. `build\src\Editor\Release\Mikan.exe`), while CI flattens everything to `build\bin` via `CMAKE_RUNTIME_OUTPUT_DIRECTORY`. Refureku reflection codegen output lands in `build/RfkGenerated/<Library>`.
 
@@ -57,6 +57,7 @@ The editor/server application itself. All editor code compiles once into the `Mi
 - `AppCore`: entry points, top-level app object, `Version.h` (source of the project version string)
 - `AppStages`: top-level app state machine (menus, calibration flows, compositor stage)
 - `Asset`, `Project`, `Config`: persisted project/scene/asset state (Configuru-backed config files); `Asset` also holds the `ProjectAssetCatalog` behind the Assets panels, the shared tile and property-row widgets, and `Asset/Test` for the catalog test module (see [objects.md](./objects.md))
+- `Reconstruction`: the occlusion mesh fusion (TSDF volume, marching cubes, frame-to-model registration, depth sidecar reader, builder) and its `Test/`, see [occlusion-mesh.md](./occlusion-mesh.md)
 - `Calibration`: camera/mixed-reality calibration algorithms (OpenCV-based), see [calibration.md](./calibration.md); also the ONNX-backed frame estimators behind [scene-lighting.md](./scene-lighting.md) and [depth-proxy-mesh.md](./depth-proxy-mesh.md)
 - `ECS`: entity/component scene representation (see [objects.md](./objects.md))
 - `Delegates`, `Events`: callback/event plumbing

@@ -60,6 +60,8 @@ Notable CMake options (defined in `cmake/ThirdParty.cmake` unless noted):
 
 - `CLANG_FORMAT_EXE`: overrides clang-format discovery for the format targets. When unset, `RunClangFormat.cmake` searches at build time.
 
+Header-only third-party libraries are one include variable each in `cmake/ThirdParty.cmake` (`CONFIGURU_INCLUDE_DIR`, `STB_INCLUDE_DIRS`, `FAST_OBJ_LOADER_INCLUDE_DIRS`, `CGLTF_INCLUDE_DIR`). cgltf's one implementation unit is `src/Editor/Asset/GltfImplementation.cpp`, excluded from the unity build like the other `*_IMPLEMENTATION` files.
+
 Third-party source builds: `thirdparty/CMakeLists.txt` builds `fast_obj_lib`, `ixwebsocket`, and CEF's `libcef_dll_wrapper` (forced to `/MD` to match Mikan's dynamic CRT). `dylib` is fetched via `FetchContent` at configure time.
 
 ---
