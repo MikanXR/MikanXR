@@ -71,6 +71,15 @@ The largest open design item. The measured drift (1.75 cm MAE and 11 px edge dis
 
 Whatever is chosen runs offline on the recorded take, and its output is a refined pose track (the same format, a new file beside the original) so every consumer downstream is unchanged. The live camera's registration at composite time is a separate problem and is covered by the existing alignment path.
 
+Frame-to-model ICP is built and measured in the experiments repo (`fusion.frame_to_model`, `recon/register.py`, the room loop results and the three defects found on the way in `NOTES.md`). On the room loop it takes the held-out median from 1.07 cm to 0.49 cm, the level of a short sweep, and MAE from 2.35 to 1.59 cm, with every frame accepted and an ARKit tracking jump of 56 mm absorbed in one step. It leaves the end-to-end seam where ARKit's relocalisation put it, about 3 cm and 1 degree, which is the known weakness of the option and would be a loop constraint added on top rather than a different method. The parts that carry into a Part 4 port are the ones the defects forced:
+
+- the ray cast treats any sample that touches an unobserved voxel as unobserved, or the rim of every observed patch reads as a wall
+- model normals from a two-voxel gradient stencil, not one
+- a prior on the deviation from the carried-forward ARKit pose (3 mm, 0.2 degrees against a 5 mm data sigma) for the directions a frame's geometry leaves free
+- a rejected frame is skipped, never integrated at the stale pose, and the per-step bound (15 cm) is wide enough to absorb a tracking jump
+
+Not yet done on this path: writing the refined poses out as a pose track file, and recording ARKit's per-frame tracking state in the pose track so a fusion can skip limited-tracking frames outright.
+
 ### Part 4: TSDF fusion in Mikan
 
 - [ ] Entry point: an action on a file video source that carries depth sidecars, "Build occlusion mesh from take", alongside the existing recording and alignment tools, or a stage in the shape of `AppStage_DepthMeshCapture` with a worker thread and a progress readout. The capture stage's pattern (gather on the UI thread, work on a worker, poll for the result) carries over.
@@ -93,7 +102,7 @@ Whatever is chosen runs offline on the recorded take, and its output is a refine
 
 ## Open questions
 
-- Pose refinement method (Part 3). Decide after Part 2 has real takes to measure on.
+- Pose refinement method (Part 3). Frame-to-model ICP is measured (above) and removes the drift along the sweep; whether to adopt it as the Part 3 method, and whether a loop constraint is worth adding for the remaining 3 cm seam, is the decision to make.
 - Whether fusion should run on the phone instead, using ARKit's own `sceneReconstruction` mesh as a free alternative. It costs nothing to export `ARMeshAnchor`s in the same take and compare them in the harness, and it would short-circuit Part 4 if the quality is enough. Worth adding to Part 1 as an optional export.
 - Voxel size per take: 1.5 cm for a room, 8 mm for a tabletop. A heuristic from the sweep's extent, or an operator setting. On the tabletop take 8 mm changed nothing but the fusion time (five times longer) and the unsupported-surface fraction, so the measured case for 8 mm is still only the Stray Scanner small-object outlines.
 - Whether the fusion should weight free-space carving below surface votes, so a thin plate seen frontally many times survives the views that look past its edge. Untested; it would be an experiment in `recon/fusion.py` before it is a Part 4 decision.
