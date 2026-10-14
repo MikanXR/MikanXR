@@ -8,6 +8,7 @@
 #include "vector"
 
 #include "glm/ext/vector_int2_sized.hpp"
+#include "glm/ext/vector_int4_sized.hpp"
 #include "glm/ext/vector_float2.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include "glm/ext/vector_float4.hpp"
@@ -129,6 +130,10 @@ private:
 	glm::i32vec2 m_viewportSize;
 	glm::i32vec2 m_renderOrigin;
 	glm::i32vec2 m_renderSize;
+	// Viewport rects applied while this viewport is registered for rendering, innermost
+	// last. A frame buffer bound mid-render applies its own rect, and popping it has to
+	// restore the outer one rather than end the viewport's render.
+	std::vector<glm::i32vec4> m_appliedRenderRects;
 	glm::vec4 m_backgroundColor;
 
 	std::vector<MikanCameraPtr> m_cameraPool;

@@ -59,6 +59,7 @@ void MikanViewport::applyRenderingViewport(IMkState* glState)
 	// called, so that mkStateSetViewportImpl::apply() can find us via
 	// getOwnerContext()->getRenderingViewport() and call onRenderingViewportApply.
 	m_ownerWindow->getGraphicsContext()->setRenderingViewport(shared_from_this());
+	m_appliedRenderRects.clear();
 
 	mkStateSetClearColor(glState, m_backgroundColor);
 
@@ -72,17 +73,33 @@ void MikanViewport::applyRenderingViewport(IMkState* glState)
 
 void MikanViewport::onRenderingViewportApply(int x, int y, int width, int height)
 {
+	m_appliedRenderRects.push_back(glm::i32vec4(x, y, width, height));
 	m_renderOrigin= glm::i32vec2(x, y);
 	m_renderSize= glm::i32vec2(width, height);
 }
 
 void MikanViewport::onRenderingViewportRevert(int x, int y, int width, int height)
 {
-	m_renderOrigin= glm::i32vec2(x, y);
-	m_renderSize= glm::i32vec2(width, height);
+	if (!m_appliedRenderRects.empty())
+	{
+		m_appliedRenderRects.pop_back();
+	}
 
-	// Deregister from the graphics context when the scoped state is popped.
-	m_ownerWindow->getGraphicsContext()->setRenderingViewport(nullptr);
+	if (!m_appliedRenderRects.empty())
+	{
+		// A nested rect (a frame buffer bound mid-render) was popped: the outer one is current again
+		const glm::i32vec4& outerRect= m_appliedRenderRects.back();
+		m_renderOrigin= glm::i32vec2(outerRect.x, outerRect.y);
+		m_renderSize= glm::i32vec2(outerRect.z, outerRect.w);
+	}
+	else
+	{
+		m_renderOrigin= glm::i32vec2(x, y);
+		m_renderSize= glm::i32vec2(width, height);
+
+		// Deregister from the graphics context when this viewport's own scoped state is popped
+		m_ownerWindow->getGraphicsContext()->setRenderingViewport(nullptr);
+	}
 }
 
 bool MikanViewport::getRenderingViewport(glm::i32vec2& outOrigin, glm::i32vec2& outSize) const
