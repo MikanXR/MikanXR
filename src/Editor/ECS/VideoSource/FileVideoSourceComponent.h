@@ -161,6 +161,7 @@ public:
 	static const std::string k_playFunctionId;
 	static const std::string k_pauseFunctionId;
 	static const std::string k_stopFunctionId;
+	static const std::string k_buildOcclusionMeshFunctionId;
 	static void getFunctionDescriptors(std::vector<FunctionDescriptorConstPtr>& outDescriptors);
 	virtual bool invokeFunction(const std::string& functionName) override;
 

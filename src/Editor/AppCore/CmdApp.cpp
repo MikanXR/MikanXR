@@ -46,6 +46,11 @@
 #include "VideoRecordingTests.h"
 
 #include "Graphs/MaterialNodeGraph.h"
+#include "DepthTrackReader.h"
+#include "GlbMeshWriter.h"
+#include "OcclusionMeshBuilder.h"
+#include "PoseTrack.h"
+#include "PoseTrackAssetReference.h"
 #include "MaterialCompiler/GlslShaderWriter.h"
 #include "MaterialCompiler/MaterialCompiler.h"
 
@@ -54,7 +59,9 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <algorithm>
 #include <filesystem>
+#include <numeric>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -149,6 +156,10 @@ int CmdApp::exec(int argc, char** argv)
 	{
 		result= generateDepthMesh();
 	}
+	else if (hasCommandLineFlag("occlusionMesh"))
+	{
+		result= buildOcclusionMesh();
+	}
 	else if (hasCommandLineFlag("fetchModels"))
 	{
 		result= fetchModels();
@@ -215,6 +226,11 @@ void CmdApp::printUsage() const
 			"               [-stride=<n>] [-maxDepth=<metres>] [-cpu]\n"
 			"               Generate a camera-space depth proxy mesh from a single frame\n"
 			"               and write it as an OBJ.\n"
+			"  -occlusionMesh -take=<path to take.mp4> [-glb=<path>] [-refinedTrack=<path>]\n"
+			"               [-voxel=<metres>] [-stride=<n>] [-noRegistration]\n"
+			"               Fuse a recorded take's LiDAR depth sidecars into an occlusion\n"
+			"               mesh in the take's ARKit world space, refining the poses against\n"
+			"               the model, and write it as a glTF binary plus a refined pose track.\n"
 			"  -fetchModels [-model=<name>]\n"
 			"               Download the ML capture models into the per-user model\n"
 			"               directory. Without -model every model is fetched. Passing\n"
@@ -611,6 +627,160 @@ int CmdApp::generateDepthMesh() const
 		return EXIT_FAILURE;
 	}
 	fprintf(stdout, "wrote  : %s\n", objPath.c_str());
+
+	return EXIT_SUCCESS;
+}
+
+namespace CmdAppOcclusionMesh
+{
+// Prints the build phases as they change and a frame count during integration
+class ConsoleObserver : public IOcclusionMeshBuildObserver
+{
+public:
+	virtual bool isCancelRequested() const override { return false; }
+	virtual void onProgress(eOcclusionMeshBuildPhase phase, int done, int total) override
+	{
+		if (phase != m_lastPhase)
+		{
+			m_lastPhase= phase;
+			switch (phase)
+			{
+			case eOcclusionMeshBuildPhase::computingBounds:
+				fprintf(stdout, "bounds : computing from the confident depth cloud\n");
+				break;
+			case eOcclusionMeshBuildPhase::integrating:
+				fprintf(stdout, "fuse   : %d keyframes\n", total);
+				break;
+			case eOcclusionMeshBuildPhase::extracting:
+				fprintf(stdout, "extract: marching cubes\n");
+				break;
+			case eOcclusionMeshBuildPhase::cleaning:
+				fprintf(stdout, "clean  : islands and normals\n");
+				break;
+			default:
+				break;
+			}
+		}
+		if (phase == eOcclusionMeshBuildPhase::integrating && total > 0 && done % 50 == 0)
+		{
+			fprintf(stdout, "         frame %d of %d\n", done, total);
+			fflush(stdout);
+		}
+	}
+
+private:
+	eOcclusionMeshBuildPhase m_lastPhase= eOcclusionMeshBuildPhase::idle;
+};
+} // namespace CmdAppOcclusionMesh
+
+int CmdApp::buildOcclusionMesh() const
+{
+	const std::string takeArg= getCommandLineStringArg("take");
+	if (takeArg.empty())
+	{
+		fprintf(stdout, "error: -occlusionMesh needs -take=<path to the take's movie>\n");
+		return EXIT_FAILURE;
+	}
+
+	const std::filesystem::path mediaPath(takeArg);
+	const std::filesystem::path trackPath=
+		mediaPath.parent_path() / (mediaPath.stem().string() + PoseTrackAssetReferenceFactory::k_sidecarSuffix);
+	PoseTrack track;
+	if (!track.loadFromFile(trackPath))
+	{
+		fprintf(stdout, "error: could not load the pose track '%s'\n", trackPath.string().c_str());
+		return EXIT_FAILURE;
+	}
+	if (!track.hasDepthTrack())
+	{
+		fprintf(stdout, "error: the pose track declares no depth sidecars\n");
+		return EXIT_FAILURE;
+	}
+
+	DepthTrackReader reader;
+	if (!reader.open(DepthTrackReader::depthSidecarPathForMedia(mediaPath),
+					 DepthTrackReader::confidenceSidecarPathForMedia(mediaPath), track.getDepthWidth(),
+					 track.getDepthHeight(), track.getDepthUnitMm(), track.getFrameCount()))
+	{
+		fprintf(stdout, "error: could not open the depth sidecars beside '%s' (see MikanCmd.log)\n",
+				mediaPath.string().c_str());
+		return EXIT_FAILURE;
+	}
+
+	OcclusionMeshBuildSettings settings;
+	const std::string voxelArg= getCommandLineStringArg("voxel");
+	if (!voxelArg.empty())
+	{
+		settings.volume.voxelSize= (float)atof(voxelArg.c_str());
+		settings.volume.truncation= settings.volume.voxelSize * 4.f;
+	}
+	settings.keyframeStride= atoi(getCommandLineStringArg("stride", "3").c_str());
+	settings.bFrameToModel= !hasCommandLineFlag("noRegistration");
+
+	fprintf(stdout, "take   : %zu frames, depth %dx%d, registration %s\n", track.getFrameCount(), track.getDepthWidth(),
+			track.getDepthHeight(), settings.bFrameToModel ? "on" : "off");
+
+	CmdAppOcclusionMesh::ConsoleObserver observer;
+	OcclusionMeshBuildResult result;
+	if (!OcclusionMeshBuilder::build(track, reader, settings, &observer, result))
+	{
+		fprintf(stdout, "error: %s\n", result.failureReason.c_str());
+		return EXIT_FAILURE;
+	}
+
+	const OcclusionMeshBuildStats& stats= result.stats;
+	fprintf(stdout, "mesh   : %zu vertices, %d triangles (%d island triangles removed), grid %dx%dx%d at %.1f cm\n",
+			result.mesh.vertices.size(), stats.trianglesClean, stats.trianglesRemovedAsIslands, stats.gridDims.x,
+			stats.gridDims.y, stats.gridDims.z, stats.voxelSize * 100.f);
+	fprintf(stdout, "frames : %d of %d keyframes fused in %.0f s\n", stats.framesIntegrated, stats.keyframes,
+			stats.totalSeconds);
+	if (result.bHasRefinedPoses)
+	{
+		fprintf(stdout,
+				"poses  : %d accepted, %d rejected, step %.1f mm %.2f deg, rms %.1f -> %.1f mm, "
+				"final correction %.0f mm %.2f deg\n",
+				stats.registrationsAccepted, stats.registrationsRejected, stats.meanStepTranslationMm,
+				stats.meanStepRotationDeg, stats.meanRmsBeforeMm, stats.meanRmsAfterMm, stats.finalCorrectionMm,
+				stats.finalCorrectionDeg);
+	}
+
+	const std::string glbPath= getCommandLineStringArg("glb", "occlusion_mesh.glb");
+	if (!GlbMeshWriter::write(glbPath, "OcclusionMesh", result.mesh.vertices, result.mesh.normals, {},
+							  result.mesh.indices))
+	{
+		fprintf(stdout, "error: failed to write '%s'\n", glbPath.c_str());
+		return EXIT_FAILURE;
+	}
+	fprintf(stdout, "wrote  : %s\n", glbPath.c_str());
+
+	if (result.bHasRefinedPoses)
+	{
+		const std::string refinedArg= getCommandLineStringArg("refinedTrack");
+		const std::filesystem::path refinedPath=
+			refinedArg.empty() ? mediaPath.parent_path() / (mediaPath.stem().string() + ".refined.pose.json")
+							   : std::filesystem::path(refinedArg);
+
+		// File order, so record i of the sidecars still describes frame i
+		std::vector<size_t> trackOrder(track.getFrameCount());
+		std::iota(trackOrder.begin(), trackOrder.end(), (size_t)0);
+		std::sort(trackOrder.begin(), trackOrder.end(),
+				  [&](size_t a, size_t b) { return track.getFrame(a).fileIndex < track.getFrame(b).fileIndex; });
+
+		PoseTrackWriter writer(track.getSessionId(), track.getImageWidth(), track.getImageHeight());
+		writer.setDepthTrack(track.getDepthWidth(), track.getDepthHeight(), track.getDepthUnitMm());
+		for (size_t trackIndex : trackOrder)
+		{
+			const PoseTrackFrame& frame= track.getFrame(trackIndex);
+			writer.append(frame.timeUs, frame.captureTimestampUs, result.refinedCameraToWorld[frame.fileIndex],
+						  frame.fx, frame.fy, frame.cx, frame.cy);
+		}
+		if (!writer.writeToFile(refinedPath))
+		{
+			fprintf(stdout, "error: failed to write '%s'\n", refinedPath.string().c_str());
+			return EXIT_FAILURE;
+		}
+		fprintf(stdout, "wrote  : %s\n", refinedPath.string().c_str());
+	}
 
 	return EXIT_SUCCESS;
 }

@@ -29,6 +29,7 @@ private:
 	int triggerCrash() const;
 	int estimateLighting() const;
 	int generateDepthMesh() const;
+	int buildOcclusionMesh() const;
 	int compileMaterial() const;
 	int fetchModels() const;
 

@@ -10,6 +10,7 @@
 #include "MovieDecoder.h"
 #include "PathUtils.h"
 #include "PlaybackTime.h"
+#include "OcclusionMeshBuild/AppStage_OcclusionMeshBuild.h"
 #include "PoseTrackAssetReference.h"
 #include "ThreadUtils.h"
 #include "VideoSourceRequestHandler.h"
@@ -266,6 +267,7 @@ const std::string FileVideoSourceComponent::k_durationSecondsPropertyId= "durati
 const std::string FileVideoSourceComponent::k_playFunctionId= "play";
 const std::string FileVideoSourceComponent::k_pauseFunctionId= "pause";
 const std::string FileVideoSourceComponent::k_stopFunctionId= "stop";
+const std::string FileVideoSourceComponent::k_buildOcclusionMeshFunctionId= "build_occlusion_mesh";
 
 FileVideoSourceComponent::FileVideoSourceComponent(MikanObjectWeakPtr owner)
 	: VideoSourceComponent(owner)
@@ -1230,6 +1232,8 @@ void FileVideoSourceComponent::getFunctionDescriptors(std::vector<FunctionDescri
 	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_playFunctionId, "Play"));
 	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_pauseFunctionId, "Pause"));
 	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_stopFunctionId, "Stop"));
+	outDescriptors.push_back(
+		std::make_shared<FunctionDescriptor>(k_buildOcclusionMeshFunctionId, "Build Occlusion Mesh"));
 }
 
 bool FileVideoSourceComponent::invokeFunction(const std::string& functionName)
@@ -1247,6 +1251,13 @@ bool FileVideoSourceComponent::invokeFunction(const std::string& functionName)
 	else if (functionName == k_stopFunctionId)
 	{
 		stop();
+		return true;
+	}
+	else if (functionName == k_buildOcclusionMeshFunctionId)
+	{
+		// The stage checks the take and explains a refusal itself
+		AppStage_OcclusionMeshBuild::tryEnterBuild(getOwnerEditorWindow()->getCurrentAppStage(),
+												   getSelfPtr<FileVideoSourceComponent>());
 		return true;
 	}
 

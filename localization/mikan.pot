@@ -591,6 +591,11 @@ msgid "Movie or Image Files (*.mp4;*.mov;*.m4v;*.mkv;*.avi;*.jpg;*.jpeg;*.png;*.
 msgstr ""
 
 #. Section: assets
+msgctxt "assets.modelFilterDescription"
+msgid "Model Files (*.obj, *.glb, *.gltf)"
+msgstr ""
+
+#. Section: assets
 msgctxt "assets.movieFilterDescription"
 msgid "Movie Files (*.mp4;*.mov;*.m4v;*.mkv;*.avi)"
 msgstr ""
@@ -1362,6 +1367,11 @@ msgstr ""
 #. Section: functions
 msgctxt "functions.apply_preset"
 msgid "Apply"
+msgstr ""
+
+#. Section: functions
+msgctxt "functions.build_occlusion_mesh"
+msgid "Build Occlusion Mesh"
 msgstr ""
 
 #. Section: functions
@@ -3198,6 +3208,231 @@ msgstr ""
 #. Section: objectSystemPanel
 msgctxt "objectSystemPanel.transmitRateHz"
 msgid "Transmit Rate (Hz)"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.build"
+msgid "Build"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.buildFailed"
+msgid "Occlusion mesh build failed."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.cancelBuild"
+msgid "Cancel Build"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.cancelling"
+msgid "Cancelling..."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.createStencil"
+msgid "Create Stencil"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.depthSidecarsMissing"
+msgid "The take's depth sidecars (.depth.bin and .conf.bin) are not beside the movie."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.depthSidecarsUnreadable"
+msgid "The depth sidecars do not match the pose track (see the log)."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.elapsedSecondsFmt"
+msgid "Elapsed: %.0f s"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.frameToModel"
+msgid "Refine poses against the model"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.frameToModelHelp"
+msgid "Registers each frame to the mesh built so far before fusing it, which removes the drift that accumulates along a sweep."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.framesFusedFmt"
+msgid "%d of %d keyframes fused in %.0f s"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.keyframeStride"
+msgid "Fuse every nth frame"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.meshSummaryFmt"
+msgid "%d triangles (%d island triangles removed), grid %dx%dx%d at %.1f cm"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.meshWriteFailedFmt"
+msgid "Failed to write the mesh to %s."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.noActiveScene"
+msgid "No active scene to place the stencil under."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.noCamera"
+msgid "No camera on a stage uses this video source."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.noDepthTrack"
+msgid "The take's pose track declares no depth sidecars. Record the take on a LiDAR phone."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.noMediaPath"
+msgid "The video source has no media file."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.noProjectLoaded"
+msgid "No project is loaded."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.notAligned"
+msgid "The take is not aligned to the stage. Run Align Camera with its marker reference first."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.phaseCleaning"
+msgid "Cleaning the mesh..."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.phaseComputingBounds"
+msgid "Measuring the sweep..."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.phaseExtracting"
+msgid "Extracting the surface..."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.phaseIntegratingFmt"
+msgid "Fusing frame %d of %d"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.phaseLoadingTake"
+msgid "Opening the depth sidecars..."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.poseTrackMissing"
+msgid "The take has no pose track, or it could not be loaded."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.poseTrackReplacedNote"
+msgid "The video source now plays the take with the refined poses."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.presetRoom"
+msgid "Room (1.5 cm voxels)"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.presetTabletop"
+msgid "Tabletop (8 mm voxels)"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.previewNote"
+msgid "The mesh is drawn where the stencil will be placed. Orbit the view to check it against the room."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.redo"
+msgid "Rebuild"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.refinedTrackWriteFailedFmt"
+msgid "Failed to write the refined pose track to %s."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.refinedTrackWrittenFmt"
+msgid "Refined pose track written to %s."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.registrationOff"
+msgid "Poses were used as recorded."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.registrationSummaryFmt"
+msgid "Registration: %d accepted, %d rejected. Step %.1f mm, %.2f deg. Residual %.1f to %.1f mm. Final correction %.0f mm, %.2f deg."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.replacePoseTrack"
+msgid "Play the take with the refined poses"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.replacePoseTrackHelp"
+msgid "The refined poses are written beside the take as a second pose track. With this on, the video source switches to it."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.retry"
+msgid "Retry"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.stencilCreateFailed"
+msgid "Failed to create the stencil."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.stencilCreatedFmt"
+msgid "Created occlusion mesh stencil '%s' under the active scene."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.takeSummaryFmt"
+msgid "Take: %d frames, depth %dx%d, %.1f s"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.voxelPreset"
+msgid "Grid"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.working"
+msgid "Working..."
 msgstr ""
 
 #. Section: pointCloudAlignment

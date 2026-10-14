@@ -86,6 +86,7 @@ void GuiPanel_FileVideoSourceComponent::drawCompactGui()
 		FileVideoSourceComponent::k_pauseFunctionId,
 		FileVideoSourceComponent::k_stopFunctionId,
 		FileVideoSourceComponent::k_showVideoSourceSettingsFunctionId,
+		FileVideoSourceComponent::k_buildOcclusionMeshFunctionId,
 	};
 	entityAccessor->drawPropertiesGui(compactProperties);
 	VideoSourceStatusGui::drawIntrinsicsWarning(getFileVideoSourceComponent());
