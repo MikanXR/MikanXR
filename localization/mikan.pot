@@ -2311,6 +2311,11 @@ msgid "Auto"
 msgstr ""
 
 #. Section: nodes
+msgctxt "nodes.bandRadius"
+msgid "Band Radius (px)"
+msgstr ""
+
+#. Section: nodes
 msgctxt "nodes.blendMode"
 msgid "Blend Mode"
 msgstr ""
@@ -2401,6 +2406,11 @@ msgid "Color Parameter"
 msgstr ""
 
 #. Section: nodes
+msgctxt "nodes.colorSigma"
+msgid "Color Sigma"
+msgstr ""
+
+#. Section: nodes
 msgctxt "nodes.commentColor"
 msgid "Color"
 msgstr ""
@@ -2473,6 +2483,21 @@ msgstr ""
 #. Section: nodes
 msgctxt "nodes.depthCurveLog"
 msgid "Log"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthEdgeRefineHeader"
+msgid "Depth Edge Refine Node"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthEdgeRefineTitle"
+msgid "Depth Edge Refine"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthJump"
+msgid "Depth Jump"
 msgstr ""
 
 #. Section: nodes

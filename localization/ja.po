@@ -2643,6 +2643,11 @@ msgid "Auto"
 msgstr "自動"
 
 #. Section: nodes
+msgctxt "nodes.bandRadius"
+msgid "Band Radius (px)"
+msgstr ""
+
+#. Section: nodes
 #, fuzzy
 msgctxt "nodes.blendMode"
 msgid "Blend Mode"
@@ -2751,6 +2756,11 @@ msgid "Color Parameter"
 msgstr "カラーパラメータ"
 
 #. Section: nodes
+msgctxt "nodes.colorSigma"
+msgid "Color Sigma"
+msgstr ""
+
+#. Section: nodes
 #, fuzzy
 msgctxt "nodes.commentColor"
 msgid "Color"
@@ -2835,6 +2845,21 @@ msgstr ""
 #. Section: nodes
 msgctxt "nodes.depthCurveLog"
 msgid "Log"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthEdgeRefineHeader"
+msgid "Depth Edge Refine Node"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthEdgeRefineTitle"
+msgid "Depth Edge Refine"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthJump"
+msgid "Depth Jump"
 msgstr ""
 
 #. Section: nodes

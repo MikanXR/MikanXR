@@ -29,6 +29,11 @@
 // range window, a curve and a palette. Never used in a composite.
 #define INTERNAL_MATERIAL_PT_DEPTH_COLORIZE "Internal_PT_DepthColorize"
 #define INTERNAL_MATERIAL_PT_LINEAR_TO_HARDWARE_DEPTH "Internal_PT_LinearToHardwareDepth"
+// The three passes of the depth edge refinement: separable window min/max of a linear depth
+// mask, then a colour-guided vote that moves the mask's edges to the video's within that window
+#define INTERNAL_MATERIAL_PT_DEPTH_MINMAX_H "Internal_PT_DepthMinMaxH"
+#define INTERNAL_MATERIAL_PT_DEPTH_MINMAX_V "Internal_PT_DepthMinMaxV"
+#define INTERNAL_MATERIAL_PT_DEPTH_EDGE_REFINE "Internal_PT_DepthEdgeRefine"
 #define INTERNAL_MATERIAL_PT_PM5544_TEST_CARD "Internal_PT_PM5544TestCard"
 #define INTERNAL_MATERIAL_PT_TEXTURED "Internal_PT_Textured"
 #define INTERNAL_MATERIAL_P_CONE_VOLUME "Internal_P_ConeVolume"
