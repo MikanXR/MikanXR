@@ -35,6 +35,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <ctime>
 #include <filesystem>
 #include <numeric>
@@ -255,6 +256,7 @@ OcclusionMeshBuildSettings AppStage_OcclusionMeshBuild::gatherSettings() const
 	OcclusionMeshBuildStage::applyVoxelPreset(m_buildPanel->getVoxelPreset(), settings);
 	settings.keyframeStride= std::max(m_buildPanel->getKeyframeStride(), 1);
 	settings.bFrameToModel= m_buildPanel->getFrameToModel();
+	settings.cameraPathRadius= std::max(m_buildPanel->getPathRadius(), 0.f);
 	return settings;
 }
 
@@ -662,8 +664,9 @@ bool AppStage_OcclusionMeshBuild::handleRemoteControlCommand(const std::string& 
 	{
 		if (parameters.size() != 2)
 		{
-			outResults.push_back(
-				"usage: set_option <voxel_preset|keyframe_stride|frame_to_model|replace_pose_track> <value>");
+			outResults.push_back("usage: set_option "
+								 "<voxel_preset|keyframe_stride|frame_to_model|replace_pose_track|path_radius> "
+								 "<value>");
 			return false;
 		}
 		if (menuState != eOcclusionMeshBuildMenuState::verifyTake)
@@ -709,6 +712,18 @@ bool AppStage_OcclusionMeshBuild::handleRemoteControlCommand(const std::string& 
 			m_buildPanel->setReplacePoseTrack(bFlag);
 			return true;
 		}
+		else if (option == "path_radius")
+		{
+			char* end= nullptr;
+			const float radius= std::strtof(value.c_str(), &end);
+			if (end == value.c_str() || radius < 0.f)
+			{
+				outResults.push_back("path_radius must be metres, 0 or more");
+				return false;
+			}
+			m_buildPanel->setPathRadius(radius);
+			return true;
+		}
 
 		outResults.push_back("unknown option or value: " + option + " " + value);
 		return false;
@@ -751,6 +766,7 @@ bool AppStage_OcclusionMeshBuild::handleRemoteControlCommand(const std::string& 
 		outResults.push_back("registrations_rejected " + std::to_string(stats.registrationsRejected));
 		outResults.push_back("final_correction_mm " + std::to_string(stats.finalCorrectionMm));
 		outResults.push_back("final_correction_deg " + std::to_string(stats.finalCorrectionDeg));
+		outResults.push_back("voxels_clipped " + std::to_string(stats.voxelsClipped));
 		outResults.push_back("seconds " + std::to_string(stats.totalSeconds));
 		return true;
 	}

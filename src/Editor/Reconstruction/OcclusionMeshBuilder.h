@@ -45,6 +45,10 @@ struct OcclusionMeshBuildSettings
 	float normalStencilVoxels= 2.f;
 	float raycastStepFraction= 0.5f;
 	RegistrationConfig registration;
+	// Metres from the nearest fused camera position beyond which the volume is
+	// trimmed at extraction, 0 for no trim. The grid itself is never trimmed,
+	// so the registration keeps the far walls as constraints.
+	float cameraPathRadius= 2.f;
 };
 
 struct OcclusionMeshBuildStats
@@ -55,6 +59,7 @@ struct OcclusionMeshBuildStats
 	glm::vec3 boundsHi= glm::vec3(0.f);
 	int keyframes= 0;
 	int framesIntegrated= 0;
+	size_t voxelsClipped= 0; // dropped by the camera-path trim, 0 when it is off
 	int trianglesRaw= 0;
 	int trianglesClean= 0;
 	int trianglesRemovedAsIslands= 0;

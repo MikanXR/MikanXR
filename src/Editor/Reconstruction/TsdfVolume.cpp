@@ -442,11 +442,16 @@ void TsdfVolume::raycast(const PinholeIntrinsics& intrinsics, const glm::mat4& c
 		4);
 }
 
-bool TsdfVolume::extractMesh(TriangleMesh& outMesh) const
+bool TsdfVolume::extractMesh(TriangleMesh& outMesh, const std::vector<uint8_t>* keepMask) const
 {
 	outMesh.clear();
 
 	const size_t voxelCount= m_tsdf.size();
+	if (keepMask != nullptr && keepMask->size() != voxelCount)
+	{
+		MIKAN_LOG_ERROR("TsdfVolume::extractMesh") << "The keep mask does not match the grid";
+		return false;
+	}
 	size_t observedCount= 0;
 	for (const float voxelWeight : m_weights)
 	{
@@ -500,6 +505,9 @@ bool TsdfVolume::extractMesh(TriangleMesh& outMesh) const
 					for (int x= 0; x < m_dims.x; ++x)
 					{
 						const size_t index= flatIndex(x, y, z);
+						if (keepMask != nullptr && (*keepMask)[index] == 0)
+							continue;
+
 						if (m_weights[index] > 0.f)
 						{
 							filled[index]= m_tsdf[index];

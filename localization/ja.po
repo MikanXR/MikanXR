@@ -3833,6 +3833,16 @@ msgid "The video source is not playing a Track Camera capture (.trackcamera)."
 msgstr ""
 
 #. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.pathRadius"
+msgid "Trim radius"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.pathRadiusHelp"
+msgid "Surfaces farther than this from every fused camera position are dropped, so a sweep of a corner does not drag in the rest of the room. 0 keeps everything."
+msgstr ""
+
+#. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.phaseCleaning"
 msgid "Cleaning the mesh..."
 msgstr ""
@@ -3941,6 +3951,12 @@ msgstr ""
 #, c-format
 msgctxt "occlusionMeshBuild.takeSummaryFmt"
 msgid "Take: %d frames, depth %dx%d, %.1f s"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.trimSummaryFmt"
+msgid "%.1f million voxels trimmed beyond the camera path."
 msgstr ""
 
 #. Section: occlusionMeshBuild

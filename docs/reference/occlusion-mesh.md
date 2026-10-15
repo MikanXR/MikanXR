@@ -16,10 +16,11 @@ The take must be aligned: `FileVideoSourceDefinition::hasPoseOffset()` must hold
 2. Bounds: every fourth keyframe's confidence-2 pixels, back-projected and transformed to world, trimmed to the 0.5 and 99.5 percentile per axis, padded by `boundsMargin` (0.3 m).
 3. Volume: `TsdfVolume`, a dense truncated signed distance grid over that box. Default 1.5 cm voxels with a 6 cm truncation (the room preset); 8 mm and 3.2 cm for a tabletop. The voxel grows by ten percent until the grid fits `maxVoxels` (60 million).
 4. Integration, per keyframe: confidence 0, 1, 2 becomes weight 0, 0.5, 1; pixels whose depth jumps by more than 8 percent against a 4-neighbour are culled (flying pixels at silhouettes); every voxel in the frame's frustum takes the truncated signed distance into its running weighted average. With registration on, the frame is first aligned to the model (below).
-5. Extraction: unobserved voxels take the sign of their nearest observed voxel (without this every surface grows a back shell two voxels behind it), then marching cubes under the observed region dilated by one voxel. Vertices on shared edges are welded.
-6. Cleanup (`MeshCleanup`): degenerate and duplicate triangles, connected components under `minComponentTriangles` (500 for a room, 1500 for a tabletop), unreferenced vertices, area-weighted vertex normals.
+5. Trim: with `cameraPathRadius` set (default 2 m, 0 for off), `CameraPathClip` masks out every voxel farther than the radius from every fused camera position, so a sweep of a corner does not carry the rest of the room into the mesh. The grid itself is never trimmed, so the registration above still had the far walls to anchor on. The test runs per block of four voxels against the block's centre, so the cut is quantised to about 6 cm at the room preset.
+6. Extraction: unobserved voxels take the sign of their nearest observed voxel (without this every surface grows a back shell two voxels behind it), then marching cubes under the observed region dilated by one voxel and under the trim mask. A masked voxel is left out of the region, so no cube touching it is emitted and the surface ends there with a bare edge. Vertices on shared edges are welded.
+7. Cleanup (`MeshCleanup`): degenerate and duplicate triangles, connected components under `minComponentTriangles` (500 for a room, 1500 for a tabletop), unreferenced vertices, area-weighted vertex normals.
 
-Threads: integration splits the frustum's voxel box over z slabs, the ray cast over rows, through `parallelFor`; marching cubes and cleanup are single-threaded. Cancellation is cooperative between frames and phases.
+Threads: integration splits the frustum's voxel box over z slabs, the ray cast over rows, and the trim mask over cell slabs, through `parallelFor`; marching cubes and cleanup are single-threaded. Cancellation is cooperative between frames and phases.
 
 ## Pose refinement
 
@@ -55,15 +56,15 @@ Depth intrinsics are the frame's colour intrinsics scaled by `depth_width / imag
 
 `AppStage_OcclusionMeshBuild` (`src/Editor/AppStages/OcclusionMeshBuild`) is entered from a file video source's "Build Occlusion Mesh" function (`build_occlusion_mesh`). `tryEnterBuild` refuses, with a message box, media that is not a `trackcamera` capture, a pose track override that does not load, a capture without depth members, an unaligned take, a source no camera on a stage uses, or no project. The track is the override when the source has one and the capture's `movie_pose` otherwise. The stage then runs the depth proxy capture's worker pattern: the UI thread hands a copy of the pose track, the capture path with its two depth members, and the settings to a worker thread under a mutex, the worker opens the reader and calls the builder, and `update` polls the phase and frame counts into the panel each frame. Cancel is a flag the builder checks between frames.
 
-The panel offers the grid preset, the keyframe stride, the registration toggle, and whether the source should play the take with the refined poses. After a build it shows the triangle count, grid, frames fused, and the registration summary, and draws the mesh as a point sample where the stencil will land while the viewport camera orbits it.
+The panel offers the grid preset, the keyframe stride, the trim radius, the registration toggle, and whether the source should play the take with the refined poses. After a build it shows the triangle count, grid, frames fused, voxels trimmed, and the registration summary, and draws the mesh as a point sample where the stencil will land while the viewport camera orbits it.
 
 Create Stencil writes `<project>/models/OcclusionMesh_<timestamp>.glb` (`GlbMeshWriter`), creates a `ModelStencilComponent` under the active scene with that model path and the world transform above, refreshes the asset catalog, and when registration ran writes `captures/<stem>.refined.pose.json` beside the capture (version 2, same session id, image size, depth header, times, and intrinsics, frames in file order) and, with the toggle on, points the source's pose track path at it. The capture itself is never rewritten. A take without an active scene cannot be applied: stencils accept only a scene as their parent.
 
-Drive scripts reach it with `function invoke FileVideoSourceSystem <componentId> build_occlusion_mesh`, then `stage get_state`, `get_take_info`, `set_option <voxel_preset|keyframe_stride|frame_to_model|replace_pose_track> <value>`, `build`, `get_progress`, `get_summary`, `apply`, `cancel`, and `return` ([automation.md](./automation.md)).
+Drive scripts reach it with `function invoke FileVideoSourceSystem <componentId> build_occlusion_mesh`, then `stage get_state`, `get_take_info`, `set_option <voxel_preset|keyframe_stride|frame_to_model|replace_pose_track|path_radius> <value>`, `build`, `get_progress`, `get_summary`, `apply`, `cancel`, and `return` ([automation.md](./automation.md)).
 
 ## The headless command
 
-`MikanCmd.exe -occlusionMesh -take=<take.trackcamera> [-glb=<path>] [-refinedTrack=<path>] [-voxel=<metres>] [-stride=<n>] [-noRegistration]` runs the same builder on a capture outside the editor, reading the capture's own track and depth members, and writes the mesh and the refined track, by default beside the capture. It is the parity check against the Python harness in the experiments repo, which fuses the same take with `recon/fusion.py` and scores both.
+`MikanCmd.exe -occlusionMesh -take=<take.trackcamera> [-glb=<path>] [-refinedTrack=<path>] [-voxel=<metres>] [-stride=<n>] [-noRegistration] [-pathRadius=<metres>]` runs the same builder on a capture outside the editor, reading the capture's own track and depth members, and writes the mesh and the refined track, by default beside the capture. It is the parity check against the Python harness in the experiments repo, which fuses the same take with `recon/fusion.py` and scores both.
 
 ## Edge refinement
 
@@ -75,7 +76,7 @@ The mesh is written as a glTF binary rather than OBJ because a room is about a m
 
 ## Tests
 
-`MikanCmd -runTests` carries four modules for this: `tsdf_volume` (marching cubes on an analytic sphere with its winding, the gradient cull, a plane and a sphere fused from several poses, the absent back shell, the rim rule of `sample`, ray cast accuracy, island removal), `frame_registration` (the small-motion helpers, a displaced frame recovered on a corner scene, a floor-only frame held by the prior, rejection, the depth member reader), `occlusion_mesh` (the file index through the sort, the camera axis conversion, a synthetic take with a scrambled file order packed as a capture and fused end to end with drifted poses that the refinement beats), and `glb_mesh_writer` (a round trip through cgltf).
+`MikanCmd -runTests` carries four modules for this: `tsdf_volume` (marching cubes on an analytic sphere with its winding, the gradient cull, a plane and a sphere fused from several poses, the absent back shell, the rim rule of `sample`, ray cast accuracy, island removal, the camera path trim), `frame_registration` (the small-motion helpers, a displaced frame recovered on a corner scene, a floor-only frame held by the prior, rejection, the depth member reader), `occlusion_mesh` (the file index through the sort, the camera axis conversion, a synthetic take with a scrambled file order packed as a capture and fused end to end with drifted poses that the refinement beats), and `glb_mesh_writer` (a round trip through cgltf).
 
 ## Known limits
 

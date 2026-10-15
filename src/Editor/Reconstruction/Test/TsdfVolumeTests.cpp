@@ -1,4 +1,5 @@
 #include "TsdfVolumeTests.h"
+#include "CameraPathClip.h"
 #include "MarchingCubes.h"
 #include "MeshCleanup.h"
 #include "TsdfVolume.h"
@@ -795,6 +796,79 @@ bool tsdf_volume_test_mesh_cleanup_components()
 	UNIT_TEST_COMPLETE()
 }
 
+// A keep mask built from a camera path trims the extraction to the path's
+// neighbourhood: every vertex of the trimmed mesh lies within the radius plus
+// the mask's cell tolerance of the one path position, while the untrimmed
+// mesh reaches the far side of the plane
+bool tsdf_volume_test_camera_path_trim()
+{
+	UNIT_TEST_BEGIN("camera path trim keeps only the plane near the path")
+
+	using namespace TsdfVolumeTestsInternal;
+
+	const TsdfVolume volume= buildFusedPlaneVolume();
+	const glm::vec3 pathPosition(-0.3f, 0.f, k_planeZ);
+	const float radius= 0.25f;
+	const float cellTolerance= (float)CameraPathClip::k_defaultCellVoxels * volume.getVoxelSize();
+
+	TriangleMesh untrimmed;
+	if (!volume.extractMesh(untrimmed))
+	{
+		fprintf(stdout, "    untrimmed extraction failed\n");
+		success= false;
+	}
+
+	std::vector<uint8_t> keep;
+	const size_t clipped= CameraPathClip::buildKeepMask(volume, std::vector<glm::vec3>{pathPosition}, radius, keep);
+	if (keep.size() != volume.getVoxelCount() || clipped == 0 || clipped == volume.getVoxelCount())
+	{
+		fprintf(stdout, "    mask of %zu bytes clipped %zu of %zu voxels\n", keep.size(), clipped,
+				volume.getVoxelCount());
+		success= false;
+	}
+
+	TriangleMesh trimmed;
+	if (!volume.extractMesh(trimmed, &keep) || trimmed.getTriangleCount() == 0)
+	{
+		fprintf(stdout, "    trimmed extraction yielded nothing\n");
+		success= false;
+	}
+
+	if (success)
+	{
+		float farthestTrimmed= 0.f;
+		for (const glm::vec3& vertex : trimmed.vertices)
+		{
+			farthestTrimmed= std::max(farthestTrimmed, glm::length(vertex - pathPosition));
+		}
+		float farthestUntrimmed= 0.f;
+		for (const glm::vec3& vertex : untrimmed.vertices)
+		{
+			farthestUntrimmed= std::max(farthestUntrimmed, glm::length(vertex - pathPosition));
+		}
+
+		if (farthestTrimmed > radius + cellTolerance)
+		{
+			fprintf(stdout, "    a trimmed vertex is %.3f m from the path, beyond %.3f + %.3f\n", farthestTrimmed,
+					radius, cellTolerance);
+			success= false;
+		}
+		if (farthestUntrimmed <= radius + cellTolerance)
+		{
+			fprintf(stdout, "    the untrimmed mesh never reached past the radius (%.3f m)\n", farthestUntrimmed);
+			success= false;
+		}
+		if (trimmed.getTriangleCount() >= untrimmed.getTriangleCount())
+		{
+			fprintf(stdout, "    trimmed %zu triangles, untrimmed %zu\n", trimmed.getTriangleCount(),
+					untrimmed.getTriangleCount());
+			success= false;
+		}
+	}
+
+	UNIT_TEST_COMPLETE()
+}
+
 // ---- Test Suite ----
 
 bool run_tsdf_volume_unit_tests()
@@ -808,5 +882,6 @@ bool run_tsdf_volume_unit_tests()
 	UNIT_TEST_MODULE_CALL_TEST(tsdf_volume_test_sample_rim_is_unobserved);
 	UNIT_TEST_MODULE_CALL_TEST(tsdf_volume_test_raycast_plane);
 	UNIT_TEST_MODULE_CALL_TEST(tsdf_volume_test_mesh_cleanup_components);
+	UNIT_TEST_MODULE_CALL_TEST(tsdf_volume_test_camera_path_trim);
 	UNIT_TEST_MODULE_END()
 }

@@ -39,6 +39,13 @@ void GuiPanel_OcclusionMeshBuild::onGui()
 			m_keyframeStride= std::max(m_keyframeStride, 1);
 		}
 
+		ImGui::SetNextItemWidth(180.f * MkGui::getUiScale());
+		if (ImGui::InputFloat(locLabel("occlusionMeshBuild.pathRadius"), &m_pathRadius, 0.5f, 1.f, "%.1f m"))
+		{
+			m_pathRadius= std::max(m_pathRadius, 0.f);
+		}
+		ImGui::TextWrapped("%s", locText("occlusionMeshBuild.pathRadiusHelp"));
+
 		ImGui::Checkbox(locLabel("occlusionMeshBuild.frameToModel"), &m_bFrameToModel);
 		ImGui::TextWrapped("%s", locText("occlusionMeshBuild.frameToModelHelp"));
 		ImGui::BeginDisabled(!m_bFrameToModel);
@@ -155,6 +162,11 @@ void GuiPanel_OcclusionMeshBuild::onGui()
 		else
 		{
 			ImGui::TextWrapped("%s", locText("occlusionMeshBuild.registrationOff"));
+		}
+		if (m_stats.voxelsClipped > 0)
+		{
+			ImGui::TextWrapped(
+				"%s", locFormat("occlusionMeshBuild.trimSummaryFmt", (double)m_stats.voxelsClipped * 1e-6).c_str());
 		}
 
 		ImGui::Spacing();

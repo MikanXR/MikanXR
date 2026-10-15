@@ -238,9 +238,11 @@ void CmdApp::printUsage() const
 			"               and write it as an OBJ.\n"
 			"  -occlusionMesh -take=<path to take.trackcamera> [-glb=<path>] [-refinedTrack=<path>]\n"
 			"               [-voxel=<metres>] [-stride=<n>] [-noRegistration]\n"
+			"               [-pathRadius=<metres>]\n"
 			"               Fuse a trackcamera capture's LiDAR depth tracks into an occlusion\n"
 			"               mesh in the take's ARKit world space, refining the poses against\n"
-			"               the model, and write it as a glTF binary plus a refined pose track.\n"
+			"               the model and trimmed to the camera path, and write it as a glTF\n"
+			"               binary plus a refined pose track.\n"
 			"  -fetchModels [-model=<name>]\n"
 			"               Download the ML capture models into the per-user model\n"
 			"               directory. Without -model every model is fetched. Passing\n"
@@ -734,9 +736,11 @@ int CmdApp::buildOcclusionMesh() const
 	}
 	settings.keyframeStride= atoi(getCommandLineStringArg("stride", "3").c_str());
 	settings.bFrameToModel= !hasCommandLineFlag("noRegistration");
+	settings.cameraPathRadius= std::max((float)atof(getCommandLineStringArg("pathRadius", "2").c_str()), 0.f);
 
-	fprintf(stdout, "take   : %zu frames, depth %dx%d, registration %s\n", track.getFrameCount(), track.getDepthWidth(),
-			track.getDepthHeight(), settings.bFrameToModel ? "on" : "off");
+	fprintf(stdout, "take   : %zu frames, depth %dx%d, registration %s, trim %.1f m\n", track.getFrameCount(),
+			track.getDepthWidth(), track.getDepthHeight(), settings.bFrameToModel ? "on" : "off",
+			settings.cameraPathRadius);
 
 	CmdAppOcclusionMesh::ConsoleObserver observer;
 	OcclusionMeshBuildResult result;
@@ -750,8 +754,8 @@ int CmdApp::buildOcclusionMesh() const
 	fprintf(stdout, "mesh   : %zu vertices, %d triangles (%d island triangles removed), grid %dx%dx%d at %.1f cm\n",
 			result.mesh.vertices.size(), stats.trianglesClean, stats.trianglesRemovedAsIslands, stats.gridDims.x,
 			stats.gridDims.y, stats.gridDims.z, stats.voxelSize * 100.f);
-	fprintf(stdout, "frames : %d of %d keyframes fused in %.0f s\n", stats.framesIntegrated, stats.keyframes,
-			stats.totalSeconds);
+	fprintf(stdout, "frames : %d of %d keyframes fused in %.0f s, %zu voxels trimmed\n", stats.framesIntegrated,
+			stats.keyframes, stats.totalSeconds, stats.voxelsClipped);
 	if (result.bHasRefinedPoses)
 	{
 		fprintf(stdout,

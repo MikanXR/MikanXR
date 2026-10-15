@@ -1,5 +1,6 @@
 #include "OcclusionMeshBuilder.h"
 
+#include "CameraPathClip.h"
 #include "DepthTrackReader.h"
 #include "FrameToModelRegistration.h"
 #include "Logger.h"
@@ -202,6 +203,7 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 	registrationConfig.depthMax= settings.volume.depthMax;
 
 	std::map<size_t, glm::mat4> corrections; // by file index, integrated frames only
+	std::vector<glm::vec3> pathPositions;    // where each fused frame's camera stood
 	glm::mat4 delta(1.f);
 	double sumStepTranslation= 0.0;
 	double sumStepRotation= 0.0;
@@ -264,6 +266,7 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 
 		volume.integrate(depth, weight, intrinsics, cameraToWorld);
 		++stats.framesIntegrated;
+		pathPositions.push_back(glm::vec3(cameraToWorld[3]));
 		delta= cameraToWorld * glm::inverse(recordedCameraToWorld);
 		corrections[frame.fileIndex]= delta;
 	}
@@ -329,9 +332,19 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 	}
 
 	reportProgress(observer, eOcclusionMeshBuildPhase::extracting, 0, 0);
-	if (!volume.extractMesh(outResult.mesh) || outResult.mesh.getTriangleCount() == 0)
+
+	// The trim is a mask over the extraction only: the grid keeps everything
+	// it fused, so a far wall still anchored the registration above
+	std::vector<uint8_t> keepMask;
+	if (settings.cameraPathRadius > 0.f)
 	{
-		outResult.failureReason= "Nothing was fused";
+		stats.voxelsClipped= CameraPathClip::buildKeepMask(volume, pathPositions, settings.cameraPathRadius, keepMask);
+	}
+
+	if (!volume.extractMesh(outResult.mesh, keepMask.empty() ? nullptr : &keepMask)
+		|| outResult.mesh.getTriangleCount() == 0)
+	{
+		outResult.failureReason= keepMask.empty() ? "Nothing was fused" : "Nothing was fused within the trim radius";
 		return false;
 	}
 	stats.trianglesRaw= (int)outResult.mesh.getTriangleCount();
@@ -360,7 +373,8 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 
 	MIKAN_LOG_INFO("OcclusionMeshBuilder::build")
 		<< "Fused " << stats.framesIntegrated << " frames into " << stats.trianglesClean << " triangles ("
-		<< stats.trianglesRemovedAsIslands << " island triangles removed) in " << stats.totalSeconds << " s"
+		<< stats.trianglesRemovedAsIslands << " island triangles removed, " << stats.voxelsClipped
+		<< " voxels trimmed) in " << stats.totalSeconds << " s"
 		<< (settings.bFrameToModel ? ", registration " + std::to_string(stats.registrationsAccepted) + " accepted / "
 										 + std::to_string(stats.registrationsRejected) + " rejected"
 								   : std::string());

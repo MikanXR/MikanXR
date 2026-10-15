@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1127,
+		"stringCount": 1130,
 		"translatedCount": 899,
 		"reviewedCount": 0
 	},
@@ -713,6 +713,8 @@
 		"noProjectLoaded": "No project is loaded.",
 		"notAligned": "The take is not aligned to the stage. Run Align Camera with its marker reference first.",
 		"notTrackCamera": "The video source is not playing a Track Camera capture (.trackcamera).",
+		"pathRadius": "Trim radius",
+		"pathRadiusHelp": "Surfaces farther than this from every fused camera position are dropped, so a sweep of a corner does not drag in the rest of the room. 0 keeps everything.",
 		"phaseCleaning": "Cleaning the mesh...",
 		"phaseComputingBounds": "Measuring the sweep...",
 		"phaseExtracting": "Extracting the surface...",
@@ -734,6 +736,7 @@
 		"stencilCreateFailed": "Failed to create the stencil.",
 		"stencilCreatedFmt": "Created occlusion mesh stencil '%s' under the active scene.",
 		"takeSummaryFmt": "Take: %d frames, depth %dx%d, %.1f s",
+		"trimSummaryFmt": "%.1f million voxels trimmed beyond the camera path.",
 		"voxelPreset": "Grid",
 		"working": "Working..."
 	},

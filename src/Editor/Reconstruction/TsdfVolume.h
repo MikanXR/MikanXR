@@ -75,8 +75,11 @@ public:
 	// Extract the zero crossing as a mesh in world space. Unobserved voxels
 	// first take the sign of the nearest observed voxel so no back shell forms
 	// behind a surface; marching cubes then runs over the observed region
-	// dilated by one voxel. Returns false when too little was observed.
-	bool extractMesh(TriangleMesh& outMesh) const;
+	// dilated by one voxel. keepMask, when given, is one byte per voxel in the
+	// grid's flat layout: a voxel whose byte is zero is left out of the
+	// marching cubes region, so no cube touching it is emitted and the surface
+	// ends there with a bare edge. Returns false when too little was observed.
+	bool extractMesh(TriangleMesh& outMesh, const std::vector<uint8_t>* keepMask= nullptr) const;
 
 	// Mark pixels whose depth jumps by more than threshold (relative to the
 	// smaller of the two) against any 4-neighbour. Both pixels of a bad pair

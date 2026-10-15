@@ -28,6 +28,8 @@ public:
 	void setFrameToModel(bool bEnabled) { m_bFrameToModel= bEnabled; }
 	bool getReplacePoseTrack() const { return m_bReplacePoseTrack; }
 	void setReplacePoseTrack(bool bEnabled) { m_bReplacePoseTrack= bEnabled; }
+	float getPathRadius() const { return m_pathRadius; }
+	void setPathRadius(float radius) { m_pathRadius= radius; }
 
 	void setTakeSummary(int frameCount, int depthWidth, int depthHeight, float durationSeconds)
 	{
@@ -75,6 +77,7 @@ private:
 	int m_keyframeStride= 3;
 	bool m_bFrameToModel= true;
 	bool m_bReplacePoseTrack= true;
+	float m_pathRadius= 2.f;
 
 	int m_takeFrameCount= 0;
 	int m_takeDepthWidth= 0;
