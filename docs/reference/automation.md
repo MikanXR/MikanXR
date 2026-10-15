@@ -70,9 +70,9 @@ Reach it with `function invoke <VideoSourceSystem> <componentId> show_video_sour
 
 - `get_state` replies the menu state (`verifyTake`, `building`, `failed`, `verifyMesh`, `buildComplete`)
 - `get_take_info` replies `frames`, `depth_width`, `depth_height`, and `session_id` lines
-- `set_option <voxel_preset|keyframe_stride|frame_to_model|replace_pose_track> <value>` sets a build option while in `verifyTake` (`room`/`tabletop`, an integer, `on`/`off`)
+- `set_option <voxel_preset|keyframe_stride|frame_to_model|replace_pose_track|path_radius|texture> <value>` sets a build option while in `verifyTake` (`room`/`tabletop`, an integer, `on`/`off`, metres with 0 for no trim, `on`/`off`)
 - `build` starts the worker, `get_progress` replies `phase`, `frames`, `total`, and `elapsed` lines while it runs
-- `get_summary` replies the triangle counts, grid, frames fused, registration counts, and the final correction once a mesh exists
+- `get_summary` replies the triangle counts, grid, frames fused, registration counts, the final correction, `voxels_clipped`, `texture_views <used> <decoded>`, `triangles_untextured`, and `atlas <width> <height>` once a mesh exists
 - `apply` creates the stencil, writes the refined pose track, and replies `created` or `failed`
 - `cancel` stops a build in progress or discards a result, `return` pops the stage
 
@@ -250,18 +250,21 @@ The commands the MikanARStreamer app answers today:
 - `stats` replies the capture, encode, drop, and send counters as `name value` lines
 - `verbose on|off` gates the per-frame encode-latency relay, which is off by default because one line per frame fills the 2000-line log ring in about a minute and evicts the editor's own diagnostics
 - `screenshot [name]` captures the app's own UI to a PNG in its container and replies with the path, pixel size, and byte count
-- `mode [photo|video|stream]` reads or sets the capture mode the phone's screen is in
-- `capture [marker]` writes the next frame as a JPEG with its one-frame pose track beside it, `marker` naming it as the marker reference for the last take, and replies with both container paths, the pixel size, and the byte count
-- `record start [marker]` begins recording an H.264 movie with its pose track, replying with the take name; `record stop` finishes it and replies with both paths, the frames written and dropped, and the duration; `record` alone reports whether one is in progress
+- `mode [stillphoto|stillcamera|trackcamera|stream]` reads or sets the capture mode the phone's screen is in
+- `flow state`, or `flow` alone, reports the guided capture in progress as `kind`, `step`, `busy`, `interrupted`, `depth on|off`, and `lastCapture` lines, plus a `notice` line when the flow restarted or stopped early
+- `flow start <stillphoto|stillcamera|trackcamera>` begins a guided capture and replies with its state
+- `flow advance` performs the current step's primary action (take the marker image, take the plate, record, stop) and replies once the shot is on disk, or once the archive is when the step was the last, so a script chains the steps without polling
+- `flow cancel` drops the capture and its working directory
+- `captures list` replies one line per capture archive as `<name> <kind> <bytes> <depth|-> <interrupted|->`, `captures upload <name>` queues one for upload to the project's `captures` folder, and `captures delete <name>` removes it
 
-A take and its marker reference pulled off the phone drop into a project's `movies` folder with their pose tracks beside them, and the next project load packs them into one capture in `captures` for a file video source to play ([videosources.md](./videosources.md), "Loose takes and their packing"):
+A capture pulled off the phone drops straight into a project's `captures` folder for a file video source to play ([videosources.md](./videosources.md)), or the phone uploads it itself:
 
 ```
-python tools/automate.py "arkit send record start" "sleep:5" "arkit send record stop"
-python tools/automate.py "arkit send capture marker"
+python tools/automate.py "arkit send flow start trackcamera" "arkit send flow advance" "arkit send flow advance" "sleep:5" "arkit send flow advance"
+python tools/automate.py "arkit send captures upload take_20260915_120000.trackcamera"
 xcrun devicectl device copy from --device <deviceId> \
   --domain-type appDataContainer --domain-identifier com.mikan.ARStreamer \
-  --source Documents/take_20260915_120000.mp4 --destination ./movies/take_20260915_120000.mp4
+  --source Documents/take_20260915_120000.trackcamera --destination ./captures/take_20260915_120000.trackcamera
 ```
 
 The screenshot command exists because nothing else can see that screen. `devicectl` can copy files off a device but cannot capture one, and `simctl io screenshot` is simulator only, so the app takes the picture itself and leaves it where a copy can reach:

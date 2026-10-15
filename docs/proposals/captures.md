@@ -1,6 +1,6 @@
 # Proposal: Capture archives and guided capture flows
 
-Design decided. Parts 1 to 6, the MikanXR side, are implemented; Parts 7 and 8 in MikanARStreamer remain. This document is the handoff: it carries the decisions, what exists on both sides today, the pieces in order, and the open questions. A reader starting from it should not need the conversation that produced it.
+Design decided and implemented on both sides: Parts 1 to 6 in MikanXR, Parts 7 and 8 in MikanARStreamer. This document is the record of the design: it carries the decisions, what exists on both sides today, the pieces in order, and the open questions. A reader starting from it should not need the conversation that produced it.
 
 ## Goal
 
@@ -218,27 +218,29 @@ Part 2 and Part 3 land together: removing the sidecar path without the migration
 
 ### Part 7: MikanARStreamer writes and uploads captures
 
-In the MikanARStreamer repo, edited over SSH on `MAC-BWALKER-4`.
+In the MikanARStreamer repo at `/Users/bwalker/Documents/GitHub/MikanARStreamer` on `MAC-BWALKER-4`, edited over SSH.
 
-- [ ] A Swift ustar writer producing exactly the accepted subset, streaming file members in chunks, with a round-trip test that reads its own output back.
-- [ ] Each flow records into a working directory `Documents/<name>.capture/` (movie, tracks, images), and on completion packs the archive beside it with the manifest first, then deletes the working directory. Recording cannot write into the tar directly, since `AVAssetWriter` needs a file of its own and a member's size must be known before its header. A working directory left behind by a crash is cleaned up at launch.
-- [ ] `CaptureStore` lists archives by extension and reads kind, duration, depth presence, and the interrupted flag from the manifest, and draws thumbnails from the plate or marker image member. Delete removes the one file.
-- [ ] `CaptureUploader` sends one file per capture to the `captures` folder, keeping the streamed `upload(for:fromFile:)`. The per-sidecar loop and its progress shares go away.
-- [ ] Loose captures already on the device are packed once at launch by the Part 3 grouping rules, so takes recorded before the update can still be uploaded.
-- [ ] Debug channel: `flow start <stillphoto|stillcamera|trackcamera>`, `flow advance` (the current step's primary action), `flow cancel`, and `flow state` replace `capture [marker]` and `record start|stop [marker]`. `captures list|upload|delete` operate on archives. Update the MikanXR `automation.md` table that documents the phone's commands.
-- [ ] Update the README's capture modes, Captures panel, and sidecar sections.
+- [x] A Swift ustar writer producing exactly the accepted subset, streaming file members in chunks, with a round-trip test that reads its own output back.
+- [x] Each flow records into a working directory `Documents/<name>.capture/` (movie, tracks, images), and on completion packs the archive beside it with the manifest first, then deletes the working directory. Recording cannot write into the tar directly, since `AVAssetWriter` needs a file of its own and a member's size must be known before its header. A working directory left behind by a crash is cleaned up at launch.
+- [x] `CaptureStore` lists archives by extension and reads kind, duration, depth presence, and the interrupted flag from the manifest, and draws thumbnails from the plate or marker image member. Delete removes the one file.
+- [x] `CaptureUploader` sends one file per capture to the `captures` folder, keeping the streamed `upload(for:fromFile:)`. The per-sidecar loop and its progress shares go away.
+- [x] Loose captures already on the device are packed once at launch by the Part 3 grouping rules, so takes recorded before the update can still be uploaded.
+- [x] Debug channel: `flow start <stillphoto|stillcamera|trackcamera>`, `flow advance` (the current step's primary action), `flow cancel`, and `flow state` replace `capture [marker]` and `record start|stop [marker]`. `captures list|upload|delete` operate on archives. Update the MikanXR `automation.md` table that documents the phone's commands.
+- [x] Update the README's capture modes, Captures panel, and sidecar sections.
 
 ### Part 8: MikanARStreamer guided flows
 
-- [ ] `CaptureMode` becomes `stillPhoto | stillCamera | trackCamera | stream`. The marker toggle goes away.
-- [ ] A capture flow state machine per kind, pure logic with no ARKit or UIKit dependency so it is unit tested like `CaptureStore`, driving a prompt overlay and the primary button:
+- [x] `CaptureMode` becomes `stillPhoto | stillCamera | trackCamera | stream`. The marker toggle goes away.
+- [x] A capture flow state machine per kind, pure logic with no ARKit or UIKit dependency so it is unit tested like `CaptureStore`, driving a prompt overlay and the primary button:
 	- Still Photo: place the marker in view, take the marker photo, remove the marker, take the plate photo, pack.
 	- Still Camera: the Still Photo steps, then record until the operator stops. The recording stops itself if the camera moves.
 	- Track Camera: place the marker in view, take the marker photo, remove the marker, record with depth on a LiDAR phone, stop, pack.
 	- Stream: show "look at the origin marker", poll `GET /arkit/alignment?port=<base port>` about once a second, and hide the prompt once `aligned` is true. While the editor is unreachable the prompt says so and can be dismissed.
-- [ ] Motion detection for the stationary kinds: compare each frame's ARKit pose with the marker photo's pose and treat a translation or rotation beyond a threshold as moved. In Still Photo, a move between the two photos restarts the flow. In Still Camera, a move stops the recording and the capture is marked `interrupted`. Start from 1 cm and 0.5 degrees and tune on a device against a phone on a tripod, since ARKit's jitter at rest sets the floor. A limited tracking state counts as unknown, not as moved.
-- [ ] Depth stays off for the marker photo and for both still kinds, as it is for marker takes today.
-- [ ] Tests: each state machine's transitions, including cancel from every step, and the motion detector against synthetic pose sequences.
+- [x] Motion detection for the stationary kinds: compare each frame's ARKit pose with the marker photo's pose and treat a translation or rotation beyond a threshold as moved. In Still Photo, a move between the two photos restarts the flow. In Still Camera, a move stops the recording and the capture is marked `interrupted`. Start from 1 cm and 0.5 degrees and tune on a device against a phone on a tripod, since ARKit's jitter at rest sets the floor. A limited tracking state counts as unknown, not as moved.
+- [x] Depth stays off for the marker photo and for both still kinds, as it is for marker takes today.
+- [x] Tests: each state machine's transitions, including cancel from every step, and the motion detector against synthetic pose sequences.
+
+Two behaviours Part 8 left to the implementation: a flow interrupted by the app leaving the screen stops and packs its recording, so a take survives a backgrounding, and drops a flow between its shots, since the marker image then describes a camera that is about to be put down. The motion thresholds are the starting values and have not been tuned on a tripod yet.
 
 ## Constraints to respect
 
@@ -251,10 +253,9 @@ In the MikanARStreamer repo, edited over SSH on `MAC-BWALKER-4`.
 
 ## Open questions
 
-- Whether a `trackcamera` takes a clean plate at all. The Track Camera flow as described takes only the marker photo before recording, and the movie itself is the clean footage. The format allows a plate either way. This blocks only the Track Camera steps in Part 8.
-- Whether an interrupted `stillcamera` keeps the frames recorded before the move (Part 8 as written, flagged `interrupted`) or is discarded.
 - Whether trimming by re-recording (Part 5) is enough, or a trim that slices the archive directly is wanted: copying the movie's range without re-encoding, and the pose and depth records by `fileIndex`, which keeps the depth and the ARKit space a re-recording loses.
-- The working copy's path on `MAC-BWALKER-4`. Ask before starting Part 7.
+
+Resolved as built: a `trackcamera` takes no clean plate, the movie itself is the clean footage, and an interrupted `stillcamera` keeps the frames recorded before the move.
 
 ## References
 
