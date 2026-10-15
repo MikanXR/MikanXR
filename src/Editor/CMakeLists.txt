@@ -746,6 +746,7 @@ set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ECS/Light/DMXSequenceConte
 set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/Asset/GltfImplementation.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/Interprocess/AutomationSocket.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/Interprocess/WebsocketInterprocessMessageServer.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
+set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/Server/Test/HttpServerTests.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/Interprocess/HttpInterprocessMessageServer.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/Interprocess/SharedTextureReader.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/Interprocess/SpoutLogRelay.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)

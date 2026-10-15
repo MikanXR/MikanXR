@@ -8,7 +8,6 @@
 #include <atomic>
 #include <chrono>
 #include <filesystem>
-#include <fstream>
 #include <functional>
 #include <memory>
 #include <system_error>
@@ -71,13 +70,16 @@ bool AssetUploadRequestHandler::startup(MainWindow* mainWindow)
 {
 	HttpInterprocessMessageServer* httpServer= m_owner->getHttpMessageServer();
 
-	return httpServer->setBackgroundRouteHandler(
-		k_uploadRoutePath, std::bind(&AssetUploadRequestHandler::handleUploadRequest, this, std::placeholders::_1));
+	return httpServer->setStreamingRouteHandler(
+		k_uploadRoutePath,
+		std::bind(&AssetUploadRequestHandler::resolveUploadDestination, this, std::placeholders::_1,
+				  std::placeholders::_2, std::placeholders::_3),
+		std::bind(&AssetUploadRequestHandler::handleUploadRequest, this, std::placeholders::_1));
 }
 
 void AssetUploadRequestHandler::shutdown()
 {
-	m_owner->getHttpMessageServer()->removeBackgroundRouteHandler(k_uploadRoutePath);
+	m_owner->getHttpMessageServer()->removeStreamingRouteHandler(k_uploadRoutePath);
 }
 
 bool AssetUploadRequestHandler::isSafeUploadFileName(const std::string& fileName)
@@ -98,35 +100,42 @@ bool AssetUploadRequestHandler::isSafeUploadFileName(const std::string& fileName
 	return true;
 }
 
-HttpRouteResponse AssetUploadRequestHandler::handleUploadRequest(const HttpRouteRequest& request)
+bool AssetUploadRequestHandler::resolveUploadDestination(const HttpRouteRequest& request,
+														 std::filesystem::path& outBodyFilePath,
+														 HttpRouteResponse& outRefusal)
 {
 	if (request.method != "POST")
 	{
-		return makeErrorResponse(405, "Upload with POST");
+		outRefusal= makeErrorResponse(405, "Upload with POST");
+		return false;
 	}
 
 	const auto folderIt= request.queryArgs.find("folder");
 	if (folderIt == request.queryArgs.end() || folderIt->second.empty())
 	{
-		return makeErrorResponse(400, "Missing folder query argument");
+		outRefusal= makeErrorResponse(400, "Missing folder query argument");
+		return false;
 	}
 
 	const auto nameIt= request.queryArgs.find("name");
 	if (nameIt == request.queryArgs.end() || nameIt->second.empty())
 	{
-		return makeErrorResponse(400, "Missing name query argument");
+		outRefusal= makeErrorResponse(400, "Missing name query argument");
+		return false;
 	}
 
 	const std::string folderId= folderIt->second;
 	const std::string fileName= nameIt->second;
 	if (!isSafeUploadFileName(fileName))
 	{
-		return makeErrorResponse(400, "name must be a bare file name");
+		outRefusal= makeErrorResponse(400, "name must be a bare file name");
+		return false;
 	}
 
-	if (request.body.empty())
+	if (request.bodyLength == 0)
 	{
-		return makeErrorResponse(400, "Empty body");
+		outRefusal= makeErrorResponse(400, "Empty body");
+		return false;
 	}
 
 	HttpInterprocessMessageServer* httpServer= m_owner->getHttpMessageServer();
@@ -151,32 +160,30 @@ HttpRouteResponse AssetUploadRequestHandler::handleUploadRequest(const HttpRoute
 		k_mainThreadHopTimeoutMs);
 	if (!bResolveRan)
 	{
-		return makeErrorResponse(504, "Timed out waiting for the editor");
+		outRefusal= makeErrorResponse(504, "Timed out waiting for the editor");
+		return false;
 	}
 	if (!resolved->bResolved)
 	{
-		return makeErrorResponse(resolved->bProjectLoaded ? 400 : 503, resolved->error);
+		outRefusal= makeErrorResponse(resolved->bProjectLoaded ? 400 : 503, resolved->error);
+		return false;
 	}
 
 	// The body lands beside its destination so the move into place stays on one volume
-	const std::filesystem::path tempPath= resolved->folderDir / makeTempFileName();
-	{
-		std::error_code ec;
-		std::filesystem::create_directories(resolved->folderDir, ec);
+	std::error_code ec;
+	std::filesystem::create_directories(resolved->folderDir, ec);
+	outBodyFilePath= resolved->folderDir / makeTempFileName();
+	return true;
+}
 
-		std::ofstream tempFile(tempPath, std::ios::binary);
-		if (!tempFile.is_open())
-		{
-			return makeErrorResponse(500, "Could not write to the asset folder");
-		}
-		tempFile.write(request.body.data(), static_cast<std::streamsize>(request.body.size()));
-		tempFile.close();
-		if (!tempFile)
-		{
-			std::filesystem::remove(tempPath, ec);
-			return makeErrorResponse(500, "Could not write the uploaded file");
-		}
-	}
+HttpRouteResponse AssetUploadRequestHandler::handleUploadRequest(const HttpRouteRequest& request)
+{
+	const std::string folderId= request.queryArgs.at("folder");
+	const std::string fileName= request.queryArgs.at("name");
+	const std::filesystem::path tempPath= request.bodyFilePath;
+
+	HttpInterprocessMessageServer* httpServer= m_owner->getHttpMessageServer();
+	MikanServer* server= m_owner;
 
 	// Second hop: move into place and rescan. Safe to run late: it only consumes the temp file.
 	auto imported= std::make_shared<ImportResult>();
@@ -227,7 +234,7 @@ HttpRouteResponse AssetUploadRequestHandler::handleUploadRequest(const HttpRoute
 	}
 
 	MIKAN_MT_LOG_INFO("AssetUploadRequestHandler::handleUploadRequest")
-		<< "Received " << request.body.size() << " bytes into " << folderId << " as " << imported->storedPath
+		<< "Received " << request.bodyLength << " bytes into " << folderId << " as " << imported->storedPath
 		<< (imported->bReplaced ? " (replaced)" : "");
 
 	HttpRouteResponse response;

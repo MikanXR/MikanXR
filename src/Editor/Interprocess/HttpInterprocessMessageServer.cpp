@@ -7,14 +7,25 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
 #include <future>
 
 namespace
 {
 constexpr int k_httpRequestTimeoutMs= 1000;
-// ix::HttpServer's deadline for reading one whole request, request line through body. The
-// library default of 30 s would cut a multi-hundred-megabyte upload short over Wi-Fi.
-constexpr int k_httpRequestDeadlineSecs= 300;
+// ix::HttpServer's deadline for reading one request's line, headers, and in-memory body.
+// A streamed body is paced by the idle timeout instead, so this only covers the small
+// trigger requests and the head of an upload.
+constexpr int k_httpRequestDeadlineSecs= 30;
+
+uint64_t parseContentLength(const ix::HttpRequest& request)
+{
+	const auto it= request.headers.find("Content-Length");
+	if (it == request.headers.end())
+		return 0;
+
+	return std::strtoull(it->second.c_str(), nullptr, 10);
+}
 
 std::string stripQueryString(const std::string& uri)
 {
@@ -157,7 +168,7 @@ HttpInterprocessMessageServer::HttpInterprocessMessageServer()
 
 HttpInterprocessMessageServer::~HttpInterprocessMessageServer() { dispose(); }
 
-bool HttpInterprocessMessageServer::initialize(int port, bool bAllowRemote)
+bool HttpInterprocessMessageServer::initialize(int port, bool bAllowRemote, int streamingIdleTimeoutSecs)
 {
 	if (!ix::initNetSystem())
 	{
@@ -167,11 +178,14 @@ bool HttpInterprocessMessageServer::initialize(int port, bool bAllowRemote)
 
 	HttpInterprocessMessageServer* ownerServer= this;
 	m_bDisposing= false;
+	m_streamingIdleTimeoutSecs= streamingIdleTimeoutSecs;
 
 	const std::string host= bAllowRemote ? "0.0.0.0" : "127.0.0.1";
 	m_server= std::make_shared<ix::HttpServer>(port, host, ix::SocketServer::kDefaultTcpBacklog,
 											   ix::SocketServer::kDefaultMaxConnections,
 											   ix::SocketServer::kDefaultAddressFamily, k_httpRequestDeadlineSecs);
+	m_server->setOnRequestHeadersCallback([ownerServer](ix::HttpRequestPtr request) -> ix::HttpBodyPolicy
+										  { return ownerServer->handleRequestHeaders(request); });
 	m_server->setOnConnectionCallback(
 		[ownerServer](ix::HttpRequestPtr request,
 					  std::shared_ptr<ix::ConnectionState> connectionState) -> ix::HttpResponsePtr
@@ -236,7 +250,8 @@ bool HttpInterprocessMessageServer::setBackgroundRouteHandler(const std::string&
 	std::lock_guard<std::mutex> lock(m_routeHandlersMutex);
 
 	if (m_routeHandlers.find(path) != m_routeHandlers.end()
-		|| m_backgroundRouteHandlers.find(path) != m_backgroundRouteHandlers.end())
+		|| m_backgroundRouteHandlers.find(path) != m_backgroundRouteHandlers.end()
+		|| m_streamingRouteHandlers.find(path) != m_streamingRouteHandlers.end())
 	{
 		MIKAN_LOG_WARNING("HttpInterprocessMessageServer::setBackgroundRouteHandler")
 			<< "Route already registered: " << path;
@@ -252,6 +267,32 @@ void HttpInterprocessMessageServer::removeBackgroundRouteHandler(const std::stri
 	std::lock_guard<std::mutex> lock(m_routeHandlersMutex);
 
 	m_backgroundRouteHandlers.erase(path);
+}
+
+bool HttpInterprocessMessageServer::setStreamingRouteHandler(const std::string& path,
+															 HttpBodyDestinationHandler destinationHandler,
+															 HttpRouteHandler handler)
+{
+	std::lock_guard<std::mutex> lock(m_routeHandlersMutex);
+
+	if (m_routeHandlers.find(path) != m_routeHandlers.end()
+		|| m_backgroundRouteHandlers.find(path) != m_backgroundRouteHandlers.end()
+		|| m_streamingRouteHandlers.find(path) != m_streamingRouteHandlers.end())
+	{
+		MIKAN_LOG_WARNING("HttpInterprocessMessageServer::setStreamingRouteHandler")
+			<< "Route already registered: " << path;
+		return false;
+	}
+
+	m_streamingRouteHandlers[path]= StreamingRoute{destinationHandler, handler};
+	return true;
+}
+
+void HttpInterprocessMessageServer::removeStreamingRouteHandler(const std::string& path)
+{
+	std::lock_guard<std::mutex> lock(m_routeHandlersMutex);
+
+	m_streamingRouteHandlers.erase(path);
 }
 
 bool HttpInterprocessMessageServer::runOnMainThread(std::function<void()> job, int timeoutMs)
@@ -322,12 +363,61 @@ bool HttpInterprocessMessageServer::invokeRouteHandler(const HttpRouteRequest& r
 	return true;
 }
 
+ix::HttpResponsePtr makeIxResponse(const HttpRouteResponse& routeResponse)
+{
+	ix::WebSocketHttpHeaders headers;
+	headers["Content-Type"]= routeResponse.contentType;
+
+	return std::make_shared<ix::HttpResponse>(routeResponse.statusCode, httpStatusDescription(routeResponse.statusCode),
+											  ix::HttpErrorCode::Ok, headers, routeResponse.body);
+}
+
+ix::HttpBodyPolicy HttpInterprocessMessageServer::handleRequestHeaders(ix::HttpRequestPtr request)
+{
+	ix::HttpBodyPolicy policy;
+	const std::string path= stripQueryString(request->uri);
+
+	StreamingRoute route;
+	{
+		std::lock_guard<std::mutex> lock(m_routeHandlersMutex);
+
+		auto route_it= m_streamingRouteHandlers.find(path);
+		if (route_it == m_streamingRouteHandlers.end())
+		{
+			// Every other route takes its body in memory
+			return policy;
+		}
+		route= route_it->second;
+	}
+
+	HttpRouteRequest headRequest;
+	headRequest.method= request->method;
+	headRequest.path= path;
+	headRequest.queryArgs= parseQueryString(request->uri);
+	headRequest.bodyLength= parseContentLength(*request);
+
+	std::filesystem::path bodyFilePath;
+	HttpRouteResponse refusal;
+	if (route.destinationHandler(headRequest, bodyFilePath, refusal))
+	{
+		policy.streamToFilePath= bodyFilePath.string();
+	}
+	else
+	{
+		// The body still has to leave the socket before the refusal can be answered
+		policy.discardBody= true;
+		policy.earlyResponse= makeIxResponse(refusal);
+	}
+	policy.idleTimeoutSecs= m_streamingIdleTimeoutSecs;
+	return policy;
+}
+
 ix::HttpResponsePtr HttpInterprocessMessageServer::handleIncomingRequest(ix::HttpRequestPtr request)
 {
 	const std::string path= stripQueryString(request->uri);
 
-	// A background route answers on this thread. The body is moved rather than copied:
-	// the library holds an upload twice already while reading it.
+	// A background or streaming route answers on this thread. The body is moved rather
+	// than copied, or for a streaming route is already on disk.
 	HttpRouteHandler backgroundHandler;
 	{
 		std::lock_guard<std::mutex> lock(m_routeHandlersMutex);
@@ -337,6 +427,14 @@ ix::HttpResponsePtr HttpInterprocessMessageServer::handleIncomingRequest(ix::Htt
 		{
 			backgroundHandler= handler_it->second;
 		}
+		else
+		{
+			auto route_it= m_streamingRouteHandlers.find(path);
+			if (route_it != m_streamingRouteHandlers.end())
+			{
+				backgroundHandler= route_it->second.handler;
+			}
+		}
 	}
 	if (backgroundHandler)
 	{
@@ -345,15 +443,10 @@ ix::HttpResponsePtr HttpInterprocessMessageServer::handleIncomingRequest(ix::Htt
 		routeRequest.path= path;
 		routeRequest.queryArgs= parseQueryString(request->uri);
 		routeRequest.body= std::move(request->body);
+		routeRequest.bodyFilePath= request->bodyFilePath;
+		routeRequest.bodyLength= parseContentLength(*request);
 
-		const HttpRouteResponse routeResponse= backgroundHandler(routeRequest);
-
-		ix::WebSocketHttpHeaders headers;
-		headers["Content-Type"]= routeResponse.contentType;
-
-		return std::make_shared<ix::HttpResponse>(routeResponse.statusCode,
-												  httpStatusDescription(routeResponse.statusCode),
-												  ix::HttpErrorCode::Ok, headers, routeResponse.body);
+		return makeIxResponse(backgroundHandler(routeRequest));
 	}
 
 	auto pendingRequest= std::make_shared<PendingHttpRequest>();
@@ -405,11 +498,7 @@ ix::HttpResponsePtr HttpInterprocessMessageServer::handleIncomingRequest(ix::Htt
 		routeResponse.body= R"({"error":"Server shutting down"})";
 	}
 
-	ix::WebSocketHttpHeaders headers;
-	headers["Content-Type"]= routeResponse.contentType;
-
-	return std::make_shared<ix::HttpResponse>(routeResponse.statusCode, httpStatusDescription(routeResponse.statusCode),
-											  ix::HttpErrorCode::Ok, headers, routeResponse.body);
+	return makeIxResponse(routeResponse);
 }
 
 void HttpInterprocessMessageServer::processRequests()

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <map>
 #include <memory>
@@ -11,6 +13,7 @@
 namespace ix
 {
 class HttpServer;
+struct HttpBodyPolicy;
 struct HttpRequest;
 struct HttpResponse;
 using HttpRequestPtr= std::shared_ptr<HttpRequest>;
@@ -34,11 +37,21 @@ struct HttpRouteRequest
 	std::string path;
 	// The decoded "?key=value&..." pairs, empty when the URI carried no query string
 	std::map<std::string, std::string> queryArgs;
-	// The raw request body (may be empty)
+	// The raw request body (may be empty). Empty for a streaming route, whose body is on disk.
 	std::string body;
+	// For a streaming route: the file the body was streamed to, once it has arrived
+	std::filesystem::path bodyFilePath;
+	// The body length the request declared, which a streaming route knows before the body
+	uint64_t bodyLength= 0;
 };
 
 using HttpRouteHandler= std::function<HttpRouteResponse(const HttpRouteRequest& request)>;
+// A streaming route's first call, on the connection thread once the headers are in and
+// before the body is read, with request.body empty and request.bodyLength set. Returns the
+// file the body should be streamed to, whose directory must exist, or false with outRefusal
+// filled, in which case the body is read and dropped and outRefusal is the reply.
+using HttpBodyDestinationHandler= std::function<bool(
+	const HttpRouteRequest& request, std::filesystem::path& outBodyFilePath, HttpRouteResponse& outRefusal)>;
 
 struct PendingHttpRequest;
 using PendingHttpRequestPtr= std::shared_ptr<PendingHttpRequest>;
@@ -56,15 +69,22 @@ using PendingMainThreadJobPtr= std::shared_ptr<PendingMainThreadJob>;
 //     and blocks on a promise/future pair until the main thread has answered or a short
 //     timeout elapses. These are the script trigger routes the HTTP Triggers panel lists.
 //   - Background routes (setBackgroundRouteHandler) run on the connection thread with the
-//     request body moved in, so a large upload never crosses the main thread. A handler
-//     that needs editor state hops with runOnMainThread(), which blocks the connection thread
+//     request body moved in, so the body never crosses the main thread. A handler that
+//     needs editor state hops with runOnMainThread(), which blocks the connection thread
 //     until processRequests() has run the job.
+//   - Streaming routes (setStreamingRouteHandler) are background routes whose body goes
+//     to a file instead of memory: the destination handler names the file before the body
+//     is read, the library streams the body into it in chunks as it arrives, and the
+//     route handler receives the path. The body is paced by an idle timeout rather than
+//     the whole-request deadline, so a multi-gigabyte upload is not cut off while bytes
+//     still arrive, and a stalled one is. This is the asset upload route.
 //
 // dispose() drops every parked request and job before stopping the listener, because
 // ix::HttpServer::stop() joins the connection threads and a thread parked in
 // runOnMainThread() would otherwise wait on the main thread that is inside stop(). A
-// connection still reading its body holds stop() until the read ends or hits the request
-// deadline, so a restart during an upload stalls the main thread for up to that deadline.
+// connection still reading its body holds stop() until the read ends, hits the request
+// deadline, or, for a streamed body, goes idle for the idle timeout, so a restart during an
+// upload stalls the main thread for up to that long.
 class HttpInterprocessMessageServer
 {
 public:
@@ -72,8 +92,11 @@ public:
 	~HttpInterprocessMessageServer();
 
 	// bAllowRemote binds every interface instead of loopback, which is what lets another
-	// machine (the phone uploading a take) reach the server
-	bool initialize(int port= HTTP_SERVER_PORT, bool bAllowRemote= false);
+	// machine (the phone uploading a take) reach the server. streamingIdleTimeoutSecs cuts
+	// a streamed body when no byte arrives for that long.
+	static constexpr int k_defaultStreamingIdleTimeoutSecs= 60;
+	bool initialize(int port= HTTP_SERVER_PORT, bool bAllowRemote= false,
+					int streamingIdleTimeoutSecs= k_defaultStreamingIdleTimeoutSecs);
 	void dispose();
 
 	// Registers a main-thread handler for an exact route path (e.g. "/trigger/toggle_light").
@@ -85,6 +108,12 @@ public:
 	// Returns false if the path is already registered as either kind.
 	bool setBackgroundRouteHandler(const std::string& path, HttpRouteHandler handler);
 	void removeBackgroundRouteHandler(const std::string& path);
+
+	// Registers a streaming route: destinationHandler runs before the body and handler after
+	// it, both on the connection thread. Returns false if the path is already registered.
+	bool setStreamingRouteHandler(const std::string& path, HttpBodyDestinationHandler destinationHandler,
+								  HttpRouteHandler handler);
+	void removeStreamingRouteHandler(const std::string& path);
 
 	// For background route handlers: runs the job inside the next processRequests() and
 	// blocks the calling connection thread until it has run. Returns false when the job
@@ -109,15 +138,26 @@ public:
 	bool invokeRouteHandler(const HttpRouteRequest& request, HttpRouteResponse& outResponse);
 
 protected:
-	// Runs on a per-connection background thread spawned by ix::SocketServer.
+	struct StreamingRoute
+	{
+		HttpBodyDestinationHandler destinationHandler;
+		HttpRouteHandler handler;
+	};
+
+	// Both run on a per-connection background thread spawned by ix::SocketServer: the
+	// first once the headers are in, deciding where the body goes, the second once the
+	// whole request has arrived.
+	ix::HttpBodyPolicy handleRequestHeaders(ix::HttpRequestPtr request);
 	ix::HttpResponsePtr handleIncomingRequest(ix::HttpRequestPtr request);
 
 private:
 	std::shared_ptr<ix::HttpServer> m_server;
+	int m_streamingIdleTimeoutSecs= k_defaultStreamingIdleTimeoutSecs;
 
 	mutable std::mutex m_routeHandlersMutex;
 	std::map<std::string, HttpRouteHandler> m_routeHandlers;
 	std::map<std::string, HttpRouteHandler> m_backgroundRouteHandlers;
+	std::map<std::string, StreamingRoute> m_streamingRouteHandlers;
 
 	std::mutex m_pendingRequestsMutex;
 	std::vector<PendingHttpRequestPtr> m_pendingRequests;
