@@ -43,6 +43,10 @@ public:
 	// Previously registered routes are preserved (dispose() only stops the listener, it
 	// doesn't clear the route table).
 	void restartHttpMessageServer();
+	inline class ARKitAlignmentRequestHandler* getARKitAlignmentRequestHandler() const
+	{
+		return m_arkitAlignmentRequestHandler;
+	}
 	inline class AssetUploadRequestHandler* getAssetUploadRequestHandler() const { return m_assetUploadRequestHandler; }
 	inline class CameraRequestHandler* getCameraRequestHandler() const { return m_cameraRequestHandler; }
 	inline class FunctionRequestHandler* getFunctionRequestHandler() const { return m_functionRequestHandler; }
@@ -95,6 +99,7 @@ private:
 	class IInterprocessMessageServer* m_messageServer;
 	class HttpInterprocessMessageServer* m_httpMessageServer;
 
+	class ARKitAlignmentRequestHandler* m_arkitAlignmentRequestHandler;
 	class AssetUploadRequestHandler* m_assetUploadRequestHandler;
 	class CameraRequestHandler* m_cameraRequestHandler;
 	class FunctionRequestHandler* m_functionRequestHandler;

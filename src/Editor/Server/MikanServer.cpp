@@ -1,6 +1,7 @@
 //-- includes -----
 #include "App.h"
 #include "AppSettingsConfig.h"
+#include "ARKitAlignmentRequestHandler.h"
 #include "AssetUploadRequestHandler.h"
 #include "CameraRequestHandler.h"
 #include "FunctionRequestHandler.h"
@@ -51,6 +52,7 @@ MikanServer* MikanServer::m_instance= nullptr;
 MikanServer::MikanServer()
 	: m_messageServer(new WebsocketInterprocessMessageServer())
 	, m_httpMessageServer(new HttpInterprocessMessageServer())
+	, m_arkitAlignmentRequestHandler(new ARKitAlignmentRequestHandler(this))
 	, m_assetUploadRequestHandler(new AssetUploadRequestHandler(this))
 	, m_cameraRequestHandler(new CameraRequestHandler(this))
 	, m_functionRequestHandler(new FunctionRequestHandler(this))
@@ -80,6 +82,7 @@ MikanServer::~MikanServer()
 	delete m_lightRequestHandler;
 	delete m_functionRequestHandler;
 	delete m_cameraRequestHandler;
+	delete m_arkitAlignmentRequestHandler;
 	delete m_assetUploadRequestHandler;
 	delete m_httpMessageServer;
 	delete m_messageServer;
@@ -110,6 +113,12 @@ bool MikanServer::startup(MainWindow* mainWindow)
 			MIKAN_LOG_WARNING("MikanServer::startup()")
 				<< "Failed to initialize HTTP interprocess message server on port " << httpPort;
 		}
+	}
+
+	if (!m_arkitAlignmentRequestHandler->startup(mainWindow))
+	{
+		MIKAN_LOG_ERROR("MikanServer::startup()") << "Failed to bind ARKit alignment request handler";
+		return false;
 	}
 
 	if (!m_assetUploadRequestHandler->startup(mainWindow))
@@ -213,6 +222,9 @@ void MikanServer::update()
 		m_messageServer->processRequests();
 		m_httpMessageServer->processRequests();
 	}
+
+	// The marker watch behind the phone's stream prompt, while a prompt is up
+	m_arkitAlignmentRequestHandler->update();
 }
 
 void MikanServer::shutdown()
@@ -221,6 +233,7 @@ void MikanServer::shutdown()
 	m_messageServer->dispose();
 	m_httpMessageServer->dispose();
 
+	m_arkitAlignmentRequestHandler->shutdown();
 	m_assetUploadRequestHandler->shutdown();
 	m_cameraRequestHandler->shutdown();
 	m_functionRequestHandler->shutdown();

@@ -210,6 +210,16 @@ The server binds loopback only until "Allow connections from other machines" is 
 curl -X POST --data-binary @take.trackcamera "http://127.0.0.1:8090/assets/upload?folder=captures&name=take.trackcamera"
 ```
 
+### Alignment status for the phone
+
+The phone's stream mode asks the editor whether its stream is aligned, so it can show "look at the origin marker" until it is. This is the one GET route the editor serves, a background route that checks the verb:
+
+```
+GET /arkit/alignment?port=<base_port>
+```
+
+`ARKitAlignmentRequestHandler` (`src/Editor/Server/ARKitAlignmentRequestHandler.h`) owns it. It hops to the main thread once, finds the `ARKitVideoSourceComponent` whose `base_port` matches, and replies `{"marker_visible": bool, "aligned": bool}`, or 404 when no ARKit source streams to that port, 405 for another verb, 400 for a missing or malformed port, and 504 when the editor did not answer. `aligned` is the source's `hasPoseOffset`, which the source drops itself when the phone restarts its ARKit session. A poll of an unaligned source starts, or keeps alive, the `ARKitMarkerAutoAligner` described under [ARKit world-to-stage offset](#arkit-world-to-stage-offset), and `marker_visible` is that aligner's last detection. The `arkit_alignment_route` test module drives the route through a stub editor and checks the shared averaging.
+
 ### Recording from the editor
 
 The video source settings stage records the live feed of any source as a capture, through the same step-by-step flow of a kind the phone walks, with a kind selector in place of the old marker toggle. `CaptureFlow` (`src/Editor/Capture/CaptureFlow.h`) is the step machine, pure logic the tests drive directly: a `stillphoto` takes the marker image then the clean plate, a `stillcamera` takes both then records until stopped, and a `trackcamera` records straight away with no marker steps, since its poses are stage space and need no alignment. Track Camera is offered only when a camera on the source has a tracked pose, from a tracking mount or a frame-coupled source, with mono intrinsics. `VideoSourceRecorder` (`src/Editor/AppStages/VideoSourceSettings/VideoSourceRecorder.h`) owns the work: each shot is written as a file into a hidden working directory `captures/.capture_<take>/` (`marker.jpg` with its one-frame `marker.pose.json`, `plate.jpg`, `movie.<ext>` with `movie.pose.json` for a trackcamera), and when the flow completes `CapturePacker` (`src/Editor/Capture/CapturePacker.h`) packs the members into `captures/take_YYYYMMDD_HHMMSS.<kind>` on a worker thread, with `pose_space` `stage` and the editor as producer, and the working directory is removed. A cancelled flow removes it too, and leaving the stage mid-flow cancels. A shot that fails leaves the flow on its step for a retry. The stage answers `capture_start <kind>`, `capture_advance`, `capture_cancel`, and `get_capture_state` over the automation channel ([automation.md](./automation.md)).
@@ -239,6 +249,8 @@ The solve reads the pose through `getLatestSourceWorldPose`, which reports it in
 The offset is applied at exactly one point per source: `ARKitVideoSourceComponent::notifyFrameBundleReceived`, right after the row-major to column-major transpose of the incoming transform, and `FileVideoSourceComponent::publishPoseForFrame` for a recorded take. It persists on the definition as plain JSON with no property descriptor, since no client application has any use for it and a descriptor would mean a wire change. An absent key means never aligned, and the offset is identity until then.
 
 A stored offset describes the ARKit session it was solved in. A `frameSeq` that runs backwards means the phone restarted that session, so the ARKit source drops the offset and logs the reason rather than leaving the camera confidently in the wrong place.
+
+The same solve runs without the stage while the phone's stream prompt is up. `ARKitMarkerAutoAligner` (`src/Editor/Calibration/ARKitMarkerAutoAligner.h`) is created for an unaligned ARKit source the first time the phone polls the alignment route below and kept alive by the polls. It subscribes its own calibration-mode `VideoFrameDistortionView`, waits for frames, a camera on the source with mono intrinsics, and a stage with an origin marker, then runs `ArucoMarkerPoseSampler` on the main thread four times a second rather than every frame, since the finder reads the view's buffers on the GL thread. Once the marker has been seen for twelve consecutive detections, with a gap of over a second starting the window over, it averages the samples through `FrameCoupledAlignment` (`src/Editor/Calibration/FrameCoupledAlignment.h`), the helper the stage uses for the same step, stores the offset with `setPoseOffset`, and releases the stream. It also retires when the phone stops polling for five seconds, so it costs nothing while no prompt is up.
 
 ### Marker reference for recorded takes
 

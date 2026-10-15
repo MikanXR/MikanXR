@@ -10,11 +10,12 @@
 #include "TypeRegistry.h"
 #include "Version.h"
 #include "TrackerPoseCalibratorTests.h"
+#include "ARKitAlignmentRouteTests.h"
 #include "ARKitDebugProtocolTests.h"
 #include "AutomationProtocolTests.h"
 #include "AutomationVariantTextTests.h"
-#include "ClientApiPropertySchemaTests.h"
 #include "CaptureArchiveTests.h"
+#include "ClientApiPropertySchemaTests.h"
 #include "ComponentNamingTests.h"
 #include "DepthEdgeRefineTests.h"
 #include "DepthMeshGeneratorTests.h"
@@ -27,8 +28,8 @@
 #include "GlbMeshWriterTests.h"
 #include "HttpServerTests.h"
 #include "LegacyContentMigrationTests.h"
-#include "LightEnvironmentPersistenceTests.h"
 #include "LegacyTakeMigrationTests.h"
+#include "LightEnvironmentPersistenceTests.h"
 #include "LocalizationTests.h"
 #include "MaterialCompilerTests.h"
 
@@ -76,13 +77,14 @@ bool run_all_editor_unit_tests()
 {
 	bool success= true;
 	success&= run_tracker_pose_calibrator_unit_tests();
+	success&= run_arkit_alignment_route_tests();
 	success&= run_arkit_debug_protocol_tests();
 	success&= run_automation_protocol_tests();
 	success&= run_automation_variant_text_tests();
+	success&= run_capture_archive_tests();
 	success&= run_client_api_property_schema_tests();
 	success&= run_component_naming_tests();
 	success&= run_depth_edge_refine_tests();
-	success&= run_capture_archive_tests();
 	success&= run_depth_mesh_generator_unit_tests();
 	success&= run_directory_watcher_tests();
 	success&= run_dmx_preset_persistence_tests();
@@ -93,9 +95,9 @@ bool run_all_editor_unit_tests()
 	success&= run_glb_mesh_writer_tests();
 	success&= run_http_server_tests();
 	success&= run_legacy_content_migration_tests();
+	success&= run_legacy_take_migration_tests();
 	success&= run_light_environment_persistence_tests();
 	success&= run_localization_unit_tests();
-	success&= run_legacy_take_migration_tests();
 	success&= run_material_compiler_tests();
 	success&= run_model_geometry_payload_tests();
 

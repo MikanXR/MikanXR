@@ -1,6 +1,6 @@
 # Proposal: Capture archives and guided capture flows
 
-Design decided, nothing implemented. This document is the handoff: it carries the decisions, what exists on both sides today, the pieces in order, and the open questions. A reader starting from it should not need the conversation that produced it.
+Design decided. Parts 1 to 6, the MikanXR side, are implemented; Parts 7 and 8 in MikanARStreamer remain. This document is the handoff: it carries the decisions, what exists on both sides today, the pieces in order, and the open questions. A reader starting from it should not need the conversation that produced it.
 
 ## Goal
 
@@ -144,77 +144,77 @@ In dependency order. Each is a separate change and a separate review. Parts 1 to
 
 ### Part 1: Capture archive library
 
-- [ ] A new `src/Editor/Capture/` subtree with a `Test/` folder, in the shape of `src/Editor/Reconstruction/`:
+- [x] A new `src/Editor/Capture/` subtree with a `Test/` folder, in the shape of `src/Editor/Reconstruction/`:
 	- `CaptureArchiveReader`: parses the ustar headers into a member table (name, data offset, size), rejects anything outside the accepted subset, and reads a member into memory.
 	- `CaptureArchiveWriter`: writes the manifest first, then members from files or memory, streaming a large member in chunks rather than loading it.
 	- `CaptureManifest`: the manifest model, its JSON round trip, and validation of kind, required members, and session ids.
 	- `Capture`: an opened archive with its manifest, the member table, and accessors that load a member's pose track, decode a member image, and build a member's `subfile` URL.
-- [ ] Unit tests: writer to reader round trip, rejection of each unsupported header type and of a kind whose required member is missing, a session mismatch between member tracks, and a `subfile` open of a movie member through `MovieDecoder`.
-- [ ] `layout.md` and `modules.md` gain the subtree.
+- [x] Unit tests: writer to reader round trip, rejection of each unsupported header type and of a kind whose required member is missing, a session mismatch between member tracks, and a `subfile` open of a movie member through `MovieDecoder`.
+- [x] `layout.md` and `modules.md` gain the subtree.
 
 ### Part 2: Editor playback from captures
 
-- [ ] `CaptureAssetReference` and its factory (`*.stillphoto`, `*.stillcamera`, `*.trackcamera`) with a preview tile from the plate image, or the movie's first frame when there is no plate. A `captures` folder in `getFolderDescs` holding captures and pose tracks (for refined tracks). `movies` and `textures` lose the pose track factory. `DepthTrackAssetReference` is deleted.
-- [ ] `MovieDecoder` gains an open from a capture member: the `subfile` URL for a movie, and `cv::imdecode` of the member bytes for an image.
-- [ ] `DepthTrackReader` opens the two member ranges of the archive, with base offsets on its seeks and the size check made against the member sizes.
-- [ ] `FileVideoSourceDefinition`:
+- [x] `CaptureAssetReference` and its factory (`*.stillphoto`, `*.stillcamera`, `*.trackcamera`) with a preview tile from the plate image, or the movie's first frame when there is no plate. A `captures` folder in `getFolderDescs` holding captures and pose tracks (for refined tracks). `movies` and `textures` lose the pose track factory. `DepthTrackAssetReference` is deleted.
+- [x] `MovieDecoder` gains an open from a capture member: the `subfile` URL for a movie, and `cv::imdecode` of the member bytes for an image.
+- [x] `DepthTrackReader` opens the two member ranges of the archive, with base offsets on its seeks and the size check made against the member sizes.
+- [x] `FileVideoSourceDefinition`:
 	- `media_path` accepts a raw movie, a raw image, or a capture.
 	- `pose_track_path` stays as an override for a `trackcamera` (the refined track), empty by default and no longer re-derived from the media.
 	- `marker_media_path` and `marker_pose_track_path` are removed.
-- [ ] `FileVideoSourceComponent` plays a capture by kind:
+- [x] `FileVideoSourceComponent` plays a capture by kind:
 	- `stillphoto`: the plate image is the main media.
 	- `stillcamera`: the movie is the main media, and the camera is fixed.
 	- `trackcamera`: the movie with its pose track, or the override when set.
 	- In all three, the marker image is the alignment reference when present, and intrinsics are seeded from the movie track's first record or else from `marker_pose`.
 	- A `stage` capture reports itself aligned with an identity offset.
-- [ ] Wire change: `MikanFileVideoSourceValues` drops `marker_media_path` and `marker_pose_track_path`. Wire all three property legs, regenerate the bindings through the codegen targets, update the schema table, remove the two localization keys, and run the schema guard ([wire-protocol.md](../reference/wire-protocol.md)).
-- [ ] The occlusion mesh build takes its depth from the capture's members, refuses a capture without depth through the existing message box, and writes `captures/<stem>.refined.pose.json`. `-occlusionMesh -take=` takes a `.trackcamera` path.
-- [ ] Rewrite the fixtures in `FileVideoSourceTests`, `OcclusionMeshTests`, `FrameRegistrationTests`, and `ProjectAssetCatalogTests` that build loose takes, so they build captures through the Part 1 writer.
-- [ ] Docs: `videosources.md` (file video sources, pose tracks, depth tracks, uploading), `occlusion-mesh.md`, `objects.md` (the folder list), `automation.md` (the phone pull example that copies a take into `movies`).
+- [x] Wire change: `MikanFileVideoSourceValues` drops `marker_media_path` and `marker_pose_track_path`. Wire all three property legs, regenerate the bindings through the codegen targets, update the schema table, remove the two localization keys, and run the schema guard ([wire-protocol.md](../reference/wire-protocol.md)).
+- [x] The occlusion mesh build takes its depth from the capture's members, refuses a capture without depth through the existing message box, and writes `captures/<stem>.refined.pose.json`. `-occlusionMesh -take=` takes a `.trackcamera` path.
+- [x] Rewrite the fixtures in `FileVideoSourceTests`, `OcclusionMeshTests`, `FrameRegistrationTests`, and `ProjectAssetCatalogTests` that build loose takes, so they build captures through the Part 1 writer.
+- [x] Docs: `videosources.md` (file video sources, pose tracks, depth tracks, uploading), `occlusion-mesh.md`, `objects.md` (the folder list), `automation.md` (the phone pull example that copies a take into `movies`).
 
 Part 2 and Part 3 land together: removing the sidecar path without the migration breaks every existing project's takes.
 
 ### Part 3: One-time packing of loose takes
 
-- [ ] On project load, after `ensureAssetFolders`, any `*.pose.json`, `*.depth.bin`, or `*.conf.bin` in `movies` or `textures` triggers packing. Detection by the files' presence makes it rerun safely after an interrupted pack, with no project version flag.
-- [ ] Grouping by stem, with `<stem>_marker` as the marker take:
-	- An image with or without a track, with or without a marker take, becomes a `stillphoto` (plate = the image, marker = the marker take's image).
+- [x] On project load, after `ensureAssetFolders`, any `*.pose.json`, `*.depth.bin`, or `*.conf.bin` in `movies` or `textures` triggers packing. Detection by the files' presence makes it rerun safely after an interrupted pack, with no project version flag.
+- [x] Grouping by stem, with `<stem>_marker` as the marker take:
+	- An image with a track or a marker take becomes a `stillphoto` (plate = the image, marker = the marker take's image). An image with neither is a raw texture and stays in `textures`.
 	- A movie with a per-frame track becomes a `trackcamera`, with its depth tracks when present.
 	- A movie without a track but with a marker take becomes a `stillcamera`.
 	- A movie without a track and without a marker take is a raw movie and stays in `movies`.
 	- A marker take that is a movie contributes its first frame as `marker.jpg` and that frame's pose as a one-frame `marker.pose.json`.
 	- `pose_space` is `arkit_world` for a track the phone wrote, and `stage` for one the editor's recorder wrote. Neither writer records which it was, so the rule is the only judge available: a track whose session id is 32 hex characters without dashes came from `VideoSourceRecorder::makeSessionId`, and a UUID with dashes came from the phone.
 	- `<stem>.refined.pose.json` moves to `captures` beside the new capture.
-- [ ] Every `FileVideoSource` definition naming a packed take is repointed: `media_path` to the capture, `pose_track_path` to the moved refined track if it named one and empty otherwise. The pose offset is kept, since the capture holds the same session it was solved in. The project is saved.
-- [ ] The originals, and any orphan sidecar, move to `<project>/legacy_takes/`, which is not an asset folder. A log line per capture and a summary line say what was packed and where the originals went.
-- [ ] Test: a fixture project with each grouping case packs to the expected kinds and members, repoints its components, and a second load does nothing.
+- [x] Every `FileVideoSource` definition naming a packed take is repointed: `media_path` to the capture, `pose_track_path` to the moved refined track if it named one and empty otherwise. The pose offset is kept, since the capture holds the same session it was solved in. The project is saved.
+- [x] The originals, and any orphan sidecar, move to `<project>/legacy_takes/`, which is not an asset folder. A log line per capture and a summary line say what was packed and where the originals went.
+- [x] Test: a fixture project with each grouping case packs to the expected kinds and members, repoints its components, and a second load does nothing.
 
 ### Part 4: Upload of large captures
 
-- [ ] Stream a request body to disk instead of memory, inside the IXWebSocket fork (`thirdparty/IXWebSocket`): parse `Content-Length` as 64-bit, and for a route registered as streaming, write the body in chunks to a temporary file whose path the route receives in place of `body`. The upload route resolves its destination folder from the query before the body arrives, so the temporary file lands on the destination's volume and the final move stays a rename.
-- [ ] Replace the 300 s whole-request deadline with an idle timeout for streaming routes, so a multi-gigabyte capture over Wi-Fi is not cut off while bytes are still arriving. Read how the fork applies `makeCancellationRequestWithTimeout` before choosing the mechanism.
-- [ ] The `captures` folder accepts uploads. Replacing a capture a file source holds open still fails with 409.
-- [ ] Remove the "Asset upload memory" item from `plan.md`, which this part resolves.
-- [ ] Test: an upload larger than the old in-memory path would hold arrives intact and the server's resident memory does not grow with it. `HttpServerTests` covers the streaming route.
+- [x] Stream a request body to disk instead of memory, inside the IXWebSocket fork (`thirdparty/IXWebSocket`): parse `Content-Length` as 64-bit, and for a route registered as streaming, write the body in chunks to a temporary file whose path the route receives in place of `body`. The upload route resolves its destination folder from the query before the body arrives, so the temporary file lands on the destination's volume and the final move stays a rename.
+- [x] Replace the 300 s whole-request deadline with an idle timeout for streaming routes, so a multi-gigabyte capture over Wi-Fi is not cut off while bytes are still arriving. Read how the fork applies `makeCancellationRequestWithTimeout` before choosing the mechanism.
+- [x] The `captures` folder accepts uploads. Replacing a capture a file source holds open still fails with 409.
+- [x] Remove the "Asset upload memory" item from `plan.md`, which this part resolves.
+- [x] Test: an upload larger than the old in-memory path would hold arrives intact and the server's resident memory does not grow with it. `HttpServerTests` covers the streaming route.
 
 ### Part 5: The editor's recorder writes captures
 
-- [ ] `VideoSourceRecorder` writes captures to `captures/`, and the Video Source Settings stage gets the same step-by-step flows as the phone, with a kind selector replacing the marker toggle:
+- [x] `VideoSourceRecorder` writes captures to `captures/`, and the Video Source Settings stage gets the same step-by-step flows as the phone, with a kind selector replacing the marker toggle:
 	- `stillphoto`: marker image, then plate image.
 	- `stillcamera`: marker image, plate image, then record until stopped.
 	- `trackcamera`: offered when the camera has a pose (a tracking mount or a frame-coupled source). It records the movie with its stage-space pose track, `pose_space` `stage`, and no marker steps, since the poses need no alignment.
-- [ ] The recorder writes media and tracks to a hidden working directory under `captures/`, packs the archive when the flow completes, and removes the working directory. A cancelled flow removes it too.
-- [ ] Recording from a file source playing a capture is trimming: play, record from the in point, stop at the out point. The result re-encodes the movie, carries no depth (the recorder records none), and has stage-space poses with the source's offset folded in.
-- [ ] Automation: `capture_start <kind>`, `capture_advance`, `capture_cancel`, and `get_capture_state` replace `record_start`, `record_stop`, `capture_image`, and `get_recording_state`. Update `automation.md`.
-- [ ] Test: each kind's flow produces an archive that the Part 1 reader validates.
+- [x] The recorder writes media and tracks to a hidden working directory under `captures/`, packs the archive when the flow completes, and removes the working directory. A cancelled flow removes it too.
+- [x] Recording from a file source playing a capture is trimming: play, record from the in point, stop at the out point. The result re-encodes the movie, carries no depth (the recorder records none), and has stage-space poses with the source's offset folded in.
+- [x] Automation: `capture_start <kind>`, `capture_advance`, `capture_cancel`, and `get_capture_state` replace `record_start`, `record_stop`, `capture_image`, and `get_recording_state`. Update `automation.md`.
+- [x] Test: each kind's flow produces an archive that the Part 1 reader validates.
 
 ### Part 6: Alignment status for the phone's stream prompt
 
-- [ ] `GET /arkit/alignment?port=<base_port>` answers for the `ARKitVideoSourceComponent` with that `base_port`: `{"marker_visible": true, "aligned": false}`, or 404 when no ARKit source uses the port. `aligned` is true when the source holds a pose offset solved since its stream session last restarted (the source already drops the offset when `frameSeq` runs backwards).
-- [ ] Marker detection for the ARKit source outside the align stage: while the source is unaligned and the phone has polled within the last few seconds, detect the origin marker on its frames at a reduced rate on a worker thread, reusing `ArucoMarkerPoseSampler`.
-- [ ] Once the marker has been seen steadily for a sample window, solve and apply the offset with the same frame-coupled averaging `AppStage_AlignCameraByOriginMarker` uses (`worldToStage` per sample, averaged, `setPoseOffset`). Lift that averaging out of the stage so both callers share it. The solve reads `getLatestSourceWorldPose`, never the offset-applied pose (videosources.md, "Marker reference for recorded takes" and the paragraphs before it).
-- [ ] First C++ GET route: a background route on the HTTP message server that checks `request.method`. Document it with the upload route in `videosources.md`.
-- [ ] Test: the route answers 404 for an unknown port, and `aligned` reads false before and true after a solve on a test source.
+- [x] `GET /arkit/alignment?port=<base_port>` answers for the `ARKitVideoSourceComponent` with that `base_port`: `{"marker_visible": true, "aligned": false}`, or 404 when no ARKit source uses the port. `aligned` is true when the source holds a pose offset solved since its stream session last restarted (the source already drops the offset when `frameSeq` runs backwards).
+- [x] Marker detection for the ARKit source outside the align stage: while the source is unaligned and the phone has polled within the last few seconds, detect the origin marker on its frames at a reduced rate, reusing `ArucoMarkerPoseSampler`. It runs on the main thread, where the finder reads the view's buffers, four times a second rather than on a worker thread, since moving the detection off the GL thread would mean refactoring the finder to take a frame.
+- [x] Once the marker has been seen steadily for a sample window, solve and apply the offset with the same frame-coupled averaging `AppStage_AlignCameraByOriginMarker` uses (`worldToStage` per sample, averaged, `setPoseOffset`). Lift that averaging out of the stage so both callers share it. The solve reads `getLatestSourceWorldPose`, never the offset-applied pose (videosources.md, "Marker reference for recorded takes" and the paragraphs before it).
+- [x] First C++ GET route: a background route on the HTTP message server that checks `request.method`. Document it with the upload route in `videosources.md`.
+- [x] Test: the route answers 404 for an unknown port, and `aligned` reads false before and true after a solve on a test source.
 
 ### Part 7: MikanARStreamer writes and uploads captures
 
@@ -252,7 +252,6 @@ In the MikanARStreamer repo, edited over SSH on `MAC-BWALKER-4`.
 ## Open questions
 
 - Whether a `trackcamera` takes a clean plate at all. The Track Camera flow as described takes only the marker photo before recording, and the movie itself is the clean footage. The format allows a plate either way. This blocks only the Track Camera steps in Part 8.
-- Whether the editor solves the stream's alignment automatically once the marker is steady (Part 6 as written), or waits for the operator to confirm in the editor. Automatic is what lets the phone's prompt clear without anyone at the PC.
 - Whether an interrupted `stillcamera` keeps the frames recorded before the move (Part 8 as written, flagged `interrupted`) or is discarded.
 - Whether trimming by re-recording (Part 5) is enough, or a trim that slices the archive directly is wanted: copying the movie's range without re-encoding, and the pose and depth records by `fileIndex`, which keeps the depth and the ARKit space a re-recording loses.
 - The working copy's path on `MAC-BWALKER-4`. Ask before starting Part 7.

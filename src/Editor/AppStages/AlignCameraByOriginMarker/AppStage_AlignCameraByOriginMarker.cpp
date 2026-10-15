@@ -6,6 +6,7 @@
 #include "ArucoMarkerPoseSampler.h"
 #include "CalibrationRenderHelpers.h"
 #include "CameraComponent.h"
+#include "FrameCoupledAlignment.h"
 #include "IAlignmentReferenceSource.h"
 #include "IFrameCoupledPoseProvider.h"
 #include "Colors.h"
@@ -457,15 +458,8 @@ void AppStage_AlignCameraByOriginMarker::sampleFrameCoupledWorldToStage()
 	if (!poseProvider->getLatestSourceWorldPose(cameraInWorld, frameSeq))
 		return;
 
-	// The marker is the stage origin, so inverting its aperture-relative pose
-	// gives where the camera sits in stage space for this frame.
-	const glm::dmat4 markerInCamera= m_targetMarkerSampler->getLastApertureRelativeMarkerXform();
-	const glm::dmat4 cameraInStage= glm::inverse(markerInCamera);
-
-	// cameraInStage = worldToStage * cameraInWorld, solved for worldToStage.
-	const glm::dmat4 worldToStage= cameraInStage * glm::inverse(glm::dmat4(cameraInWorld));
-
-	m_frameCoupledWorldToStageSamples.push_back(worldToStage);
+	m_frameCoupledWorldToStageSamples.push_back(FrameCoupledAlignment::computeWorldToStageSample(
+		m_targetMarkerSampler->getLastApertureRelativeMarkerXform(), cameraInWorld));
 }
 
 void AppStage_AlignCameraByOriginMarker::computeAndApplyTargetTransform()
@@ -478,39 +472,10 @@ void AppStage_AlignCameraByOriginMarker::computeAndApplyTargetTransform()
 		if (m_frameCoupledWorldToStageSamples.empty())
 			return;
 
-		// Average the per-sample offsets. Rotation goes through quaternions
-		// rather than averaging matrix elements, which would not stay a rotation.
-		const size_t sampleCount= m_frameCoupledWorldToStageSamples.size();
-		glm::dvec3 averageTranslation(0.0);
-		glm::dquat averageRotation= glm::quat_cast(m_frameCoupledWorldToStageSamples[0]);
-
-		for (size_t index= 0; index < sampleCount; ++index)
-		{
-			const glm::dmat4& sample= m_frameCoupledWorldToStageSamples[index];
-			averageTranslation+= glm::dvec3(sample[3]);
-
-			if (index == 0)
-				continue;
-
-			glm::dquat sampleRotation= glm::quat_cast(sample);
-
-			// Flip the sample into the same hemisphere as the running mean first:
-			// q and -q are the same rotation, so mixing the two signs averages
-			// them toward nothing.
-			if (glm::dot(averageRotation, sampleRotation) < 0.0)
-			{
-				sampleRotation= -sampleRotation;
-			}
-
-			// Running mean: weighting sample i by 1/(i+1) leaves the average of
-			// everything seen so far.
-			averageRotation= glm::slerp(averageRotation, sampleRotation, 1.0 / (double)(index + 1));
-		}
-		averageTranslation/= (double)sampleCount;
-
-		const glm::dmat4 avgWorldToStage= glm_mat4_from_pose(glm::normalize(averageRotation), averageTranslation);
-
-		poseProvider->setPoseOffset(glm::mat4(avgWorldToStage));
+		// The same averaging the automatic alignment behind the phone's stream
+		// prompt runs, so both land on the same offset for the same samples
+		poseProvider->setPoseOffset(
+			glm::mat4(FrameCoupledAlignment::averageWorldToStage(m_frameCoupledWorldToStageSamples)));
 
 		MIKAN_LOG_INFO("AppStage_AlignCameraByOriginMarker::computeAndApplyTargetTransform")
 			<< "Aligned frame-coupled camera from " << m_frameCoupledWorldToStageSamples.size() << " samples";
