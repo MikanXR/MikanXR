@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AppStage.h"
+#include "CaptureArchiveReader.h"
 #include "ComponentFwd.h"
 #include "Constants_OcclusionMeshBuild.h"
 #include "MikanRendererFwd.h"
@@ -29,9 +30,9 @@ public:
 	AppStage_OcclusionMeshBuild(class IEditorWindow* ownerWindow);
 	virtual ~AppStage_OcclusionMeshBuild();
 
-	/// Checks the take has everything a build needs (pose track with depth
-	/// sidecars, a solved alignment, a camera on a stage) and pushes the
-	/// stage, or shows the operator why not on fromAppStage.
+	/// Checks the take has everything a build needs (a trackcamera capture
+	/// with depth members, a solved alignment, a camera on a stage) and pushes
+	/// the stage, or shows the operator why not on fromAppStage.
 	static bool tryEnterBuild(AppStage* fromAppStage, FileVideoSourceComponentPtr videoSource);
 
 	virtual void enter() override;
@@ -46,12 +47,13 @@ public:
 
 protected:
 	/// Everything the worker needs, gathered on the UI thread: a copy of the
-	/// pose track, the sidecar paths it opens itself, and the settings.
+	/// pose track, the capture's depth members it opens itself, and the settings.
 	struct BuildRequest
 	{
 		PoseTrack track;
-		std::filesystem::path depthPath;
-		std::filesystem::path confidencePath;
+		std::filesystem::path capturePath;
+		CaptureArchiveMember depthMember;
+		CaptureArchiveMember confidenceMember;
 		OcclusionMeshBuildSettings settings;
 	};
 
@@ -76,7 +78,9 @@ protected:
 	};
 
 	void setSourceVideoSource(FileVideoSourceComponentPtr videoSource, CameraComponentPtr camera,
-							  StageComponentConstPtr stage, const PoseTrack& track);
+							  StageComponentConstPtr stage, const PoseTrack& track,
+							  const std::filesystem::path& capturePath, const CaptureArchiveMember& depthMember,
+							  const CaptureArchiveMember& confidenceMember);
 	void setMenuState(eOcclusionMeshBuildMenuState newState);
 	OcclusionMeshBuildSettings gatherSettings() const;
 
@@ -105,6 +109,9 @@ private:
 	CameraComponentPtr m_camera;
 	StageComponentConstPtr m_stage;
 	PoseTrack m_track;
+	std::filesystem::path m_capturePath;
+	CaptureArchiveMember m_depthMember;
+	CaptureArchiveMember m_confidenceMember;
 
 	// -- build worker state --
 	std::thread m_workerThread;

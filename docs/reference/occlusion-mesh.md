@@ -4,7 +4,7 @@ The occlusion mesh is a static room mesh fused from the LiDAR depth a phone reco
 
 ## Input
 
-A take recorded by MikanARStreamer on a LiDAR phone: `<stem>.mp4`, `<stem>.pose.json` (version 2, declaring `depth_width`, `depth_height`, `depth_unit_mm`), `<stem>.depth.bin`, and `<stem>.conf.bin`, all in the project's `movies` folder. Record `i` of the two binaries belongs to frame `i` of the pose track's file order. `PoseTrack` sorts frames by time on load and keeps that position as `PoseTrackFrame::fileIndex`, which is the only key the fusion reads records by. The sidecars derive from the media stem (`DepthTrackReader::depthSidecarPathForMedia`), never from the pose track path, so a source repointed at a refined track still finds them.
+A `trackcamera` capture recorded by MikanARStreamer on a LiDAR phone, in the project's `captures` folder: its `movie_pose` member (version 2, declaring `depth_width`, `depth_height`, `depth_unit_mm`) and its `depth` and `confidence` members ([videosources.md](./videosources.md), "Capture archives"). Record `i` of the two members belongs to frame `i` of the pose track's file order. `PoseTrack` sorts frames by time on load and keeps that position as `PoseTrackFrame::fileIndex`, which is the only key the fusion reads records by. The depth members are read from the capture whatever track the source plays, so a source repointed at a refined track still finds them.
 
 The take must be aligned: `FileVideoSourceDefinition::hasPoseOffset()` must hold, since the mesh is placed in the stage through that offset and an unaligned take has nowhere to go.
 
@@ -53,17 +53,17 @@ Depth intrinsics are the frame's colour intrinsics scaled by `depth_width / imag
 
 ## The stage
 
-`AppStage_OcclusionMeshBuild` (`src/Editor/AppStages/OcclusionMeshBuild`) is entered from a file video source's "Build Occlusion Mesh" function (`build_occlusion_mesh`). `tryEnterBuild` refuses, with a message box, a take without a pose track, without the depth header or the sidecars, an unaligned take, a source no camera on a stage uses, or no project. The stage then runs the depth proxy capture's worker pattern: the UI thread hands a copy of the pose track, the sidecar paths, and the settings to a worker thread under a mutex, the worker opens the reader and calls the builder, and `update` polls the phase and frame counts into the panel each frame. Cancel is a flag the builder checks between frames.
+`AppStage_OcclusionMeshBuild` (`src/Editor/AppStages/OcclusionMeshBuild`) is entered from a file video source's "Build Occlusion Mesh" function (`build_occlusion_mesh`). `tryEnterBuild` refuses, with a message box, media that is not a `trackcamera` capture, a pose track override that does not load, a capture without depth members, an unaligned take, a source no camera on a stage uses, or no project. The track is the override when the source has one and the capture's `movie_pose` otherwise. The stage then runs the depth proxy capture's worker pattern: the UI thread hands a copy of the pose track, the capture path with its two depth members, and the settings to a worker thread under a mutex, the worker opens the reader and calls the builder, and `update` polls the phase and frame counts into the panel each frame. Cancel is a flag the builder checks between frames.
 
 The panel offers the grid preset, the keyframe stride, the registration toggle, and whether the source should play the take with the refined poses. After a build it shows the triangle count, grid, frames fused, and the registration summary, and draws the mesh as a point sample where the stencil will land while the viewport camera orbits it.
 
-Create Stencil writes `<project>/models/OcclusionMesh_<timestamp>.glb` (`GlbMeshWriter`), creates a `ModelStencilComponent` under the active scene with that model path and the world transform above, refreshes the asset catalog, and when registration ran writes `<stem>.refined.pose.json` beside the take (version 2, same session id, image size, depth header, times, and intrinsics, frames in file order) and, with the toggle on, points the source's pose track path at it. A take without an active scene cannot be applied: stencils accept only a scene as their parent.
+Create Stencil writes `<project>/models/OcclusionMesh_<timestamp>.glb` (`GlbMeshWriter`), creates a `ModelStencilComponent` under the active scene with that model path and the world transform above, refreshes the asset catalog, and when registration ran writes `captures/<stem>.refined.pose.json` beside the capture (version 2, same session id, image size, depth header, times, and intrinsics, frames in file order) and, with the toggle on, points the source's pose track path at it. The capture itself is never rewritten. A take without an active scene cannot be applied: stencils accept only a scene as their parent.
 
 Drive scripts reach it with `function invoke FileVideoSourceSystem <componentId> build_occlusion_mesh`, then `stage get_state`, `get_take_info`, `set_option <voxel_preset|keyframe_stride|frame_to_model|replace_pose_track> <value>`, `build`, `get_progress`, `get_summary`, `apply`, `cancel`, and `return` ([automation.md](./automation.md)).
 
 ## The headless command
 
-`MikanCmd.exe -occlusionMesh -take=<take.mp4> [-glb=<path>] [-refinedTrack=<path>] [-voxel=<metres>] [-stride=<n>] [-noRegistration]` runs the same builder on a take outside the editor and writes the mesh and the refined track. It is the parity check against the Python harness in the experiments repo, which fuses the same take with `recon/fusion.py` and scores both.
+`MikanCmd.exe -occlusionMesh -take=<take.trackcamera> [-glb=<path>] [-refinedTrack=<path>] [-voxel=<metres>] [-stride=<n>] [-noRegistration]` runs the same builder on a capture outside the editor, reading the capture's own track and depth members, and writes the mesh and the refined track, by default beside the capture. It is the parity check against the Python harness in the experiments repo, which fuses the same take with `recon/fusion.py` and scores both.
 
 ## Edge refinement
 
@@ -75,7 +75,7 @@ The mesh is written as a glTF binary rather than OBJ because a room is about a m
 
 ## Tests
 
-`MikanCmd -runTests` carries four modules for this: `tsdf_volume` (marching cubes on an analytic sphere with its winding, the gradient cull, a plane and a sphere fused from several poses, the absent back shell, the rim rule of `sample`, ray cast accuracy, island removal), `frame_registration` (the small-motion helpers, a displaced frame recovered on a corner scene, a floor-only frame held by the prior, rejection, the sidecar reader), `occlusion_mesh` (the file index through the sort, the camera axis conversion, a synthetic take with a scrambled file order fused end to end with drifted poses that the refinement beats), and `glb_mesh_writer` (a round trip through cgltf).
+`MikanCmd -runTests` carries four modules for this: `tsdf_volume` (marching cubes on an analytic sphere with its winding, the gradient cull, a plane and a sphere fused from several poses, the absent back shell, the rim rule of `sample`, ray cast accuracy, island removal), `frame_registration` (the small-motion helpers, a displaced frame recovered on a corner scene, a floor-only frame held by the prior, rejection, the depth member reader), `occlusion_mesh` (the file index through the sort, the camera axis conversion, a synthetic take with a scrambled file order packed as a capture and fused end to end with drifted poses that the refinement beats), and `glb_mesh_writer` (a round trip through cgltf).
 
 ## Known limits
 

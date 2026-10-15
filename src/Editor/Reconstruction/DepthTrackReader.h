@@ -1,28 +1,26 @@
 #pragma once
 
+#include "CaptureArchiveReader.h"
+
 #include <opencv2/core.hpp>
 
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
 
-// Reads the two binary depth sidecars a phone writes beside a recorded movie:
-// <stem>.depth.bin holds one width x height block of little-endian uint16
-// depth units per movie frame, <stem>.conf.bin one block of uint8 confidence
-// (0 low, 1 medium, 2 high). Record index equals the frame's file index in
-// the pose track, which declares the width, height, and unit.
+// Reads the two depth members of a trackcamera capture: the depth member holds
+// one width x height block of little-endian uint16 depth units per movie
+// frame, the confidence member one block of uint8 confidence (0 low, 1 medium,
+// 2 high). Record index equals the frame's file index in the movie's pose
+// track, which declares the width, height, and unit.
 class DepthTrackReader
 {
 public:
-	// The sidecars sit beside the media and share its stem, so a repointed
-	// pose track path never changes where they are found
-	static std::filesystem::path depthSidecarPathForMedia(const std::filesystem::path& mediaPath);
-	static std::filesystem::path confidenceSidecarPathForMedia(const std::filesystem::path& mediaPath);
-
-	// Opens both files and checks their sizes against recordCount records of
-	// width x height. Logs and returns false on any mismatch.
-	bool open(const std::filesystem::path& depthPath, const std::filesystem::path& confidencePath, int width,
-			  int height, double depthUnitMm, size_t recordCount);
+	// Opens the archive and checks both members' sizes against recordCount
+	// records of width x height. Logs and returns false on any mismatch.
+	bool open(const std::filesystem::path& archivePath, const CaptureArchiveMember& depthMember,
+			  const CaptureArchiveMember& confidenceMember, int width, int height, double depthUnitMm,
+			  size_t recordCount);
 	void close();
 	bool isOpen() const { return m_bIsOpen; }
 
@@ -39,8 +37,9 @@ public:
 	static void confidenceToWeight(const cv::Mat& confidence, cv::Mat& outWeight);
 
 private:
-	std::ifstream m_depthFile;
-	std::ifstream m_confidenceFile;
+	std::ifstream m_file;
+	uint64_t m_depthOffset= 0;
+	uint64_t m_confidenceOffset= 0;
 	int m_width= 0;
 	int m_height= 0;
 	double m_depthUnitMm= 1.0;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AssetFwd.h"
+#include "Capture.h"
 #include "IAlignmentReferenceSource.h"
 #include "IFrameCoupledPoseProvider.h"
 #include "MikanVideoSourceTypes.h"
@@ -15,6 +16,7 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <vector>
 
 enum class eFilePlaybackState : int
 {
@@ -24,11 +26,11 @@ enum class eFilePlaybackState : int
 };
 
 // -- FileVideoSourceDefinition -----
-// A recorded movie or a still image standing in for a live camera. The main
-// media is what the source plays; the marker media is the same shot with the
-// origin marker in frame, played only while a marker alignment stage runs. Each
-// may carry a pose track, the sidecar a phone writes with the camera pose per
-// frame, which makes the source frame-coupled like a live ARKit stream.
+// A recorded shot standing in for a live camera. The media is a capture
+// archive, which carries the shot's movie or plate image, its marker reference,
+// and its pose tracks, or a raw movie or image with none of those. The pose
+// track path is an override for a trackcamera capture, the refined track the
+// occlusion mesh build writes, and is empty otherwise.
 class FileVideoSourceDefinition : public VideoSourceDefinition
 {
 public:
@@ -44,17 +46,9 @@ public:
 	std::filesystem::path getMediaPath() const;
 	void setMediaPath(const std::filesystem::path& mediaPath);
 
-	static const std::string k_markerMediaPathPropertyId;
-	std::filesystem::path getMarkerMediaPath() const;
-	void setMarkerMediaPath(const std::filesystem::path& mediaPath);
-
 	static const std::string k_poseTrackPathPropertyId;
 	std::filesystem::path getPoseTrackPath() const;
 	void setPoseTrackPath(const std::filesystem::path& trackPath);
-
-	static const std::string k_markerPoseTrackPathPropertyId;
-	std::filesystem::path getMarkerPoseTrackPath() const;
-	void setMarkerPoseTrackPath(const std::filesystem::path& trackPath);
 
 	static const std::string k_loopPropertyId;
 	inline bool getLoop() const { return m_bLoop; }
@@ -75,9 +69,7 @@ private:
 	bool setAssetPath(AssetReferenceConfigPtr& assetRefConfig, const std::filesystem::path& path);
 
 	AssetReferenceConfigPtr m_mediaAssetRefConfig;
-	AssetReferenceConfigPtr m_markerMediaAssetRefConfig;
 	AssetReferenceConfigPtr m_poseTrackAssetRefConfig;
-	AssetReferenceConfigPtr m_markerPoseTrackAssetRefConfig;
 	bool m_bLoop= true;
 	glm::mat4 m_poseOffset;
 	bool m_bHasPoseOffset= false;
@@ -87,6 +79,11 @@ private:
 // Decodes on a worker thread that owns the MovieDecoder outright; the main
 // thread paces playback, delivers frames to the views, and publishes poses. The
 // two only meet through a request mailbox and a single decoded-frame slot.
+//
+// A capture plays by its kind: a stillphoto shows its plate image, a
+// stillcamera plays its movie with the camera fixed, and a trackcamera plays
+// its movie with the per-frame poses of its track or of the override. The
+// marker image is the alignment reference for all three.
 class FileVideoSourceComponent : public VideoSourceComponent,
 								 public IFrameCoupledPoseProvider,
 								 public IAlignmentReferenceSource
@@ -125,6 +122,9 @@ public:
 	inline float getDurationSeconds() const { return (float)m_durationSeconds; }
 	inline bool isStill() const { return m_bIsStill; }
 	inline bool isMarkerReferenceActive() const { return m_bMarkerReferenceActive; }
+	// The capture the media path names, not open when the media is a raw file
+	// or nothing is loaded
+	inline const Capture& getCapture() const { return m_capture; }
 	// From stopped, start at zero; from paused, resume
 	void play();
 	void pause();
@@ -179,6 +179,17 @@ private:
 		markerReference,
 	};
 
+	// What the worker opens: a raw file by path, a capture's movie member by
+	// its subfile URL, or a capture's image member by its encoded bytes
+	struct MediaSource
+	{
+		std::filesystem::path path;
+		std::string url;
+		std::shared_ptr<const std::vector<uint8_t>> encodedStill;
+
+		bool isEmpty() const { return path.empty() && url.empty() && !encodedStill; }
+	};
+
 	// What the worker decoded, handed over one frame at a time
 	struct DecodedFrame
 	{
@@ -206,7 +217,7 @@ private:
 	struct DecodeRequests
 	{
 		bool bOpen= false;
-		std::filesystem::path openPath;
+		MediaSource openSource;
 		bool bSeek= false;
 		double seekSeconds= 0.0;
 		uint32_t seekGeneration= 0;
@@ -218,7 +229,7 @@ private:
 	void startWorker();
 	void stopWorker();
 	void workerMain();
-	void requestOpen(const std::filesystem::path& absolutePath);
+	void requestOpen(const MediaSource& source);
 	void requestSeek(double timeSeconds);
 	void requestDecodeNext();
 
@@ -230,10 +241,19 @@ private:
 	void publishPoseForFrame(int64_t ptsUs);
 	void finishPlayback();
 
-	std::filesystem::path resolveActiveMediaPath() const;
+	// The media path resolved to a file, empty when none is set or found
+	std::filesystem::path resolveMediaPath() const;
+	// What the worker should open for the active media
+	MediaSource resolveActiveMediaSource();
+	// The active media for log lines and the mode name
+	std::string describeActiveMedia() const;
+	// The track whose poses the active media publishes, unloaded for a fixed camera
 	const PoseTrack& getActivePoseTrack() const;
-	void loadPoseTracks();
-	static bool loadPoseTrack(const std::filesystem::path& storedPath, PoseTrack& outTrack);
+	// The track whose first record seeds the intrinsics, unloaded when none applies
+	const PoseTrack& getIntrinsicsPoseTrack() const;
+	// Opens the capture when the media names one and loads the override track.
+	// Returns false when the capture cannot be opened.
+	bool loadMedia();
 	void clearRuntimeState();
 
 	// -- main-thread playback state --
@@ -264,9 +284,9 @@ private:
 	eFilePlaybackState m_savedPlaybackState= eFilePlaybackState::stopped;
 	double m_savedPlaybackTime= 0.0;
 
-	// -- pose tracks, loaded on the main thread at open --
-	PoseTrack m_mainPoseTrack;
-	PoseTrack m_markerPoseTrack;
+	// -- the capture and the tracks, loaded on the main thread at open --
+	Capture m_capture;
+	PoseTrack m_overridePoseTrack;
 	bool m_bHasAlignmentReference= false;
 
 	mutable std::mutex m_latestPoseMutex;

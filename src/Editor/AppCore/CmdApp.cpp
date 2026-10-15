@@ -53,7 +53,7 @@
 #include "GlbMeshWriter.h"
 #include "OcclusionMeshBuilder.h"
 #include "PoseTrack.h"
-#include "PoseTrackAssetReference.h"
+#include "Capture.h"
 #include "MaterialCompiler/GlslShaderWriter.h"
 #include "MaterialCompiler/MaterialCompiler.h"
 
@@ -232,9 +232,9 @@ void CmdApp::printUsage() const
 			"               [-stride=<n>] [-maxDepth=<metres>] [-cpu]\n"
 			"               Generate a camera-space depth proxy mesh from a single frame\n"
 			"               and write it as an OBJ.\n"
-			"  -occlusionMesh -take=<path to take.mp4> [-glb=<path>] [-refinedTrack=<path>]\n"
+			"  -occlusionMesh -take=<path to take.trackcamera> [-glb=<path>] [-refinedTrack=<path>]\n"
 			"               [-voxel=<metres>] [-stride=<n>] [-noRegistration]\n"
-			"               Fuse a recorded take's LiDAR depth sidecars into an occlusion\n"
+			"               Fuse a trackcamera capture's LiDAR depth tracks into an occlusion\n"
 			"               mesh in the take's ARKit world space, refining the poses against\n"
 			"               the model, and write it as a glTF binary plus a refined pose track.\n"
 			"  -fetchModels [-model=<name>]\n"
@@ -684,31 +684,39 @@ int CmdApp::buildOcclusionMesh() const
 	const std::string takeArg= getCommandLineStringArg("take");
 	if (takeArg.empty())
 	{
-		fprintf(stdout, "error: -occlusionMesh needs -take=<path to the take's movie>\n");
+		fprintf(stdout, "error: -occlusionMesh needs -take=<path to the take's .trackcamera capture>\n");
 		return EXIT_FAILURE;
 	}
 
 	const std::filesystem::path mediaPath(takeArg);
-	const std::filesystem::path trackPath=
-		mediaPath.parent_path() / (mediaPath.stem().string() + PoseTrackAssetReferenceFactory::k_sidecarSuffix);
-	PoseTrack track;
-	if (!track.loadFromFile(trackPath))
+	Capture capture;
+	std::string captureError;
+	if (CaptureKindUtils::kindFromExtension(mediaPath) != eCaptureKind::trackcamera)
 	{
-		fprintf(stdout, "error: could not load the pose track '%s'\n", trackPath.string().c_str());
+		fprintf(stdout, "error: '%s' is not a .trackcamera capture\n", mediaPath.string().c_str());
 		return EXIT_FAILURE;
 	}
-	if (!track.hasDepthTrack())
+	if (!capture.open(mediaPath, captureError))
 	{
-		fprintf(stdout, "error: the pose track declares no depth sidecars\n");
+		fprintf(stdout, "error: could not open the capture '%s': %s\n", mediaPath.string().c_str(),
+				captureError.c_str());
+		return EXIT_FAILURE;
+	}
+
+	const PoseTrack& track= capture.getPoseTrack(eCaptureMemberRole::movie_pose);
+	const CaptureArchiveMember* depthMember= capture.findMember(eCaptureMemberRole::depth);
+	const CaptureArchiveMember* confidenceMember= capture.findMember(eCaptureMemberRole::confidence);
+	if (!track.hasDepthTrack() || depthMember == nullptr || confidenceMember == nullptr)
+	{
+		fprintf(stdout, "error: the capture has no depth track\n");
 		return EXIT_FAILURE;
 	}
 
 	DepthTrackReader reader;
-	if (!reader.open(DepthTrackReader::depthSidecarPathForMedia(mediaPath),
-					 DepthTrackReader::confidenceSidecarPathForMedia(mediaPath), track.getDepthWidth(),
-					 track.getDepthHeight(), track.getDepthUnitMm(), track.getFrameCount()))
+	if (!reader.open(mediaPath, *depthMember, *confidenceMember, track.getDepthWidth(), track.getDepthHeight(),
+					 track.getDepthUnitMm(), track.getFrameCount()))
 	{
-		fprintf(stdout, "error: could not open the depth sidecars beside '%s' (see MikanCmd.log)\n",
+		fprintf(stdout, "error: could not open the depth tracks of '%s' (see MikanCmd.log)\n",
 				mediaPath.string().c_str());
 		return EXIT_FAILURE;
 	}
@@ -766,7 +774,7 @@ int CmdApp::buildOcclusionMesh() const
 			refinedArg.empty() ? mediaPath.parent_path() / (mediaPath.stem().string() + ".refined.pose.json")
 							   : std::filesystem::path(refinedArg);
 
-		// File order, so record i of the sidecars still describes frame i
+		// File order, so record i of the depth tracks still describes frame i
 		std::vector<size_t> trackOrder(track.getFrameCount());
 		std::iota(trackOrder.begin(), trackOrder.end(), (size_t)0);
 		std::sort(trackOrder.begin(), trackOrder.end(),

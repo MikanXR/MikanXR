@@ -53,6 +53,6 @@ class PoseTrackAssetReference;
 using PoseTrackAssetReferencePtr= std::shared_ptr<PoseTrackAssetReference>;
 using PoseTrackAssetReferenceConstPtr= std::shared_ptr<const PoseTrackAssetReference>;
 
-class DepthTrackAssetReference;
-using DepthTrackAssetReferencePtr= std::shared_ptr<DepthTrackAssetReference>;
-using DepthTrackAssetReferenceConstPtr= std::shared_ptr<const DepthTrackAssetReference>;
+class CaptureAssetReference;
+using CaptureAssetReferencePtr= std::shared_ptr<CaptureAssetReference>;
+using CaptureAssetReferenceConstPtr= std::shared_ptr<const CaptureAssetReference>;

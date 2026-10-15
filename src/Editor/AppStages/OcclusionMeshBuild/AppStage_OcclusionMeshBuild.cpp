@@ -7,6 +7,7 @@
 
 #include "CameraComponent.h"
 #include "CameraObjectSystem.h"
+#include "Capture.h"
 #include "DepthTrackReader.h"
 #include "FileVideoSourceComponent.h"
 #include "GlbMeshWriter.h"
@@ -44,8 +45,8 @@ namespace OcclusionMeshBuildStage
 {
 const char* k_refinedTrackSuffix= ".refined.pose.json";
 
-// A take's refined track sits beside the media with the media's stem, like
-// the recorded track, so the depth sidecars still resolve from the media
+// A capture is never rewritten, so its refined track sits beside it in the
+// captures folder under the capture's stem
 std::filesystem::path refinedTrackPathForMedia(const std::filesystem::path& mediaPath)
 {
 	return mediaPath.parent_path() / (mediaPath.stem().string() + k_refinedTrackSuffix);
@@ -129,25 +130,38 @@ bool AppStage_OcclusionMeshBuild::tryEnterBuild(AppStage* fromAppStage, FileVide
 		return false;
 	}
 
-	const std::filesystem::path trackPath= PathUtils::resolveProjectResource(definition->getPoseTrackPath());
-	PoseTrack track;
-	if (trackPath.empty() || !track.loadFromFile(trackPath))
+	// Only a trackcamera carries a per-frame track and the depth it describes
+	Capture capture;
+	std::string captureError;
+	if (CaptureKindUtils::kindFromExtension(mediaPath) != eCaptureKind::trackcamera
+		|| !capture.open(mediaPath, captureError))
 	{
-		ModalDialog_MessageBox::showMessageBox(fromAppStage, locText("occlusionMeshBuild.poseTrackMissing"));
+		ModalDialog_MessageBox::showMessageBox(fromAppStage, locText("occlusionMeshBuild.notTrackCamera"));
 		return false;
 	}
 
-	if (!track.hasDepthTrack())
+	// The override, when set, is a refined track from an earlier build; the
+	// capture's own track otherwise
+	PoseTrack track;
+	const std::filesystem::path trackPath= PathUtils::resolveProjectResource(definition->getPoseTrackPath());
+	if (!definition->getPoseTrackPath().empty())
+	{
+		if (trackPath.empty() || !track.loadFromFile(trackPath))
+		{
+			ModalDialog_MessageBox::showMessageBox(fromAppStage, locText("occlusionMeshBuild.poseTrackMissing"));
+			return false;
+		}
+	}
+	else
+	{
+		track= capture.getPoseTrack(eCaptureMemberRole::movie_pose);
+	}
+
+	const CaptureArchiveMember* depthMember= capture.findMember(eCaptureMemberRole::depth);
+	const CaptureArchiveMember* confidenceMember= capture.findMember(eCaptureMemberRole::confidence);
+	if (!track.hasDepthTrack() || depthMember == nullptr || confidenceMember == nullptr)
 	{
 		ModalDialog_MessageBox::showMessageBox(fromAppStage, locText("occlusionMeshBuild.noDepthTrack"));
-		return false;
-	}
-
-	std::error_code ec;
-	if (!std::filesystem::is_regular_file(DepthTrackReader::depthSidecarPathForMedia(mediaPath), ec)
-		|| !std::filesystem::is_regular_file(DepthTrackReader::confidenceSidecarPathForMedia(mediaPath), ec))
-	{
-		ModalDialog_MessageBox::showMessageBox(fromAppStage, locText("occlusionMeshBuild.depthSidecarsMissing"));
 		return false;
 	}
 
@@ -168,18 +182,23 @@ bool AppStage_OcclusionMeshBuild::tryEnterBuild(AppStage* fromAppStage, FileVide
 	}
 
 	auto* buildStage= ownerWindow->pushAppStageOfType<AppStage_OcclusionMeshBuild>();
-	buildStage->setSourceVideoSource(videoSource, camera, stage, track);
+	buildStage->setSourceVideoSource(videoSource, camera, stage, track, mediaPath, *depthMember, *confidenceMember);
 	return true;
 }
 
 void AppStage_OcclusionMeshBuild::setSourceVideoSource(FileVideoSourceComponentPtr videoSource,
 													   CameraComponentPtr camera, StageComponentConstPtr stage,
-													   const PoseTrack& track)
+													   const PoseTrack& track, const std::filesystem::path& capturePath,
+													   const CaptureArchiveMember& depthMember,
+													   const CaptureArchiveMember& confidenceMember)
 {
 	m_videoSource= videoSource;
 	m_camera= camera;
 	m_stage= stage;
 	m_track= track;
+	m_capturePath= capturePath;
+	m_depthMember= depthMember;
+	m_confidenceMember= confidenceMember;
 }
 
 void AppStage_OcclusionMeshBuild::enter()
@@ -286,13 +305,11 @@ void AppStage_OcclusionMeshBuild::onBuildEvent()
 	if (m_buildPanel->getMenuState() != eOcclusionMeshBuildMenuState::verifyTake)
 		return;
 
-	const std::filesystem::path mediaPath=
-		PathUtils::resolveProjectResource(m_videoSource->getFileVideoSourceDefinition()->getMediaPath());
-
 	BuildRequest request;
 	request.track= m_track;
-	request.depthPath= DepthTrackReader::depthSidecarPathForMedia(mediaPath);
-	request.confidencePath= DepthTrackReader::confidenceSidecarPathForMedia(mediaPath);
+	request.capturePath= m_capturePath;
+	request.depthMember= m_depthMember;
+	request.confidenceMember= m_confidenceMember;
 	request.settings= gatherSettings();
 
 	m_bCancelRequested= false;
@@ -379,10 +396,10 @@ void AppStage_OcclusionMeshBuild::runBuildRequest(const BuildRequest& request, B
 	const PoseTrack& track= request.track;
 
 	DepthTrackReader reader;
-	if (!reader.open(request.depthPath, request.confidencePath, track.getDepthWidth(), track.getDepthHeight(),
-					 track.getDepthUnitMm(), track.getFrameCount()))
+	if (!reader.open(request.capturePath, request.depthMember, request.confidenceMember, track.getDepthWidth(),
+					 track.getDepthHeight(), track.getDepthUnitMm(), track.getFrameCount()))
 	{
-		outOutput.result.failureReason= locText("occlusionMeshBuild.depthSidecarsUnreadable");
+		outOutput.result.failureReason= locText("occlusionMeshBuild.depthTracksUnreadable");
 		return;
 	}
 
@@ -522,11 +539,10 @@ bool AppStage_OcclusionMeshBuild::writeRefinedPoseTrack(std::string& outStoredPa
 	outReplacedSourceTrack= false;
 
 	FileVideoSourceDefinitionPtr definition= m_videoSource->getFileVideoSourceDefinition();
-	const std::filesystem::path mediaPath= PathUtils::resolveProjectResource(definition->getMediaPath());
-	if (mediaPath.empty())
+	if (m_capturePath.empty())
 		return false;
 
-	// Frames go out in file order so record i of the sidecars still
+	// Frames go out in file order so record i of the depth members still
 	// describes frame i of the refined track
 	std::vector<size_t> trackOrder(m_track.getFrameCount());
 	std::iota(trackOrder.begin(), trackOrder.end(), (size_t)0);
@@ -544,7 +560,7 @@ bool AppStage_OcclusionMeshBuild::writeRefinedPoseTrack(std::string& outStoredPa
 		writer.append(frame.timeUs, frame.captureTimestampUs, cameraToWorld, frame.fx, frame.fy, frame.cx, frame.cy);
 	}
 
-	const std::filesystem::path refinedPath= OcclusionMeshBuildStage::refinedTrackPathForMedia(mediaPath);
+	const std::filesystem::path refinedPath= OcclusionMeshBuildStage::refinedTrackPathForMedia(m_capturePath);
 	if (!writer.writeToFile(refinedPath))
 	{
 		m_buildPanel->setFailureReason(

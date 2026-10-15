@@ -1,5 +1,6 @@
 #include "MovieAssetReference.h"
 #include "IMkTexture.h"
+#include "CaptureAssetReference.h"
 #include "MovieDecoder.h"
 #include "PathUtils.h"
 #include "TextureAssetReference.h"
@@ -43,7 +44,11 @@ std::string MovieAssetReferenceFactory::getDefaultMoviePath()
 MediaAssetReferenceFactory::MediaAssetReferenceFactory()
 	: TypedAssetReferenceFactory<MovieAssetReference, AssetReferenceConfig>()
 {
-	m_defaultPath= MovieAssetReferenceFactory::getDefaultMoviePath();
+	m_defaultPath= CaptureAssetReferenceFactory::getDefaultCapturePath();
+
+	char const* const* capturePatterns= CaptureAssetReferenceFactory::getCaptureFilterPatterns();
+	for (int i= 0; i < CaptureAssetReferenceFactory::getCaptureFilterPatternCount(); ++i)
+		m_filterPatterns.push_back(capturePatterns[i]);
 
 	char const* const* moviePatterns= MovieAssetReferenceFactory::getMovieFilterPatterns();
 	for (int i= 0; i < MovieAssetReferenceFactory::getMovieFilterPatternCount(); ++i)

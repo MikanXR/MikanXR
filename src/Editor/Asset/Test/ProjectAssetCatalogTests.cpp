@@ -34,7 +34,8 @@ struct CatalogTestProject
 		projectDir= root / "project";
 		externalDir= root / "external";
 
-		for (const char* folder : {"compositors", "models", "movies", "scripts", "compositor_materials/m", "textures"})
+		for (const char* folder :
+			 {"captures", "compositors", "models", "movies", "scripts", "compositor_materials/m", "textures"})
 		{
 			std::filesystem::create_directories(projectDir / folder);
 		}
@@ -235,12 +236,20 @@ bool project_asset_catalog_test_upload_replaces_in_place()
 	std::error_code errorCode;
 	bool bReplaced= true;
 
-	// The destination resolves for a movie, its sidecar, and a photo's sidecar in textures
+	// The destination resolves for a raw movie, a capture of each kind, and a
+	// refined track beside a capture
 	std::filesystem::path folderDir;
 	success&= catalog.resolveUploadDestination("movies", "take.mp4", folderDir, error);
 	success&= (folderDir == project.projectDir / "movies");
-	success&= catalog.resolveUploadDestination("movies", "take.pose.json", folderDir, error);
-	success&= catalog.resolveUploadDestination("textures", "photo.pose.json", folderDir, error);
+	success&= catalog.resolveUploadDestination("captures", "take.trackcamera", folderDir, error);
+	success&= (folderDir == project.projectDir / "captures");
+	success&= catalog.resolveUploadDestination("captures", "take.stillcamera", folderDir, error);
+	success&= catalog.resolveUploadDestination("captures", "take.stillphoto", folderDir, error);
+	success&= catalog.resolveUploadDestination("captures", "take.refined.pose.json", folderDir, error);
+	// Loose sidecars no longer land beside raw media
+	success&= !catalog.resolveUploadDestination("movies", "take.pose.json", folderDir, error);
+	success&= !catalog.resolveUploadDestination("movies", "take.depth.bin", folderDir, error);
+	success&= !catalog.resolveUploadDestination("textures", "photo.pose.json", folderDir, error);
 	// Not for a type the folder does not take, a material folder, or a bundled-only folder
 	success&= !catalog.resolveUploadDestination("movies", "notes.txt", folderDir, error) && !error.empty();
 	success&= !catalog.resolveUploadDestination("compositor_materials", "m.compmat", folderDir, error);
@@ -279,6 +288,7 @@ bool project_asset_catalog_test_upload_replaces_in_place()
 
 	// The upload name guard
 	success&= AssetUploadRequestHandler::isSafeUploadFileName("take_20260915_161634.mp4");
+	success&= AssetUploadRequestHandler::isSafeUploadFileName("take.trackcamera");
 	success&= AssetUploadRequestHandler::isSafeUploadFileName("take.pose.json");
 	success&= !AssetUploadRequestHandler::isSafeUploadFileName("");
 	success&= !AssetUploadRequestHandler::isSafeUploadFileName("../take.mp4");

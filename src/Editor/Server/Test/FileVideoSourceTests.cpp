@@ -138,21 +138,15 @@ bool file_video_source_test_definition_round_trip()
 	UNIT_TEST_BEGIN("definition round-trips through JSON, with and without a pose offset")
 
 	FileVideoSourceDefinition source;
-	source.setMediaPath("movies/take.mp4");
-	source.setMarkerMediaPath("movies/take_marker.mp4");
-	source.setPoseTrackPath("movies/take.pose.json");
-	source.setMarkerPoseTrackPath("movies/take_marker.pose.json");
+	source.setMediaPath("captures/take.trackcamera");
+	source.setPoseTrackPath("captures/take.refined.pose.json");
 	source.setLoop(false);
 
 	FileVideoSourceDefinition restored;
 	restored.readFromJSON(source.writeToJSON());
-	success= (restored.getMediaPath() == std::filesystem::path("movies/take.mp4"));
+	success= (restored.getMediaPath() == std::filesystem::path("captures/take.trackcamera"));
 	assert(success);
-	success&= (restored.getMarkerMediaPath() == std::filesystem::path("movies/take_marker.mp4"));
-	assert(success);
-	success&= (restored.getPoseTrackPath() == std::filesystem::path("movies/take.pose.json"));
-	assert(success);
-	success&= (restored.getMarkerPoseTrackPath() == std::filesystem::path("movies/take_marker.pose.json"));
+	success&= (restored.getPoseTrackPath() == std::filesystem::path("captures/take.refined.pose.json"));
 	assert(success);
 	success&= !restored.getLoop();
 	assert(success);

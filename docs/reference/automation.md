@@ -75,7 +75,7 @@ Reach it with `function invoke <VideoSourceSystem> <componentId> show_video_sour
 - `apply` creates the stencil, writes the refined pose track, and replies `created` or `failed`
 - `cancel` stops a build in progress or discards a result, `return` pops the stage
 
-Reach it with `function invoke FileVideoSourceSystem <componentId> build_occlusion_mesh`, which refuses a take without depth sidecars or without a solved alignment through a message box rather than entering the stage.
+Reach it with `function invoke FileVideoSourceSystem <componentId> build_occlusion_mesh`, which refuses a source not playing a `trackcamera` capture with depth, or one without a solved alignment, through a message box rather than entering the stage.
 
 ### Scene introspection (system, component, property, function)
 
@@ -253,7 +253,7 @@ The commands the MikanARStreamer app answers today:
 - `capture [marker]` writes the next frame as a JPEG with its one-frame pose track beside it, `marker` naming it as the marker reference for the last take, and replies with both container paths, the pixel size, and the byte count
 - `record start [marker]` begins recording an H.264 movie with its pose track, replying with the take name; `record stop` finishes it and replies with both paths, the frames written and dropped, and the duration; `record` alone reports whether one is in progress
 
-A take and its marker reference pulled off the phone drop straight into a project's `movies` folder as a file video source ([videosources.md](./videosources.md)):
+A take and its marker reference pulled off the phone drop into a project's `movies` folder with their pose tracks beside them, and the next project load packs them into one capture in `captures` for a file video source to play ([videosources.md](./videosources.md), "Loose takes and their packing"):
 
 ```
 python tools/automate.py "arkit send record start" "sleep:5" "arkit send record stop"

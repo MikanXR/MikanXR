@@ -395,6 +395,11 @@ msgid "Bundled with the application. Copy it to the project to edit it."
 msgstr ""
 
 #. Section: assets
+msgctxt "assets.captureFilterDescription"
+msgid "Capture Files (*.stillphoto;*.stillcamera;*.trackcamera)"
+msgstr ""
+
+#. Section: assets
 msgctxt "assets.compositorGraphFilterDescription"
 msgid "Compositor Graph Files (*.compgraph)"
 msgstr ""
@@ -427,13 +432,13 @@ msgid "'%s' is still in use and cannot be deleted. Used by:"
 msgstr ""
 
 #. Section: assets
-msgctxt "assets.depthTrackFilterDescription"
-msgid "Depth Track Files (*.depth.bin, *.conf.bin)"
+msgctxt "assets.empty"
+msgid "No assets in this folder"
 msgstr ""
 
 #. Section: assets
-msgctxt "assets.empty"
-msgid "No assets in this folder"
+msgctxt "assets.folderCaptures"
+msgid "Captures"
 msgstr ""
 
 #. Section: assets
@@ -521,6 +526,11 @@ msgid "'%s' is not a supported file type for this folder"
 msgstr ""
 
 #. Section: assets
+msgctxt "assets.loadCaptureDialogTitle"
+msgid "Load Capture"
+msgstr ""
+
+#. Section: assets
 msgctxt "assets.loadCompositorGraphDialogTitle"
 msgid "Load Compositor Graph"
 msgstr ""
@@ -528,11 +538,6 @@ msgstr ""
 #. Section: assets
 msgctxt "assets.loadCompositorMaterialDialogTitle"
 msgid "Load Compositor Material"
-msgstr ""
-
-#. Section: assets
-msgctxt "assets.loadDepthTrackDialogTitle"
-msgid "Load Depth Track"
 msgstr ""
 
 #. Section: assets
@@ -587,7 +592,7 @@ msgstr ""
 
 #. Section: assets
 msgctxt "assets.mediaFilterDescription"
-msgid "Movie or Image Files (*.mp4;*.mov;*.m4v;*.mkv;*.avi;*.jpg;*.jpeg;*.png;*.bmp;*.tga)"
+msgid "Capture, Movie, or Image Files (*.stillphoto;*.stillcamera;*.trackcamera;*.mp4;*.mov;*.m4v;*.mkv;*.avi;*.jpg;*.jpeg;*.png;*.bmp;*.tga)"
 msgstr ""
 
 #. Section: assets
@@ -3261,13 +3266,8 @@ msgid "Create Stencil"
 msgstr ""
 
 #. Section: occlusionMeshBuild
-msgctxt "occlusionMeshBuild.depthSidecarsMissing"
-msgid "The take's depth sidecars (.depth.bin and .conf.bin) are not beside the movie."
-msgstr ""
-
-#. Section: occlusionMeshBuild
-msgctxt "occlusionMeshBuild.depthSidecarsUnreadable"
-msgid "The depth sidecars do not match the pose track (see the log)."
+msgctxt "occlusionMeshBuild.depthTracksUnreadable"
+msgid "The capture's depth tracks do not match the pose track (see the log)."
 msgstr ""
 
 #. Section: occlusionMeshBuild
@@ -3321,7 +3321,7 @@ msgstr ""
 
 #. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.noDepthTrack"
-msgid "The take's pose track declares no depth sidecars. Record the take on a LiDAR phone."
+msgid "The capture has no depth track. Record the take on a LiDAR phone."
 msgstr ""
 
 #. Section: occlusionMeshBuild
@@ -3337,6 +3337,11 @@ msgstr ""
 #. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.notAligned"
 msgid "The take is not aligned to the stage. Run Align Camera with its marker reference first."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.notTrackCamera"
+msgid "The video source is not playing a Track Camera capture (.trackcamera)."
 msgstr ""
 
 #. Section: occlusionMeshBuild
@@ -3362,12 +3367,12 @@ msgstr ""
 
 #. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.phaseLoadingTake"
-msgid "Opening the depth sidecars..."
+msgid "Opening the depth tracks..."
 msgstr ""
 
 #. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.poseTrackMissing"
-msgid "The take has no pose track, or it could not be loaded."
+msgid "The capture's pose track override could not be loaded."
 msgstr ""
 
 #. Section: occlusionMeshBuild
@@ -4593,16 +4598,6 @@ msgstr ""
 #. Section: properties
 msgctxt "properties.lumens_per_watt"
 msgid "Lumens per Watt"
-msgstr ""
-
-#. Section: properties
-msgctxt "properties.marker_media_path"
-msgid "Marker Reference Media"
-msgstr ""
-
-#. Section: properties
-msgctxt "properties.marker_pose_track_path"
-msgid "Marker Reference Pose Track"
 msgstr ""
 
 #. Section: properties

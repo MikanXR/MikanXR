@@ -114,7 +114,7 @@ Every file a project uses (graphs, models, scripts, materials, textures, fonts) 
 
 `ProjectAssetCatalog` (`src/Editor/Asset/ProjectAssetCatalog.h`, owned by `MainWindow`, reached through `IEditorWindow::getAssetCatalog`) is the scanned view of the project's asset folders. Each folder is a `ProjectAssetFolderDesc`: a project subfolder, the bundled subfolder of the same kind under `resources/` that shows through behind it, and the asset factories whose file types it holds. The folders are:
 
-- `compositors` (`*.compgraph`), `shapes` (`*.shapegraph`), `models`, `scripts`, `textures`, `movies`: one entry per matching file. `movies` holds recorded takes and their `*.pose.json` pose tracks, and `textures` lists pose tracks too so a photo's sidecar sits beside it
+- `compositors` (`*.compgraph`), `shapes` (`*.shapegraph`), `models`, `scripts`, `textures`, `movies`, `captures`: one entry per matching file. `captures` holds every recorded shot as one capture archive (`*.stillphoto`, `*.stillcamera`, `*.trackcamera`) plus the `*.refined.pose.json` tracks the occlusion mesh build writes beside them. `textures` and `movies` hold raw images and raw movies only, usable by a file video source when tracking does not matter
 - `compositor_materials` (`*.compmat`), `shape_materials` (`*.shapemat`): one entry per material with its sibling graph and shader sources hidden
 - `fonts`: bundled-only, `resources/font/`, with no Add button
 

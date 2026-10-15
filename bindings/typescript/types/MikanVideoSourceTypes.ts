@@ -108,9 +108,7 @@ export class MikanDistortionCoefficients {
 
 export class MikanFileVideoSourceValues extends MikanVideoSourceValues {
   media_path: string = '';
-  marker_media_path: string = '';
   pose_track_path: string = '';
-  marker_pose_track_path: string = '';
   loop: boolean = false;
   playback_state: number = 0;
   playback_time: number = 0;
@@ -118,9 +116,7 @@ export class MikanFileVideoSourceValues extends MikanVideoSourceValues {
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'media_path', type: 'string' },
-    { name: 'marker_media_path', type: 'string' },
     { name: 'pose_track_path', type: 'string' },
-    { name: 'marker_pose_track_path', type: 'string' },
     { name: 'loop', type: 'boolean' },
     { name: 'playback_state', type: 'int32' },
     { name: 'playback_time', type: 'float' },

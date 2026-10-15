@@ -11,7 +11,7 @@ There is no standalone `VideoSourceManager`/`VideoSourceView` layer; video sourc
 - `USBVideoSourceComponent` / `USBVideoSourceSystem`: local USB cameras (device path, video mode, per-mode camera settings).
 - `NetworkVideoSourceComponent` / `NetworkVideoSourceSystem`: RTMP/RTSP network streams (protocol, address, port, path).
 - `ARKitVideoSourceComponent` / `ARKitVideoSourceSystem`: iPhone ARKit streaming from the MikanARStreamer app (a base UDP port; video RTP on `base_port+0`).
-- `FileVideoSourceComponent` / `FileVideoSourceSystem`: a recorded movie or a still image played from disk, with an optional pose track beside it (see [File video sources](#file-video-sources)).
+- `FileVideoSourceComponent` / `FileVideoSourceSystem`: a recorded shot played from disk, as a capture archive carrying its media, marker reference, and pose tracks, or as a raw movie or image (see [File video sources](#file-video-sources)).
 
 The first three talk to hardware through device interfaces defined in `src/Libraries/MikanCoreApp/Public`: `IVideoDevice` (settings, colorimetry) with per-transport extensions `IUsbVideoDevice`, `INetworkVideoDevice`, and `IARKitVideoDevice`, each with a listener interface (`IUsbVideoDeviceListener` etc.) and a manager (`IUsbVideoDeviceManager`, ...). The editor side implements the listener; the plugin side implements the device. The file source has no device: it decodes in-process.
 
@@ -88,19 +88,82 @@ The depth proxy mesh capture is the one consumer that depends on these intrinsic
 
 ## File video sources
 
-`FileVideoSourceComponent` plays a movie file or shows a still image in place of a live camera, so a shot can be composited and calibrated without the camera or phone running. There is no plugin and no device manager: `MovieDecoder` (`src/Editor/ECS/VideoSource/MovieDecoder.h`) wraps `cv::VideoCapture` over OpenCV's ffmpeg videoio backend for movies and `cv::imread` for stills, and treats a still as a one-frame movie so the component has one path. The backend DLL, `opencv_videoio_ffmpeg4100_64.dll`, ships in the OpenCV package and is copied beside the executables by the Editor's CMake, which is what lets the decoder tests run in CI.
+`FileVideoSourceComponent` plays a recorded shot in place of a live camera, so it can be composited and calibrated without the camera or phone running. There is no plugin and no device manager: `MovieDecoder` (`src/Editor/ECS/VideoSource/MovieDecoder.h`) wraps `cv::VideoCapture` over OpenCV's ffmpeg videoio backend for movies and `cv::imdecode` or `cv::imread` for stills, and treats a still as a one-frame movie so the component has one path. The backend DLL, `opencv_videoio_ffmpeg4100_64.dll`, ships in the OpenCV package and is copied beside the executables by the Editor's CMake, which is what lets the decoder tests run in CI.
 
-The definition holds the media path, an optional marker reference media path (the same shot with the origin marker in frame), an optional pose track path for each, and a loop flag. Both media rows accept a movie or an image (`MediaAssetReferenceFactory`, the union of the movie and texture patterns), and setting a media path re-derives its track slot: the `<stem>.pose.json` beside the file when there is one, otherwise empty, so a track never lingers under media it does not describe. The slot stays visible and editable for a track that was moved. The `movies` asset folder holds recorded takes and their tracks, and the `textures` folder lists tracks too so a photo's sidecar can live next to it.
+The definition holds the media path, a pose track path, and a loop flag. The media is a capture archive (`CaptureAssetReference`, the `captures` folder, below), or a raw movie or image from `movies` or `textures` for a shot where tracking does not matter. The media row accepts all three (`MediaAssetReferenceFactory`, the union of the capture, movie, and texture patterns). The pose track path is an override for a `trackcamera` capture, the refined track the occlusion mesh build writes beside it, and is empty otherwise: a capture carries its own tracks, so naming new media never fills it in. An override whose session differs from the capture's is logged and ignored.
 
-Decoding runs on a worker thread that owns the `MovieDecoder` outright. The main thread paces playback in `update()` and talks to the worker through two mailboxes: a request struct (open, seek, decode the next frame, quit) and a single decoded-frame slot. Frames are decoded one ahead; while playing they are read sequentially and a seek happens only on a scrub, a loop wrap, a stop, or when the clock has run more than a second past the decoded frame. A seek carries a generation number so a frame decoded before the seek landed is discarded rather than shown. Delivered pixels go through `writeVideoFrame`, so the undistort, queue, and texture path is exactly the USB camera's.
+A capture plays by its kind. A `stillphoto` shows its plate image. A `stillcamera` plays its movie with the camera fixed. A `trackcamera` plays its movie with the per-frame poses of its track, or of the override when one is set. In all three the marker image is the alignment reference (see [Marker reference for recorded takes](#marker-reference-for-recorded-takes)). The capture's members are read in place: a movie member plays through ffmpeg's `subfile` protocol with the member's byte range in the URL (`Capture::makeSubfileUrl`, `MovieDecoder::openMovieUrl`), and an image member decodes from its bytes (`MovieDecoder::openEncodedStill`), so nothing is extracted and no cache exists. A `stage` capture, one the editor recorded, reports itself aligned with an identity offset and refuses another.
+
+Decoding runs on a worker thread that owns the `MovieDecoder` outright. The main thread opens the capture, paces playback in `update()`, and talks to the worker through two mailboxes: a request struct (open a path, a `subfile` URL, or encoded still bytes; seek; decode the next frame; quit) and a single decoded-frame slot. Frames are decoded one ahead; while playing they are read sequentially and a seek happens only on a scrub, a loop wrap, a stop, or when the clock has run more than a second past the decoded frame. A seek carries a generation number so a frame decoded before the seek landed is discarded rather than shown. Delivered pixels go through `writeVideoFrame`, so the undistort, queue, and texture path is exactly the USB camera's.
 
 Playback is a runtime state (`playback_state`, `playback_time`, `duration_seconds` properties and `play`/`pause`/`stop` functions), so the project file never records where a take was scrubbed to. A movie starts playing when it opens, and the clock only advances while a view is subscribed. A paused movie or a still re-emits its current frame at the nominal rate (the movie's frame rate, 30 for a still): `VideoFrameDistortionView` counts every write as a new frame and the compositor and the client frame events are paced by frames arriving, so without re-emission a paused source would freeze the whole loop and a view that subscribed late would never see a frame.
 
-Intrinsics are seeded when the media opens: from the pose track's first record when there is one, otherwise a default set from the frame size when the definition holds none, so a trackless still can enter the align stages, which require valid intrinsics. A calibration the operator ran is never overwritten.
+Intrinsics are seeded when the media opens: from the movie track's first record when there is one, else from the marker track's, whose pinhole values are the camera's even when the camera is treated as fixed, otherwise a default set from the frame size when the definition holds none, so a trackless still can enter the align stages, which require valid intrinsics. A calibration the operator ran is never overwritten.
+
+### Capture archives
+
+A capture is one shot as one file: a POSIX ustar archive, uncompressed, holding the media, the marker reference, and the pose and depth tracks, with a manifest saying what kind of shot it is. The library is `src/Editor/Capture`: `CaptureArchiveReader` and `CaptureArchiveWriter` over the accepted ustar subset, `CaptureManifest`, and `Capture`, the opened archive. The editor writes captures through the writer (the one-time packing below, and the recorder once it is moved onto captures) and the phone writes the same subset in Swift, so the reader accepts exactly what those writers produce and rejects everything else with a message:
+
+- regular-file members only, no directories, links, or pax and GNU extension headers
+- member names of at most 100 ASCII characters, with no path separators
+- members under the ustar size limit of 8 GiB
+- the manifest `capture.json` as the first member
+
+Every member's data starts on a 512-byte boundary at a fixed offset, which is what lets the movie play through `subfile`, `DepthTrackReader` seek to a record, and an image or JSON member be read into memory with one seek. No compression is applied: the media is already compressed, and compressing the depth would cost the fixed offsets. A capture is written once and never modified, which keeps it safe to hold open for playback. Anything derived from it, such as the refined pose track, goes beside it in `captures`.
+
+The file extension names the kind and only routes the file to the `captures` folder. The manifest's `kind` is what the editor acts on, and a manifest that disagrees with the extension is rejected:
+
+```
+{
+  "format": "mikan-capture", "version": 1,
+  "kind": "trackcamera",
+  "session_id": "<the ARKit world origin's UUID, or the editor recorder's session id>",
+  "pose_space": "arkit_world",
+  "created_utc": "2026-10-14T12:00:00Z",
+  "producer": "MikanARStreamer <version>",
+  "interrupted": false,
+  "members": {
+    "marker_image": "marker.jpg",
+    "marker_pose": "marker.pose.json",
+    "movie": "movie.mp4",
+    "movie_pose": "movie.pose.json",
+    "depth": "movie.depth.bin",
+    "confidence": "movie.conf.bin"
+  }
+}
+```
+
+- `members` maps roles to member names, so an image may be `.jpg` or `.png`. The roles are `plate_image`, `marker_image`, `marker_pose`, `movie`, `movie_pose`, `depth`, and `confidence`. Depth and confidence come together or not at all, and need a `movie_pose` to declare their record size.
+- `pose_space` is `arkit_world` for a phone capture, whose poses need the marker alignment's offset, or `stage` for an editor recording, whose poses are stage space already.
+- `session_id` is the one session every pose track in the archive was recorded in. `Capture::open` rejects an archive whose member tracks name a different session, which is what lets an offset solved from the marker track apply to the movie track.
+- `interrupted` is true on a `stillcamera` the phone stopped because the camera moved.
+
+| kind | camera | required | optional |
+|---|---|---|---|
+| `stillphoto` | fixed | `plate_image` | `marker_image`, `marker_pose` |
+| `stillcamera` | fixed | `movie` | `plate_image`, `marker_image`, `marker_pose` |
+| `trackcamera` | per-frame poses | `movie`, `movie_pose` | `plate_image`, `marker_image`, `marker_pose`, `depth` with `confidence` |
+
+The phone always writes the marker members, so a phone capture is always alignable. They are optional in the format because an editor recording in stage space needs no marker. `marker_pose` matters for a still kind even though the camera is treated as fixed: its pinhole values are the camera's intrinsics.
+
+### Loose takes and their packing
+
+Before captures, a take was a loose set of files: `movies/<stem>.mp4` or `textures/<stem>.jpg`, a `<stem>.pose.json` beside it, for a LiDAR take `<stem>.depth.bin` and `<stem>.conf.bin`, and a second `<stem>_marker` take with its own track. `LegacyTakeMigration` (`src/Editor/Project/LegacyTakeMigration.h`) packs those once, on project load, after the asset folders exist and before the project file is read. Any `*.pose.json`, `*.depth.bin`, or `*.conf.bin` in `movies` or `textures` triggers it, so an interrupted pack reruns on the next load and a current project is left alone. Grouping is by stem, with `<stem>_marker` as the marker take:
+
+- an image with a track or a marker take becomes a `stillphoto` (plate = the image, marker = the marker take's image)
+- a movie with a per-frame track becomes a `trackcamera`, with its depth tracks when the track declares them and both are present
+- a movie without a track but with a marker take becomes a `stillcamera`
+- a movie or image with neither a track nor a marker take is raw media and stays where it is
+- a marker take that is a movie contributes its first frame as `marker.jpg` and that frame's pose as a one-frame `marker.pose.json`
+- a marker take recorded in another session than its take is refused and packed as a take of its own
+- `pose_space` is `arkit_world` for a track the phone wrote and `stage` for one the editor's recorder wrote. Neither writer recorded which it was, so the session id is the judge: 32 hex characters without dashes is `VideoSourceRecorder::makeSessionId`, a UUID with dashes is the phone
+- `<stem>.refined.pose.json` moves to `captures` beside the new capture
+
+Every file video source in the project file naming a packed take, or its marker take, is repointed at the capture, with its pose track path set to the moved refined track when it named one and cleared otherwise, since the capture carries the recorded track. The pose offset is kept: the capture holds the same session it was solved in. The originals, and any orphan sidecar, move to `<project>/legacy_takes/`, which is not an asset folder. A log line per capture and a summary line say what was packed and where the originals went.
 
 ### Pose tracks
 
-A pose track is the JSON sidecar the MikanARStreamer app writes beside every movie and photo it records, `<stem>.pose.json`, read by `PoseTrack` (`src/Editor/ECS/VideoSource/PoseTrack.h`):
+A pose track is the JSON the MikanARStreamer app records for every movie and photo, the `movie_pose` and `marker_pose` members of a capture, read by `PoseTrack` (`src/Editor/ECS/VideoSource/PoseTrack.h`):
 
 ```
 {
@@ -119,41 +182,41 @@ A pose track is the JSON sidecar the MikanARStreamer app writes beside every mov
 
 `time_us` is relative to the first appended frame and equals the container's presentation time, because the phone stamps each sample's presentation time with its capture clock and the mp4 rebases to zero. A photo's track has one frame at zero. The phone records a pose only for frames it actually wrote, so the track never drifts from the file. The transform is stored row-major like `ARKitPoseInRTPPayload` and transposed at load. Frames are sorted by time on load.
 
-The loader accepts versions 1 and 2. Version 2 adds the three optional `depth_*` keys and nothing else, so a version 1 track and a version 2 track without them load identically. The editor's own recorder writes version 1, since nothing it records carries depth. The depth keys declare the two binary sidecars below, and `PoseTrack::hasDepthTrack` reports whether they are present. `depth_width` and `depth_height` come together or the track is rejected. `depth_unit_mm` defaults to 1 when absent.
+The loader accepts versions 1 and 2. Version 2 adds the three optional `depth_*` keys and nothing else, so a version 1 track and a version 2 track without them load identically. The editor's own recorder writes version 1, since nothing it records carries depth. The depth keys declare the two depth members below, and `PoseTrack::hasDepthTrack` reports whether they are present. `depth_width` and `depth_height` come together or the track is rejected. `depth_unit_mm` defaults to 1 when absent.
 
 ### Depth tracks
 
-A video take recorded on a LiDAR phone also carries `<stem>.depth.bin` and `<stem>.conf.bin`, the ARKit `sceneDepth` and its confidence map for every frame of the movie. Both are headerless arrays of fixed-size records, one record per movie frame, in the same order as the pose track's `frames`: record `i` describes frame `i` and pose `i`. A depth record is `depth_width * depth_height` little-endian uint16 values, each `depth_unit_mm` millimetres, 0 where the sensor reported nothing. A confidence record is the same count of uint8 values, ARKit's 0 low, 1 medium, 2 high. The depth camera's intrinsics are the frame's colour intrinsics scaled by `depth_width / image_width` and `depth_height / image_height`. A frame that reached the movie before the sensor delivered is a zero record, so the files never fall out of step with the pose track. The phone records the raw per-frame depth rather than ARKit's temporally smoothed variant, and holds autofocus off for the span of the take so the recorded intrinsics stay stable. The `movies` folder accepts the two files (`DepthTrackAssetReference`, `src/Editor/Asset/DepthTrackAssetReference.h`) so a take arrives whole, `DepthTrackReader` (`src/Editor/Reconstruction/DepthTrackReader.h`) reads them by the media's stem, and the occlusion mesh build ([occlusion-mesh.md](./occlusion-mesh.md)) is their consumer. Record `i` belongs to the frame at file position `i`, which `PoseTrackFrame::fileIndex` keeps through the loader's sort by time. A build writes `<stem>.refined.pose.json` beside the take, a version 2 track with the same depth header and the refined poses in file order, and `PoseTrackWriter::setDepthTrack` is what makes a written track version 2; without it the writer stays at version 1.
+A `trackcamera` recorded on a LiDAR phone also carries the `depth` and `confidence` members, the ARKit `sceneDepth` and its confidence map for every frame of the movie. Both are headerless arrays of fixed-size records, one record per movie frame, in the same order as the pose track's `frames`: record `i` describes frame `i` and pose `i`. A depth record is `depth_width * depth_height` little-endian uint16 values, each `depth_unit_mm` millimetres, 0 where the sensor reported nothing. A confidence record is the same count of uint8 values, ARKit's 0 low, 1 medium, 2 high. The depth camera's intrinsics are the frame's colour intrinsics scaled by `depth_width / image_width` and `depth_height / image_height`. A frame that reached the movie before the sensor delivered is a zero record, so the members never fall out of step with the pose track. The phone records the raw per-frame depth rather than ARKit's temporally smoothed variant, and holds autofocus off for the span of the take so the recorded intrinsics stay stable. `DepthTrackReader` (`src/Editor/Reconstruction/DepthTrackReader.h`) opens the two member ranges of the archive, checks their sizes against the track's record count, and reads one record at a time at its offset. The occlusion mesh build ([occlusion-mesh.md](./occlusion-mesh.md)) is their consumer. Record `i` belongs to the frame at file position `i`, which `PoseTrackFrame::fileIndex` keeps through the loader's sort by time. A build writes `captures/<stem>.refined.pose.json` beside the capture, a version 2 track with the same depth header and the refined poses in file order, and `PoseTrackWriter::setDepthTrack` is what makes a written track version 2; without it the writer stays at version 1.
 
 The component matches each decoded frame to its pose by nearest `time_us` within half a frame period. Frame index is never used: ffmpeg's frame counter is unreliable after a seek. On a hit it publishes the pose through `IFrameCoupledPoseProvider` with intrinsics built from the record's pinhole values (`createMonoIntrinsicsFromPinhole`), and on a miss it keeps the previous pose. The frame sequence it reports is a delivery counter that never resets on seek, loop, or stop, and unlike the ARKit source it never clears the alignment offset on a backwards sequence: a recording cannot restart its tracking session.
 
-Without a track the source offers no pose at all, and `CameraComponent` and the align stages treat it as a fixed camera.
+A still kind, and a raw file without an override track, offers no pose at all, and `CameraComponent` and the align stages treat it as a fixed camera.
 
 ### Uploading takes from the phone
 
-The MikanARStreamer app's Captures panel sends a take and its sidecar to the editor over the HTTP message server, one file per request:
+The MikanARStreamer app's Captures panel sends a take to the editor over the HTTP message server, one file per request:
 
 ```
 POST /assets/upload?folder=<folderId>&name=<fileName>    body: the raw file bytes
 ```
 
-`AssetUploadRequestHandler` (`src/Editor/Server/AssetUploadRequestHandler.h`) owns the route. A movie lands in `movies`, a photo in `textures`, and a `.pose.json` goes to its media's folder, since both folders accept pose tracks. The `.depth.bin` and `.conf.bin` depth tracks follow their movie into `movies`. The file type is judged by the name's extension against the folder's asset factories, the same gate the Assets panel's Add button applies. A file of the same name is replaced in place rather than given the numeric suffix `ProjectAssetCatalog::importAsset` applies to a colliding import: the same name is the same take sent again, and a suffix would part a take from its sidecar. Replacing a take a `FileVideoSourceComponent` is playing fails with 409, since the reader holds the file open. The reply is `{"storedPath": "movies/take.mp4", "replaced": false}` on 200 and `{"error": "..."}` otherwise.
+`AssetUploadRequestHandler` (`src/Editor/Server/AssetUploadRequestHandler.h`) owns the route. A capture lands in `captures`, a raw movie in `movies`, and a raw photo in `textures`. The loose `.pose.json`, `.depth.bin`, and `.conf.bin` sidecars are refused by every folder: a take travels as one capture. The file type is judged by the name's extension against the folder's asset factories, the same gate the Assets panel's Add button applies. A file of the same name is replaced in place rather than given the numeric suffix `ProjectAssetCatalog::importAsset` applies to a colliding import: the same name is the same take sent again. Replacing a capture a `FileVideoSourceComponent` is playing fails with 409, since the reader holds the file open. The reply is `{"storedPath": "captures/take.trackcamera", "replaced": false}` on 200 and `{"error": "..."}` otherwise. The phone app sends loose files until its capture flows land, so a take it uploads today arrives as raw media without its tracks.
 
 The body is read on the connection thread and written to a hidden temporary file beside its destination, and only the validation and the final move into place cross the main thread, so an upload never stalls a frame. The server buffers a body in memory before the route sees it, so one upload transiently costs a few times its size in RAM, and a request has 300 s to arrive in full before the connection is dropped without a reply.
 
 The server binds loopback only until "Allow connections from other machines" is on in the HTTP Triggers panel (`httpServerAllowRemote` in the app settings), which is what a phone on the LAN needs. The first bind on all interfaces prompts Windows Firewall for `Mikan.exe`. A same-machine test needs no setting:
 
 ```
-curl -X POST --data-binary @take.mp4 "http://127.0.0.1:8090/assets/upload?folder=movies&name=take.mp4"
+curl -X POST --data-binary @take.trackcamera "http://127.0.0.1:8090/assets/upload?folder=captures&name=take.trackcamera"
 ```
 
 ### Recording from the editor
 
 The video source settings stage records the live feed of any source into the same files: Record and Stop write `movies/take_YYYYMMDD_HHMMSS.mp4`, Capture Image writes `textures/take_YYYYMMDD_HHMMSS.jpg`, and each gets a `<stem>.pose.json` sidecar when a camera names the source through `video_source_id`. The Marker reference toggle arms the next capture as `<take>_marker` of the most recent main take, as on the phone, and every take in one stage visit shares a session id. `VideoSourceRecorder` (`src/Editor/AppStages/VideoSourceSettings/VideoSourceRecorder.h`) owns the work, and the stage answers `record_start [marker]`, `record_stop`, `capture_image [marker]`, and `get_recording_state` over the automation channel ([automation.md](./automation.md)).
 
-Frames are recorded undistorted. The recorder owns a second `VideoFrameDistortionView` in calibration mode for the duration of a capture, which undistorts on the CPU into a BGR buffer every tick, and the sidecar carries the source's undistorted camera matrix, so a played take is a pinhole camera exactly as the format assumes. The pose written per frame is the camera's stage-space aperture pose at the moment the frame was taken, whether it comes from a tracking mount, a frame-coupled source, or an authored transform. A track recorded this way therefore plays back with no alignment step and an identity `pose_offset`, unlike a phone take, whose poses live in ARKit world space until the marker alignment solves the offset. Without a camera, with an uncalibrated source, or with stereo intrinsics the media is still written and the status line says why the sidecar was not.
+Recording from a file source playing a capture is how a capture is trimmed: play, record from the in point, stop at the out point. The result re-encodes the movie, carries no depth, and has stage-space poses with the source's offset folded in, since the camera's pose is what the recorder reads.
 
-Frames are paired with their pose on the main thread and handed to an encoder thread over a bounded queue. A frame the queue cannot take is dropped together with its pose, so the movie and the sidecar stay in lockstep, and `time_us` is the constant-rate presentation time of each written frame. The movie is written by `MovieWriter` (`src/Editor/ECS/VideoSource/MovieWriter.h`) through `cv::VideoWriter`, trying the Media Foundation plugin's H.264 first (the ffmpeg DLL's own H.264 route needs an OpenH264 DLL that does not ship), then ffmpeg MPEG-4 part 2, then MJPG in an avi. The Media Foundation writer lives in `opencv_videoio_msmf4100_64.dll`, which the Editor's CMake copies beside the executables with the ffmpeg DLL. `PoseTrackWriter` in `PoseTrack.h` writes the sidecar with the phone's keys.
+Frames are paired with their pose on the main thread and handed to an encoder thread over a bounded queue. A frame the queue cannot take is dropped together with its pose, so the movie and the track stay in lockstep, and `time_us` is the constant-rate presentation time of each written frame. The movie is written by `MovieWriter` (`src/Editor/ECS/VideoSource/MovieWriter.h`) through `cv::VideoWriter`, trying the Media Foundation plugin's H.264 first (the ffmpeg DLL's own H.264 route needs an OpenH264 DLL that does not ship), then ffmpeg MPEG-4 part 2, then MJPG in an avi. The Media Foundation writer lives in `opencv_videoio_msmf4100_64.dll`, which the Editor's CMake copies beside the executables with the ffmpeg DLL. `PoseTrackWriter` in `PoseTrack.h` writes the track with the phone's keys.
 
 ---
 
@@ -177,9 +240,9 @@ A stored offset describes the ARKit session it was solved in. A `frameSeq` that 
 
 ### Marker reference for recorded takes
 
-A recorded take usually keeps the origin marker out of shot, so the file source can carry a second recording of the same shot with the marker in frame. `IAlignmentReferenceSource` (`src/Editor/ECS/Camera/IAlignmentReferenceSource.h`) is the runtime mixin the two marker alignment stages discover by `dynamic_cast`, beside `IFrameCoupledPoseProvider`. On entry a stage calls `beginAlignmentReference()`, which switches the source's frames and pose track to the marker media, looping from the start, without dropping the stage's own view subscription (a close and reopen would). On exit `endAlignmentReference()` restores the main media and the playback position it had. Which media is active is stage state rather than a property, so a cancelled stage cannot leave the project pointing at the reference file.
+A recorded take usually keeps the origin marker out of shot, so a capture carries a marker image of the same shot with the marker in frame, and its one-frame pose track. `IAlignmentReferenceSource` (`src/Editor/ECS/Camera/IAlignmentReferenceSource.h`) is the runtime mixin the two marker alignment stages discover by `dynamic_cast`, beside `IFrameCoupledPoseProvider`. On entry a stage calls `beginAlignmentReference()`, which switches the source's frames to the marker image, and for a `trackcamera` its poses to the marker track, without dropping the stage's own view subscription (a close and reopen would). On exit `endAlignmentReference()` restores the main media and the playback position it had. Which media is active is stage state rather than a property, so a cancelled stage cannot leave the project pointing at the reference.
 
-The reference is only usable when the solved offset applies to the main take: the source refuses it when the main take carries a pose track but the reference does not, or when the two tracks name different `session_id`s, since an offset solved in one ARKit world means nothing in another. Both cases are logged at open. A handheld take therefore records its marker reference in the same app run, which the phone's marker toggle is for. A tripod take without tracks needs no session match at all: the stage takes the fixed camera path and places the camera from the reference frames directly.
+The reference is offered when the capture has a marker image and its poses are not stage space already. `Capture::open` has already refused an archive whose marker track and movie track name different sessions, so an offset solved from the marker applies to the movie. A still kind publishes no pose, so the stage takes the fixed camera path and places the camera from the marker image directly, with the intrinsics seeded from the marker track.
 
 ---
 

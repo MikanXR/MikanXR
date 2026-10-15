@@ -72,13 +72,11 @@ namespace MikanXR
 	public class MikanFileVideoSourceValues : MikanVideoSourceValues
 	{
 		[MikanFieldOrder(0)] public string media_path;
-		[MikanFieldOrder(1)] public string marker_media_path;
-		[MikanFieldOrder(2)] public string pose_track_path;
-		[MikanFieldOrder(3)] public string marker_pose_track_path;
-		[MikanFieldOrder(4)] public bool loop;
-		[MikanFieldOrder(5)] public int playback_state;
-		[MikanFieldOrder(6)] public float playback_time;
-		[MikanFieldOrder(7)] public float duration_seconds;
+		[MikanFieldOrder(1)] public string pose_track_path;
+		[MikanFieldOrder(2)] public bool loop;
+		[MikanFieldOrder(3)] public int playback_state;
+		[MikanFieldOrder(4)] public float playback_time;
+		[MikanFieldOrder(5)] public float duration_seconds;
 	};
 
 	public class MikanMonoIntrinsics : MikanBaseIntrinsics

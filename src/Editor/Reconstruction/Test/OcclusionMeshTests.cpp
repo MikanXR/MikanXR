@@ -1,5 +1,8 @@
 #include "OcclusionMeshTests.h"
 
+#include "Capture.h"
+#include "CaptureArchiveWriter.h"
+#include "CaptureManifest.h"
 #include "DepthTrackReader.h"
 #include "OcclusionMeshBuilder.h"
 #include "PoseTrack.h"
@@ -122,15 +125,15 @@ float distanceToScene(const glm::vec3& p)
 	return std::min(floorDistance, boxDistance);
 }
 
-void writeLittleEndianRecord(std::ofstream& depthFile, std::ofstream& confidenceFile, const std::vector<float>& depth)
+void appendLittleEndianRecord(std::vector<uint8_t>& depthBytes, std::vector<uint8_t>& confidenceBytes,
+							  const std::vector<float>& depth)
 {
 	for (float meters : depth)
 	{
 		const uint16_t millimetres= meters > 0.f ? (uint16_t)std::lround(meters * 1000.f) : 0;
-		const uint8_t bytes[2]= {(uint8_t)(millimetres & 0xFF), (uint8_t)(millimetres >> 8)};
-		depthFile.write((const char*)bytes, 2);
-		const uint8_t confidence= meters > 0.f ? 2 : 0;
-		confidenceFile.write((const char*)&confidence, 1);
+		depthBytes.push_back((uint8_t)(millimetres & 0xFF));
+		depthBytes.push_back((uint8_t)(millimetres >> 8));
+		confidenceBytes.push_back(meters > 0.f ? 2 : 0);
 	}
 }
 
@@ -207,7 +210,7 @@ bool occlusion_mesh_test_synthetic_take_end_to_end()
 
 	const std::filesystem::path directory= std::filesystem::temp_directory_path() / "MikanOcclusionMeshTests";
 	std::filesystem::create_directories(directory);
-	const std::filesystem::path mediaPath= directory / "take.mp4";
+	const std::filesystem::path capturePath= directory / "take.trackcamera";
 
 	// Truth: an orbit around the box at about 2 m. Each frame's recorded
 	// pose drifts from the truth by a random walk of a couple of
@@ -230,7 +233,7 @@ bool occlusion_mesh_test_synthetic_take_end_to_end()
 	}
 
 	// The track is written in a scrambled file order so the file index has
-	// to carry the record mapping; the sidecars follow that file order
+	// to carry the record mapping; the depth members follow that file order
 	std::vector<int> fileOrder(k_frameCount);
 	for (int i= 0; i < k_frameCount; ++i)
 		fileOrder[i]= (i * 7) % k_frameCount;
@@ -238,8 +241,8 @@ bool occlusion_mesh_test_synthetic_take_end_to_end()
 	const PinholeIntrinsics colour= colourIntrinsics();
 	PoseTrackWriter writer("session-synthetic", k_imageWidth, k_imageHeight);
 	writer.setDepthTrack(k_depthWidth, k_depthHeight, 1.0);
-	std::ofstream depthFile(DepthTrackReader::depthSidecarPathForMedia(mediaPath), std::ios::binary);
-	std::ofstream confidenceFile(DepthTrackReader::confidenceSidecarPathForMedia(mediaPath), std::ios::binary);
+	std::vector<uint8_t> depthBytes;
+	std::vector<uint8_t> confidenceBytes;
 	std::vector<float> depth;
 	for (int fileIndex= 0; fileIndex < k_frameCount; ++fileIndex)
 	{
@@ -249,15 +252,40 @@ bool occlusion_mesh_test_synthetic_take_end_to_end()
 		writer.append((int64_t)frame * 33333, 1000000000 + (int64_t)frame * 33333, recorded, colour.fx, colour.fy,
 					  colour.cx, colour.cy);
 		renderScene(truthCv[frame], depth);
-		writeLittleEndianRecord(depthFile, confidenceFile, depth);
+		appendLittleEndianRecord(depthBytes, confidenceBytes, depth);
 	}
-	depthFile.close();
-	confidenceFile.close();
-	const std::filesystem::path trackPath= directory / "take.pose.json";
-	success&= writer.writeToFile(trackPath);
 
-	PoseTrack track;
-	success&= track.loadFromFile(trackPath) && track.hasDepthTrack() && track.getFrameCount() == k_frameCount;
+	// Packed as a trackcamera capture, which is the only form the builder reads.
+	// The movie member is a placeholder: the fusion never decodes it.
+	{
+		CaptureManifest manifest;
+		manifest.kind= eCaptureKind::trackcamera;
+		manifest.sessionId= "session-synthetic";
+		manifest.poseSpace= eCapturePoseSpace::arkit_world;
+		manifest.members[eCaptureMemberRole::movie]= "movie.mp4";
+		manifest.members[eCaptureMemberRole::movie_pose]= "movie.pose.json";
+		manifest.members[eCaptureMemberRole::depth]= "movie.depth.bin";
+		manifest.members[eCaptureMemberRole::confidence]= "movie.conf.bin";
+
+		const std::string trackJson= configuru::dump_string(writer.toConfig(), configuru::JSON);
+		const std::string moviePlaceholder= "not a movie";
+		std::string error;
+		CaptureArchiveWriter archive;
+		success&= archive.open(capturePath, manifest, error);
+		success&= archive.addMemberFromMemory("movie.mp4", moviePlaceholder.data(), moviePlaceholder.size(), error);
+		success&= archive.addMemberFromMemory("movie.pose.json", trackJson.data(), trackJson.size(), error);
+		success&= archive.addMemberFromMemory("movie.depth.bin", depthBytes.data(), depthBytes.size(), error);
+		success&= archive.addMemberFromMemory("movie.conf.bin", confidenceBytes.data(), confidenceBytes.size(), error);
+		success&= archive.finish(error);
+		if (!success)
+			fprintf(stdout, "    packing the capture failed: %s\n", error.c_str());
+	}
+
+	Capture capture;
+	std::string captureError;
+	success&= capture.open(capturePath, captureError);
+	const PoseTrack& track= capture.getPoseTrack(eCaptureMemberRole::movie_pose);
+	success&= track.isLoaded() && track.hasDepthTrack() && track.getFrameCount() == k_frameCount;
 	// Sorted by time, the frame at track index i is truth frame i, written at file index fileOrder^-1(i)
 	if (success)
 	{
@@ -268,9 +296,11 @@ bool occlusion_mesh_test_synthetic_take_end_to_end()
 	}
 
 	DepthTrackReader reader;
-	success&= reader.open(DepthTrackReader::depthSidecarPathForMedia(mediaPath),
-						  DepthTrackReader::confidenceSidecarPathForMedia(mediaPath), k_depthWidth, k_depthHeight, 1.0,
-						  k_frameCount);
+	const CaptureArchiveMember* depthMember= capture.findMember(eCaptureMemberRole::depth);
+	const CaptureArchiveMember* confidenceMember= capture.findMember(eCaptureMemberRole::confidence);
+	success&=
+		depthMember != nullptr && confidenceMember != nullptr
+		&& reader.open(capturePath, *depthMember, *confidenceMember, k_depthWidth, k_depthHeight, 1.0, k_frameCount);
 
 	OcclusionMeshBuildSettings settings;
 	settings.volume.voxelSize= 0.02f;
@@ -327,6 +357,7 @@ bool occlusion_mesh_test_synthetic_take_end_to_end()
 	}
 
 	reader.close();
+	capture.close();
 	std::error_code ec;
 	std::filesystem::remove_all(directory, ec);
 

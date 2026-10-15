@@ -35,41 +35,23 @@ constexpr int k_skipBehindFramePeriods= 2;
 // (an editor stall), so the source seeks instead of decoding forward
 constexpr int64_t k_seekBehindUs= 1000000;
 
-// Where a phone leaves the pose sidecar for a piece of media: the same folder,
-// the same stem, a two-part extension
-std::filesystem::path sidecarPathForMedia(const std::filesystem::path& mediaPath)
+const PoseTrack& emptyPoseTrack()
 {
-	return mediaPath.parent_path() / (mediaPath.stem().string() + PoseTrackAssetReferenceFactory::k_sidecarSuffix);
-}
-
-// The sidecar's stored path when the file exists, otherwise empty
-std::filesystem::path sidecarPathIfPresent(const std::filesystem::path& mediaPath)
-{
-	if (mediaPath.empty())
-		return std::filesystem::path();
-
-	const std::filesystem::path sidecar= sidecarPathForMedia(mediaPath);
-	if (PathUtils::resolveProjectResource(sidecar).empty())
-		return std::filesystem::path();
-
-	return sidecar;
+	static const PoseTrack s_emptyTrack;
+	return s_emptyTrack;
 }
 } // namespace
 
 // -- FileVideoSourceDefinition -----
 const std::string FileVideoSourceDefinition::k_mediaPathPropertyId= "media_path";
-const std::string FileVideoSourceDefinition::k_markerMediaPathPropertyId= "marker_media_path";
 const std::string FileVideoSourceDefinition::k_poseTrackPathPropertyId= "pose_track_path";
-const std::string FileVideoSourceDefinition::k_markerPoseTrackPathPropertyId= "marker_pose_track_path";
 const std::string FileVideoSourceDefinition::k_loopPropertyId= "loop";
 const std::string FileVideoSourceDefinition::k_poseOffsetPropertyId= "pose_offset";
 
 FileVideoSourceDefinition::FileVideoSourceDefinition()
 	: VideoSourceDefinition()
 	, m_mediaAssetRefConfig(MediaAssetReferenceFactory().allocateAssetReferenceConfig())
-	, m_markerMediaAssetRefConfig(MediaAssetReferenceFactory().allocateAssetReferenceConfig())
 	, m_poseTrackAssetRefConfig(PoseTrackAssetReferenceFactory().allocateAssetReferenceConfig())
-	, m_markerPoseTrackAssetRefConfig(PoseTrackAssetReferenceFactory().allocateAssetReferenceConfig())
 	, m_poseOffset(1.f)
 {
 }
@@ -77,9 +59,7 @@ FileVideoSourceDefinition::FileVideoSourceDefinition()
 FileVideoSourceDefinition::FileVideoSourceDefinition(MikanVideoSourceID videoSourceId)
 	: VideoSourceDefinition(videoSourceId)
 	, m_mediaAssetRefConfig(MediaAssetReferenceFactory().allocateAssetReferenceConfig())
-	, m_markerMediaAssetRefConfig(MediaAssetReferenceFactory().allocateAssetReferenceConfig())
 	, m_poseTrackAssetRefConfig(PoseTrackAssetReferenceFactory().allocateAssetReferenceConfig())
-	, m_markerPoseTrackAssetRefConfig(PoseTrackAssetReferenceFactory().allocateAssetReferenceConfig())
 	, m_poseOffset(1.f)
 {
 }
@@ -90,12 +70,8 @@ configuru::Config FileVideoSourceDefinition::writeToJSON()
 
 	if (m_mediaAssetRefConfig->isValid())
 		pt[k_mediaPathPropertyId]= m_mediaAssetRefConfig->writeToJSON();
-	if (m_markerMediaAssetRefConfig->isValid())
-		pt[k_markerMediaPathPropertyId]= m_markerMediaAssetRefConfig->writeToJSON();
 	if (m_poseTrackAssetRefConfig->isValid())
 		pt[k_poseTrackPathPropertyId]= m_poseTrackAssetRefConfig->writeToJSON();
-	if (m_markerPoseTrackAssetRefConfig->isValid())
-		pt[k_markerPoseTrackPathPropertyId]= m_markerPoseTrackAssetRefConfig->writeToJSON();
 	pt[k_loopPropertyId]= m_bLoop;
 
 	// Written column-major, matching glm's own storage, and only when one has
@@ -130,17 +106,9 @@ void FileVideoSourceDefinition::readFromJSON(const configuru::Config& pt)
 	if (pt.has_key(k_mediaPathPropertyId))
 		m_mediaAssetRefConfig->readFromJSON(pt[k_mediaPathPropertyId]);
 
-	m_markerMediaAssetRefConfig= MediaAssetReferenceFactory().allocateAssetReferenceConfig();
-	if (pt.has_key(k_markerMediaPathPropertyId))
-		m_markerMediaAssetRefConfig->readFromJSON(pt[k_markerMediaPathPropertyId]);
-
 	m_poseTrackAssetRefConfig= PoseTrackAssetReferenceFactory().allocateAssetReferenceConfig();
 	if (pt.has_key(k_poseTrackPathPropertyId))
 		m_poseTrackAssetRefConfig->readFromJSON(pt[k_poseTrackPathPropertyId]);
-
-	m_markerPoseTrackAssetRefConfig= PoseTrackAssetReferenceFactory().allocateAssetReferenceConfig();
-	if (pt.has_key(k_markerPoseTrackPathPropertyId))
-		m_markerPoseTrackAssetRefConfig->readFromJSON(pt[k_markerPoseTrackPathPropertyId]);
 
 	m_bLoop= pt.get_or<bool>(k_loopPropertyId, m_bLoop);
 
@@ -175,11 +143,7 @@ bool FileVideoSourceDefinition::readFromInitParams(MikanObjectSystem* ownerObjec
 	if (values)
 	{
 		m_mediaAssetRefConfig->assetPath= PathUtils::utf8CStrToPathString(values->media_path.getUtf8Value());
-		m_markerMediaAssetRefConfig->assetPath=
-			PathUtils::utf8CStrToPathString(values->marker_media_path.getUtf8Value());
 		m_poseTrackAssetRefConfig->assetPath= PathUtils::utf8CStrToPathString(values->pose_track_path.getUtf8Value());
-		m_markerPoseTrackAssetRefConfig->assetPath=
-			PathUtils::utf8CStrToPathString(values->marker_pose_track_path.getUtf8Value());
 		m_bLoop= values->loop;
 	}
 
@@ -204,17 +168,6 @@ void FileVideoSourceDefinition::setMediaPath(const std::filesystem::path& mediaP
 		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_mediaPathPropertyId));
 }
 
-std::filesystem::path FileVideoSourceDefinition::getMarkerMediaPath() const
-{
-	return m_markerMediaAssetRefConfig->assetPath;
-}
-
-void FileVideoSourceDefinition::setMarkerMediaPath(const std::filesystem::path& mediaPath)
-{
-	if (setAssetPath(m_markerMediaAssetRefConfig, mediaPath))
-		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_markerMediaPathPropertyId));
-}
-
 std::filesystem::path FileVideoSourceDefinition::getPoseTrackPath() const
 {
 	return m_poseTrackAssetRefConfig->assetPath;
@@ -224,17 +177,6 @@ void FileVideoSourceDefinition::setPoseTrackPath(const std::filesystem::path& tr
 {
 	if (setAssetPath(m_poseTrackAssetRefConfig, trackPath))
 		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_poseTrackPathPropertyId));
-}
-
-std::filesystem::path FileVideoSourceDefinition::getMarkerPoseTrackPath() const
-{
-	return m_markerPoseTrackAssetRefConfig->assetPath;
-}
-
-void FileVideoSourceDefinition::setMarkerPoseTrackPath(const std::filesystem::path& trackPath)
-{
-	if (setAssetPath(m_markerPoseTrackAssetRefConfig, trackPath))
-		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_markerPoseTrackPathPropertyId));
 }
 
 void FileVideoSourceDefinition::setLoop(bool bLoop)
@@ -304,20 +246,76 @@ void FileVideoSourceComponent::setDefinition(MikanComponentDefinitionPtr definit
 }
 
 // -- Video Source Interface ----
-std::string FileVideoSourceComponent::getDevicePath() const { return resolveActiveMediaPath().string(); }
+std::string FileVideoSourceComponent::getDevicePath() const { return resolveMediaPath().string(); }
 
 std::string FileVideoSourceComponent::getDeviceAPI() const { return "FileVideoSource"; }
 
-std::filesystem::path FileVideoSourceComponent::resolveActiveMediaPath() const
+std::filesystem::path FileVideoSourceComponent::resolveMediaPath() const
 {
-	FileVideoSourceDefinitionPtr definition= getFileVideoSourceDefinition();
-	const std::filesystem::path storedPath= (m_activeMedia == eActiveMedia::markerReference)
-												? definition->getMarkerMediaPath()
-												: definition->getMediaPath();
+	const std::filesystem::path storedPath= getFileVideoSourceDefinition()->getMediaPath();
 	if (storedPath.empty())
 		return std::filesystem::path();
 
 	return PathUtils::resolveProjectResource(storedPath);
+}
+
+// A capture plays its members in place: a movie member through the subfile URL
+// the worker hands to ffmpeg, an image member from its bytes. A raw file plays
+// by path. The marker image is the reference media of every capture kind.
+FileVideoSourceComponent::MediaSource FileVideoSourceComponent::resolveActiveMediaSource()
+{
+	MediaSource source;
+	const std::filesystem::path mediaPath= resolveMediaPath();
+	if (mediaPath.empty())
+		return source;
+
+	if (!m_capture.isOpen())
+	{
+		if (m_activeMedia == eActiveMedia::main)
+			source.path= mediaPath;
+		return source;
+	}
+
+	eCaptureMemberRole imageRole= eCaptureMemberRole::INVALID;
+	if (m_activeMedia == eActiveMedia::markerReference)
+	{
+		imageRole= eCaptureMemberRole::marker_image;
+	}
+	else if (m_capture.getKind() == eCaptureKind::stillphoto)
+	{
+		imageRole= eCaptureMemberRole::plate_image;
+	}
+	else
+	{
+		source.url= m_capture.makeSubfileUrl(eCaptureMemberRole::movie);
+		return source;
+	}
+
+	auto bytes= std::make_shared<std::vector<uint8_t>>();
+	std::string error;
+	if (!m_capture.readMemberBytes(imageRole, *bytes, error))
+	{
+		MIKAN_LOG_ERROR("FileVideoSourceComponent::resolveActiveMediaSource") << mediaPath << ": " << error;
+		return source;
+	}
+
+	source.encodedStill= bytes;
+	return source;
+}
+
+std::string FileVideoSourceComponent::describeActiveMedia() const
+{
+	std::string description= resolveMediaPath().filename().string();
+	if (m_capture.isOpen())
+	{
+		eCaptureMemberRole role= eCaptureMemberRole::movie;
+		if (m_activeMedia == eActiveMedia::markerReference)
+			role= eCaptureMemberRole::marker_image;
+		else if (m_capture.getKind() == eCaptureKind::stillphoto)
+			role= eCaptureMemberRole::plate_image;
+		description+= ":" + m_capture.getManifest().getMemberName(role);
+	}
+	return description;
 }
 
 bool FileVideoSourceComponent::openVideoSource()
@@ -325,14 +323,18 @@ bool FileVideoSourceComponent::openVideoSource()
 	if (m_bIsOpen || m_bOpenPending)
 		return true;
 
-	const std::filesystem::path mediaPath= resolveActiveMediaPath();
-	if (mediaPath.empty())
+	if (resolveMediaPath().empty())
 		return false;
 
-	loadPoseTracks();
+	if (!loadMedia())
+	{
+		m_bOpenFailed= true;
+		return false;
+	}
+
 	m_bAutoPlayOnOpen= true;
 	startWorker();
-	requestOpen(mediaPath);
+	requestOpen(resolveActiveMediaSource());
 	return true;
 }
 
@@ -353,20 +355,18 @@ void FileVideoSourceComponent::reopenMedia()
 		m_latestPose.bValid= false;
 	}
 
-	loadPoseTracks();
-
-	const std::filesystem::path mediaPath= resolveActiveMediaPath();
-	if (mediaPath.empty())
+	if (resolveMediaPath().empty() || !loadMedia())
 	{
 		stopWorker();
 		m_bIsOpen= false;
 		m_bOpenPending= false;
+		m_bOpenFailed= !resolveMediaPath().empty();
 		return;
 	}
 
 	m_bAutoPlayOnOpen= true;
 	startWorker();
-	requestOpen(mediaPath);
+	requestOpen(resolveActiveMediaSource());
 }
 
 void FileVideoSourceComponent::closeVideoSource()
@@ -408,8 +408,8 @@ void FileVideoSourceComponent::clearRuntimeState()
 	m_currentPtsUs= 0;
 	m_secondsSinceEmit= 0.0;
 	m_bMarkerReferenceActive= false;
-	m_mainPoseTrack.clear();
-	m_markerPoseTrack.clear();
+	m_capture.close();
+	m_overridePoseTrack.clear();
 	m_bHasAlignmentReference= false;
 
 	std::lock_guard<std::mutex> lock(m_latestPoseMutex);
@@ -475,9 +475,8 @@ bool FileVideoSourceComponent::getVideoModeName(std::string& outVideoModeName) c
 	if (!m_bIsOpen)
 		return false;
 
-	const std::filesystem::path mediaPath= resolveActiveMediaPath();
-	outVideoModeName= mediaPath.filename().string() + " " + std::to_string(m_width) + "x" + std::to_string(m_height)
-					  + "@" + std::to_string((int)std::lround(m_fps));
+	outVideoModeName= describeActiveMedia() + " " + std::to_string(m_width) + "x" + std::to_string(m_height) + "@"
+					  + std::to_string((int)std::lround(m_fps));
 	return true;
 }
 
@@ -551,7 +550,14 @@ void FileVideoSourceComponent::workerMain()
 		if (requests.bOpen)
 		{
 			decoder.close();
-			const bool bSucceeded= decoder.open(requests.openPath);
+			const MediaSource& source= requests.openSource;
+			bool bSucceeded= false;
+			if (source.encodedStill)
+				bSucceeded= decoder.openEncodedStill(*source.encodedStill);
+			else if (!source.url.empty())
+				bSucceeded= decoder.openMovieUrl(source.url);
+			else if (!source.path.empty())
+				bSucceeded= decoder.open(source.path);
 
 			std::lock_guard<std::mutex> lock(m_resultMutex);
 			m_openResult.bPending= true;
@@ -589,7 +595,7 @@ void FileVideoSourceComponent::workerMain()
 	decoder.close();
 }
 
-void FileVideoSourceComponent::requestOpen(const std::filesystem::path& absolutePath)
+void FileVideoSourceComponent::requestOpen(const MediaSource& source)
 {
 	// Nothing from the old file is shown while the new one opens
 	m_bIsOpen= false;
@@ -604,7 +610,7 @@ void FileVideoSourceComponent::requestOpen(const std::filesystem::path& absolute
 	{
 		std::lock_guard<std::mutex> lock(m_requestMutex);
 		m_requests.bOpen= true;
-		m_requests.openPath= absolutePath;
+		m_requests.openSource= source;
 		m_requests.bSeek= false;
 		m_requests.bDecodeNext= false;
 	}
@@ -689,7 +695,7 @@ void FileVideoSourceComponent::applyOpenResult()
 		m_bOpenFailed= true;
 		m_bIsOpen= false;
 		MIKAN_LOG_ERROR("FileVideoSourceComponent::applyOpenResult")
-			<< "Failed to open media: " << resolveActiveMediaPath();
+			<< "Failed to open media: " << describeActiveMedia();
 		return;
 	}
 
@@ -748,12 +754,14 @@ void FileVideoSourceComponent::applyOpenResult()
 }
 
 // The align stages refuse a source without valid intrinsics, so the media
-// seeds them the moment it opens: from the pose track when there is one,
-// otherwise a default set from the frame size when nothing has ever been
-// calibrated. A calibration the operator ran is never overwritten.
+// seeds them the moment it opens: from the movie's pose track when there is
+// one, else from the marker track, whose pinhole values are the camera's even
+// when the camera is treated as fixed, otherwise a default set from the frame
+// size when nothing has ever been calibrated. A calibration the operator ran is
+// never overwritten.
 void FileVideoSourceComponent::seedIntrinsicsFromOpenMedia()
 {
-	const PoseTrack& track= getActivePoseTrack();
+	const PoseTrack& track= getIntrinsicsPoseTrack();
 
 	MikanMonoIntrinsics monoIntrinsics;
 	if (track.isLoaded() && track.getFrameCount() > 0)
@@ -944,54 +952,87 @@ void FileVideoSourceComponent::seekTo(double timeSeconds)
 }
 
 // -- Pose tracks ----
+// A trackcamera publishes the poses of its movie track, or of the override, and
+// the poses of its marker track while the reference is active. A still kind is
+// a fixed camera and publishes nothing, so the align stages place the camera
+// from the marker frames directly. A raw file publishes the override's poses
+// when one is set.
 const PoseTrack& FileVideoSourceComponent::getActivePoseTrack() const
 {
-	return (m_activeMedia == eActiveMedia::markerReference) ? m_markerPoseTrack : m_mainPoseTrack;
+	if (!m_capture.isOpen())
+	{
+		return m_activeMedia == eActiveMedia::main ? m_overridePoseTrack : emptyPoseTrack();
+	}
+
+	if (m_capture.getKind() != eCaptureKind::trackcamera)
+		return emptyPoseTrack();
+
+	if (m_activeMedia == eActiveMedia::markerReference)
+		return m_capture.getPoseTrack(eCaptureMemberRole::marker_pose);
+
+	return m_overridePoseTrack.isLoaded() ? m_overridePoseTrack
+										  : m_capture.getPoseTrack(eCaptureMemberRole::movie_pose);
 }
 
-bool FileVideoSourceComponent::loadPoseTrack(const std::filesystem::path& storedPath, PoseTrack& outTrack)
+const PoseTrack& FileVideoSourceComponent::getIntrinsicsPoseTrack() const
 {
-	outTrack.clear();
-	if (storedPath.empty())
-		return false;
+	if (m_overridePoseTrack.isLoaded())
+		return m_overridePoseTrack;
 
-	return outTrack.loadFromFile(storedPath);
+	if (!m_capture.isOpen())
+		return emptyPoseTrack();
+
+	const PoseTrack& movieTrack= m_capture.getPoseTrack(eCaptureMemberRole::movie_pose);
+	if (movieTrack.isLoaded())
+		return movieTrack;
+
+	return m_capture.getPoseTrack(eCaptureMemberRole::marker_pose);
 }
 
-void FileVideoSourceComponent::loadPoseTracks()
+bool FileVideoSourceComponent::loadMedia()
 {
 	FileVideoSourceDefinitionPtr definition= getFileVideoSourceDefinition();
 
-	loadPoseTrack(definition->getPoseTrackPath(), m_mainPoseTrack);
-	loadPoseTrack(definition->getMarkerPoseTrackPath(), m_markerPoseTrack);
-
-	// The reference is only usable when the offset solved from it applies to
-	// the main take: both carry poses from the same tracking session, or
-	// neither carries poses and the camera is treated as fixed
+	m_capture.close();
+	m_overridePoseTrack.clear();
 	m_bHasAlignmentReference= false;
-	if (definition->getMarkerMediaPath().empty())
-		return;
 
-	if (m_mainPoseTrack.isLoaded())
+	const std::filesystem::path mediaPath= resolveMediaPath();
+	if (CaptureKindUtils::isCaptureExtension(mediaPath))
 	{
-		if (!m_markerPoseTrack.isLoaded())
+		std::string error;
+		if (!m_capture.open(mediaPath, error))
 		{
-			MIKAN_LOG_WARNING("FileVideoSourceComponent::loadPoseTracks")
-				<< "The main media has a pose track but the marker reference has none, so the reference cannot "
-				<< "be used for alignment";
-			return;
-		}
-		if (m_markerPoseTrack.getSessionId() != m_mainPoseTrack.getSessionId())
-		{
-			MIKAN_LOG_WARNING("FileVideoSourceComponent::loadPoseTracks")
-				<< "The marker reference was recorded in a different tracking session ("
-				<< m_markerPoseTrack.getSessionId() << ") than the main media (" << m_mainPoseTrack.getSessionId()
-				<< "), so an alignment solved from it would not apply";
-			return;
+			MIKAN_LOG_ERROR("FileVideoSourceComponent::loadMedia") << "Failed to open capture " << mediaPath;
+			return false;
 		}
 	}
 
-	m_bHasAlignmentReference= true;
+	const std::filesystem::path overridePath= definition->getPoseTrackPath();
+	if (!overridePath.empty())
+	{
+		if (m_capture.isOpen() && m_capture.getKind() != eCaptureKind::trackcamera)
+		{
+			MIKAN_LOG_WARNING("FileVideoSourceComponent::loadMedia")
+				<< "The pose track override " << overridePath << " is ignored: " << mediaPath
+				<< " is not a trackcamera capture";
+		}
+		else if (m_overridePoseTrack.loadFromFile(overridePath) && m_capture.isOpen()
+				 && m_overridePoseTrack.getSessionId() != m_capture.getManifest().sessionId)
+		{
+			MIKAN_LOG_WARNING("FileVideoSourceComponent::loadMedia")
+				<< "The pose track override " << overridePath << " was recorded in session "
+				<< m_overridePoseTrack.getSessionId() << ", not the capture's " << m_capture.getManifest().sessionId
+				<< ", so it is ignored";
+			m_overridePoseTrack.clear();
+		}
+	}
+
+	// The marker image aligns an ARKit-space capture. A stage-space capture
+	// needs no alignment, so its marker image, when it has one, is never offered.
+	m_bHasAlignmentReference=
+		m_capture.isOpen() && m_capture.hasMember(eCaptureMemberRole::marker_image) && !m_capture.isStageSpace();
+	return true;
 }
 
 void FileVideoSourceComponent::publishPoseForFrame(int64_t ptsUs)
@@ -1010,12 +1051,11 @@ void FileVideoSourceComponent::publishPoseForFrame(int64_t ptsUs)
 		return;
 
 	const PoseTrackFrame& poseFrame= track.getFrame(frameIndex);
-	FileVideoSourceDefinitionPtr definition= getFileVideoSourceDefinition();
 
-	// The single point where a recorded pose leaves its own world space
+	// The single point where a recorded pose leaves its own world space. A
+	// stage-space capture's poses are already there.
 	const glm::mat4& cameraToWorld= poseFrame.cameraToWorld;
-	const glm::mat4 cameraToStage=
-		definition->hasPoseOffset() ? definition->getPoseOffset() * cameraToWorld : cameraToWorld;
+	const glm::mat4 cameraToStage= hasPoseOffset() ? getPoseOffset() * cameraToWorld : cameraToWorld;
 
 	MikanVideoSourceIntrinsics intrinsics;
 	MikanMonoIntrinsics monoIntrinsics;
@@ -1032,14 +1072,35 @@ void FileVideoSourceComponent::publishPoseForFrame(int64_t ptsUs)
 }
 
 // -- IFrameCoupledPoseProvider ----
+// A stage-space capture was recorded in stage space, so it reports itself
+// aligned with an identity offset and takes no other
 void FileVideoSourceComponent::setPoseOffset(const glm::mat4& worldToStageXform)
 {
+	if (m_capture.isOpen() && m_capture.isStageSpace())
+	{
+		MIKAN_LOG_WARNING("FileVideoSourceComponent::setPoseOffset")
+			<< "Ignoring a pose offset for the stage-space capture " << resolveMediaPath();
+		return;
+	}
+
 	getFileVideoSourceDefinition()->setPoseOffset(worldToStageXform);
 }
 
-glm::mat4 FileVideoSourceComponent::getPoseOffset() const { return getFileVideoSourceDefinition()->getPoseOffset(); }
+glm::mat4 FileVideoSourceComponent::getPoseOffset() const
+{
+	if (m_capture.isOpen() && m_capture.isStageSpace())
+		return glm::mat4(1.f);
 
-bool FileVideoSourceComponent::hasPoseOffset() const { return getFileVideoSourceDefinition()->hasPoseOffset(); }
+	return getFileVideoSourceDefinition()->getPoseOffset();
+}
+
+bool FileVideoSourceComponent::hasPoseOffset() const
+{
+	if (m_capture.isOpen() && m_capture.isStageSpace())
+		return true;
+
+	return getFileVideoSourceDefinition()->hasPoseOffset();
+}
 
 bool FileVideoSourceComponent::getLatestFrameCoupledPose(glm::mat4& outTransform,
 														 MikanVideoSourceIntrinsics& outIntrinsics,
@@ -1084,7 +1145,7 @@ void FileVideoSourceComponent::beginAlignmentReference()
 	m_playbackTime= 0.0;
 	m_bAutoPlayOnOpen= false;
 	startWorker();
-	requestOpen(resolveActiveMediaPath());
+	requestOpen(resolveActiveMediaSource());
 }
 
 void FileVideoSourceComponent::endAlignmentReference()
@@ -1098,7 +1159,7 @@ void FileVideoSourceComponent::endAlignmentReference()
 	m_playbackTime= m_savedPlaybackTime;
 	m_bAutoPlayOnOpen= false;
 	startWorker();
-	requestOpen(resolveActiveMediaPath());
+	requestOpen(resolveActiveMediaSource());
 }
 
 // -- IPropertyInterface ----
@@ -1112,14 +1173,6 @@ void FileVideoSourceComponent::getPropertyDescriptors(std::vector<PropertyDescri
 				AssetReferenceFactory::createFactory<MediaAssetReferenceFactory>())));
 	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(FileVideoSourceDefinition::k_poseTrackPathPropertyId,
 																  MikanVariantType::STRING)
-								 ->addMetaData(std::make_shared<AssetReferenceFactoryMetaData>(
-									 AssetReferenceFactory::createFactory<PoseTrackAssetReferenceFactory>())));
-	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(
-								 FileVideoSourceDefinition::k_markerMediaPathPropertyId, MikanVariantType::STRING)
-								 ->addMetaData(std::make_shared<AssetReferenceFactoryMetaData>(
-									 AssetReferenceFactory::createFactory<MediaAssetReferenceFactory>())));
-	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(
-								 FileVideoSourceDefinition::k_markerPoseTrackPathPropertyId, MikanVariantType::STRING)
 								 ->addMetaData(std::make_shared<AssetReferenceFactoryMetaData>(
 									 AssetReferenceFactory::createFactory<PoseTrackAssetReferenceFactory>())));
 	outDescriptors.push_back(
@@ -1147,19 +1200,9 @@ bool FileVideoSourceComponent::getPropertyValue(const std::string& propertyName,
 		outValue= definition->getMediaPath().string();
 		return true;
 	}
-	else if (propertyName == FileVideoSourceDefinition::k_markerMediaPathPropertyId)
-	{
-		outValue= definition->getMarkerMediaPath().string();
-		return true;
-	}
 	else if (propertyName == FileVideoSourceDefinition::k_poseTrackPathPropertyId)
 	{
 		outValue= definition->getPoseTrackPath().string();
-		return true;
-	}
-	else if (propertyName == FileVideoSourceDefinition::k_markerPoseTrackPathPropertyId)
-	{
-		outValue= definition->getMarkerPoseTrackPath().string();
 		return true;
 	}
 	else if (propertyName == FileVideoSourceDefinition::k_loopPropertyId)
@@ -1195,19 +1238,9 @@ bool FileVideoSourceComponent::setPropertyValue(const std::string& propertyName,
 		definition->setMediaPath(PathUtils::utf8CStrToPathString(inValue.getUtf8Value()));
 		return true;
 	}
-	else if (propertyName == FileVideoSourceDefinition::k_markerMediaPathPropertyId)
-	{
-		definition->setMarkerMediaPath(PathUtils::utf8CStrToPathString(inValue.getUtf8Value()));
-		return true;
-	}
 	else if (propertyName == FileVideoSourceDefinition::k_poseTrackPathPropertyId)
 	{
 		definition->setPoseTrackPath(PathUtils::utf8CStrToPathString(inValue.getUtf8Value()));
-		return true;
-	}
-	else if (propertyName == FileVideoSourceDefinition::k_markerPoseTrackPathPropertyId)
-	{
-		definition->setMarkerPoseTrackPath(PathUtils::utf8CStrToPathString(inValue.getUtf8Value()));
 		return true;
 	}
 	else if (propertyName == FileVideoSourceDefinition::k_loopPropertyId)
@@ -1267,26 +1300,10 @@ bool FileVideoSourceComponent::invokeFunction(const std::string& functionName)
 void FileVideoSourceComponent::onDefinitionMarkedDirty(CommonConfigPtr configPtr,
 													   const ConfigPropertyChangeSet& changedPropertySet)
 {
-	FileVideoSourceDefinitionPtr definition= getFileVideoSourceDefinition();
-
-	// A pose track belongs to one media file, and a phone leaves it beside that
-	// file. Naming the media therefore names the track: the sidecar when one
-	// sits there, otherwise nothing, so a track from the previous media never
-	// lingers under a new one. The path stays visible and editable on the panel
-	// for the case where the track was moved.
-	if (changedPropertySet.hasPropertyName(FileVideoSourceDefinition::k_mediaPathPropertyId))
-	{
-		definition->setPoseTrackPath(sidecarPathIfPresent(definition->getMediaPath()));
-	}
-	if (changedPropertySet.hasPropertyName(FileVideoSourceDefinition::k_markerMediaPathPropertyId))
-	{
-		definition->setMarkerPoseTrackPath(sidecarPathIfPresent(definition->getMarkerMediaPath()));
-	}
-
+	// The capture carries its own tracks, so naming new media never touches the
+	// override: a refined track is only ever set by the build or the operator
 	if (changedPropertySet.hasPropertyName(FileVideoSourceDefinition::k_mediaPathPropertyId)
-		|| changedPropertySet.hasPropertyName(FileVideoSourceDefinition::k_markerMediaPathPropertyId)
-		|| changedPropertySet.hasPropertyName(FileVideoSourceDefinition::k_poseTrackPathPropertyId)
-		|| changedPropertySet.hasPropertyName(FileVideoSourceDefinition::k_markerPoseTrackPathPropertyId))
+		|| changedPropertySet.hasPropertyName(FileVideoSourceDefinition::k_poseTrackPathPropertyId))
 	{
 		reopenMedia();
 	}

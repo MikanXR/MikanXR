@@ -43,9 +43,9 @@ public:
 	static int getMovieFilterPatternCount() { return 5; }
 };
 
-// Row metadata for a property that accepts either a movie or a still image,
-// since a file video source plays both through one path. It only ever filters
-// drops, so the movie reference stands in as the prototype.
+// Row metadata for a property that accepts a capture, a raw movie, or a raw
+// image, since a file video source plays all three through one path. It only
+// ever filters drops, so the movie reference stands in as the prototype.
 class MediaAssetReferenceFactory : public TypedAssetReferenceFactory<MovieAssetReference, AssetReferenceConfig>
 {
 public:

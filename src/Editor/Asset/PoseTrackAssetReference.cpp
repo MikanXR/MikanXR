@@ -5,5 +5,5 @@
 PoseTrackAssetReferenceFactory::PoseTrackAssetReferenceFactory()
 	: TypedAssetReferenceFactory<PoseTrackAssetReference, AssetReferenceConfig>()
 {
-	m_defaultPath= (PathUtils::getProjectDirectory() / "movies" / "").string();
+	m_defaultPath= (PathUtils::getProjectDirectory() / "captures" / "").string();
 }

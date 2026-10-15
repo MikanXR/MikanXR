@@ -17,7 +17,7 @@
 #include "PathUtils.h"
 #include "PixelContentAssetReference.h"
 #include "MovieAssetReference.h"
-#include "DepthTrackAssetReference.h"
+#include "CaptureAssetReference.h"
 #include "PoseTrackAssetReference.h"
 #include "ProjectManager.h"
 #include "ScriptAssetReference.h"
@@ -110,31 +110,38 @@ const std::vector<ProjectAssetFolderDesc>& ProjectAssetCatalog::getFolderDescs()
 
 		// The same image serves a graph texture and a DMX pixel sequence, so the
 		// folder carries both types. The texture factory is first, which makes it
-		// the class an image is browsed as.
+		// the class an image is browsed as. Raw images only: a photo with a pose
+		// track is a capture.
 		ProjectAssetFolderDesc textures;
 		textures.id= "textures";
 		textures.locKey= "assets.folderTextures";
 		textures.projectSubfolder= "textures";
 		textures.bundledSubfolder= "textures";
 		textures.bPreviewTiles= true;
-		// A photo's pose track sits beside the photo, so the folder lists that
-		// type too. Its two-part extension keeps it from matching the image
-		// factories ahead of it.
 		textures.factories= {AssetReferenceFactory::createFactory<TextureAssetReferenceFactory>(),
-							 AssetReferenceFactory::createFactory<PixelContentAssetReferenceFactory>(),
-							 AssetReferenceFactory::createFactory<PoseTrackAssetReferenceFactory>()};
+							 AssetReferenceFactory::createFactory<PixelContentAssetReferenceFactory>()};
 		s_descs.push_back(textures);
 
-		// Recorded takes and the pose and depth sidecars a phone writes next to them
+		// Raw movies only, for a file video source when tracking does not matter
 		ProjectAssetFolderDesc movies;
 		movies.id= "movies";
 		movies.locKey= "assets.folderMovies";
 		movies.projectSubfolder= "movies";
 		movies.bPreviewTiles= true;
-		movies.factories= {AssetReferenceFactory::createFactory<MovieAssetReferenceFactory>(),
-						   AssetReferenceFactory::createFactory<PoseTrackAssetReferenceFactory>(),
-						   AssetReferenceFactory::createFactory<DepthTrackAssetReferenceFactory>()};
+		movies.factories= {AssetReferenceFactory::createFactory<MovieAssetReferenceFactory>()};
 		s_descs.push_back(movies);
+
+		// Every recorded shot as one capture archive, plus the refined pose tracks
+		// the occlusion mesh build writes beside them. The pose track factory's
+		// two-part extension keeps it from matching ahead of the captures.
+		ProjectAssetFolderDesc captures;
+		captures.id= "captures";
+		captures.locKey= "assets.folderCaptures";
+		captures.projectSubfolder= "captures";
+		captures.bPreviewTiles= true;
+		captures.factories= {AssetReferenceFactory::createFactory<CaptureAssetReferenceFactory>(),
+							 AssetReferenceFactory::createFactory<PoseTrackAssetReferenceFactory>()};
+		s_descs.push_back(captures);
 
 		ProjectAssetFolderDesc fonts;
 		fonts.id= "fonts";

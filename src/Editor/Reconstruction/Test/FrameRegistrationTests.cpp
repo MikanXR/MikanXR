@@ -1,5 +1,8 @@
 #include "FrameRegistrationTests.h"
+#include "CaptureArchiveWriter.h"
+#include "CaptureManifest.h"
 #include "DepthTrackReader.h"
+#include "PoseTrack.h"
 #include "FrameToModelRegistration.h"
 #include "SmallMotion.h"
 #include "TsdfVolume.h"
@@ -204,10 +207,47 @@ cv::Mat renderDisplacedCornerFrame()
 	return frame;
 }
 
-void writeBytes(const std::filesystem::path& path, const std::vector<uint8_t>& bytes)
+// Packs the two depth tracks into a trackcamera capture with a placeholder
+// movie and a one-frame track, and returns the two members' table entries
+bool writeDepthCapture(const std::filesystem::path& capturePath, const std::vector<uint8_t>& depthBytes,
+					   const std::vector<uint8_t>& confidenceBytes, CaptureArchiveMember& outDepthMember,
+					   CaptureArchiveMember& outConfidenceMember)
 {
-	std::ofstream file(path, std::ios::out | std::ios::binary | std::ios::trunc);
-	file.write((const char*)bytes.data(), (std::streamsize)bytes.size());
+	CaptureManifest manifest;
+	manifest.kind= eCaptureKind::trackcamera;
+	manifest.sessionId= "session-depth";
+	manifest.poseSpace= eCapturePoseSpace::arkit_world;
+	manifest.members[eCaptureMemberRole::movie]= "movie.mp4";
+	manifest.members[eCaptureMemberRole::movie_pose]= "movie.pose.json";
+	manifest.members[eCaptureMemberRole::depth]= "movie.depth.bin";
+	manifest.members[eCaptureMemberRole::confidence]= "movie.conf.bin";
+
+	PoseTrackWriter trackWriter("session-depth", 8, 6);
+	trackWriter.append(0, 0, glm::mat4(1.f), 4.0, 4.0, 4.0, 3.0);
+	const std::string trackJson= configuru::dump_string(trackWriter.toConfig(), configuru::JSON);
+	const std::string moviePlaceholder= "not a movie";
+
+	std::string error;
+	CaptureArchiveWriter archive;
+	bool bOk= archive.open(capturePath, manifest, error);
+	bOk&= archive.addMemberFromMemory("movie.mp4", moviePlaceholder.data(), moviePlaceholder.size(), error);
+	bOk&= archive.addMemberFromMemory("movie.pose.json", trackJson.data(), trackJson.size(), error);
+	bOk&= archive.addMemberFromMemory("movie.depth.bin", depthBytes.data(), depthBytes.size(), error);
+	bOk&= archive.addMemberFromMemory("movie.conf.bin", confidenceBytes.data(), confidenceBytes.size(), error);
+	bOk&= archive.finish(error);
+	if (!bOk)
+		return false;
+
+	CaptureArchiveReader reader;
+	if (!reader.open(capturePath, error))
+		return false;
+	const CaptureArchiveMember* depthMember= reader.findMember("movie.depth.bin");
+	const CaptureArchiveMember* confidenceMember= reader.findMember("movie.conf.bin");
+	if (depthMember == nullptr || confidenceMember == nullptr)
+		return false;
+	outDepthMember= *depthMember;
+	outConfidenceMember= *confidenceMember;
+	return true;
 }
 } // namespace FrameRegistrationTestsInternal
 
@@ -386,8 +426,8 @@ bool frame_registration_test_rejection_keeps_prior()
 	UNIT_TEST_COMPLETE()
 }
 
-// Two little-endian records round trip through the reader, a file of the
-// wrong size is refused, and the sidecar paths follow the media's stem.
+// Two little-endian records round trip through the reader, read at their
+// offsets inside the capture, and a member of the wrong size is refused.
 bool frame_registration_test_depth_track_reader()
 {
 	UNIT_TEST_BEGIN("depth track reader round trip")
@@ -420,34 +460,21 @@ bool frame_registration_test_depth_track_reader()
 		}
 	}
 
-	const std::filesystem::path mediaPath= folder / "take.mp4";
-	const std::filesystem::path depthPath= DepthTrackReader::depthSidecarPathForMedia(mediaPath);
-	const std::filesystem::path confidencePath= DepthTrackReader::confidenceSidecarPathForMedia(mediaPath);
-	if (depthPath != folder / "take.depth.bin" || confidencePath != folder / "take.conf.bin")
+	const std::filesystem::path capturePath= folder / "take.trackcamera";
+	CaptureArchiveMember depthMember;
+	CaptureArchiveMember confidenceMember;
+	if (!FrameRegistrationTestsInternal::writeDepthCapture(capturePath, depthBytes, confidenceBytes, depthMember,
+														   confidenceMember))
 	{
-		fprintf(stdout, "    sidecar paths were %s and %s\n", depthPath.string().c_str(),
-				confidencePath.string().c_str());
+		fprintf(stdout, "    packing the depth capture failed\n");
 		success= false;
 	}
-
-	// A repointed pose track (take.refined.pose.json) still names take.mp4
-	// as its media, so the sidecars stay take.*.bin
-	const std::filesystem::path nestedMedia= folder / "clips" / "take.v2.mp4";
-	if (DepthTrackReader::depthSidecarPathForMedia(nestedMedia) != folder / "clips" / "take.v2.depth.bin"
-		|| DepthTrackReader::confidenceSidecarPathForMedia(nestedMedia) != folder / "clips" / "take.v2.conf.bin")
-	{
-		fprintf(stdout, "    sidecar paths did not follow the media folder and stem\n");
-		success= false;
-	}
-
-	FrameRegistrationTestsInternal::writeBytes(depthPath, depthBytes);
-	FrameRegistrationTestsInternal::writeBytes(confidencePath, confidenceBytes);
 
 	{
 		DepthTrackReader reader;
-		if (!reader.open(depthPath, confidencePath, width, height, 2.0, recordCount))
+		if (!reader.open(capturePath, depthMember, confidenceMember, width, height, 2.0, recordCount))
 		{
-			fprintf(stdout, "    open failed on well-formed sidecars\n");
+			fprintf(stdout, "    open failed on well-formed depth members\n");
 			success= false;
 		}
 		else
@@ -497,20 +524,28 @@ bool frame_registration_test_depth_track_reader()
 			reader.close();
 		}
 
-		// More records than the files hold
-		if (reader.open(depthPath, confidencePath, width, height, 2.0, recordCount + 1))
+		// More records than the members hold
+		if (reader.open(capturePath, depthMember, confidenceMember, width, height, 2.0, recordCount + 1))
 		{
-			fprintf(stdout, "    open accepted a record count larger than the files\n");
+			fprintf(stdout, "    open accepted a record count larger than the members\n");
 			success= false;
 			reader.close();
 		}
 
-		// A confidence file one byte short
+		// A confidence member one byte short
 		std::vector<uint8_t> shortConfidence(confidenceBytes.begin(), confidenceBytes.end() - 1);
-		FrameRegistrationTestsInternal::writeBytes(confidencePath, shortConfidence);
-		if (reader.open(depthPath, confidencePath, width, height, 2.0, recordCount))
+		const std::filesystem::path shortPath= folder / "short.trackcamera";
+		CaptureArchiveMember shortDepthMember;
+		CaptureArchiveMember shortConfidenceMember;
+		if (!FrameRegistrationTestsInternal::writeDepthCapture(shortPath, depthBytes, shortConfidence, shortDepthMember,
+															   shortConfidenceMember))
 		{
-			fprintf(stdout, "    open accepted a truncated confidence file\n");
+			fprintf(stdout, "    packing the truncated depth capture failed\n");
+			success= false;
+		}
+		else if (reader.open(shortPath, shortDepthMember, shortConfidenceMember, width, height, 2.0, recordCount))
+		{
+			fprintf(stdout, "    open accepted a truncated confidence member\n");
 			success= false;
 			reader.close();
 		}
