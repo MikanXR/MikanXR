@@ -210,6 +210,15 @@ The server binds loopback only until "Allow connections from other machines" is 
 curl -X POST --data-binary @take.trackcamera "http://127.0.0.1:8090/assets/upload?folder=captures&name=take.trackcamera"
 ```
 
+### Finding the editor from the phone
+
+The editor advertises itself on the LAN over DNS-SD so the phone needs no typed address. `ServiceAdvertiser` (`src/Editor/Interprocess/ServiceAdvertiser.h`) registers a `_mikanxr._tcp` service named `MikanXR (<computer name>)` on the HTTP server's port, through the DNS-SD API built into Windows (`windns.h`, Windows 10 1903 and later), so no Bonjour install is needed. The TXT record carries two keys:
+
+- `txtvers`: the record's version, `1`
+- `arkit`: the `base_port` of every ARKit video source, sorted ascending and comma separated, empty when the project has none
+
+The phone takes the first editor it finds and the lowest port in `arkit`, and fills its host, base port, and HTTP port settings from them. The service is advertised only while "Allow connections from other machines" is on, since a loopback-only server is unreachable from the phone. Once a second the advertiser rebuilds what it should advertise from the remote access setting, the HTTP port, and the project's ARKit sources, and registers again when that differs from what is registered. That one comparison follows port edits, source adds and removes, and project loads with no event subscriptions. A withdrawn registration sends the mDNS goodbye, so browsers drop it at once. The replacement is registered only after that withdrawal completes: two registrations of one name collide, Windows renames the second `MikanXR (<computer name>)(1)`, and a renamed registration the editor fails to withdraw stays advertised by the Windows DNS Client service after the editor exits. `MikanCmd` does not advertise. From a Mac, `dns-sd -B _mikanxr._tcp` lists the editor and `dns-sd -L "MikanXR (<computer name>)" _mikanxr._tcp` shows its port and TXT record.
+
 ### Alignment status for the phone
 
 The phone's stream mode asks the editor whether its stream is aligned, so it can show "look at the origin marker" until it is. This is the one GET route the editor serves, a background route that checks the verb:

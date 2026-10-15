@@ -40,6 +40,7 @@
 #include "MkWindowEvent.h"
 #include "PathUtils.h"
 #include "ProjectManager.h"
+#include "ServiceAdvertiser.h"
 #include "OpenCVManager.h"
 #include "LuaDebugServer.h"
 #include "ScriptFolderWatcher.h"
@@ -85,6 +86,7 @@ MainWindow::MainWindow(App* ownerApp)
 	, m_mikanServer(new MikanServer())
 	, m_automationServer(new AutomationServer())
 	, m_arkitDebugChannel(new ARKitDebugChannel())
+	, m_serviceAdvertiser(new ServiceAdvertiser())
 	, m_transactionHistory(new TransactionHistory())
 	, m_clientSourceManager(new ClientSourceManager(DEFAULT_VIDEO_FRAME_QUEUE_SIZE))
 	, m_inputManager(new InputManager(this))
@@ -140,6 +142,7 @@ MainWindow::~MainWindow()
 	delete m_openCVManager;
 	delete m_inputManager;
 	delete m_transactionHistory;
+	delete m_serviceAdvertiser;
 	delete m_arkitDebugChannel;
 	delete m_automationServer;
 	delete m_mikanServer;
@@ -338,6 +341,14 @@ bool MainWindow::startup()
 		m_arkitDebugChannel->registerAutomationCommands(m_automationServer);
 	}
 
+	if (success)
+	{
+		// Advertises the HTTP server and the ARKit base ports on the LAN, so the
+		// phone app finds the editor without a typed address. It follows the
+		// HTTP server's remote access setting and is idle while that is off.
+		m_serviceAdvertiser->startup(this);
+	}
+
 #undef MIKAN_TIMED_STARTUP
 
 	if (success)
@@ -388,6 +399,9 @@ void MainWindow::update(float deltaSeconds)
 	// Service the ARKit debug channel after the automation server, so a command
 	// dispatched this frame can have its reply picked up on the next one
 	m_arkitDebugChannel->poll(deltaSeconds);
+
+	// Re-advertise when the HTTP port, its remote access, or the ARKit sources change
+	m_serviceAdvertiser->poll(deltaSeconds);
 
 	// Seal any transaction whose coalescing window lapsed
 	m_transactionHistory->update(deltaSeconds);
@@ -692,6 +706,10 @@ void MainWindow::shutdown()
 
 	assert(m_scriptFolderWatcher != nullptr);
 	m_scriptFolderWatcher->shutdown();
+
+	// Withdrawn while the HTTP server it points at is still up
+	assert(m_serviceAdvertiser != nullptr);
+	m_serviceAdvertiser->shutdown();
 
 	// Before the automation server, so an in-flight `arkit send` still gets its
 	// error reply out while the automation socket is alive to carry it

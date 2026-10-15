@@ -94,6 +94,7 @@ private:
 	// Automation text command server
 	class AutomationServer* m_automationServer= nullptr;
 	class ARKitDebugChannel* m_arkitDebugChannel= nullptr;
+	class ServiceAdvertiser* m_serviceAdvertiser= nullptr;
 
 	// Editor transaction recording and undo/redo
 	class TransactionHistory* m_transactionHistory= nullptr;

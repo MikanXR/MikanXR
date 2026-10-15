@@ -48,6 +48,7 @@
 #include "ScriptEditorCommandTests.h"
 #include "ScriptHttpRouteTests.h"
 #include "ScriptVariablePersistenceTests.h"
+#include "ServiceAdvertiserTests.h"
 #include "TsdfVolumeTests.h"
 #include "VideoRecordingTests.h"
 
@@ -117,6 +118,7 @@ bool run_all_editor_unit_tests()
 	success&= run_script_editor_command_tests();
 	success&= run_script_http_route_tests();
 	success&= run_script_variable_persistence_tests();
+	success&= run_service_advertiser_tests();
 	success&= run_tsdf_volume_unit_tests();
 	success&= run_video_recording_tests();
 	// Future: add more test modules here
