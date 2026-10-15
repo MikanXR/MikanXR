@@ -144,8 +144,10 @@ bool AppStage_OcclusionMeshBuild::tryEnterBuild(AppStage* fromAppStage, FileVide
 		return false;
 	}
 
-	// The override, when set, is a refined track from an earlier build; the
-	// capture's own track otherwise
+	// The override, when set, is a refined track from an earlier build on
+	// this capture; the capture's own track otherwise. An override from
+	// another session is a leftover of a different take and is skipped the
+	// way playback skips it, since its frames index nothing in this capture.
 	PoseTrack track;
 	const std::filesystem::path trackPath= PathUtils::resolveProjectResource(definition->getPoseTrackPath());
 	if (!definition->getPoseTrackPath().empty())
@@ -155,8 +157,15 @@ bool AppStage_OcclusionMeshBuild::tryEnterBuild(AppStage* fromAppStage, FileVide
 			ModalDialog_MessageBox::showMessageBox(fromAppStage, locText("occlusionMeshBuild.poseTrackMissing"));
 			return false;
 		}
+		if (track.getSessionId() != capture.getManifest().sessionId)
+		{
+			MIKAN_LOG_WARNING("AppStage_OcclusionMeshBuild")
+				<< "The pose track override " << trackPath << " was recorded in session " << track.getSessionId()
+				<< ", not the capture's " << capture.getManifest().sessionId << ", so the capture's own track is used";
+			track.clear();
+		}
 	}
-	else
+	if (!track.isLoaded())
 	{
 		track= capture.getPoseTrack(eCaptureMemberRole::movie_pose);
 	}

@@ -254,6 +254,7 @@ private:
 	// Opens the capture when the media names one and loads the override track.
 	// Returns false when the capture cannot be opened.
 	bool loadMedia();
+	bool dropStaleOverride();
 	void clearRuntimeState();
 
 	// -- main-thread playback state --
@@ -288,6 +289,7 @@ private:
 	Capture m_capture;
 	PoseTrack m_overridePoseTrack;
 	bool m_bHasAlignmentReference= false;
+	bool m_bDropStaleOverride= false; // loadMedia found the override belongs to another take
 
 	mutable std::mutex m_latestPoseMutex;
 	struct LatestPose

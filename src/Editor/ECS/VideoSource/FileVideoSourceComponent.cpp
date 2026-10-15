@@ -331,10 +331,26 @@ bool FileVideoSourceComponent::openVideoSource()
 		m_bOpenFailed= true;
 		return false;
 	}
+	if (dropStaleOverride())
+		return true;
 
 	m_bAutoPlayOnOpen= true;
 	startWorker();
 	requestOpen(resolveActiveMediaSource());
+	return true;
+}
+
+// Clears a pose track override loadMedia found to belong to another take.
+// The path change reopens the media through onDefinitionMarkedDirty, which
+// starts the worker on the capture's own track, so a caller that sees true
+// has nothing left to start. False when there was nothing to drop.
+bool FileVideoSourceComponent::dropStaleOverride()
+{
+	if (!m_bDropStaleOverride)
+		return false;
+
+	m_bDropStaleOverride= false;
+	getFileVideoSourceDefinition()->setPoseTrackPath(std::filesystem::path());
 	return true;
 }
 
@@ -363,6 +379,8 @@ void FileVideoSourceComponent::reopenMedia()
 		m_bOpenFailed= !resolveMediaPath().empty();
 		return;
 	}
+	if (dropStaleOverride())
+		return;
 
 	m_bAutoPlayOnOpen= true;
 	startWorker();
@@ -1008,14 +1026,21 @@ bool FileVideoSourceComponent::loadMedia()
 		}
 	}
 
+	// An override belongs to the take it was refined from. One left behind when
+	// the media moved to another take is dropped from the definition rather
+	// than carried along, so nothing downstream (the occlusion build reads the
+	// override too) can take it for this capture's track. The drop itself
+	// happens once the load is through, since changing the path reopens the
+	// media.
 	const std::filesystem::path overridePath= definition->getPoseTrackPath();
 	if (!overridePath.empty())
 	{
 		if (m_capture.isOpen() && m_capture.getKind() != eCaptureKind::trackcamera)
 		{
 			MIKAN_LOG_WARNING("FileVideoSourceComponent::loadMedia")
-				<< "The pose track override " << overridePath << " is ignored: " << mediaPath
+				<< "The pose track override " << overridePath << " is dropped: " << mediaPath
 				<< " is not a trackcamera capture";
+			m_bDropStaleOverride= true;
 		}
 		else if (m_overridePoseTrack.loadFromFile(overridePath) && m_capture.isOpen()
 				 && m_overridePoseTrack.getSessionId() != m_capture.getManifest().sessionId)
@@ -1023,8 +1048,9 @@ bool FileVideoSourceComponent::loadMedia()
 			MIKAN_LOG_WARNING("FileVideoSourceComponent::loadMedia")
 				<< "The pose track override " << overridePath << " was recorded in session "
 				<< m_overridePoseTrack.getSessionId() << ", not the capture's " << m_capture.getManifest().sessionId
-				<< ", so it is ignored";
+				<< ", so it is dropped";
 			m_overridePoseTrack.clear();
+			m_bDropStaleOverride= true;
 		}
 	}
 
@@ -1300,8 +1326,8 @@ bool FileVideoSourceComponent::invokeFunction(const std::string& functionName)
 void FileVideoSourceComponent::onDefinitionMarkedDirty(CommonConfigPtr configPtr,
 													   const ConfigPropertyChangeSet& changedPropertySet)
 {
-	// The capture carries its own tracks, so naming new media never touches the
-	// override: a refined track is only ever set by the build or the operator
+	// Naming new media reloads with the override still set; loadMedia drops it
+	// when the new capture is another take's
 	if (changedPropertySet.hasPropertyName(FileVideoSourceDefinition::k_mediaPathPropertyId)
 		|| changedPropertySet.hasPropertyName(FileVideoSourceDefinition::k_poseTrackPathPropertyId))
 	{
