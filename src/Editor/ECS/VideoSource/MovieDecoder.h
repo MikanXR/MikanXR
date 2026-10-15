@@ -5,6 +5,8 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <string>
+#include <vector>
 
 // Synchronous, single-owner reader over a movie file or a still image. A still
 // is treated as a one-frame movie so callers have a single path: it reports
@@ -26,6 +28,11 @@ public:
 	// Picks the image or the movie backend by extension. Logs and returns false
 	// when the file cannot be read.
 	bool open(const std::filesystem::path& absolutePath);
+	// Opens a movie by an ffmpeg URL rather than a path, which is how a movie
+	// member plays in place inside a capture archive (Capture::makeSubfileUrl)
+	bool openMovieUrl(const std::string& url);
+	// Decodes an encoded image held in memory as a still
+	bool openEncodedStill(const std::vector<uint8_t>& encodedBytes);
 	void close();
 	bool isOpen() const;
 	bool isStill() const;
@@ -49,6 +56,8 @@ public:
 private:
 	bool openStill(const std::filesystem::path& absolutePath);
 	bool openMovie(const std::filesystem::path& absolutePath);
+	bool adoptStill(const cv::Mat& image, const std::string& description);
+	bool adoptOpenedCapture(const std::string& description);
 
 	static void convertToBgr(const cv::Mat& source, cv::Mat& outBgr);
 

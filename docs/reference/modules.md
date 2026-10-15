@@ -93,7 +93,7 @@ Each plugin is a `SHARED` DLL with hidden symbol visibility that links only low-
 
 - `Tests/MikanClientTestCSharp`: C# client test; only added under Visual Studio generators (C# is unsupported under Ninja, so CI skips it).
 
-The editor unit tests are not a Program: they live in `src/Editor/Server/Test`, `src/Editor/Calibration/Test`, `src/Editor/Reconstruction/Test`, and `src/Editor/Asset/Test` and run via `MikanCmd.exe -runTests` (see [commands.md](./commands.md)). They need the editor's own types, which is why they cannot move into `unit_test_suite_cpp`.
+The editor unit tests are not a Program: they live in `src/Editor/Server/Test`, `src/Editor/Calibration/Test`, `src/Editor/Capture/Test`, `src/Editor/Reconstruction/Test`, and `src/Editor/Asset/Test` and run via `MikanCmd.exe -runTests` (see [commands.md](./commands.md)). They need the editor's own types, which is why they cannot move into `unit_test_suite_cpp`.
 
 ---
 
@@ -109,8 +109,10 @@ Subdirectories (each is a source group, not a separate target):
 
 - `Asset`: asset references (models, materials, textures, node graphs) with `Import/` and `Export/` subfolders.
 
-- `Reconstruction` holds the occlusion mesh fusion: the dense TSDF volume with its ray cast, marching cubes, mesh cleanup, the frame-to-model registration, the depth sidecar reader, and the builder that strings them together, plus `Test/`. Pure data in and out with no editor object access, so the build stage, the headless command, and the tests share one entry point; see [occlusion-mesh.md](./occlusion-mesh.md).
-- `Calibration` holds the OpenCV-based calibration algorithms: `CalibrationPatternFinder` (chessboard/charuco/aruco variants), `AnchorTriangulator`, `ArucoMarkerPoseSampler`, `CVVideoFrameProcessor`, plus `Test/`. See [calibration.md](./calibration.md). The ONNX-backed estimators live here too (`SceneLightingEstimator`, `MarigoldInference`, `MoGeInference`, `DepthMeshGenerator`), since they all start from an undistorted frame plus its calibrated intrinsics; see [scene-lighting.md](./scene-lighting.md) and [depth-proxy-mesh.md](./depth-proxy-mesh.md).
+- `Capture` holds the capture archive library: `CaptureArchiveReader` and `CaptureArchiveWriter` over the accepted ustar subset, `CaptureManifest` with its kind and member validation, `Capture`, the opened archive that loads member pose tracks, decodes member images, and builds the ffmpeg `subfile` URL a movie member plays through, `CaptureFlow`, the step machine of a guided capture, and `CapturePacker`, which packs a recording's working directory into an archive, plus `Test/`. No editor object access, so the file video source, the recorder, the migration, and the tests share it. See [videosources.md](./videosources.md).
+
+- `Reconstruction` holds the occlusion mesh fusion: the dense TSDF volume with its ray cast, marching cubes, mesh cleanup, the frame-to-model registration, the reader of a capture's depth members, and the builder that strings them together, plus `Test/`. Pure data in and out with no editor object access, so the build stage, the headless command, and the tests share one entry point; see [occlusion-mesh.md](./occlusion-mesh.md).
+- `Calibration` holds the OpenCV-based calibration algorithms: `CalibrationPatternFinder` (chessboard/charuco/aruco variants), `AnchorTriangulator`, `ArucoMarkerPoseSampler`, `FrameCoupledAlignment` and `ARKitMarkerAutoAligner` (the frame-coupled marker solve and its automatic form behind the phone's stream prompt), `CVVideoFrameProcessor`, plus `Test/`. See [calibration.md](./calibration.md). The ONNX-backed estimators live here too (`SceneLightingEstimator`, `MarigoldInference`, `MoGeInference`, `DepthMeshGenerator`), since they all start from an undistorted frame plus its calibrated intrinsics; see [scene-lighting.md](./scene-lighting.md) and [depth-proxy-mesh.md](./depth-proxy-mesh.md).
 
 - `Config`: `CommonConfig`, the Configuru-backed config base used by project/device configs.
 

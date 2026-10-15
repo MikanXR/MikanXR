@@ -3,6 +3,7 @@
 #include "DepthPreviewRenderer.h"
 #include "LocText.h"
 #include "MikanRendererFwd.h"
+#include "MkShaderConstants.h"
 #include "Node.h"
 
 #include "glm/ext/vector_float2.hpp"

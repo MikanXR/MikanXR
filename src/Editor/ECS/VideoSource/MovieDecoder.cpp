@@ -61,12 +61,51 @@ bool MovieDecoder::open(const std::filesystem::path& absolutePath)
 	return bSuccess;
 }
 
+bool MovieDecoder::openMovieUrl(const std::string& url)
+{
+	close();
+
+	if (!m_capture.open(url, cv::CAP_FFMPEG))
+	{
+		MIKAN_LOG_ERROR("MovieDecoder::openMovieUrl") << "Failed to open movie: " << url;
+		return false;
+	}
+
+	if (!adoptOpenedCapture(url))
+	{
+		close();
+		return false;
+	}
+
+	return true;
+}
+
+bool MovieDecoder::openEncodedStill(const std::vector<uint8_t>& encodedBytes)
+{
+	close();
+
+	const cv::Mat image=
+		cv::imdecode(cv::Mat(1, (int)encodedBytes.size(), CV_8UC1, (void*)encodedBytes.data()), cv::IMREAD_COLOR);
+	if (!adoptStill(image, "in-memory image"))
+	{
+		close();
+		return false;
+	}
+
+	return true;
+}
+
 bool MovieDecoder::openStill(const std::filesystem::path& absolutePath)
 {
 	const cv::Mat image= cv::imread(absolutePath.string(), cv::IMREAD_COLOR);
+	return adoptStill(image, absolutePath.string());
+}
+
+bool MovieDecoder::adoptStill(const cv::Mat& image, const std::string& description)
+{
 	if (image.empty())
 	{
-		MIKAN_LOG_ERROR("MovieDecoder::open") << "Failed to read image: " << absolutePath;
+		MIKAN_LOG_ERROR("MovieDecoder::open") << "Failed to read image: " << description;
 		return false;
 	}
 
@@ -88,6 +127,12 @@ bool MovieDecoder::openMovie(const std::filesystem::path& absolutePath)
 		return false;
 	}
 
+	return adoptOpenedCapture(absolutePath.string());
+}
+
+// Reads the stream properties off a capture that just opened
+bool MovieDecoder::adoptOpenedCapture(const std::string& description)
+{
 	// Honour the rotation a phone stores in the container so a portrait
 	// recording comes out upright
 	m_capture.set(cv::CAP_PROP_ORIENTATION_AUTO, 1);
@@ -107,7 +152,7 @@ bool MovieDecoder::openMovie(const std::filesystem::path& absolutePath)
 
 	if (m_width <= 0 || m_height <= 0)
 	{
-		MIKAN_LOG_ERROR("MovieDecoder::open") << "Movie reports no frame size: " << absolutePath;
+		MIKAN_LOG_ERROR("MovieDecoder::open") << "Movie reports no frame size: " << description;
 		return false;
 	}
 
