@@ -1,6 +1,9 @@
 #include "VideoRecordingTests.h"
 #include "unit_test.h"
 
+#include "Capture.h"
+#include "CaptureFlow.h"
+#include "CapturePacker.h"
 #include "MovieDecoder.h"
 #include "MovieWriter.h"
 #include "PoseTrack.h"
@@ -14,8 +17,10 @@
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <stdio.h>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -220,11 +225,217 @@ bool video_recording_test_take_names()
 	UNIT_TEST_COMPLETE()
 }
 
+bool video_recording_test_capture_flow_steps()
+{
+	UNIT_TEST_BEGIN("each capture kind walks its steps, packs after the last, and cancels from any")
+
+	// The step sequences
+	const std::vector<eCaptureFlowStep>& stillPhoto= CaptureFlow::stepsForKind(eCaptureKind::stillphoto);
+	success&=
+		(stillPhoto == std::vector<eCaptureFlowStep>{eCaptureFlowStep::markerImage, eCaptureFlowStep::plateImage});
+	const std::vector<eCaptureFlowStep>& stillCamera= CaptureFlow::stepsForKind(eCaptureKind::stillcamera);
+	success&= (stillCamera
+			   == std::vector<eCaptureFlowStep>{eCaptureFlowStep::markerImage, eCaptureFlowStep::plateImage,
+												eCaptureFlowStep::readyToRecord, eCaptureFlowStep::recording});
+	const std::vector<eCaptureFlowStep>& trackCamera= CaptureFlow::stepsForKind(eCaptureKind::trackcamera);
+	success&=
+		(trackCamera == std::vector<eCaptureFlowStep>{eCaptureFlowStep::readyToRecord, eCaptureFlowStep::recording});
+	success&= CaptureFlow::stepsForKind(eCaptureKind::INVALID).empty();
+
+	// Idle refuses to advance, and an invalid kind refuses to start
+	CaptureFlow flow;
+	success&= !flow.isActive() && !flow.advance() && !flow.start(eCaptureKind::INVALID);
+
+	// Each kind walks its steps into packing, then completes back to idle
+	for (int kindIndex= 0; kindIndex < (int)eCaptureKind::COUNT; ++kindIndex)
+	{
+		const eCaptureKind kind= (eCaptureKind)kindIndex;
+		const std::vector<eCaptureFlowStep>& steps= CaptureFlow::stepsForKind(kind);
+
+		success&= flow.start(kind) && flow.isActive() && flow.getKind() == kind && flow.getStep() == steps[0];
+		// A second start is refused while active
+		success&= !flow.start(kind);
+		for (size_t index= 1; index < steps.size(); ++index)
+		{
+			success&= flow.advance() && flow.getStep() == steps[index];
+		}
+		success&= flow.isMovieStep() == (steps.back() == eCaptureFlowStep::recording);
+		success&= flow.advance() && flow.getStep() == eCaptureFlowStep::packing;
+		success&= !flow.advance() && flow.getStep() == eCaptureFlowStep::packing;
+		flow.complete();
+		success&= !flow.isActive() && flow.getKind() == eCaptureKind::INVALID;
+	}
+
+	// Cancel from every step of the longest flow lands on idle
+	for (size_t cancelAt= 0; cancelAt <= stillCamera.size(); ++cancelAt)
+	{
+		success&= flow.start(eCaptureKind::stillcamera);
+		for (size_t index= 0; index < cancelAt; ++index)
+			flow.advance();
+		flow.cancel();
+		success&= !flow.isActive() && flow.getStep() == eCaptureFlowStep::idle;
+	}
+
+	// Step names for the automation channel
+	success&= std::string(CaptureFlowUtils::stepToString(eCaptureFlowStep::readyToRecord)) == "ready_to_record";
+	success&= std::string(CaptureFlowUtils::stepToString(eCaptureFlowStep::packing)) == "packing";
+
+	UNIT_TEST_COMPLETE()
+}
+
+namespace
+{
+void writeBytes(const std::filesystem::path& path, const std::string& content)
+{
+	std::ofstream file(path, std::ios::binary);
+	file << content;
+}
+
+void writeOneFrameTrack(const std::filesystem::path& path, const std::string& sessionId)
+{
+	PoseTrackWriter writer(sessionId, k_movieWidth, k_movieHeight);
+	writer.append(0, 1000, glm::mat4(1.f), 100.0, 100.0, 64.0, 48.0);
+	writer.writeToFile(path);
+}
+} // namespace
+
+bool video_recording_test_capture_packer_packs_each_kind()
+{
+	UNIT_TEST_BEGIN("a working directory packs into a capture of each kind that the reader validates")
+
+	VideoRecordingFixtureDir fixture;
+	const std::string sessionId= "0123456789abcdef0123456789abcdef";
+	std::string error;
+
+	// A stillphoto: the plate and the marker shot with its track
+	{
+		const std::filesystem::path workingDir= fixture.root / ".capture_photo";
+		std::filesystem::create_directories(workingDir);
+		writeBytes(workingDir / "plate.jpg", "plate bytes");
+		writeBytes(workingDir / "marker.jpg", "marker bytes");
+		writeOneFrameTrack(workingDir / "marker.pose.json", sessionId);
+
+		success&=
+			CapturePacker::findMemberFile(workingDir, eCaptureMemberRole::plate_image) == workingDir / "plate.jpg";
+		success&= CapturePacker::findMemberFile(workingDir, eCaptureMemberRole::movie).empty();
+
+		CapturePackRequest request;
+		request.kind= eCaptureKind::stillphoto;
+		request.workingDir= workingDir;
+		request.outputPath= fixture.root / "photo.stillphoto";
+		request.sessionId= sessionId;
+		request.producer= CaptureManifest::makeEditorProducer();
+		success&= CapturePacker::pack(request, error);
+		if (!success)
+			printf("      stillphoto pack failed: %s\n", error.c_str());
+
+		Capture capture;
+		success&= capture.open(request.outputPath, error);
+		success&= capture.getKind() == eCaptureKind::stillphoto && capture.isStageSpace();
+		success&= capture.getManifest().getMemberName(eCaptureMemberRole::plate_image) == "plate.jpg";
+		success&= capture.getManifest().getMemberName(eCaptureMemberRole::marker_image) == "marker.jpg";
+		success&= capture.getPoseTrack(eCaptureMemberRole::marker_pose).getFrameCount() == 1;
+		success&= capture.getManifest().producer.rfind("MikanXR ", 0) == 0;
+		// The working directory is the recorder's to remove
+		success&= std::filesystem::exists(workingDir / "plate.jpg");
+	}
+
+	// A stillcamera: a real movie beside the stills, no movie track
+	{
+		const std::filesystem::path workingDir= fixture.root / ".capture_still";
+		std::filesystem::create_directories(workingDir);
+		MovieWriter writer;
+		success&= writer.open(workingDir / "movie", k_movieWidth, k_movieHeight, k_movieFps);
+		for (int frameIndex= 0; frameIndex < 6; ++frameIndex)
+			writer.write(cv::Mat(k_movieHeight, k_movieWidth, CV_8UC3, movieFrameColor(frameIndex)));
+		success&= writer.close();
+		writeBytes(workingDir / "plate.jpg", "plate bytes");
+		writeBytes(workingDir / "marker.jpg", "marker bytes");
+		writeOneFrameTrack(workingDir / "marker.pose.json", sessionId);
+
+		CapturePackRequest request;
+		request.kind= eCaptureKind::stillcamera;
+		request.workingDir= workingDir;
+		request.outputPath= fixture.root / "still.stillcamera";
+		request.sessionId= sessionId;
+		success&= CapturePacker::pack(request, error);
+		if (!success)
+			printf("      stillcamera pack failed: %s\n", error.c_str());
+
+		Capture capture;
+		success&= capture.open(request.outputPath, error);
+		success&= capture.getKind() == eCaptureKind::stillcamera;
+		success&=
+			capture.getManifest().getMemberName(eCaptureMemberRole::movie) == writer.getPath().filename().string();
+		success&= !capture.hasMember(eCaptureMemberRole::movie_pose);
+
+		// The packed movie plays in place
+		MovieDecoder decoder;
+		success&= decoder.openMovieUrl(capture.makeSubfileUrl(eCaptureMemberRole::movie));
+		success&= decoder.getFrameCount() == 6;
+	}
+
+	// A trackcamera: the movie with its track, no marker steps
+	{
+		const std::filesystem::path workingDir= fixture.root / ".capture_track";
+		std::filesystem::create_directories(workingDir);
+		writeBytes(workingDir / "movie.mp4", "movie bytes");
+		PoseTrackWriter track(sessionId, k_movieWidth, k_movieHeight);
+		for (int frame= 0; frame < 3; ++frame)
+			track.append(frame * 41667, 1000 + frame * 41667, glm::mat4(1.f), 100.0, 100.0, 64.0, 48.0);
+		success&= track.writeToFile(workingDir / "movie.pose.json");
+
+		CapturePackRequest request;
+		request.kind= eCaptureKind::trackcamera;
+		request.workingDir= workingDir;
+		request.outputPath= fixture.root / "track.trackcamera";
+		request.sessionId= sessionId;
+		success&= CapturePacker::pack(request, error);
+		if (!success)
+			printf("      trackcamera pack failed: %s\n", error.c_str());
+
+		Capture capture;
+		success&= capture.open(request.outputPath, error);
+		success&= capture.getKind() == eCaptureKind::trackcamera && capture.isStageSpace();
+		success&= capture.getPoseTrack(eCaptureMemberRole::movie_pose).getFrameCount() == 3;
+		success&= !capture.hasMember(eCaptureMemberRole::marker_image) && !capture.hasMember(eCaptureMemberRole::depth);
+
+		// A trackcamera without its movie track is refused, and leaves no archive
+		std::filesystem::remove(workingDir / "movie.pose.json");
+		request.outputPath= fixture.root / "trackless.trackcamera";
+		success&= !CapturePacker::pack(request, error);
+		success&= !std::filesystem::exists(request.outputPath);
+	}
+
+	// A track without its media is left out rather than packed alone
+	{
+		const std::filesystem::path workingDir= fixture.root / ".capture_orphan";
+		std::filesystem::create_directories(workingDir);
+		writeBytes(workingDir / "plate.png", "plate bytes");
+		writeOneFrameTrack(workingDir / "marker.pose.json", sessionId);
+
+		CapturePackRequest request;
+		request.kind= eCaptureKind::stillphoto;
+		request.workingDir= workingDir;
+		request.outputPath= fixture.root / "orphan.stillphoto";
+		request.sessionId= sessionId;
+		success&= CapturePacker::pack(request, error);
+		Capture capture;
+		success&= capture.open(request.outputPath, error);
+		success&= capture.getManifest().getMemberName(eCaptureMemberRole::plate_image) == "plate.png";
+		success&= !capture.hasMember(eCaptureMemberRole::marker_pose);
+	}
+
+	UNIT_TEST_COMPLETE()
+}
+
 bool run_video_recording_tests()
 {
 	UNIT_TEST_MODULE_BEGIN("video_recording")
 	UNIT_TEST_MODULE_CALL_TEST(video_recording_test_movie_writer_round_trips);
 	UNIT_TEST_MODULE_CALL_TEST(video_recording_test_pose_track_writer_round_trips);
 	UNIT_TEST_MODULE_CALL_TEST(video_recording_test_take_names);
+	UNIT_TEST_MODULE_CALL_TEST(video_recording_test_capture_flow_steps);
+	UNIT_TEST_MODULE_CALL_TEST(video_recording_test_capture_packer_packs_each_kind);
 	UNIT_TEST_MODULE_END()
 }

@@ -1,7 +1,9 @@
 #include "VideoSourceRecorder.h"
 #include "CameraComponent.h"
 #include "CameraObjectSystem.h"
+#include "CapturePacker.h"
 #include "IEditorWindow.h"
+#include "IFrameCoupledPoseProvider.h"
 #include "Logger.h"
 #include "MovieWriter.h"
 #include "PathUtils.h"
@@ -26,6 +28,9 @@ namespace
 constexpr size_t k_maxQueuedFrames= 8;
 constexpr int k_jpegQuality= 92;
 constexpr double k_defaultFps= 30.0;
+const char* k_capturesFolderId= "captures";
+// Hidden, so the asset catalog never lists a capture in progress
+const char* k_workingDirPrefix= ".capture_";
 
 std::string makeSessionId()
 {
@@ -57,14 +62,123 @@ int64_t VideoSourceRecorder::nowUs()
 		.count();
 }
 
-bool VideoSourceRecorder::startRecording(bool bMarker, float fallbackFps)
+bool VideoSourceRecorder::isBusy() const
 {
-	return beginCapture(bMarker, false, fallbackFps);
+	return m_status.state == eVideoRecorderState::recording || m_status.state == eVideoRecorderState::finishing
+		   || m_status.state == eVideoRecorderState::packing;
 }
 
-bool VideoSourceRecorder::captureImage(bool bMarker) { return beginCapture(bMarker, true, 0.f); }
+CameraComponentPtr VideoSourceRecorder::findCamera() const
+{
+	VideoSourceComponentPtr videoSource= m_videoSource.lock();
+	ProjectManagerPtr projectManager= m_ownerWindow->getProjectManager();
+	CameraObjectSystemPtr cameraSystem=
+		projectManager ? projectManager->getSystemOfType<CameraObjectSystem>() : nullptr;
+	return cameraSystem && videoSource ? cameraSystem->findCameraForVideoSource(videoSource->getComponentId())
+									   : nullptr;
+}
 
-bool VideoSourceRecorder::stopRecording()
+bool VideoSourceRecorder::canRecordTrackCamera() const
+{
+	VideoSourceComponentPtr videoSource= m_videoSource.lock();
+	CameraComponentPtr camera= findCamera();
+	if (!videoSource || !camera)
+		return false;
+
+	MikanVideoSourceIntrinsics intrinsics;
+	if (!videoSource->areCameraIntrinsicsValid() || !videoSource->getCameraIntrinsics(intrinsics)
+		|| intrinsics.intrinsics_type != MikanIntrinsicsType::MONO_CAMERA_INTRINSICS)
+	{
+		return false;
+	}
+
+	// A tracking mount drives the camera every tick, and so does a frame-coupled
+	// source once it has published a pose. An authored camera stands still, so a
+	// per-frame track of it says nothing.
+	if (camera->hasValidTrackingMountComponent())
+		return true;
+
+	if (auto poseProvider= std::dynamic_pointer_cast<IFrameCoupledPoseProvider>(videoSource))
+	{
+		glm::mat4 transform;
+		MikanVideoSourceIntrinsics poseIntrinsics;
+		uint32_t frameSeq= 0;
+		return poseProvider->getLatestFrameCoupledPose(transform, poseIntrinsics, frameSeq);
+	}
+
+	return false;
+}
+
+bool VideoSourceRecorder::startCapture(eCaptureKind kind, float fallbackFps)
+{
+	if (m_flow.isActive() || isBusy())
+		return false;
+
+	VideoSourceComponentPtr videoSource= m_videoSource.lock();
+	if (!videoSource)
+		return false;
+
+	m_status= VideoRecorderStatus();
+
+	const std::filesystem::path capturesDir= ProjectAssetCatalog::getFolderDirectory(k_capturesFolderId);
+	if (capturesDir.empty())
+	{
+		m_status.lastError= eVideoRecorderError::noProject;
+		return false;
+	}
+
+	if (kind == eCaptureKind::trackcamera && !canRecordTrackCamera())
+	{
+		m_status.lastError= eVideoRecorderError::trackCameraNeedsPose;
+		return false;
+	}
+
+	if (!m_flow.start(kind))
+		return false;
+
+	m_fallbackFps= fallbackFps;
+	m_takeName= TakeNaming::makeTakeNameNow();
+	m_workingDir= capturesDir / (k_workingDirPrefix + m_takeName);
+	std::error_code ec;
+	std::filesystem::remove_all(m_workingDir, ec);
+	std::filesystem::create_directories(m_workingDir, ec);
+
+	m_status.state= eVideoRecorderState::waiting;
+	m_status.kind= kind;
+	m_status.step= m_flow.getStep();
+	return true;
+}
+
+// The flow's primary action. A still step lands its frame through the encoder
+// thread and advances once the job completes; the movie step starts recording
+// and advances at once, and the recording step stops it, advancing to packing
+// once the writer has closed.
+bool VideoSourceRecorder::advanceCapture()
+{
+	if (!m_flow.isActive() || isBusy())
+		return false;
+
+	const eCaptureKind kind= m_flow.getKind();
+	switch (m_flow.getStep())
+	{
+	case eCaptureFlowStep::markerImage:
+		// The marker's one-frame track carries the camera's intrinsics and its
+		// pose at the shot, which a still kind reads for intrinsics alone
+		return beginJob(CapturePacker::k_markerStem, true, true);
+	case eCaptureFlowStep::plateImage:
+		return beginJob(CapturePacker::k_plateStem, true, false);
+	case eCaptureFlowStep::readyToRecord:
+		if (!beginJob(CapturePacker::k_movieStem, false, kind == eCaptureKind::trackcamera))
+			return false;
+		m_flow.advance();
+		m_status.step= m_flow.getStep();
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool VideoSourceRecorder::stopJob()
 {
 	if (m_status.state != eVideoRecorderState::recording)
 		return false;
@@ -78,18 +192,27 @@ bool VideoSourceRecorder::stopRecording()
 	return true;
 }
 
-std::string VideoSourceRecorder::chooseTakeName(bool bMarker)
+bool VideoSourceRecorder::cancelCapture()
 {
-	if (bMarker)
-	{
-		// The marker shot pairs with the main take of this stage visit, or stands
-		// alone under its own timestamp when none has been captured yet
-		return TakeNaming::makeMarkerName(m_lastMainTakeName.empty() ? TakeNaming::makeTakeNameNow()
-																	 : m_lastMainTakeName);
-	}
+	if (!m_flow.isActive())
+		return false;
 
-	m_lastMainTakeName= TakeNaming::makeTakeNameNow();
-	return m_lastMainTakeName;
+	stopJob();
+	if (m_encoderThread.joinable())
+		m_encoderThread.join();
+	if (m_packThread.joinable())
+		m_packThread.join();
+	releaseView();
+	m_job.reset();
+	m_bJobDone= false;
+	m_bPackDone= false;
+
+	removeWorkingDirectory();
+	m_flow.cancel();
+	m_status.state= eVideoRecorderState::idle;
+	m_status.kind= eCaptureKind::INVALID;
+	m_status.step= eCaptureFlowStep::idle;
+	return true;
 }
 
 void VideoSourceRecorder::decidePoseTrack(Job& job)
@@ -98,11 +221,7 @@ void VideoSourceRecorder::decidePoseTrack(Job& job)
 	m_status.poseTrackSkipReason= ePoseTrackSkipReason::none;
 
 	VideoSourceComponentPtr videoSource= m_videoSource.lock();
-	ProjectManagerPtr projectManager= m_ownerWindow->getProjectManager();
-	CameraObjectSystemPtr cameraSystem=
-		projectManager ? projectManager->getSystemOfType<CameraObjectSystem>() : nullptr;
-	CameraComponentPtr camera=
-		cameraSystem && videoSource ? cameraSystem->findCameraForVideoSource(videoSource->getComponentId()) : nullptr;
+	CameraComponentPtr camera= findCamera();
 	if (!camera)
 	{
 		m_status.poseTrackSkipReason= ePoseTrackSkipReason::noCamera;
@@ -121,7 +240,7 @@ void VideoSourceRecorder::decidePoseTrack(Job& job)
 		return;
 	}
 
-	// The frames are undistorted, so the sidecar carries the undistorted matrix
+	// The frames are undistorted, so the track carries the undistorted matrix
 	// (column-major: fx x0, fy y1, cx z0, cy z1)
 	const MikanMatrix3d& matrix= intrinsics.getMonoIntrinsics().undistorted_camera_matrix;
 	job.fx= matrix.x0;
@@ -131,42 +250,42 @@ void VideoSourceRecorder::decidePoseTrack(Job& job)
 	job.bWritePoseTrack= true;
 }
 
-bool VideoSourceRecorder::beginCapture(bool bMarker, bool bStill, float fallbackFps)
+bool VideoSourceRecorder::beginJob(const char* stem, bool bStill, bool bWantPoseTrack)
 {
-	if (isBusy())
-		return false;
-
 	VideoSourceComponentPtr videoSource= m_videoSource.lock();
 	if (!videoSource)
 		return false;
 
 	m_status.lastError= eVideoRecorderError::none;
 
-	const char* folderId= bStill ? "textures" : "movies";
-	const std::filesystem::path folderDir= ProjectAssetCatalog::getFolderDirectory(folderId);
-	if (folderDir.empty())
-	{
-		m_status.lastError= eVideoRecorderError::noProject;
-		return false;
-	}
-
 	auto job= std::make_shared<Job>();
 	job->bStill= bStill;
-	job->folderId= folderId;
 	job->sessionId= m_sessionId;
-	job->stemPath= folderDir / chooseTakeName(bMarker);
-	decidePoseTrack(*job);
+	job->stemPath= m_workingDir / stem;
+	if (bWantPoseTrack)
+	{
+		decidePoseTrack(*job);
+	}
+	else
+	{
+		m_status.poseTrackSkipReason= ePoseTrackSkipReason::none;
+	}
+
+	// A trackcamera is nothing without its track, and the flow was started on the
+	// promise of one
+	if (!bStill && m_flow.getKind() == eCaptureKind::trackcamera && !job->bWritePoseTrack)
+	{
+		m_status.lastError= eVideoRecorderError::trackCameraNeedsPose;
+		return false;
+	}
 
 	float sourceFps= 0.f;
 	if (videoSource->getFrameRate(sourceFps) && sourceFps > 1.f)
 		job->fps= sourceFps;
-	else if (fallbackFps > 1.f)
-		job->fps= fallbackFps;
+	else if (m_fallbackFps > 1.f)
+		job->fps= m_fallbackFps;
 	else
 		job->fps= k_defaultFps;
-
-	std::error_code ec;
-	std::filesystem::create_directories(folderDir, ec);
 
 	// The recorder's own view: CPU undistortion into a BGR buffer, no grayscale pass
 	m_view= std::make_shared<VideoFrameDistortionView>(videoSource, eVideoFrameProcessorMode::CALIBRATION);
@@ -214,17 +333,13 @@ void VideoSourceRecorder::sampleFrame()
 
 	if (m_job && m_job->bWritePoseTrack)
 	{
-		ProjectManagerPtr projectManager= m_ownerWindow->getProjectManager();
-		CameraObjectSystemPtr cameraSystem=
-			projectManager ? projectManager->getSystemOfType<CameraObjectSystem>() : nullptr;
-		CameraComponentPtr camera=
-			cameraSystem ? cameraSystem->findCameraForVideoSource(videoSource->getComponentId()) : nullptr;
-		if (camera)
+		if (CameraComponentPtr camera= findCamera())
 		{
 			// The camera's relative transform is its stage-space aperture pose
 			// however it is driven: CameraComponent::update writes the tracking
-			// mount pose or the frame-coupled pose into it every tick, and an
-			// authored camera holds its authored pose there
+			// mount pose or the frame-coupled pose into it every tick, with any
+			// alignment offset already folded in, and an authored camera holds
+			// its authored pose there
 			packet.cameraToStage= camera->getRelativeTransform().getMat4();
 			packet.bHasPose= true;
 		}
@@ -244,14 +359,21 @@ void VideoSourceRecorder::sampleFrame()
 	// A still wants exactly one frame
 	if (m_job && m_job->bStill)
 	{
-		stopRecording();
+		stopJob();
 	}
 }
 
 void VideoSourceRecorder::update()
 {
-	if (m_status.state == eVideoRecorderState::idle)
+	if (m_status.state == eVideoRecorderState::idle || m_status.state == eVideoRecorderState::waiting)
 		return;
+
+	if (m_status.state == eVideoRecorderState::packing)
+	{
+		if (m_bPackDone)
+			completePacking();
+		return;
+	}
 
 	if (m_status.state == eVideoRecorderState::recording)
 	{
@@ -268,19 +390,20 @@ void VideoSourceRecorder::update()
 	}
 }
 
+// Leaving the stage mid-flow discards the capture: a half-recorded flow has no
+// finished form to keep, and the stage gets no further tick to pack one
 void VideoSourceRecorder::finishNow()
 {
-	if (m_status.state == eVideoRecorderState::idle)
+	if (m_flow.isActive())
 	{
-		if (m_encoderThread.joinable())
-			m_encoderThread.join();
+		cancelCapture();
 		return;
 	}
 
-	stopRecording();
 	if (m_encoderThread.joinable())
 		m_encoderThread.join();
-	completeJob();
+	if (m_packThread.joinable())
+		m_packThread.join();
 }
 
 void VideoSourceRecorder::completeJob()
@@ -293,9 +416,81 @@ void VideoSourceRecorder::completeJob()
 	m_status.framesWritten= m_jobResult.framesWritten;
 	m_status.framesDropped= m_framesDropped;
 	m_status.backendName= m_jobResult.backendName;
-	if (m_jobResult.bOk)
+	m_job.reset();
+	m_bJobDone= false;
+
+	if (!m_jobResult.bOk)
 	{
-		m_status.lastStoredPath= PathUtils::makeStoredProjectPath(m_jobResult.mediaPath);
+		// The flow stays on its step so the operator can retry the shot
+		m_status.lastError= m_jobResult.error;
+		m_status.state= eVideoRecorderState::waiting;
+		return;
+	}
+
+	onStepMediaLanded();
+}
+
+void VideoSourceRecorder::onStepMediaLanded()
+{
+	m_flow.advance();
+	m_status.step= m_flow.getStep();
+
+	if (m_flow.getStep() == eCaptureFlowStep::packing)
+	{
+		beginPacking();
+	}
+	else
+	{
+		m_status.state= eVideoRecorderState::waiting;
+	}
+}
+
+void VideoSourceRecorder::beginPacking()
+{
+	m_status.state= eVideoRecorderState::packing;
+	m_bPackDone= false;
+	if (m_packThread.joinable())
+		m_packThread.join();
+	m_packThread= std::thread(&VideoSourceRecorder::packThreadMain, this);
+}
+
+// Pack thread. Copies the members into the archive, which for a long movie is
+// too much to do on the main thread.
+void VideoSourceRecorder::packThreadMain()
+{
+	CapturePackRequest request;
+	request.kind= m_flow.getKind();
+	request.workingDir= m_workingDir;
+	request.outputPath= m_workingDir.parent_path() / (m_takeName + CaptureKindUtils::kindToExtension(m_flow.getKind()));
+	request.sessionId= m_sessionId;
+	request.poseSpace= eCapturePoseSpace::stage;
+	request.producer= CaptureManifest::makeEditorProducer();
+
+	PackResult result;
+	std::string error;
+	result.bOk= CapturePacker::pack(request, error);
+	result.capturePath= request.outputPath;
+	if (!result.bOk)
+	{
+		MIKAN_MT_LOG_ERROR("VideoSourceRecorder")
+			<< "Packing " << request.outputPath.filename() << " failed: " << error;
+	}
+
+	m_packResult= result;
+	m_bPackDone= true;
+}
+
+void VideoSourceRecorder::completePacking()
+{
+	if (m_packThread.joinable())
+		m_packThread.join();
+	m_bPackDone= false;
+
+	removeWorkingDirectory();
+
+	if (m_packResult.bOk)
+	{
+		m_status.lastStoredPath= PathUtils::makeStoredProjectPath(m_packResult.capturePath);
 		if (ProjectAssetCatalog* catalog= m_ownerWindow->getAssetCatalog())
 		{
 			catalog->refresh();
@@ -303,12 +498,22 @@ void VideoSourceRecorder::completeJob()
 	}
 	else
 	{
-		m_status.lastError= m_jobResult.error;
+		m_status.lastError= eVideoRecorderError::packFailed;
 	}
 
+	m_flow.complete();
 	m_status.state= eVideoRecorderState::idle;
-	m_job.reset();
-	m_bJobDone= false;
+	m_status.step= eCaptureFlowStep::idle;
+}
+
+void VideoSourceRecorder::removeWorkingDirectory()
+{
+	if (m_workingDir.empty())
+		return;
+
+	std::error_code ec;
+	std::filesystem::remove_all(m_workingDir, ec);
+	m_workingDir.clear();
 }
 
 void VideoSourceRecorder::releaseView()
@@ -450,7 +655,7 @@ void VideoSourceRecorder::encoderThreadMain(std::shared_ptr<Job> job)
 	}
 	else
 	{
-		// A failed movie leaves nothing behind
+		// A failed shot leaves nothing behind, so the retry starts clean
 		std::error_code ec;
 		if (!result.mediaPath.empty())
 			std::filesystem::remove(result.mediaPath, ec);

@@ -2,6 +2,7 @@
 
 //-- includes -----
 #include "AppStage.h"
+#include "CaptureManifest.h"
 #include "ComponentFwd.h"
 #include "MkRendererFwd.h"
 
@@ -38,21 +39,23 @@ protected:
 	// UI Events
 	void onReturnEvent();
 	void drawRecordingGui();
-	// The marker toggle arms the next capture only, as on the phone
-	bool takeMarkerArmed();
+	void drawCaptureKindSelector();
+	void drawCaptureFlow();
+	float getFallbackFps() const;
 
 	// Remote Control
 	virtual bool handleRemoteControlCommand(const std::string& command, const std::vector<std::string>& parameters,
 											std::vector<std::string>& outResults) override;
 	bool handleGetVideoSourceComponentId(std::vector<std::string>& outResults);
 	bool handleReturnRequest(std::vector<std::string>& outResults);
-	bool handleRecordStart(const std::vector<std::string>& parameters, std::vector<std::string>& outResults);
-	bool handleRecordStop(std::vector<std::string>& outResults);
-	bool handleCaptureImage(const std::vector<std::string>& parameters, std::vector<std::string>& outResults);
-	bool handleGetRecordingState(std::vector<std::string>& outResults);
+	bool handleCaptureStart(const std::vector<std::string>& parameters, std::vector<std::string>& outResults);
+	bool handleCaptureAdvance(std::vector<std::string>& outResults);
+	bool handleCaptureCancel(std::vector<std::string>& outResults);
+	bool handleGetCaptureState(std::vector<std::string>& outResults);
 
 	VideoSourceComponentWeakPtr m_videoSourceComponent;
 	VideoFrameDistortionViewPtr m_videoBufferView;
 	std::unique_ptr<VideoSourceRecorder> m_recorder;
-	bool m_bMarkerArmed= false;
+	// The kind the Start Capture button records
+	eCaptureKind m_selectedKind= eCaptureKind::stillphoto;
 };

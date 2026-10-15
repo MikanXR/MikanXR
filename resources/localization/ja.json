@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1115,
+		"stringCount": 1127,
 		"translatedCount": 899,
 		"reviewedCount": 0
 	},
@@ -1145,13 +1145,18 @@
 	},
 	"videoSourceSettings": {
 		"cameraFpsFmt": "カメラ %.1ffps",
-		"captureImage": "Capture Image",
-		"markerReference": "Marker reference",
+		"cancelCapture": "Cancel",
+		"captureKind": "Capture kind",
+		"kindStillCamera": "Still Camera",
+		"kindStillPhoto": "Still Photo",
+		"kindTrackCamera": "Track Camera",
+		"packing": "Packing the capture...",
 		"record": "Record",
 		"recordingFinishing": "Finishing...",
 		"recordingIdle": "Idle",
 		"recordingNoCamera": "No camera uses this source, so no pose track is written.",
 		"recordingNoProject": "No project is loaded.",
+		"recordingPackFailed": "Packing the capture failed. See the log.",
 		"recordingSavedFmt": "Saved %s (%s)",
 		"recordingSourceNotStreaming": "The source delivered no frames.",
 		"recordingStatusFmt": "Recording %02d:%02d, %d frames, %d dropped",
@@ -1160,7 +1165,14 @@
 		"recordingWriteFailed": "Writing the take failed. See the log.",
 		"recordingWriterFailed": "No video writer could open the movie. See the log.",
 		"return": "戻る",
-		"stop": "Stop"
+		"startCapture": "Start Capture",
+		"stepMarkerImage": "Place the origin marker in view, then take the marker image.",
+		"stepPlateImage": "Remove the marker, then take the clean plate.",
+		"stepReadyToRecord": "Record when ready.",
+		"stop": "Stop",
+		"takeMarkerImage": "Take Marker Image",
+		"takePlateImage": "Take Plate Image",
+		"trackCameraNeedsPose": "Track Camera needs a camera on this source whose pose comes from a tracking mount or a frame-coupled source."
 	},
 	"vrTrackingRecenter": {
 		"begin": "開始",

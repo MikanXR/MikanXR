@@ -10,6 +10,7 @@
 #include "MonoLensCalibration/AppStage_MonoLensCalibration.h"
 #include "MainMenu/AppStage_MainMenu.h"
 #include "App.h"
+#include "CaptureFlow.h"
 #include "LocText.h"
 #include "MikanTextRenderer.h"
 #include "MainWindow.h"
@@ -55,6 +56,10 @@ const char* recorderErrorKey(eVideoRecorderError error)
 		return "videoSourceSettings.recordingWriterFailed";
 	case eVideoRecorderError::writeFailed:
 		return "videoSourceSettings.recordingWriteFailed";
+	case eVideoRecorderError::packFailed:
+		return "videoSourceSettings.recordingPackFailed";
+	case eVideoRecorderError::trackCameraNeedsPose:
+		return "videoSourceSettings.trackCameraNeedsPose";
 	default:
 		return nullptr;
 	}
@@ -64,12 +69,64 @@ const char* recorderStateName(eVideoRecorderState state)
 {
 	switch (state)
 	{
+	case eVideoRecorderState::waiting:
+		return "waiting";
 	case eVideoRecorderState::recording:
 		return "recording";
 	case eVideoRecorderState::finishing:
 		return "finishing";
+	case eVideoRecorderState::packing:
+		return "packing";
 	default:
 		return "idle";
+	}
+}
+
+const char* captureKindLabelKey(eCaptureKind kind)
+{
+	switch (kind)
+	{
+	case eCaptureKind::stillphoto:
+		return "videoSourceSettings.kindStillPhoto";
+	case eCaptureKind::stillcamera:
+		return "videoSourceSettings.kindStillCamera";
+	case eCaptureKind::trackcamera:
+		return "videoSourceSettings.kindTrackCamera";
+	default:
+		return nullptr;
+	}
+}
+
+// The prompt above the primary button, and the button's label, per step
+const char* captureStepPromptKey(eCaptureFlowStep step)
+{
+	switch (step)
+	{
+	case eCaptureFlowStep::markerImage:
+		return "videoSourceSettings.stepMarkerImage";
+	case eCaptureFlowStep::plateImage:
+		return "videoSourceSettings.stepPlateImage";
+	case eCaptureFlowStep::readyToRecord:
+		return "videoSourceSettings.stepReadyToRecord";
+	default:
+		return nullptr;
+	}
+}
+
+const char* captureStepActionKey(eCaptureFlowStep step)
+{
+	switch (step)
+	{
+	case eCaptureFlowStep::markerImage:
+		return "videoSourceSettings.takeMarkerImage";
+	case eCaptureFlowStep::plateImage:
+		return "videoSourceSettings.takePlateImage";
+	case eCaptureFlowStep::readyToRecord:
+		return "videoSourceSettings.record";
+	case eCaptureFlowStep::recording:
+		return "videoSourceSettings.stop";
+	default:
+		return nullptr;
 	}
 }
 } // namespace
@@ -239,14 +296,13 @@ void AppStage_VideoSourceSettings::onGui()
 		guiPanel->onGui();
 }
 
-bool AppStage_VideoSourceSettings::takeMarkerArmed()
+float AppStage_VideoSourceSettings::getFallbackFps() const
 {
-	const bool bMarker= m_bMarkerArmed;
-	m_bMarkerArmed= false;
-	return bMarker;
+	return m_videoBufferView ? m_videoBufferView->getFPS() : 0.f;
 }
 
-// Record, Stop, Capture Image, the marker toggle, and a status line. The
+// The kind selector and Start Capture while no flow runs, otherwise the step
+// prompt, its primary button, and Cancel, with a status line under either. The
 // recorder is main-thread state and onGui runs before update() in the same
 // tick, so the buttons act directly.
 void AppStage_VideoSourceSettings::drawRecordingGui()
@@ -254,31 +310,12 @@ void AppStage_VideoSourceSettings::drawRecordingGui()
 	if (!m_recorder)
 		return;
 
-	const VideoRecorderStatus& status= m_recorder->getStatus();
-	const bool bIdle= (status.state == eVideoRecorderState::idle);
-
-	if (status.state == eVideoRecorderState::recording)
-	{
-		if (ImGui::Button(locLabel("videoSourceSettings.stop")))
-			m_recorder->stopRecording();
-	}
+	if (m_recorder->isFlowActive())
+		drawCaptureFlow();
 	else
-	{
-		ImGui::BeginDisabled(!bIdle);
-		if (ImGui::Button(locLabel("videoSourceSettings.record")))
-			m_recorder->startRecording(takeMarkerArmed(), m_videoBufferView ? m_videoBufferView->getFPS() : 0.f);
-		ImGui::EndDisabled();
-	}
+		drawCaptureKindSelector();
 
-	ImGui::SameLine();
-	ImGui::BeginDisabled(!bIdle);
-	if (ImGui::Button(locLabel("videoSourceSettings.captureImage")))
-		m_recorder->captureImage(takeMarkerArmed());
-	ImGui::EndDisabled();
-
-	ImGui::SameLine();
-	ImGui::Checkbox(locLabel("videoSourceSettings.markerReference"), &m_bMarkerArmed);
-
+	const VideoRecorderStatus& status= m_recorder->getStatus();
 	switch (status.state)
 	{
 	case eVideoRecorderState::recording:
@@ -291,24 +328,27 @@ void AppStage_VideoSourceSettings::drawRecordingGui()
 	case eVideoRecorderState::finishing:
 		ImGui::TextUnformatted(locText("videoSourceSettings.recordingFinishing"));
 		break;
+	case eVideoRecorderState::packing:
+		ImGui::TextUnformatted(locText("videoSourceSettings.packing"));
+		break;
 	default:
 		if (status.lastError != eVideoRecorderError::none)
 		{
-			ImGui::TextUnformatted(locText(recorderErrorKey(status.lastError)));
+			ImGui::TextWrapped("%s", locText(recorderErrorKey(status.lastError)));
 		}
-		else if (!status.lastStoredPath.empty())
+		else if (status.state == eVideoRecorderState::idle && !status.lastStoredPath.empty())
 		{
 			ImGui::Text(locText("videoSourceSettings.recordingSavedFmt"), status.lastStoredPath.c_str(),
 						status.backendName.c_str());
 		}
-		else
+		else if (status.state == eVideoRecorderState::idle)
 		{
 			ImGui::TextUnformatted(locText("videoSourceSettings.recordingIdle"));
 		}
 		break;
 	}
 
-	if (!bIdle || !status.lastStoredPath.empty())
+	if (status.state != eVideoRecorderState::idle || !status.lastStoredPath.empty())
 	{
 		if (const char* skipKey= poseTrackSkipReasonKey(status.poseTrackSkipReason))
 		{
@@ -317,6 +357,61 @@ void AppStage_VideoSourceSettings::drawRecordingGui()
 	}
 
 	ImGui::Separator();
+}
+
+void AppStage_VideoSourceSettings::drawCaptureKindSelector()
+{
+	const bool bCanTrack= m_recorder->canRecordTrackCamera();
+	if (!bCanTrack && m_selectedKind == eCaptureKind::trackcamera)
+		m_selectedKind= eCaptureKind::stillphoto;
+
+	if (ImGui::BeginCombo(locLabel("videoSourceSettings.captureKind"), locText(captureKindLabelKey(m_selectedKind))))
+	{
+		for (int index= 0; index < (int)eCaptureKind::COUNT; ++index)
+		{
+			const eCaptureKind kind= (eCaptureKind)index;
+			const bool bDisabled= kind == eCaptureKind::trackcamera && !bCanTrack;
+			ImGui::BeginDisabled(bDisabled);
+			if (ImGui::Selectable(locText(captureKindLabelKey(kind)), kind == m_selectedKind))
+				m_selectedKind= kind;
+			ImGui::EndDisabled();
+		}
+		ImGui::EndCombo();
+	}
+	if (!bCanTrack)
+	{
+		ImGui::TextWrapped("%s", locText("videoSourceSettings.trackCameraNeedsPose"));
+	}
+
+	if (ImGui::Button(locLabel("videoSourceSettings.startCapture")))
+		m_recorder->startCapture(m_selectedKind, getFallbackFps());
+}
+
+void AppStage_VideoSourceSettings::drawCaptureFlow()
+{
+	const VideoRecorderStatus& status= m_recorder->getStatus();
+
+	ImGui::TextUnformatted(locText(captureKindLabelKey(status.kind)));
+	if (const char* promptKey= captureStepPromptKey(status.step))
+	{
+		ImGui::TextWrapped("%s", locText(promptKey));
+	}
+
+	if (const char* actionKey= captureStepActionKey(status.step))
+	{
+		// Stop is the one action taken while a job runs
+		const bool bStopping= status.step == eCaptureFlowStep::recording;
+		ImGui::BeginDisabled(bStopping ? status.state != eVideoRecorderState::recording : m_recorder->isBusy());
+		if (ImGui::Button(locLabel(actionKey)))
+			m_recorder->advanceCapture();
+		ImGui::EndDisabled();
+		ImGui::SameLine();
+	}
+
+	ImGui::BeginDisabled(status.state == eVideoRecorderState::packing);
+	if (ImGui::Button(locLabel("videoSourceSettings.cancelCapture")))
+		m_recorder->cancelCapture();
+	ImGui::EndDisabled();
 }
 
 void AppStage_VideoSourceSettings::render(IMkViewportPtr targetViewport)
@@ -350,53 +445,57 @@ bool AppStage_VideoSourceSettings::handleRemoteControlCommand(const std::string&
 	{
 		return handleReturnRequest(outResults);
 	}
-	else if (command == "record_start")
+	else if (command == "capture_start")
 	{
-		return handleRecordStart(parameters, outResults);
+		return handleCaptureStart(parameters, outResults);
 	}
-	else if (command == "record_stop")
+	else if (command == "capture_advance")
 	{
-		return handleRecordStop(outResults);
+		return handleCaptureAdvance(outResults);
 	}
-	else if (command == "capture_image")
+	else if (command == "capture_cancel")
 	{
-		return handleCaptureImage(parameters, outResults);
+		return handleCaptureCancel(outResults);
 	}
-	else if (command == "get_recording_state")
+	else if (command == "get_capture_state")
 	{
-		return handleGetRecordingState(outResults);
+		return handleGetCaptureState(outResults);
 	}
 
 	return AppStage::handleRemoteControlCommand(command, parameters, outResults);
 }
 
-bool AppStage_VideoSourceSettings::handleRecordStart(const std::vector<std::string>& parameters,
-													 std::vector<std::string>& outResults)
+bool AppStage_VideoSourceSettings::handleCaptureStart(const std::vector<std::string>& parameters,
+													  std::vector<std::string>& outResults)
 {
-	const bool bMarker= !parameters.empty() && parameters[0] == "marker";
-	const bool bStarted=
-		m_recorder && m_recorder->startRecording(bMarker, m_videoBufferView ? m_videoBufferView->getFPS() : 0.f);
+	const eCaptureKind kind=
+		parameters.empty() ? eCaptureKind::INVALID : CaptureKindUtils::kindFromString(parameters[0]);
+	if (kind == eCaptureKind::INVALID)
+	{
+		outResults.push_back("usage: capture_start <stillphoto|stillcamera|trackcamera>");
+		return true;
+	}
+
+	const bool bStarted= m_recorder && m_recorder->startCapture(kind, getFallbackFps());
 	outResults.push_back(bStarted ? IRemoteControllable::k_success : IRemoteControllable::k_failure);
 	return true;
 }
 
-bool AppStage_VideoSourceSettings::handleRecordStop(std::vector<std::string>& outResults)
+bool AppStage_VideoSourceSettings::handleCaptureAdvance(std::vector<std::string>& outResults)
 {
-	const bool bStopped= m_recorder && m_recorder->stopRecording();
-	outResults.push_back(bStopped ? IRemoteControllable::k_success : IRemoteControllable::k_failure);
+	const bool bAdvanced= m_recorder && m_recorder->advanceCapture();
+	outResults.push_back(bAdvanced ? IRemoteControllable::k_success : IRemoteControllable::k_failure);
 	return true;
 }
 
-bool AppStage_VideoSourceSettings::handleCaptureImage(const std::vector<std::string>& parameters,
-													  std::vector<std::string>& outResults)
+bool AppStage_VideoSourceSettings::handleCaptureCancel(std::vector<std::string>& outResults)
 {
-	const bool bMarker= !parameters.empty() && parameters[0] == "marker";
-	const bool bCapturing= m_recorder && m_recorder->captureImage(bMarker);
-	outResults.push_back(bCapturing ? IRemoteControllable::k_success : IRemoteControllable::k_failure);
+	const bool bCancelled= m_recorder && m_recorder->cancelCapture();
+	outResults.push_back(bCancelled ? IRemoteControllable::k_success : IRemoteControllable::k_failure);
 	return true;
 }
 
-bool AppStage_VideoSourceSettings::handleGetRecordingState(std::vector<std::string>& outResults)
+bool AppStage_VideoSourceSettings::handleGetCaptureState(std::vector<std::string>& outResults)
 {
 	if (!m_recorder)
 	{
@@ -405,6 +504,9 @@ bool AppStage_VideoSourceSettings::handleGetRecordingState(std::vector<std::stri
 	}
 
 	const VideoRecorderStatus& status= m_recorder->getStatus();
+	const char* kindName= CaptureKindUtils::kindToString(status.kind);
+	outResults.push_back(std::string("kind ") + (kindName[0] != '\0' ? kindName : "-"));
+	outResults.push_back(std::string("step ") + CaptureFlowUtils::stepToString(status.step));
 	outResults.push_back(std::string("state ") + recorderStateName(status.state));
 	outResults.push_back("frames " + std::to_string(status.framesWritten));
 	outResults.push_back("dropped " + std::to_string(status.framesDropped));
@@ -415,6 +517,7 @@ bool AppStage_VideoSourceSettings::handleGetRecordingState(std::vector<std::stri
 	outResults.push_back(std::string("backend ") + (status.backendName.empty() ? "-" : status.backendName));
 	const char* errorKey= recorderErrorKey(status.lastError);
 	outResults.push_back(std::string("error ") + (errorKey ? errorKey : "-"));
+	outResults.push_back(std::string("can_track_camera ") + (m_recorder->canRecordTrackCamera() ? "yes" : "no"));
 	return true;
 }
 

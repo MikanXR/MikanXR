@@ -5455,13 +5455,33 @@ msgid "Camera %.1ffps"
 msgstr ""
 
 #. Section: videoSourceSettings
-msgctxt "videoSourceSettings.captureImage"
-msgid "Capture Image"
+msgctxt "videoSourceSettings.cancelCapture"
+msgid "Cancel"
 msgstr ""
 
 #. Section: videoSourceSettings
-msgctxt "videoSourceSettings.markerReference"
-msgid "Marker reference"
+msgctxt "videoSourceSettings.captureKind"
+msgid "Capture kind"
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.kindStillCamera"
+msgid "Still Camera"
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.kindStillPhoto"
+msgid "Still Photo"
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.kindTrackCamera"
+msgid "Track Camera"
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.packing"
+msgid "Packing the capture..."
 msgstr ""
 
 #. Section: videoSourceSettings
@@ -5487,6 +5507,11 @@ msgstr ""
 #. Section: videoSourceSettings
 msgctxt "videoSourceSettings.recordingNoProject"
 msgid "No project is loaded."
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.recordingPackFailed"
+msgid "Packing the capture failed. See the log."
 msgstr ""
 
 #. Section: videoSourceSettings
@@ -5532,8 +5557,43 @@ msgid "Return"
 msgstr ""
 
 #. Section: videoSourceSettings
+msgctxt "videoSourceSettings.startCapture"
+msgid "Start Capture"
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.stepMarkerImage"
+msgid "Place the origin marker in view, then take the marker image."
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.stepPlateImage"
+msgid "Remove the marker, then take the clean plate."
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.stepReadyToRecord"
+msgid "Record when ready."
+msgstr ""
+
+#. Section: videoSourceSettings
 msgctxt "videoSourceSettings.stop"
 msgid "Stop"
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.takeMarkerImage"
+msgid "Take Marker Image"
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.takePlateImage"
+msgid "Take Plate Image"
+msgstr ""
+
+#. Section: videoSourceSettings
+msgctxt "videoSourceSettings.trackCameraNeedsPose"
+msgid "Track Camera needs a camera on this source whose pose comes from a tracking mount or a frame-coupled source."
 msgstr ""
 
 #. Section: vrTrackingRecenter

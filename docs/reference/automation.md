@@ -55,12 +55,13 @@ Stage transitions land on the frame after the command that requested them, so a 
 
 Reach the stage with `function invoke CameraObjectSystem <cameraId> align_camera`, which is what the editor's own Align Camera button calls.
 
-`VideoSourceSettings` records takes from the source it was opened on ([videosources.md](./videosources.md)):
+`VideoSourceSettings` records captures from the source it was opened on through the guided flow of a kind ([videosources.md](./videosources.md)):
 
 - `get_video_source_component_id` replies the source's component id
-- `record_start [marker]` starts a movie, `record_stop` finishes it
-- `capture_image [marker]` writes the next frame as a still
-- `get_recording_state` replies `state`, `frames`, `dropped`, `last` (the stored path of the last file written), `sidecar`, `sidecar_skip`, `backend`, and `error` lines
+- `capture_start <stillphoto|stillcamera|trackcamera>` begins a flow, failing for `trackcamera` when no camera on the source has a tracked pose
+- `capture_advance` takes the current step's primary action: the marker image, the plate image, start recording, or stop recording. It fails while a shot is still being written, so poll `get_capture_state` for `state waiting` between steps.
+- `capture_cancel` drops the flow and its working directory
+- `get_capture_state` replies `kind`, `step` (`idle`, `marker_image`, `plate_image`, `ready_to_record`, `recording`, `packing`), `state` (`idle`, `waiting`, `recording`, `finishing`, `packing`), `frames`, `dropped`, `last` (the stored path of the last capture written), `sidecar`, `sidecar_skip`, `backend`, `error`, and `can_track_camera` lines
 - `return` pops the stage
 
 Reach it with `function invoke <VideoSourceSystem> <componentId> show_video_source_settings`, since `app push VideoSourceSettings` gives the stage no source.
