@@ -28,6 +28,7 @@
 #include "HttpServerTests.h"
 #include "LegacyContentMigrationTests.h"
 #include "LightEnvironmentPersistenceTests.h"
+#include "LegacyTakeMigrationTests.h"
 #include "LocalizationTests.h"
 #include "MaterialCompilerTests.h"
 
@@ -94,6 +95,7 @@ bool run_all_editor_unit_tests()
 	success&= run_legacy_content_migration_tests();
 	success&= run_light_environment_persistence_tests();
 	success&= run_localization_unit_tests();
+	success&= run_legacy_take_migration_tests();
 	success&= run_material_compiler_tests();
 	success&= run_model_geometry_payload_tests();
 

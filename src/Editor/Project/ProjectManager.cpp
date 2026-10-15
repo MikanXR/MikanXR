@@ -21,6 +21,7 @@
 #include "ProjectManager.h"
 #include "ProjectAssetCatalog.h"
 #include "LegacyContentMigration.h"
+#include "LegacyTakeMigration.h"
 #include "SceneObjectSystem.h"
 #include "ScriptObjectSystem.h"
 #include "SpoutTextureSourceSystem.h"
@@ -341,6 +342,9 @@ bool ProjectManager::loadProject(const std::string& projectFilePath)
 	// extensions is moved onto the current layout before its file is read
 	LegacyContentMigration::migrateProject(projectDir, projectFilePath);
 	ensureAssetFolders(projectDir);
+	// Loose takes recorded before captures existed are packed once, after the
+	// captures folder exists to receive them
+	LegacyTakeMigration::migrateProject(projectDir, projectFilePath);
 
 	// create an empty project config
 	m_projectConfig= createEmptyProjectConfig();

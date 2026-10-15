@@ -134,7 +134,7 @@ Subdirectories (each is a source group, not a separate target):
 
 - `OpenCV`: `OpenCVManager`, `DeepNeuralNetwork` (OpenCV DNN), OpenCV math glue.
 
-- `Project`: `ProjectManager`, `ProjectConfig` (persisted project state).
+- `Project`: `ProjectManager`, `ProjectConfig` (persisted project state), and the on-load migrations `LegacyContentMigration` (graph and material layout) and `LegacyTakeMigration` (loose takes into captures, see [videosources.md](./videosources.md)), plus `Test/`.
 
 - `Renderer` builds editor viewport rendering on top of `MikanRenderer`: `MikanCamera`, line renderer, model resource manager, shader cache.
 
