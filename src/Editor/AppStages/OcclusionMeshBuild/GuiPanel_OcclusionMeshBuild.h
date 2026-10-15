@@ -30,6 +30,8 @@ public:
 	void setReplacePoseTrack(bool bEnabled) { m_bReplacePoseTrack= bEnabled; }
 	float getPathRadius() const { return m_pathRadius; }
 	void setPathRadius(float radius) { m_pathRadius= radius; }
+	bool getTexture() const { return m_bTexture; }
+	void setTexture(bool bEnabled) { m_bTexture= bEnabled; }
 
 	void setTakeSummary(int frameCount, int depthWidth, int depthHeight, float durationSeconds)
 	{
@@ -78,6 +80,7 @@ private:
 	bool m_bFrameToModel= true;
 	bool m_bReplacePoseTrack= true;
 	float m_pathRadius= 2.f;
+	bool m_bTexture= true;
 
 	int m_takeFrameCount= 0;
 	int m_takeDepthWidth= 0;

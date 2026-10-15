@@ -26,17 +26,22 @@ PinholeIntrinsics scaleIntrinsics(const PinholeIntrinsics& intrinsics, int fromW
 // A triangle mesh with one position and one normal per vertex. Positions are
 // metres in the space the producer names, normals point out of the surface,
 // and every triangle is wound counter-clockwise about its outward normal.
+// Texcoords are V-up (the OBJ convention) and present only once the mesh has
+// been textured.
 struct TriangleMesh
 {
 	std::vector<glm::vec3> vertices;
 	std::vector<glm::vec3> normals;
+	std::vector<glm::vec2> texCoords;
 	std::vector<uint32_t> indices;
 
 	size_t getTriangleCount() const { return indices.size() / 3; }
+	bool hasTexCoords() const { return !vertices.empty() && texCoords.size() == vertices.size(); }
 	void clear()
 	{
 		vertices.clear();
 		normals.clear();
+		texCoords.clear();
 		indices.clear();
 	}
 };

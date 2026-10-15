@@ -136,14 +136,14 @@ Both capture pipelines have a headless entry point that runs the same C++ code t
 ```
 MikanCmd.exe -estimateLighting -image=<path> [-fov=<degrees>] [-seed=<n>] [-dump=<dir>] [-cpu]
 MikanCmd.exe -depthMesh -image=<path> -fov=<degrees> [-obj=<path>] [-stride=<n>] [-maxDepth=<metres>] [-cpu]
-MikanCmd.exe -occlusionMesh -take=<take.trackcamera> [-glb=<path>] [-refinedTrack=<path>] [-voxel=<metres>] [-stride=<n>] [-noRegistration] [-pathRadius=<metres>]
+MikanCmd.exe -occlusionMesh -take=<take.trackcamera> [-glb=<path>] [-refinedTrack=<path>] [-voxel=<metres>] [-stride=<n>] [-noRegistration] [-pathRadius=<metres>] [-noTexture] [-textureViews=<n>]
 ```
 
 - `-estimateLighting` prints the recovered spherical harmonic environment plus its confidence numbers; `-dump=<dir>` also writes the raw model outputs as float TIFFs and the three reconstruction views the capture panel shows.
 
 - `-depthMesh` prints the mesh statistics and writes the OBJ (plus the source frame as a sibling `.png` for the projected texture).
 
-- `-occlusionMesh` fuses a `trackcamera` capture's LiDAR depth members into an occlusion mesh in the take's ARKit world space, writes it as a glTF binary, and writes the refined pose track beside the capture unless `-noRegistration` keeps the recorded poses. `-voxel` sets the voxel size with a truncation of four voxels; `-stride` is the keyframe stride (default 3), and `-pathRadius` trims the mesh to that many metres of the camera path (default 2, 0 for none). See [occlusion-mesh.md](./occlusion-mesh.md).
+- `-occlusionMesh` fuses a `trackcamera` capture's LiDAR depth members into an occlusion mesh in the take's ARKit world space, writes it as a glTF binary with its texture atlas as a sibling `.png`, and writes the refined pose track beside the capture unless `-noRegistration` keeps the recorded poses. `-voxel` sets the voxel size with a truncation of four voxels, `-stride` is the keyframe stride (default 3), `-pathRadius` trims the mesh to that many metres of the camera path (default 2, 0 for none), `-noTexture` skips the projected texture, and `-textureViews` is how many video frames it projects (default 16). See [occlusion-mesh.md](./occlusion-mesh.md).
 
 - `-cpu` forces the CPU execution provider instead of DirectML. Both commands take `-models=<dir>` / `-mogeModels=<dir>` to point at a model directory explicitly; an override is used exactly as given rather than searched past, and either command stops with a message naming `-fetchModels` when a model it needs is not installed.
 

@@ -1,16 +1,20 @@
 #pragma once
 
 #include "FrameToModelRegistration.h"
+#include "MeshTexturing.h"
 #include "ReconstructionTypes.h"
 #include "TsdfVolume.h"
 
 #include "glm/ext/matrix_float4x4.hpp"
 #include "glm/ext/vector_int3.hpp"
 
+#include <opencv2/core.hpp>
+
 #include <string>
 #include <vector>
 
 class DepthTrackReader;
+class MovieDecoder;
 class PoseTrack;
 
 enum class eOcclusionMeshBuildPhase : int
@@ -21,6 +25,7 @@ enum class eOcclusionMeshBuildPhase : int
 	integrating,
 	extracting,
 	cleaning,
+	texturing,
 	complete,
 };
 
@@ -30,7 +35,8 @@ class IOcclusionMeshBuildObserver
 public:
 	virtual ~IOcclusionMeshBuildObserver() {}
 	virtual bool isCancelRequested() const= 0;
-	// done and total are frames during integration, 0 elsewhere
+	// done and total are frames during integration and views during
+	// texturing, 0 elsewhere
 	virtual void onProgress(eOcclusionMeshBuildPhase phase, int done, int total)= 0;
 };
 
@@ -49,6 +55,11 @@ struct OcclusionMeshBuildSettings
 	// trimmed at extraction, 0 for no trim. The grid itself is never trimmed,
 	// so the registration keeps the far walls as constraints.
 	float cameraPathRadius= 2.f;
+	// Projected texture from the take's video, when build is given a decoder
+	bool bTexture= true;
+	int textureViews= 16;      // fused keyframes spread over the sweep that become atlas tiles
+	int textureTileWidth= 640; // pixels, the tile height follows the frame's aspect
+	MeshTexturingSettings texturing;
 };
 
 struct OcclusionMeshBuildStats
@@ -63,6 +74,12 @@ struct OcclusionMeshBuildStats
 	int trianglesRaw= 0;
 	int trianglesClean= 0;
 	int trianglesRemovedAsIslands= 0;
+	// Texturing, zero when it did not run
+	int textureViews= 0;        // views decoded from the take
+	int textureViewsUsed= 0;    // views at least one triangle took
+	int trianglesUntextured= 0; // triangles no view saw
+	int atlasWidth= 0;
+	int atlasHeight= 0;
 	// Frame-to-model registration, zero when it did not run
 	int registrationsAccepted= 0;
 	int registrationsRejected= 0;
@@ -81,8 +98,14 @@ struct OcclusionMeshBuildResult
 	bool bSucceeded= false;
 	bool bCancelled= false;
 	std::string failureReason;
-	// In the take's ARKit world space
+	// In the take's ARKit world space, with texcoords into atlas when it was
+	// textured
 	TriangleMesh mesh;
+	// CV_8UC3 BGR, empty unless the mesh was textured. Written beside the
+	// model under the model's own stem, which is where the clients look.
+	cv::Mat atlas;
+	// Track indices of the keyframes that were fused, in time order
+	std::vector<size_t> fusedKeyframes;
 	// One refined camera-to-world per frame of the take, indexed by the
 	// frame's file index, in the pose track's own camera convention. Empty
 	// unless registration ran.
@@ -105,7 +128,21 @@ public:
 	static glm::mat4 toOpenCvCameraToWorld(const glm::mat4& recordedCameraToWorld);
 
 	// reader must be open with the track's declared depth size and record
-	// count. observer may be null.
+	// count. observer may be null. colourDecoder, when given and open on the
+	// take's movie with settings.bTexture set, textures the mesh from the
+	// take's video after cleanup; without one the mesh comes out untextured.
 	static bool build(const PoseTrack& track, DepthTrackReader& reader, const OcclusionMeshBuildSettings& settings,
-					  IOcclusionMeshBuildObserver* observer, OcclusionMeshBuildResult& outResult);
+					  IOcclusionMeshBuildObserver* observer, OcclusionMeshBuildResult& outResult,
+					  MovieDecoder* colourDecoder= nullptr);
+
+	// The views the texturing projects from: up to maxViews of the fused
+	// keyframes, chosen greedily by how many of the result's triangles each
+	// adds to the coverage under the texturing rules, each at its refined
+	// pose when registration ran, with its depth record and its colour frame
+	// decoded by time and shrunk to tileWidth. A keyframe whose colour frame
+	// the decoder cannot land on is skipped. Returns the views collected.
+	static int collectTextureViews(const PoseTrack& track, DepthTrackReader& reader, MovieDecoder& decoder,
+								   const OcclusionMeshBuildResult& result, const MeshTexturingSettings& texturing,
+								   int maxViews, int tileWidth, IOcclusionMeshBuildObserver* observer,
+								   std::vector<TextureView>& outViews);
 };

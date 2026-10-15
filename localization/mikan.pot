@@ -3381,6 +3381,12 @@ msgid "Opening the depth tracks..."
 msgstr ""
 
 #. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.phaseTexturingFmt"
+msgid "Projecting video frame %d of %d"
+msgstr ""
+
+#. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.poseTrackMissing"
 msgid "The capture's pose track override could not be loaded."
 msgstr ""
@@ -3463,6 +3469,27 @@ msgstr ""
 #, c-format
 msgctxt "occlusionMeshBuild.takeSummaryFmt"
 msgid "Take: %d frames, depth %dx%d, %.1f s"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.texture"
+msgid "Project video onto the mesh"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.textureHelp"
+msgid "A handful of the take's frames are projected onto the mesh as a rough colour, written beside the model as a png."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.textureOff"
+msgid "The mesh is untextured."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.textureSummaryFmt"
+msgid "Textured from %d of %d video frames into a %dx%d atlas, %d triangles unseen."
 msgstr ""
 
 #. Section: occlusionMeshBuild

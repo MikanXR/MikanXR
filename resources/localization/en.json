@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1130,
-		"translatedCount": 1130,
-		"reviewedCount": 1130
+		"stringCount": 1135,
+		"translatedCount": 1135,
+		"reviewedCount": 1135
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -720,6 +720,7 @@
 		"phaseExtracting": "Extracting the surface...",
 		"phaseIntegratingFmt": "Fusing frame %d of %d",
 		"phaseLoadingTake": "Opening the depth tracks...",
+		"phaseTexturingFmt": "Projecting video frame %d of %d",
 		"poseTrackMissing": "The capture's pose track override could not be loaded.",
 		"poseTrackReplacedNote": "The video source now plays the take with the refined poses.",
 		"presetRoom": "Room (1.5 cm voxels)",
@@ -736,6 +737,10 @@
 		"stencilCreateFailed": "Failed to create the stencil.",
 		"stencilCreatedFmt": "Created occlusion mesh stencil '%s' under the active scene.",
 		"takeSummaryFmt": "Take: %d frames, depth %dx%d, %.1f s",
+		"texture": "Project video onto the mesh",
+		"textureHelp": "A handful of the take's frames are projected onto the mesh as a rough colour, written beside the model as a png.",
+		"textureOff": "The mesh is untextured.",
+		"textureSummaryFmt": "Textured from %d of %d video frames into a %dx%d atlas, %d triangles unseen.",
 		"trimSummaryFmt": "%.1f million voxels trimmed beyond the camera path.",
 		"voxelPreset": "Grid",
 		"working": "Working..."

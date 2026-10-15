@@ -199,6 +199,7 @@ int MeshCleanup::removeUnreferencedVertices(TriangleMesh& mesh)
 {
 	const size_t vertexCount= mesh.vertices.size();
 	const bool bHasNormals= mesh.normals.size() == vertexCount;
+	const bool bHasTexCoords= mesh.texCoords.size() == vertexCount;
 
 	std::vector<uint8_t> referenced(vertexCount, 0);
 	for (const uint32_t index : mesh.indices)
@@ -220,6 +221,10 @@ int MeshCleanup::removeUnreferencedVertices(TriangleMesh& mesh)
 		{
 			mesh.normals[writeIndex]= mesh.normals[vertex];
 		}
+		if (bHasTexCoords)
+		{
+			mesh.texCoords[writeIndex]= mesh.texCoords[vertex];
+		}
 		++writeIndex;
 	}
 
@@ -231,6 +236,10 @@ int MeshCleanup::removeUnreferencedVertices(TriangleMesh& mesh)
 	if (bHasNormals)
 	{
 		mesh.normals.resize(writeIndex);
+	}
+	if (bHasTexCoords)
+	{
+		mesh.texCoords.resize(writeIndex);
 	}
 	for (uint32_t& index : mesh.indices)
 	{

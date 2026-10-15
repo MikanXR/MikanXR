@@ -20,6 +20,7 @@
 #include "MikanCamera.h"
 #include "MikanViewport.h"
 #include "ModalMessageBox/ModalDialog_MessageBox.h"
+#include "MovieDecoder.h"
 #include "ModelStencilComponent.h"
 #include "ModelStencilSystem.h"
 #include "PathUtils.h"
@@ -32,6 +33,8 @@
 #include "TransformComponent.h"
 
 #include "glm/glm.hpp"
+
+#include <opencv2/imgcodecs.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -160,7 +163,8 @@ bool AppStage_OcclusionMeshBuild::tryEnterBuild(AppStage* fromAppStage, FileVide
 
 	const CaptureArchiveMember* depthMember= capture.findMember(eCaptureMemberRole::depth);
 	const CaptureArchiveMember* confidenceMember= capture.findMember(eCaptureMemberRole::confidence);
-	if (!track.hasDepthTrack() || depthMember == nullptr || confidenceMember == nullptr)
+	const CaptureArchiveMember* movieMember= capture.findMember(eCaptureMemberRole::movie);
+	if (!track.hasDepthTrack() || depthMember == nullptr || confidenceMember == nullptr || movieMember == nullptr)
 	{
 		ModalDialog_MessageBox::showMessageBox(fromAppStage, locText("occlusionMeshBuild.noDepthTrack"));
 		return false;
@@ -183,7 +187,8 @@ bool AppStage_OcclusionMeshBuild::tryEnterBuild(AppStage* fromAppStage, FileVide
 	}
 
 	auto* buildStage= ownerWindow->pushAppStageOfType<AppStage_OcclusionMeshBuild>();
-	buildStage->setSourceVideoSource(videoSource, camera, stage, track, mediaPath, *depthMember, *confidenceMember);
+	buildStage->setSourceVideoSource(videoSource, camera, stage, track, mediaPath, *depthMember, *confidenceMember,
+									 *movieMember);
 	return true;
 }
 
@@ -191,7 +196,8 @@ void AppStage_OcclusionMeshBuild::setSourceVideoSource(FileVideoSourceComponentP
 													   CameraComponentPtr camera, StageComponentConstPtr stage,
 													   const PoseTrack& track, const std::filesystem::path& capturePath,
 													   const CaptureArchiveMember& depthMember,
-													   const CaptureArchiveMember& confidenceMember)
+													   const CaptureArchiveMember& confidenceMember,
+													   const CaptureArchiveMember& movieMember)
 {
 	m_videoSource= videoSource;
 	m_camera= camera;
@@ -200,6 +206,7 @@ void AppStage_OcclusionMeshBuild::setSourceVideoSource(FileVideoSourceComponentP
 	m_capturePath= capturePath;
 	m_depthMember= depthMember;
 	m_confidenceMember= confidenceMember;
+	m_movieMember= movieMember;
 }
 
 void AppStage_OcclusionMeshBuild::enter()
@@ -257,6 +264,7 @@ OcclusionMeshBuildSettings AppStage_OcclusionMeshBuild::gatherSettings() const
 	settings.keyframeStride= std::max(m_buildPanel->getKeyframeStride(), 1);
 	settings.bFrameToModel= m_buildPanel->getFrameToModel();
 	settings.cameraPathRadius= std::max(m_buildPanel->getPathRadius(), 0.f);
+	settings.bTexture= m_buildPanel->getTexture();
 	return settings;
 }
 
@@ -312,6 +320,7 @@ void AppStage_OcclusionMeshBuild::onBuildEvent()
 	request.capturePath= m_capturePath;
 	request.depthMember= m_depthMember;
 	request.confidenceMember= m_confidenceMember;
+	request.movieMember= m_movieMember;
 	request.settings= gatherSettings();
 
 	m_bCancelRequested= false;
@@ -405,8 +414,19 @@ void AppStage_OcclusionMeshBuild::runBuildRequest(const BuildRequest& request, B
 		return;
 	}
 
+	// The movie plays in place inside the capture, decoded here on the worker
+	// with no GL in sight. A movie that will not open costs the texture, not
+	// the mesh.
+	MovieDecoder decoder;
+	if (request.settings.bTexture
+		&& !decoder.openMovieUrl(Capture::makeSubfileUrl(request.capturePath, request.movieMember)))
+	{
+		MIKAN_LOG_WARNING("AppStage_OcclusionMeshBuild") << "The take's movie could not be opened for texturing";
+	}
+
 	BuildObserver observer(this);
-	OcclusionMeshBuilder::build(track, reader, request.settings, &observer, outOutput.result);
+	OcclusionMeshBuilder::build(track, reader, request.settings, &observer, outOutput.result,
+								decoder.isOpen() ? &decoder : nullptr);
 }
 
 void AppStage_OcclusionMeshBuild::consumeBuildOutput()
@@ -478,8 +498,25 @@ bool AppStage_OcclusionMeshBuild::createStencilFromMesh()
 	std::filesystem::create_directories(modelsDirectory);
 	const std::filesystem::path meshPath= modelsDirectory / (std::string(stencilName) + ".glb");
 
-	if (!GlbMeshWriter::write(meshPath, stencilName, m_result.mesh.vertices, m_result.mesh.normals, {},
-							  m_result.mesh.indices))
+	// The atlas goes beside the model under the model's own stem, which is
+	// where the model's material and a client's placement texture both look.
+	// Written before the glb so the reference never dangles.
+	std::string textureFileName;
+	if (m_result.mesh.hasTexCoords() && !m_result.atlas.empty())
+	{
+		textureFileName= std::string(stencilName) + ".png";
+		const std::filesystem::path texturePath= modelsDirectory / textureFileName;
+		if (!cv::imwrite(texturePath.string(), m_result.atlas))
+		{
+			MIKAN_LOG_WARNING("AppStage_OcclusionMeshBuild")
+				<< "Failed to write the atlas " << texturePath.string() << ", the stencil will be untextured";
+			textureFileName.clear();
+		}
+	}
+
+	if (!GlbMeshWriter::write(meshPath, stencilName, m_result.mesh.vertices, m_result.mesh.normals,
+							  textureFileName.empty() ? std::vector<glm::vec2>() : m_result.mesh.texCoords,
+							  m_result.mesh.indices, textureFileName))
 	{
 		m_buildPanel->setFailureReason(locFormat("occlusionMeshBuild.meshWriteFailedFmt", meshPath.string().c_str()));
 		setMenuState(eOcclusionMeshBuildMenuState::failed);
@@ -665,7 +702,7 @@ bool AppStage_OcclusionMeshBuild::handleRemoteControlCommand(const std::string& 
 		if (parameters.size() != 2)
 		{
 			outResults.push_back("usage: set_option "
-								 "<voxel_preset|keyframe_stride|frame_to_model|replace_pose_track|path_radius> "
+								 "<voxel_preset|keyframe_stride|frame_to_model|replace_pose_track|path_radius|texture> "
 								 "<value>");
 			return false;
 		}
@@ -724,6 +761,11 @@ bool AppStage_OcclusionMeshBuild::handleRemoteControlCommand(const std::string& 
 			m_buildPanel->setPathRadius(radius);
 			return true;
 		}
+		else if (option == "texture" && OcclusionMeshBuildStage::parseBool(value, bFlag))
+		{
+			m_buildPanel->setTexture(bFlag);
+			return true;
+		}
 
 		outResults.push_back("unknown option or value: " + option + " " + value);
 		return false;
@@ -767,6 +809,10 @@ bool AppStage_OcclusionMeshBuild::handleRemoteControlCommand(const std::string& 
 		outResults.push_back("final_correction_mm " + std::to_string(stats.finalCorrectionMm));
 		outResults.push_back("final_correction_deg " + std::to_string(stats.finalCorrectionDeg));
 		outResults.push_back("voxels_clipped " + std::to_string(stats.voxelsClipped));
+		outResults.push_back("texture_views " + std::to_string(stats.textureViewsUsed) + " "
+							 + std::to_string(stats.textureViews));
+		outResults.push_back("triangles_untextured " + std::to_string(stats.trianglesUntextured));
+		outResults.push_back("atlas " + std::to_string(stats.atlasWidth) + " " + std::to_string(stats.atlasHeight));
 		outResults.push_back("seconds " + std::to_string(stats.totalSeconds));
 		return true;
 	}

@@ -5,6 +5,8 @@
 #include "FrameToModelRegistration.h"
 #include "Logger.h"
 #include "MeshCleanup.h"
+#include "MeshTexturing.h"
+#include "MovieDecoder.h"
 #include "PoseTrack.h"
 #include "SmallMotion.h"
 #include "TsdfVolume.h"
@@ -12,15 +14,24 @@
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/gtc/matrix_inverse.hpp"
 
+#include <opencv2/imgproc.hpp>
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <limits>
 #include <map>
 
 namespace OcclusionMeshBuilderInternal
 {
 using Clock= std::chrono::steady_clock;
+
+// A long take is thinned to this many texture view candidates
+constexpr size_t k_maxTextureCandidates= 256;
+// Frames read past a seek before a keyframe's colour frame is given up on,
+// enough for a seek that lands on the keyframe before it at any sane GOP
+constexpr int k_maxDecodeReadForward= 300;
 
 float secondsSince(const Clock::time_point& start)
 {
@@ -133,7 +144,7 @@ glm::mat4 OcclusionMeshBuilder::toOpenCvCameraToWorld(const glm::mat4& recordedC
 
 bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reader,
 								 const OcclusionMeshBuildSettings& settings, IOcclusionMeshBuildObserver* observer,
-								 OcclusionMeshBuildResult& outResult)
+								 OcclusionMeshBuildResult& outResult, MovieDecoder* colourDecoder)
 {
 	using namespace OcclusionMeshBuilderInternal;
 
@@ -266,6 +277,7 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 
 		volume.integrate(depth, weight, intrinsics, cameraToWorld);
 		++stats.framesIntegrated;
+		outResult.fusedKeyframes.push_back(keyframes[keyframeIndex]);
 		pathPositions.push_back(glm::vec3(cameraToWorld[3]));
 		delta= cameraToWorld * glm::inverse(recordedCameraToWorld);
 		corrections[frame.fileIndex]= delta;
@@ -368,6 +380,46 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 		return false;
 	}
 
+	// Texturing runs on the cleaned mesh, after the island pass has settled
+	// which triangles there are to colour. A take whose video cannot be read
+	// still yields the mesh.
+	if (settings.bTexture && colourDecoder != nullptr)
+	{
+		if (isCancelled(observer))
+		{
+			outResult.bCancelled= true;
+			return false;
+		}
+
+		std::vector<TextureView> views;
+		stats.textureViews= collectTextureViews(track, reader, *colourDecoder, outResult, settings.texturing,
+												settings.textureViews, settings.textureTileWidth, observer, views);
+		if (isCancelled(observer))
+		{
+			outResult.bCancelled= true;
+			return false;
+		}
+
+		MeshTexturingStats texturingStats;
+		if (stats.textureViews > 0
+			&& MeshTexturing::textureMesh(outResult.mesh, views, settings.texturing, outResult.mesh, outResult.atlas,
+										  &texturingStats))
+		{
+			stats.textureViewsUsed= texturingStats.viewsUsed;
+			stats.trianglesUntextured= texturingStats.trianglesUntextured;
+			stats.atlasWidth= texturingStats.atlasWidth;
+			stats.atlasHeight= texturingStats.atlasHeight;
+		}
+		else
+		{
+			MIKAN_LOG_WARNING("OcclusionMeshBuilder::build") << "No colour frame of the take could be used, the mesh "
+																"is untextured";
+			outResult.mesh.texCoords.clear();
+			outResult.atlas.release();
+			stats.textureViews= 0;
+		}
+	}
+
 	stats.totalSeconds= secondsSince(startTime);
 	reportProgress(observer, eOcclusionMeshBuildPhase::complete, 0, 0);
 
@@ -377,8 +429,181 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 		<< " voxels trimmed) in " << stats.totalSeconds << " s"
 		<< (settings.bFrameToModel ? ", registration " + std::to_string(stats.registrationsAccepted) + " accepted / "
 										 + std::to_string(stats.registrationsRejected) + " rejected"
+								   : std::string())
+		<< (stats.textureViews > 0 ? ", textured from " + std::to_string(stats.textureViewsUsed) + " of "
+										 + std::to_string(stats.textureViews) + " views"
 								   : std::string());
 
 	outResult.bSucceeded= true;
 	return true;
+}
+
+int OcclusionMeshBuilder::collectTextureViews(const PoseTrack& track, DepthTrackReader& reader, MovieDecoder& decoder,
+											  const OcclusionMeshBuildResult& result,
+											  const MeshTexturingSettings& texturing, int maxViews, int tileWidth,
+											  IOcclusionMeshBuildObserver* observer, std::vector<TextureView>& outViews)
+{
+	using namespace OcclusionMeshBuilderInternal;
+
+	outViews.clear();
+	if (!decoder.isOpen() || result.fusedKeyframes.empty() || result.mesh.getTriangleCount() == 0 || maxViews <= 0
+		|| tileWidth <= 0)
+	{
+		return 0;
+	}
+	if (track.getImageWidth() <= 0 || track.getImageHeight() <= 0)
+		return 0;
+
+	const size_t triangleCount= result.mesh.getTriangleCount();
+
+	// Every fused keyframe is a candidate, scored by the triangles it sees
+	// from its pose and depth alone, so the costly colour decode is paid
+	// only for the views chosen. A long take is thinned to a few hundred
+	// candidates.
+	const size_t fusedCount= result.fusedKeyframes.size();
+	const size_t candidateStride=
+		std::max<size_t>(1, (fusedCount + k_maxTextureCandidates - 1) / k_maxTextureCandidates);
+	struct Candidate
+	{
+		size_t trackIndex= 0;
+		TextureView view; // pose, depth intrinsics, and depth only
+		std::vector<uint8_t> seen;
+		size_t seenCount= 0;
+	};
+	std::vector<Candidate> candidates;
+	candidates.reserve(fusedCount / candidateStride + 1);
+
+	cv::Mat depth, confidence;
+	for (size_t fusedIndex= 0; fusedIndex < fusedCount; fusedIndex+= candidateStride)
+	{
+		if (isCancelled(observer))
+			return 0;
+		reportProgress(observer, eOcclusionMeshBuildPhase::texturing, (int)(fusedIndex / candidateStride),
+					   (int)(fusedCount / candidateStride + 1 + (size_t)maxViews));
+
+		const size_t trackIndex= result.fusedKeyframes[fusedIndex];
+		const PoseTrackFrame& frame= track.getFrame(trackIndex);
+		if (!reader.readRecord(frame.fileIndex, depth, confidence))
+			continue;
+
+		Candidate candidate;
+		candidate.trackIndex= trackIndex;
+		const glm::mat4& recordedCameraToWorld=
+			result.bHasRefinedPoses && frame.fileIndex < result.refinedCameraToWorld.size()
+				? result.refinedCameraToWorld[frame.fileIndex]
+				: frame.cameraToWorld;
+		candidate.view.cameraToWorld= toOpenCvCameraToWorld(recordedCameraToWorld);
+		candidate.view.depthIntrinsics= frameDepthIntrinsics(track, frame);
+		candidate.view.depth= depth.clone();
+		MeshTexturing::markSeenTriangles(result.mesh, candidate.view, texturing, candidate.seen);
+		candidate.seenCount= (size_t)std::count(candidate.seen.begin(), candidate.seen.end(), (uint8_t)1);
+		if (candidate.seenCount > 0)
+			candidates.push_back(std::move(candidate));
+	}
+	if (candidates.empty())
+		return 0;
+
+	// Greedy coverage: each pick is the candidate that sees the most
+	// triangles nothing picked yet sees, until nothing is gained
+	std::vector<uint8_t> covered(triangleCount, 0);
+	std::vector<size_t> chosen;
+	std::vector<uint8_t> taken(candidates.size(), 0);
+	while ((int)chosen.size() < maxViews)
+	{
+		size_t bestCandidate= candidates.size();
+		size_t bestGain= 0;
+		for (size_t candidateIndex= 0; candidateIndex < candidates.size(); ++candidateIndex)
+		{
+			if (taken[candidateIndex] || candidates[candidateIndex].seenCount <= bestGain)
+				continue;
+
+			const std::vector<uint8_t>& seen= candidates[candidateIndex].seen;
+			size_t gain= 0;
+			for (size_t triangle= 0; triangle < triangleCount; ++triangle)
+			{
+				if (seen[triangle] && !covered[triangle])
+					++gain;
+			}
+			if (gain > bestGain)
+			{
+				bestGain= gain;
+				bestCandidate= candidateIndex;
+			}
+		}
+		if (bestCandidate == candidates.size())
+			break;
+
+		taken[bestCandidate]= 1;
+		chosen.push_back(bestCandidate);
+		const std::vector<uint8_t>& seen= candidates[bestCandidate].seen;
+		for (size_t triangle= 0; triangle < triangleCount; ++triangle)
+			covered[triangle]|= seen[triangle];
+	}
+
+	// Decoded in time order so the seeks only ever move forward. A decoded
+	// frame belongs to a keyframe when its presentation time is within half
+	// a frame period of the keyframe's; seek lands on the first frame at or
+	// after the time it is given, or on the keyframe before it with some
+	// backends, so the read runs forward until the keyframe's own arrives.
+	std::sort(chosen.begin(), chosen.end(),
+			  [&](size_t a, size_t b) { return candidates[a].trackIndex < candidates[b].trackIndex; });
+	const int64_t framePeriodUs= track.getMedianFramePeriodUs();
+	const int64_t toleranceUs= framePeriodUs > 0 ? framePeriodUs / 2 : 1000;
+	const int tileHeight=
+		std::max(1, (int)std::lround((double)tileWidth * track.getImageHeight() / track.getImageWidth()));
+
+	cv::Mat frameBgr;
+	for (size_t chosenIndex= 0; chosenIndex < chosen.size(); ++chosenIndex)
+	{
+		if (isCancelled(observer))
+			return (int)outViews.size();
+		reportProgress(observer, eOcclusionMeshBuildPhase::texturing,
+					   (int)(fusedCount / candidateStride + 1 + chosenIndex),
+					   (int)(fusedCount / candidateStride + 1 + (size_t)maxViews));
+
+		Candidate& candidate= candidates[chosen[chosenIndex]];
+		const PoseTrackFrame& frame= track.getFrame(candidate.trackIndex);
+		// A seek that lands past the keyframe (the backend rounds to the
+		// frame after, at times) is retried from a second earlier
+		int64_t ptsUs= 0;
+		bool bLanded= false;
+		for (int seekAttempt= 0; seekAttempt < 2 && !bLanded; ++seekAttempt)
+		{
+			const double seekSeconds= (double)frame.timeUs * 1e-6 - (seekAttempt == 0 ? 0.0 : 1.0);
+			if (!decoder.seek(std::max(seekSeconds, 0.0)))
+				break;
+			for (int readAttempt= 0; readAttempt < k_maxDecodeReadForward; ++readAttempt)
+			{
+				if (!decoder.readNext(frameBgr, ptsUs))
+					break;
+				if (std::llabs(ptsUs - frame.timeUs) <= toleranceUs)
+				{
+					bLanded= true;
+					break;
+				}
+				if (ptsUs > frame.timeUs + toleranceUs)
+					break;
+			}
+		}
+		if (!bLanded || frameBgr.empty())
+		{
+			MIKAN_LOG_WARNING("OcclusionMeshBuilder::collectTextureViews")
+				<< "No colour frame at " << frame.timeUs << " us (file index " << frame.fileIndex
+				<< "), the read stopped at " << ptsUs << " us";
+			continue;
+		}
+
+		TextureView view= std::move(candidate.view);
+		PinholeIntrinsics colour;
+		colour.fx= frame.fx;
+		colour.fy= frame.fy;
+		colour.cx= frame.cx;
+		colour.cy= frame.cy;
+		view.tileIntrinsics=
+			scaleIntrinsics(colour, track.getImageWidth(), track.getImageHeight(), tileWidth, tileHeight);
+		cv::resize(frameBgr, view.tile, cv::Size(tileWidth, tileHeight), 0.0, 0.0, cv::INTER_AREA);
+		outViews.push_back(std::move(view));
+	}
+
+	return (int)outViews.size();
 }

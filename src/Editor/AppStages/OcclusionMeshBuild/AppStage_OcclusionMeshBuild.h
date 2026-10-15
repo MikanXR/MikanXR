@@ -54,6 +54,7 @@ protected:
 		std::filesystem::path capturePath;
 		CaptureArchiveMember depthMember;
 		CaptureArchiveMember confidenceMember;
+		CaptureArchiveMember movieMember; // the colour frames the texturing projects
 		OcclusionMeshBuildSettings settings;
 	};
 
@@ -80,7 +81,7 @@ protected:
 	void setSourceVideoSource(FileVideoSourceComponentPtr videoSource, CameraComponentPtr camera,
 							  StageComponentConstPtr stage, const PoseTrack& track,
 							  const std::filesystem::path& capturePath, const CaptureArchiveMember& depthMember,
-							  const CaptureArchiveMember& confidenceMember);
+							  const CaptureArchiveMember& confidenceMember, const CaptureArchiveMember& movieMember);
 	void setMenuState(eOcclusionMeshBuildMenuState newState);
 	OcclusionMeshBuildSettings gatherSettings() const;
 
@@ -112,6 +113,7 @@ private:
 	std::filesystem::path m_capturePath;
 	CaptureArchiveMember m_depthMember;
 	CaptureArchiveMember m_confidenceMember;
+	CaptureArchiveMember m_movieMember;
 
 	// -- build worker state --
 	std::thread m_workerThread;

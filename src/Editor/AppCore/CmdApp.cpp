@@ -32,6 +32,7 @@
 #include "LightEnvironmentPersistenceTests.h"
 #include "LocalizationTests.h"
 #include "MaterialCompilerTests.h"
+#include "MeshTexturingTests.h"
 
 #include "ModelRepositoryTests.h"
 #include "ModelGeometryPayloadTests.h"
@@ -53,6 +54,7 @@
 #include "Graphs/MaterialNodeGraph.h"
 #include "DepthTrackReader.h"
 #include "GlbMeshWriter.h"
+#include "MovieDecoder.h"
 #include "OcclusionMeshBuilder.h"
 #include "PoseTrack.h"
 #include "Capture.h"
@@ -99,6 +101,7 @@ bool run_all_editor_unit_tests()
 	success&= run_light_environment_persistence_tests();
 	success&= run_localization_unit_tests();
 	success&= run_material_compiler_tests();
+	success&= run_mesh_texturing_unit_tests();
 	success&= run_model_geometry_payload_tests();
 
 	success&= run_model_repository_tests();
@@ -238,11 +241,11 @@ void CmdApp::printUsage() const
 			"               and write it as an OBJ.\n"
 			"  -occlusionMesh -take=<path to take.trackcamera> [-glb=<path>] [-refinedTrack=<path>]\n"
 			"               [-voxel=<metres>] [-stride=<n>] [-noRegistration]\n"
-			"               [-pathRadius=<metres>]\n"
+			"               [-pathRadius=<metres>] [-noTexture] [-textureViews=<n>]\n"
 			"               Fuse a trackcamera capture's LiDAR depth tracks into an occlusion\n"
 			"               mesh in the take's ARKit world space, refining the poses against\n"
-			"               the model and trimmed to the camera path, and write it as a glTF\n"
-			"               binary plus a refined pose track.\n"
+			"               the model, trimmed to the camera path and textured from the video,\n"
+			"               and write it as a glTF binary with its atlas plus a refined pose track.\n"
 			"  -fetchModels [-model=<name>]\n"
 			"               Download the ML capture models into the per-user model\n"
 			"               directory. Without -model every model is fetched. Passing\n"
@@ -669,6 +672,9 @@ public:
 			case eOcclusionMeshBuildPhase::cleaning:
 				fprintf(stdout, "clean  : islands and normals\n");
 				break;
+			case eOcclusionMeshBuildPhase::texturing:
+				fprintf(stdout, "texture: %d video frames\n", total);
+				break;
 			default:
 				break;
 			}
@@ -737,14 +743,26 @@ int CmdApp::buildOcclusionMesh() const
 	settings.keyframeStride= atoi(getCommandLineStringArg("stride", "3").c_str());
 	settings.bFrameToModel= !hasCommandLineFlag("noRegistration");
 	settings.cameraPathRadius= std::max((float)atof(getCommandLineStringArg("pathRadius", "2").c_str()), 0.f);
+	settings.bTexture= !hasCommandLineFlag("noTexture");
+	settings.textureViews= std::max(atoi(getCommandLineStringArg("textureViews", "16").c_str()), 1);
 
-	fprintf(stdout, "take   : %zu frames, depth %dx%d, registration %s, trim %.1f m\n", track.getFrameCount(),
-			track.getDepthWidth(), track.getDepthHeight(), settings.bFrameToModel ? "on" : "off",
-			settings.cameraPathRadius);
+	fprintf(stdout, "take   : %zu frames, depth %dx%d, registration %s, trim %.1f m, texture %s\n",
+			track.getFrameCount(), track.getDepthWidth(), track.getDepthHeight(), settings.bFrameToModel ? "on" : "off",
+			settings.cameraPathRadius, settings.bTexture ? "on" : "off");
+
+	// The movie member plays in place inside the capture; without it the
+	// mesh still comes out, untextured
+	MovieDecoder decoder;
+	const CaptureArchiveMember* movieMember= capture.findMember(eCaptureMemberRole::movie);
+	if (settings.bTexture
+		&& (movieMember == nullptr || !decoder.openMovieUrl(Capture::makeSubfileUrl(mediaPath, *movieMember))))
+	{
+		fprintf(stdout, "warning: the capture's movie could not be opened, the mesh will be untextured\n");
+	}
 
 	CmdAppOcclusionMesh::ConsoleObserver observer;
 	OcclusionMeshBuildResult result;
-	if (!OcclusionMeshBuilder::build(track, reader, settings, &observer, result))
+	if (!OcclusionMeshBuilder::build(track, reader, settings, &observer, result, decoder.isOpen() ? &decoder : nullptr))
 	{
 		fprintf(stdout, "error: %s\n", result.failureReason.c_str());
 		return EXIT_FAILURE;
@@ -756,6 +774,12 @@ int CmdApp::buildOcclusionMesh() const
 			stats.gridDims.y, stats.gridDims.z, stats.voxelSize * 100.f);
 	fprintf(stdout, "frames : %d of %d keyframes fused in %.0f s, %zu voxels trimmed\n", stats.framesIntegrated,
 			stats.keyframes, stats.totalSeconds, stats.voxelsClipped);
+	if (stats.textureViews > 0)
+	{
+		fprintf(stdout, "texture: %d of %d video frames used, %dx%d atlas, %d triangles unseen\n",
+				stats.textureViewsUsed, stats.textureViews, stats.atlasWidth, stats.atlasHeight,
+				stats.trianglesUntextured);
+	}
 	if (result.bHasRefinedPoses)
 	{
 		fprintf(stdout,
@@ -766,14 +790,34 @@ int CmdApp::buildOcclusionMesh() const
 				stats.finalCorrectionDeg);
 	}
 
-	const std::string glbPath= getCommandLineStringArg("glb", "occlusion_mesh.glb");
-	if (!GlbMeshWriter::write(glbPath, "OcclusionMesh", result.mesh.vertices, result.mesh.normals, {},
-							  result.mesh.indices))
+	const std::filesystem::path glbPath= getCommandLineStringArg("glb", "occlusion_mesh.glb");
+
+	// The atlas sits beside the glb under its stem, written first so the
+	// glb's reference never dangles
+	std::string textureFileName;
+	if (result.mesh.hasTexCoords() && !result.atlas.empty())
 	{
-		fprintf(stdout, "error: failed to write '%s'\n", glbPath.c_str());
+		const std::filesystem::path texturePath= glbPath.parent_path() / (glbPath.stem().string() + ".png");
+		if (cv::imwrite(texturePath.string(), result.atlas))
+		{
+			textureFileName= texturePath.filename().string();
+			fprintf(stdout, "wrote  : %s\n", texturePath.string().c_str());
+		}
+		else
+		{
+			fprintf(stdout, "warning: failed to write '%s', the mesh will be untextured\n",
+					texturePath.string().c_str());
+		}
+	}
+
+	if (!GlbMeshWriter::write(glbPath, "OcclusionMesh", result.mesh.vertices, result.mesh.normals,
+							  textureFileName.empty() ? std::vector<glm::vec2>() : result.mesh.texCoords,
+							  result.mesh.indices, textureFileName))
+	{
+		fprintf(stdout, "error: failed to write '%s'\n", glbPath.string().c_str());
 		return EXIT_FAILURE;
 	}
-	fprintf(stdout, "wrote  : %s\n", glbPath.c_str());
+	fprintf(stdout, "wrote  : %s\n", glbPath.string().c_str());
 
 	if (result.bHasRefinedPoses)
 	{
