@@ -9,6 +9,7 @@
 #     lib/                  import libraries for the DLLs those headers export from
 #     bin/                  MikanClientAPI.dll and its runtime dependency closure
 #     bindings/csharp/      MikanClientCSharp.dll and its references (Visual Studio builds only)
+#     bindings/csharp/src/  the C# binding sources, for a host that compiles them itself (Unity)
 #     bindings/typescript/  the compiled @mikanxr/client package (when npm is available)
 #     symbols/              PDBs for the Mikan DLLs in bin/
 #     version.txt
@@ -174,6 +175,15 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 			COMPONENT ClientSDK
 			PATTERN "tests" EXCLUDE)
 	endif()
+
+	# The binding sources ship whatever the generator, since a Unity host compiles them itself
+	# against its own Newtonsoft.Json rather than loading the .NET Framework assembly. The
+	# hand-written runtime, the generated types, and the serializers; not the test project.
+	install(DIRECTORY "${ROOT_DIR}/bindings/csharp/"
+		DESTINATION "${MIKAN_CLIENT_SDK_INSTALL_PATH}/bindings/csharp/src"
+		COMPONENT ClientSDK
+		FILES_MATCHING PATTERN "*.cs"
+		PATTERN "Tests" EXCLUDE)
 
 	# Only defined under a Visual Studio generator
 	if(TARGET MikanClientCSharp)

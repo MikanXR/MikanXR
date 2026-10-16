@@ -169,6 +169,6 @@ Both consumers change in lockstep with parts 1 and 2, and gain the release downl
 
 ---
 
-## Open questions
+## Resolved
 
-- Is the C# assembly loadable by Unity as built (it targets the .NET Framework through the Visual Studio generator)? This is settled when the Unity plugin starts, and it may move the C# build to an SDK-style project.
+- Unity does not load the .NET Framework assembly. The Unity package compiles the binding sources itself, against Unity's own Newtonsoft.Json package, so the SDK tree ships them as `bindings/csharp/src` under the `ClientSDK` component, from every generator. The assembly stays for .NET Framework hosts such as `MikanClientTestCSharp`.

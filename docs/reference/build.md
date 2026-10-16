@@ -141,6 +141,7 @@ Output locations: under the VS generator, executables land in per-target config 
 - `lib/`: the import libraries of `MikanClientAPI`, `MikanClientCore`, and `MikanSerialization`, the DLLs those headers export from
 - `bin/`: `MikanClientAPI.dll` and the DLLs it loads, apart from the system `D3DCOMPILER_47.dll`
 - `bindings/csharp/`: `MikanClientCSharp.dll` and its references, under the Visual Studio generator only
+- `bindings/csharp/src/`: the C# binding sources (the hand-written runtime, `Generated/`, `Serialization/`), under every generator, for a host such as Unity that compiles them against its own Newtonsoft.Json instead of loading the assembly
 - `bindings/typescript/`: `package.json` and the compiled `dist/`, when npm was found
 - `symbols/`: the PDBs of the Mikan DLLs in `bin/`
 - `version.txt`
