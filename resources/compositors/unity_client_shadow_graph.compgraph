@@ -114,6 +114,7 @@
 			"pos":                       [ 805.0, 142.0 ],
 			"texture_source_color_type": "shadowRGBA",
 			"fallback_mode":             "auto",
+			"resolve_alpha_mode":        "none",
 			"texture_source_id":         1065,
 			"vertical_flip":             false
 		},
@@ -148,7 +149,8 @@
 			"pos":                       [ 1061.0, 222.0 ],
 			"texture_source_color_type": "colorRGBA",
 			"fallback_mode":             "auto",
-			"texture_source_id":         1065,
+			"resolve_alpha_mode":        "none",
+			"texture_source_id":         2187,
 			"vertical_flip":             false
 		},
 		{
@@ -175,7 +177,7 @@
 			"pos":             [ 1352.0, 158.0 ],
 			"float_defaults":  {
 				"grainIntensity": 0.0,
-				"time":           190.74681
+				"time":           26.48431
 			},
 			"float2_defaults": { },
 			"float3_defaults": { },
@@ -208,14 +210,19 @@
 			"depth_test": true
 		},
 		{
-			"class_name":             "DepthMaskNode",
-			"id":                     117,
-			"pins_in":                [ 118 ],
-			"pins_out":               [ 119 ],
-			"pos":                    [ 298.0, 174.0 ],
-			"disable_quad_stencils":  false,
-			"disable_box_stencils":   false,
-			"disable_model_stencils": false
+			"class_name":              "DepthMaskNode",
+			"id":                      117,
+			"pins_in":                 [ 118 ],
+			"pins_out":                [ 119 ],
+			"pos":                     [ 298.0, 174.0 ],
+			"disable_quad_stencils":   false,
+			"disable_box_stencils":    false,
+			"disable_model_stencils":  false,
+			"depth_preview_palette":   "grayscale",
+			"depth_preview_curve":     "linear",
+			"depth_preview_gamma":     1.0,
+			"depth_preview_range_min": 0.0,
+			"depth_preview_range_max": 1.0
 		},
 		{
 			"class_name":            "StencilSelectNode",
