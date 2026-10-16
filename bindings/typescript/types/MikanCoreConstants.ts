@@ -44,7 +44,7 @@ export enum MikanCoreResult {
 }
 
 export enum MikanDepthBufferType {
-  NOCOLOR = 0,
+  NODEPTH = 0,
   FLOAT_DEVICE_DEPTH = 1,
   FLOAT_SCENE_DEPTH = 2,
   PACK_DEPTH_RGBA = 3

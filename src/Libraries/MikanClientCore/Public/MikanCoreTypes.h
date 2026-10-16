@@ -93,7 +93,7 @@ enum ENUM(Serialization::CodeGenModule("MikanCoreConstants")) MikanColorBufferTy
 
 enum ENUM(Serialization::CodeGenModule("MikanCoreConstants")) MikanDepthBufferType
 {
-	MikanDepthBuffer_NODEPTH ENUMVALUE_STRING("NOCOLOR"),
+	MikanDepthBuffer_NODEPTH ENUMVALUE_STRING("NODEPTH"),
 	// Raw float non-linear depth values from the z-buffer (in source world units)
 	MikanDepthBuffer_FLOAT_DEVICE_DEPTH ENUMVALUE_STRING("FLOAT_DEVICE_DEPTH"),
 	// Linearized float distance-from-camera values (in source world units)

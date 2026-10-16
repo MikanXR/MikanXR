@@ -13,7 +13,7 @@ export class MikanClientAPIVersion {
 
 export class MikanRenderTargetDescriptor {
   color_buffer_type: MikanColorBufferType = MikanColorBufferType.NOCOLOR;
-  depth_buffer_type: MikanDepthBufferType = MikanDepthBufferType.NOCOLOR;
+  depth_buffer_type: MikanDepthBufferType = MikanDepthBufferType.NODEPTH;
   shadow_buffer_type: MikanShadowBufferType = MikanShadowBufferType.NOSHADOW;
   width: number = 0;
   height: number = 0;
