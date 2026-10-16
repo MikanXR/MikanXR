@@ -543,15 +543,13 @@ void CompositorComponent::stopVideoSourceStreaming()
 {
 	if (m_videoDistortionView)
 	{
-		CameraComponentPtr cameraComponent= getCameraComponent();
-		if (cameraComponent)
+		// Unsubscribe from the source the view was registered with. Resolving it
+		// through the camera again misses when the camera's source changed or the
+		// camera was disposed first, as on project unload.
+		VideoSourceComponentPtr videoSource= m_videoDistortionSource.lock();
+		if (videoSource)
 		{
-			VideoSourceComponentPtr videoSource= cameraComponent->getVideoSourceComponent();
-
-			if (videoSource)
-			{
-				videoSource->stopVideoStream(m_videoDistortionView.get());
-			}
+			videoSource->stopVideoStream(m_videoDistortionView.get());
 		}
 
 		m_videoDistortionSource.reset();

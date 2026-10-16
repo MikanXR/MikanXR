@@ -128,6 +128,14 @@ VideoFrameDistortionView::VideoFrameDistortionView(VideoSourceComponentPtr video
 
 VideoFrameDistortionView::~VideoFrameDistortionView()
 {
+	// The source's receive thread writes into this view by raw pointer, so it must
+	// be unsubscribed before any buffer is freed. This waits out a write in progress
+	// and is a no-op when the owner already unsubscribed.
+	if (m_videoSourceComponent)
+	{
+		m_videoSourceComponent->stopVideoStream(this);
+	}
+
 	// Free any textures in the video frame queue
 	if (m_videoFrameQueue != nullptr)
 	{
