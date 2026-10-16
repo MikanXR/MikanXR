@@ -96,7 +96,8 @@ namespace Mikan
 			// Unbind the render target
 			UnbindGraphicsAPIResource();
 
-			if (_cameraId != -1)
+			// Without a shared texture writer there is nothing to hand the editor
+			if (_cameraId != -1 && mikanAPI.RenderTargetWriter != null)
 			{
                 // Write the color texture, if any, to the shared texture
                 IntPtr colorTexturePtr = GetGraphicsApiColorTexturePtr();
@@ -180,6 +181,12 @@ namespace Mikan
             if (_cameraId == -1)
             {
                 Console.WriteLine("Skipping shared texture allocation for offline camera");
+                return true;
+            }
+
+            if (mikanAPI.RenderTargetWriter == null)
+            {
+                Console.WriteLine("Skipping shared texture allocation: no render target writer on this transport");
                 return true;
             }
 

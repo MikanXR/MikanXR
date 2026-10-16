@@ -1,6 +1,5 @@
 using System;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace MikanXR
 {
@@ -118,6 +117,12 @@ namespace MikanXR
 			float z_far);
 
 		[DllImport("MikanClientCore.dll")]
+		public static extern int Mikan_WriteCameraShadowRenderTargetTexture(
+			IntPtr context,
+			int camera_id,
+			IntPtr shadow_texture);
+
+		[DllImport("MikanClientCore.dll")]
 		public static extern IntPtr Mikan_GetCameraPackDepthTextureResourcePtr(
 			IntPtr context,
 			int camera_id);
@@ -141,8 +146,16 @@ namespace MikanXR
 		public static extern int Mikan_FetchNextEvent(
 			IntPtr context,
 			UIntPtr utf8_buffer_size,
-			[MarshalAs(UnmanagedType.LPUTF8Str)] 
-			StringBuilder out_utf8_buffer,
+			[Out] byte[] out_utf8_buffer,
+			out UIntPtr out_utf8_bytes_written);
+
+		// The same entry point with a null buffer, which reports the size of the next event in
+		// out_utf8_bytes_written without popping it
+		[DllImport("MikanClientCore.dll")]
+		public static extern int Mikan_FetchNextEvent(
+			IntPtr context,
+			UIntPtr utf8_buffer_size,
+			IntPtr out_utf8_buffer,
 			out UIntPtr out_utf8_bytes_written);
 
 		[DllImport("MikanClientCore.dll")]

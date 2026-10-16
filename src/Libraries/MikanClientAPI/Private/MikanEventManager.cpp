@@ -29,17 +29,33 @@ MikanAPIResult MikanEventManager::init(MikanContext context)
 
 MikanAPIResult MikanEventManager::fetchNextEvent(MikanEventPtr& out_event)
 {
-	char utf8Buffer[1024];
 	size_t utf8BytesWritten= 0;
 
 	MikanAPIResult result=
-		(MikanAPIResult)Mikan_FetchNextEvent(m_context, sizeof(utf8Buffer), utf8Buffer, &utf8BytesWritten);
+		(MikanAPIResult)Mikan_FetchNextEvent(m_context, m_eventBuffer.size(), m_eventBuffer.data(), &utf8BytesWritten);
+	if (result == MikanAPIResult::BufferTooSmall)
+	{
+		// A null buffer reports the size of the event at the head of the queue, so one larger
+		// than the buffer is fetched into a buffer grown to fit rather than left wedged there
+		size_t bytesNeeded= 0;
+		result= (MikanAPIResult)Mikan_FetchNextEvent(m_context, 0, nullptr, &bytesNeeded);
+		if (result != MikanAPIResult::Success)
+		{
+			return result;
+		}
+
+		m_eventBuffer.resize(bytesNeeded);
+		result= (MikanAPIResult)Mikan_FetchNextEvent(m_context, m_eventBuffer.size(), m_eventBuffer.data(),
+													 &utf8BytesWritten);
+	}
+
 	if (result == MikanAPIResult::Success)
 	{
-		out_event= parseEventString(utf8Buffer);
+		out_event= parseEventString(m_eventBuffer.data());
 		if (!out_event)
 		{
-			MIKAN_MT_LOG_WARNING("MikanClient::fetchNextEvent()") << "Failed to parse event string: " << utf8Buffer;
+			MIKAN_MT_LOG_WARNING("MikanClient::fetchNextEvent()")
+				<< "Failed to parse event string: " << m_eventBuffer.data();
 			result= MikanAPIResult::MalformedResponse;
 		}
 	}

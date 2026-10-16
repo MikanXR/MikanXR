@@ -2,7 +2,6 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System;
 using Newtonsoft.Json.Linq;
-using System.Runtime.InteropServices;
 using System.Reflection;
 using System.Linq;
 
@@ -10,11 +9,8 @@ namespace MikanXR
 {
 	public class MikanRequestManager
 	{
-		private MikanCoreNative.NativeLogCallback _nativeLogCallback;
-		private MikanCoreNative.NativeTextResponseCallback _nativeTextResponseCallback;
-		private MikanCoreNative.NativeBinaryResponseCallback _nativeBinaryResponseCallback;
-
-		private IntPtr _mikanContext= IntPtr.Zero;
+		private MikanLogCallback _logCallback;
+		private IMikanTransport _transport;
 		private int m_nextRequestID= 0;
 		private Dictionary<string, Type> _responseTypeCache = null;
 
@@ -25,26 +21,17 @@ namespace MikanXR
 		};
 		private Dictionary<int, PendingRequest> _pendingRequests;
 
-		public MikanRequestManager(MikanCoreNative.NativeLogCallback logCallback)
+		public MikanRequestManager(MikanLogCallback logCallback)
 		{
-			_nativeLogCallback = logCallback;
-			_nativeTextResponseCallback = new MikanCoreNative.NativeTextResponseCallback(InternalTextResponseCallback);
-			_nativeBinaryResponseCallback = new MikanCoreNative.NativeBinaryResponseCallback(InternalBinaryResponseCallback);
+			_logCallback = logCallback;
 			_pendingRequests = new Dictionary<int, PendingRequest>();
 			_responseTypeCache = new Dictionary<string, Type>();
 		}
 
-		public MikanAPIResult Initialize(IntPtr mikanContext)
+		public MikanAPIResult Initialize(IMikanTransport transport)
 		{
-			MikanAPIResult result =
-				(MikanAPIResult)MikanCoreNative.Mikan_SetTextResponseCallback(
-					mikanContext, _nativeTextResponseCallback, IntPtr.Zero);
-			if (result != MikanAPIResult.Success)
-			{
-				return result;
-			}
-
-			_mikanContext = mikanContext;
+			_transport = transport;
+			_transport.SetResponseHandlers(InternalTextResponseCallback, InternalBinaryResponseCallback);
 
 			// Build a map from TypeName to MikanResponse Type
 			var eventTypes = from t in Assembly.GetExecutingAssembly().GetTypes()
@@ -132,40 +119,59 @@ namespace MikanXR
 					request, request.GetType());
 
 			// Send the request string to Mikan
-			MikanAPIResult result = 
-				(MikanAPIResult)MikanCoreNative.Mikan_SendRequestJSON(
-					_mikanContext, jsonRequestString);
+			MikanAPIResult result = _transport.SendRequestJson(jsonRequestString);
 
 			// Create a request handler
 			return AddResponseHandler(request.requestId, result);
 		}
 
-		private void InternalTextResponseCallback(int requestId, string utf8ResponseString, IntPtr userData)
+		private void InternalTextResponseCallback(string utf8ResponseString)
 		{
-			PendingRequest pendingRequest = RemovePendingRequest(requestId);
-
-			if (pendingRequest != null)
+			// The request id is read from the message itself rather than handed in beside it, so
+			// a transport only has to deliver the frame. A response that fails to parse still
+			// completes its request, as malformed, rather than leaving it to time out.
+			JObject root;
+			try
 			{
-				MikanResponse response = ParseResponseString(utf8ResponseString);
-
-				if (response == null)
-				{
-					response = new MikanResponse()
-					{
-						requestId = requestId,
-						resultCode = MikanAPIResult.MalformedResponse
-					};
-				}
-
-				pendingRequest.promise.SetResult(response);
+				root = JObject.Parse(utf8ResponseString);
 			}
+			catch (Exception e)
+			{
+				_logCallback(MikanLogLevel.Error, $"Malformed response JSON: {e.Message}");
+				return;
+			}
+
+			if (!root.TryGetValue("requestId", out JToken requestIdElement) || requestIdElement.Type != JTokenType.Integer)
+			{
+				_logCallback(MikanLogLevel.Error, "Response carries no requestId: " + utf8ResponseString);
+				return;
+			}
+
+			int requestId = (int)requestIdElement;
+			PendingRequest pendingRequest = RemovePendingRequest(requestId);
+			if (pendingRequest == null)
+			{
+				_logCallback(MikanLogLevel.Error, $"Invalid pending request id({requestId}) for text response");
+				return;
+			}
+
+			MikanResponse response = ParseResponseString(utf8ResponseString, root);
+			if (response == null)
+			{
+				response = new MikanResponse()
+				{
+					responseTypeName = typeof(MikanResponse).Name,
+					requestId = requestId,
+					resultCode = MikanAPIResult.MalformedResponse
+				};
+			}
+
+			pendingRequest.promise.SetResult(response);
 		}
 
-		private MikanResponse ParseResponseString(string utf8ResponseString)
+		private MikanResponse ParseResponseString(string utf8ResponseString, JObject root)
 		{
 			MikanResponse response = null;
-
-			var root = JObject.Parse(utf8ResponseString);
 
 			// Check if the key "responseType" exists
 			if (root.TryGetValue("responseTypeName", out JToken responseTypeNameElement))
@@ -188,37 +194,33 @@ namespace MikanXR
 						}
 						else
 						{
-							_nativeLogCallback(
-								(int)MikanLogLevel.Error,
+							_logCallback(
+								MikanLogLevel.Error,
 								"Failed to deserialize response object from JSON string: " + utf8ResponseString);
 						}
 					}
 					else
 					{
-						_nativeLogCallback((int)MikanLogLevel.Error,
+						_logCallback(MikanLogLevel.Error,
 							"Unknown response type: " + responseTypeName +
 							" (className: " + responseTypeName + ")");
 					}
 				}
 				else
 				{
-					_nativeLogCallback((int)MikanLogLevel.Error, "responseTypes are not of expected types.");
+					_logCallback(MikanLogLevel.Error, "responseTypes are not of expected types.");
 				}
 			}
 			else
 			{
-				_nativeLogCallback((int)MikanLogLevel.Error, "responseType keys not found.");
+				_logCallback(MikanLogLevel.Error, "responseType keys not found.");
 			}
 
 			return response;
 		}
 
-		private void InternalBinaryResponseCallback(IntPtr buffer, UIntPtr bufferSize, IntPtr userData)
+		private void InternalBinaryResponseCallback(byte[] managedBuffer)
 		{
-			int bufferSizeInt = (int)bufferSize.ToUInt32();
-			byte[] managedBuffer = new byte[bufferSizeInt];
-			Marshal.Copy(buffer, managedBuffer, 0, bufferSizeInt);
-
 			var binaryReader = new BinaryReader(managedBuffer);
 
 			try
@@ -251,12 +253,12 @@ namespace MikanXR
 						}
 						else
 						{
-							_nativeLogCallback((int)MikanLogLevel.Error, "Failed to deserialize response object from byte array");
+							_logCallback(MikanLogLevel.Error, "Failed to deserialize response object from byte array");
 						}
 					}
 					else
 					{
-						_nativeLogCallback((int)MikanLogLevel.Error, "Unknown response type: " + responseTypeName);
+						_logCallback(MikanLogLevel.Error, "Unknown response type: " + responseTypeName);
 					}
 
 					if (response == null)
@@ -273,12 +275,12 @@ namespace MikanXR
 				}
 				else
 				{
-					_nativeLogCallback((int)MikanLogLevel.Error, $"Invalid pending request id({requestId}) for response type {responseTypeName}");
+					_logCallback(MikanLogLevel.Error, $"Invalid pending request id({requestId}) for response type {responseTypeName}");
 				}
 			}
 			catch (Exception e)
 			{
-				_nativeLogCallback((int)MikanLogLevel.Error, $"Malformed binary response: {e.Message}");
+				_logCallback(MikanLogLevel.Error, $"Malformed binary response: {e.Message}");
 			}
 		}
 	}

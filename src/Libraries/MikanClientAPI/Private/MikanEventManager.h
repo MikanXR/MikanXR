@@ -3,6 +3,8 @@
 #include "MikanAPITypes.h"
 #include "MikanTypeFwd.h"
 
+#include <vector>
+
 typedef void* MikanContext;
 
 class MikanEventManager
@@ -18,4 +20,5 @@ protected:
 
 private:
 	MikanContext m_context= nullptr;
+	std::vector<char> m_eventBuffer= std::vector<char>(1024);
 };

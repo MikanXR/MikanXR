@@ -26,10 +26,11 @@
 
 // The layout this file's expectations are written against. A field added, removed or retyped on
 // the C++ side breaks this first, as a reminder that the C# mirror has to move with it.
-static_assert(sizeof(MikanRenderTargetDescriptor) == 32,
-			  "MikanRenderTargetDescriptor changed size. Update MikanRenderTargetDescriptor_Native in "
-			  "bindings/csharp/MikanCoreNative.cs and both conversions in bindings/csharp/MikanRenderTargetAPI.cs "
-			  "to match, then update this assert.");
+static_assert(
+	sizeof(MikanRenderTargetDescriptor) == 32,
+	"MikanRenderTargetDescriptor changed size. Update MikanRenderTargetDescriptor_Native in "
+	"bindings/csharp/MikanCoreNative.cs and both conversions in bindings/csharp/MikanNativeRenderTargetWriter.cs "
+	"to match, then update this assert.");
 
 // Pull the field names, in declaration order, out of a C# struct in a source file. The mirror is
 // a plain sequence of "public <type> <name>;" lines by necessity, since that is all P/Invoke can
@@ -139,7 +140,7 @@ bool csharp_interop_test_render_target_descriptor_mirror()
 	{
 		fprintf(stdout, "      MikanRenderTargetDescriptor_Native in bindings/csharp/MikanCoreNative.cs must list "
 						"every field of MikanRenderTargetDescriptor in the same order, and both conversions in "
-						"bindings/csharp/MikanRenderTargetAPI.cs must copy them.\n");
+						"bindings/csharp/MikanNativeRenderTargetWriter.cs must copy them.\n");
 	}
 
 	UNIT_TEST_COMPLETE()

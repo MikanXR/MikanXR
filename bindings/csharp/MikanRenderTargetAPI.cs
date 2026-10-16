@@ -1,182 +1,91 @@
 ﻿using System;
-using System.Threading.Tasks;
 
 namespace MikanXR
 {
+	// Routes the render target requests between the installed IMikanRenderTargetWriter and the
+	// editor. Allocate and free reach both, since the editor opens and closes its readers on
+	// them; the writes are local to the writer, and publish is the editor's alone.
 	public class MikanRenderTargetAPI
 	{
-		private IntPtr _mikanContext;
-		private MikanRequestManager _requestManager;
+		private readonly MikanRequestManager _requestManager;
+		private IMikanRenderTargetWriter _writer;
 
-		public MikanRenderTargetAPI(MikanRequestManager requestManager)
+		public MikanRenderTargetAPI(MikanRequestManager requestManager, IMikanRenderTargetWriter writer)
 		{
-			_requestManager = requestManager;
+			_requestManager= requestManager;
+			_writer= writer;
 		}
 
-		public void Initialize(IntPtr mikanContext)
+		public IMikanRenderTargetWriter Writer
 		{
-			_mikanContext= mikanContext;
+			get { return _writer; }
+			set { _writer= value; }
 		}
 
-		public MikanAPIResult SetGraphicsDeviceInterface(
-			MikanClientGraphicsApi api,
-			IntPtr graphicsDeviceInterface)
-		{
-			int result = 
-				MikanCoreNative.Mikan_SetGraphicsDeviceInterface(
-					_mikanContext, api, graphicsDeviceInterface);
-			return (MikanAPIResult)result;
-		}
-
-		public MikanAPIResult GetGraphicsDeviceInterface(
-			MikanClientGraphicsApi api,
-			out IntPtr outGraphicsDeviceInterface)
-		{
-			int result =
-				MikanCoreNative.Mikan_GetGraphicsDeviceInterface(
-					_mikanContext, api, out outGraphicsDeviceInterface);
-			return (MikanAPIResult)result;
-		}
-
-		public MikanAPIResult SetGraphicsCommandQueueInterface(
-			MikanClientGraphicsApi api,
-			IntPtr graphicsCommandQueueInterface)
-		{
-			int result =
-				MikanCoreNative.Mikan_SetGraphicsCommandQueueInterface(
-					_mikanContext, api, graphicsCommandQueueInterface);
-			return (MikanAPIResult)result;
-		}
-
-		public MikanAPIResult GetGraphicsCommandQueueInterface(
-			MikanClientGraphicsApi api,
-			out IntPtr outGraphicsCommandQueueInterface)
-		{
-			int result =
-				MikanCoreNative.Mikan_GetGraphicsCommandQueueInterface(
-					_mikanContext, api, out outGraphicsCommandQueueInterface);
-			return (MikanAPIResult)result;
-		}
-
-		public IntPtr GetCameraPackDepthTextureResourcePtr(int cameraId)
-		{
-			return MikanCoreNative.Mikan_GetCameraPackDepthTextureResourcePtr(_mikanContext, cameraId);
-		}
-
+		// Returns an invalid future for a request that is not a render target request, which the
+		// caller then sends over the wire as it would any other
 		public MikanResponseFuture TryProcessRequest(MikanRequest request)
 		{
-			if (request is AllocateCameraRenderTargetTextures)
+			if (request is AllocateCameraRenderTargetTextures allocateRequest)
 			{
-				return RequestAllocateRenderTargetTextures(request);
+				return RequestAllocateRenderTargetTextures(allocateRequest);
 			}
-			else if (request is WriteCameraColorRenderTargetTexture)
+			else if (request is WriteCameraColorRenderTargetTexture writeColorRequest)
 			{
-				return RequestWriteColorRenderTargetTexture(request);
+				return new MikanResponseFuture(
+					_writer != null
+					? _writer.WriteColorRenderTargetTexture(writeColorRequest.camera_id, writeColorRequest.api_color_texture_ptr)
+					: MikanAPIResult.RequestFailed);
 			}
-			else if (request is WriteCameraDepthRenderTargetTexture)
+			else if (request is WriteCameraDepthRenderTargetTexture writeDepthRequest)
 			{
-				return RequestWriteDepthRenderTargetTexture(request);
+				return new MikanResponseFuture(
+					_writer != null
+					? _writer.WriteDepthRenderTargetTexture(
+						writeDepthRequest.camera_id, writeDepthRequest.api_depth_texture_ptr,
+						writeDepthRequest.z_near, writeDepthRequest.z_far)
+					: MikanAPIResult.RequestFailed);
 			}
-			else if (request is PublishCameraRenderTargetTextures) 
+			else if (request is WriteCameraShadowRenderTargetTexture writeShadowRequest)
 			{
-				return RequestPublishRenderTargetTextures(request);
+				return new MikanResponseFuture(
+					_writer != null
+					? _writer.WriteShadowRenderTargetTexture(writeShadowRequest.camera_id, writeShadowRequest.api_shadow_texture_ptr)
+					: MikanAPIResult.RequestFailed);
 			}
-			else if (request is FreeCameraRenderTargetTextures)
+			else if (request is PublishCameraRenderTargetTextures)
 			{
-				return RequestFreeRenderTargetTextures(request);
+				return _requestManager.SendRequest(request);
+			}
+			else if (request is FreeCameraRenderTargetTextures freeRequest)
+			{
+				// Free the local senders first, then tell the editor to drop its readers
+				_writer?.FreeRenderTargetTextures(freeRequest.camera_id);
+
+				return _requestManager.SendRequest(request);
 			}
 
 			return new MikanResponseFuture();
 		}
 
-		private MikanResponseFuture RequestAllocateRenderTargetTextures(MikanRequest request)
+		private MikanResponseFuture RequestAllocateRenderTargetTextures(AllocateCameraRenderTargetTextures allocateRequest)
 		{
-			var allocateRequest = request as AllocateCameraRenderTargetTextures;
-			MikanRenderTargetDescriptor desiredDescriptor= allocateRequest.descriptor;
-			MikanRenderTargetDescriptor_Native desiredDescriptor_Native=
-				new MikanRenderTargetDescriptor_Native() {
-					color_buffer_type= desiredDescriptor.color_buffer_type,
-					depth_buffer_type= desiredDescriptor.depth_buffer_type,
-					shadow_buffer_type= desiredDescriptor.shadow_buffer_type,
-					width= desiredDescriptor.width,
-					height= desiredDescriptor.height,
-					aux_width= desiredDescriptor.aux_width,
-					aux_height= desiredDescriptor.aux_height,
-					graphicsAPI= desiredDescriptor.graphicsAPI
-				};
-
-			MikanAPIResult result =
-				(MikanAPIResult)MikanCoreNative.Mikan_AllocateCameraRenderTargetTextures(
-					_mikanContext, allocateRequest.camera_id, ref desiredDescriptor_Native);
-			if (result == MikanAPIResult.Success)
+			if (_writer == null)
 			{
-				// Actual descriptor might differ from desired descriptor based on render target writer's capabilities
-				MikanRenderTargetDescriptor_Native actualDescriptor_Native;
-				result= (MikanAPIResult)MikanCoreNative.Mikan_GetCameraRenderTargetDescriptor(
-					_mikanContext, allocateRequest.camera_id, out actualDescriptor_Native);
-				if (result == MikanAPIResult.Success)
-				{
-					// Replace the descriptor in the request with the actual descriptor params 
-					// that were used to allocate the render target textures
-					allocateRequest.descriptor =
-						new MikanRenderTargetDescriptor()
-						{
-							color_buffer_type = actualDescriptor_Native.color_buffer_type,
-							depth_buffer_type = actualDescriptor_Native.depth_buffer_type,
-							shadow_buffer_type = actualDescriptor_Native.shadow_buffer_type,
-							width = actualDescriptor_Native.width,
-							height = actualDescriptor_Native.height,
-							aux_width = actualDescriptor_Native.aux_width,
-							aux_height = actualDescriptor_Native.aux_height,
-							graphicsAPI = actualDescriptor_Native.graphicsAPI
-						};
-
-					return _requestManager.SendRequest(allocateRequest);
-				}
+				return _requestManager.AddResponseHandler(-1, MikanAPIResult.RequestFailed);
 			}
 
-			return _requestManager.AddResponseHandler(-1, MikanAPIResult.RequestFailed);
-		}
+			MikanRenderTargetDescriptor descriptor= allocateRequest.descriptor;
+			MikanAPIResult result= _writer.AllocateRenderTargetTextures(allocateRequest.camera_id, ref descriptor);
+			if (result != MikanAPIResult.Success)
+			{
+				return _requestManager.AddResponseHandler(-1, result);
+			}
 
-		private MikanResponseFuture RequestWriteColorRenderTargetTexture(MikanRequest request)
-		{
-			var writeRequest = request as WriteCameraColorRenderTargetTexture;
-			IntPtr apiColorTexturePtr= writeRequest.api_color_texture_ptr;
+			// The editor is told what was actually allocated
+			allocateRequest.descriptor= descriptor;
 
-			MikanAPIResult result =
-				(MikanAPIResult)MikanCoreNative.Mikan_WriteCameraColorRenderTargetTexture(
-					_mikanContext, writeRequest.camera_id, apiColorTexturePtr);
-
-			return new MikanResponseFuture(result);
-		}
-
-		private MikanResponseFuture RequestWriteDepthRenderTargetTexture(MikanRequest request)
-		{
-			var writeRequest = request as WriteCameraDepthRenderTargetTexture;
-			IntPtr apiDepthTexturePtr= writeRequest.api_depth_texture_ptr;
-			float zNear= writeRequest.z_near;
-			float zFar= writeRequest.z_far;
-
-			MikanAPIResult result =
-				(MikanAPIResult)MikanCoreNative.Mikan_WriteCameraDepthRenderTargetTexture(
-					_mikanContext, writeRequest.camera_id, apiDepthTexturePtr, zNear, zFar);
-
-			return new MikanResponseFuture(result);
-		}
-
-		private MikanResponseFuture RequestPublishRenderTargetTextures(MikanRequest request)
-		{
-			return _requestManager.SendRequest(request);
-		}
-
-		private MikanResponseFuture RequestFreeRenderTargetTextures(MikanRequest request)
-		{
-			// Free any locally allocated resources
-			var freeRequest = request as FreeCameraRenderTargetTextures;
-			MikanCoreNative.Mikan_FreeCameraRenderTargetTextures(_mikanContext, freeRequest.camera_id);
-
-			// Tell the server to free the render target resources too
-			return _requestManager.SendRequest(request);
+			return _requestManager.SendRequest(allocateRequest);
 		}
 	}
 }

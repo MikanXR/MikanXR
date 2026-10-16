@@ -7,7 +7,7 @@ namespace Mikan
 		[STAThread]
 		static void Main(string[] args)
 		{
-			using (var app = new TestApp())
+			using (var app = new TestApp(args))
 			{
 				if (app.Initialize())
 				{

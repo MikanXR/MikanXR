@@ -16,10 +16,12 @@ namespace Mikan
 		public MikanAPI MikanAPI => _mikanAPI;
         public bool IsShutdownRequested => _shutdownRequested;
 
-		public TestMikanClient(TestGraphicsContext graphicsContext)
+		public TestMikanClient(TestGraphicsContext graphicsContext, bool useManagedTransport)
 		{
 			_graphicsContext = graphicsContext;
-			_mikanAPI = new MikanAPI();
+			_mikanAPI = useManagedTransport
+				? new MikanAPI(new MikanWebSocketTransport(), null)
+				: new MikanAPI();
 		}
 
 		public bool Initialize(string clientName)
@@ -32,9 +34,11 @@ namespace Mikan
 				return false;
 			}
 
-			if (_mikanAPI.SetGraphicsDeviceInterface(
-				_graphicsContext.GetGraphicsApi(),
-				_graphicsContext.GetGraphicsDeviceInterface()) != MikanAPIResult.Success)
+			// Only a writer that owns the shared texture library wants the device
+			if (_mikanAPI.RenderTargetWriter != null &&
+				_mikanAPI.SetGraphicsDeviceInterface(
+					_graphicsContext.GetGraphicsApi(),
+					_graphicsContext.GetGraphicsDeviceInterface()) != MikanAPIResult.Success)
 			{
 				Console.WriteLine("ERROR: Failed to set graphics device interface");
 				return false;
@@ -188,8 +192,36 @@ namespace Mikan
 						{
 							Console.WriteLine($"INFO:   Component {componentId}: {typedComponentValues.GetType().Name}");
 						}
+
+						// Model geometry comes back as a binary response, the one path a text-only
+						// transport would miss, so every model stencil is asked for its mesh
+						if (typedComponentValues is MikanModelStencilComponentValues)
+						{
+							FetchModelStencilGeometry(componentId);
+						}
 					}
 				}
+			}
+		}
+
+		private void FetchModelStencilGeometry(int stencilId)
+		{
+			var response = _mikanAPI.SendRequest(new GetModelStencilRenderGeometry() { stencilId = stencilId }).FetchResponse();
+			if (response.resultCode == MikanAPIResult.Success &&
+				response is MikanStencilModelRenderGeometryResponse geometryResponse)
+			{
+				int meshCount = geometryResponse.render_geometry.meshes?.Count ?? 0;
+				int vertexCount = 0;
+				for (int meshIndex = 0; meshIndex < meshCount; ++meshIndex)
+				{
+					vertexCount += geometryResponse.render_geometry.meshes[meshIndex].vertices?.Count ?? 0;
+				}
+
+				Console.WriteLine($"INFO:   Model stencil {stencilId} geometry: {meshCount} meshes, {vertexCount} vertices");
+			}
+			else
+			{
+				Console.WriteLine($"ERROR: Model stencil {stencilId} geometry request failed (error_code: {(int)response.resultCode})");
 			}
 		}
 
@@ -222,12 +254,12 @@ namespace Mikan
 			HandleComponentListChanged<MikanMarkerComponentValues>("MarkerObjectSystem", "MarkerComponent");
 			HandleComponentListChanged<MikanSceneComponentValues>("SceneObjectSystem", "SceneComponent");
 			HandleComponentListChanged<MikanStageComponentValues>("StageObjectSystem", "StageComponent");
-			HandleComponentListChanged<MikanQuadStencilComponentValues>("QuadStencilObjectSystem", "QuadStencilComponent");
-			HandleComponentListChanged<MikanBoxStencilComponentValues>("BoxStencilObjectSystem", "BoxStencilComponent");
-			HandleComponentListChanged<MikanModelStencilComponentValues>("ModelStencilObjectSystem", "ModelStencilComponent");
+			HandleComponentListChanged<MikanQuadStencilComponentValues>("QuadStencilSystem", "QuadStencilComponent");
+			HandleComponentListChanged<MikanBoxStencilComponentValues>("BoxStencilSystem", "BoxStencilComponent");
+			HandleComponentListChanged<MikanModelStencilComponentValues>("ModelStencilSystem", "ModelStencilComponent");
 			HandleComponentListChanged<MikanTrackingMountComponentValues>("TrackingMountObjectSystem", "TrackingMountComponent");
-			HandleComponentListChanged<MikanMarkerTrackingVolumeComponentValues>("MarkerTrackingVolumeObjectSystem", "MarkerTrackingVolumeComponent");
-			HandleComponentListChanged<MikanVRTrackingVolumeComponentValues>("VRTrackingVolumeObjectSystem", "VRTrackingVolumeComponent");
+			HandleComponentListChanged<MikanMarkerTrackingVolumeComponentValues>("MarkerTrackingVolumeSystem", "MarkerTrackingVolumeComponent");
+			HandleComponentListChanged<MikanVRTrackingVolumeComponentValues>("VRTrackingVolumeSystem", "VRTrackingVolumeComponent");
 			HandleComponentListChanged<MikanClientTextureSourceValues>("ClientTextureSourceSystem", "ClientTextureSourceComponent");
 			HandleComponentListChanged<MikanSpoutTextureSourceValues>("SpoutTextureSourceSystem", "SpoutTextureSourceComponent");
 			HandleComponentListChanged<MikanNetworkVideoSourceValues>("NetworkVideoSourceSystem", "NetworkVideoSourceComponent");

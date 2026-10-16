@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using Newtonsoft.Json.Linq;
 
 namespace MikanXR
@@ -11,19 +10,19 @@ namespace MikanXR
 	{
 		private static readonly string WEBSOCKET_DISCONNECT_EVENT = "disconnect";
 
-		private MikanCoreNative.NativeLogCallback _nativeLogCallback;
-		private IntPtr _mikanContext = IntPtr.Zero;
+		private MikanLogCallback _logCallback;
+		private IMikanTransport _transport;
 		private Dictionary<string, Type> _eventTypeCache = null;
 
-		public MikanEventManager(MikanCoreNative.NativeLogCallback logCallback)
+		public MikanEventManager(MikanLogCallback logCallback)
 		{
-			_nativeLogCallback= logCallback;
+			_logCallback= logCallback;
 			_eventTypeCache = new Dictionary<string, Type>();
 		}
 
-		public void Initialize(IntPtr mikanContext)
+		public void Initialize(IMikanTransport transport)
 		{
-			_mikanContext = mikanContext;
+			_transport = transport;
 
 			// Build a map from TypeName to MikanEvent Type
 			var eventTypes = from t in Assembly.GetExecutingAssembly().GetTypes()
@@ -39,27 +38,21 @@ namespace MikanXR
 
 		public MikanAPIResult FetchNextEvent(out MikanEvent outEvent)
 		{
-			StringBuilder utf8Buffer = new StringBuilder(1024);
-			UIntPtr utf8BufferSize = (UIntPtr)utf8Buffer.Capacity;
-
 			outEvent= null;
 
-			var result = (MikanAPIResult)MikanCoreNative.Mikan_FetchNextEvent(
-				_mikanContext, utf8BufferSize, utf8Buffer, out UIntPtr utf8BytesWritten);
+			var result = _transport.FetchNextEvent(out string utf8EventString);
 			if (result == MikanAPIResult.Success)
 			{
-				string utf8BufferString = utf8Buffer.ToString();
-				
-				outEvent = parseEventString(utf8BufferString);
+				outEvent = parseEventString(utf8EventString);
 				if (outEvent == null)
 				{
-					_nativeLogCallback((int)MikanLogLevel.Error, 
-						"fetchNextEvent() - failed to parse event string: " + utf8BufferString);
+					_logCallback(MikanLogLevel.Error,
+						"fetchNextEvent() - failed to parse event string: " + utf8EventString);
 					result = MikanAPIResult.MalformedResponse;
 				}
 			}
-			
-			return (MikanAPIResult)result;
+
+			return result;
 		}
 
 		private MikanEvent parseEventString(string utf8ResponseString)
@@ -110,30 +103,30 @@ namespace MikanXR
 							}
 							else
 							{
-								_nativeLogCallback(
-									(int)MikanLogLevel.Error,
+								_logCallback(
+									MikanLogLevel.Error,
 									"Failed to deserialize event object from JSON string: " + utf8ResponseString);
 							}
 						}
 						else
 						{
-							_nativeLogCallback((int)MikanLogLevel.Error,
+							_logCallback(MikanLogLevel.Error,
 								"Unknown event type: " + eventTypeName +
 								" (className: " + eventTypeNameElement + ")");
 						}
 					}
 					else
 					{
-						_nativeLogCallback((int)MikanLogLevel.Error, "eventTypes not of expected types.");
+						_logCallback(MikanLogLevel.Error, "eventTypes not of expected types.");
 					}
 				}
 				else
 				{
-					_nativeLogCallback((int)MikanLogLevel.Error, "eventType keys not found.");
+					_logCallback(MikanLogLevel.Error, "eventType keys not found.");
 				}
 			}
 
 			return mikanEvent;
 		}
-	}	
+	}
 }

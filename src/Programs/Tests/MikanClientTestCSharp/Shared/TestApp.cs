@@ -39,9 +39,22 @@ namespace Mikan
 		public Vector3 CubeOffset => _cubeOffset;
 		public float TimeSeconds => _timeSeconds;
 
-		public TestApp()
+		// --managed runs the client over MikanWebSocketTransport instead of MikanClientCore.dll,
+		// which exercises the managed transport against a live editor. That transport carries
+		// no shared texture writer, so the run renders locally and publishes nothing.
+		private bool _useManagedTransport = false;
+
+		public TestApp(string[] args)
 		{
 			_clock = new Stopwatch();
+
+			foreach (string arg in args)
+			{
+				if (arg == "--managed")
+				{
+					_useManagedTransport = true;
+				}
+			}
 		}
 
 		public bool Initialize()
@@ -63,7 +76,7 @@ namespace Mikan
 				}
 
 				// Create Mikan client
-				_mikanClient = new TestMikanClient(_graphicsContext);
+				_mikanClient = new TestMikanClient(_graphicsContext, _useManagedTransport);
 				if (!_mikanClient.Initialize(CLIENT_NAME))
 				{
 					Console.WriteLine("ERROR: Failed to initialize Mikan client");
