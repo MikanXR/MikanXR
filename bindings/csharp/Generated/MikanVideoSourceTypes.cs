@@ -43,6 +43,9 @@ namespace MikanXR
 
 	public class MikanARKitVideoSourceValues : MikanVideoSourceValues
 	{
+		public const string k_componentClassName = "ARKitVideoSourceComponent";
+		public const string k_ownerSystemName = "ARKitVideoObjectSystem";
+
 		[MikanFieldOrder(0)] public int base_port;
 	};
 
@@ -71,6 +74,9 @@ namespace MikanXR
 
 	public class MikanFileVideoSourceValues : MikanVideoSourceValues
 	{
+		public const string k_componentClassName = "FileVideoSourceComponent";
+		public const string k_ownerSystemName = "FileVideoSourceSystem";
+
 		[MikanFieldOrder(0)] public string media_path;
 		[MikanFieldOrder(1)] public string pose_track_path;
 		[MikanFieldOrder(2)] public bool loop;
@@ -88,6 +94,9 @@ namespace MikanXR
 
 	public class MikanNetworkVideoSourceValues : MikanVideoSourceValues
 	{
+		public const string k_componentClassName = "NetworkVideoSourceComponent";
+		public const string k_ownerSystemName = "NetworkVideoObjectSystem";
+
 		[MikanFieldOrder(0)] public string protocol;
 		[MikanFieldOrder(1)] public string ip_address;
 		[MikanFieldOrder(2)] public int port;
@@ -113,11 +122,16 @@ namespace MikanXR
 
 	public class MikanUSBVideoSourceSystemValues : MikanSystemValues
 	{
+		public const string k_systemName = "USBVideoSourceSystem";
+
 		[MikanFieldOrder(0)] public Dictionary<string, string> usb_device_map;
 	};
 
 	public class MikanUSBVideoSourceValues : MikanVideoSourceValues
 	{
+		public const string k_componentClassName = "USBVideoSourceComponent";
+		public const string k_ownerSystemName = "USBVideoSourceSystem";
+
 		[MikanFieldOrder(0)] public string current_friendly_name;
 		[MikanFieldOrder(1)] public string current_device_path;
 		[MikanFieldOrder(2)] public string video_mode;

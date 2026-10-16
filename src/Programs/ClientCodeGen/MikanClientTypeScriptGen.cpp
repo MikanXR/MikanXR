@@ -721,6 +721,19 @@ public:
 		const std::string& className= structRef.getName();
 		moduleFile << "export class " << className << classInheritance << " {" << std::endl;
 
+		// The names the property requests address this struct's component class or object
+		// system by, so a client never spells them
+		if (auto const* names= structRef.getProperty<Serialization::ClientComponentNames>())
+		{
+			moduleFile << "  static readonly k_componentClassName = '" << names->getComponentClassName() << "';"
+					   << std::endl;
+			moduleFile << "  static readonly k_ownerSystemName = '" << names->getOwnerSystemName() << "';" << std::endl;
+		}
+		if (auto const* systemName= structRef.getProperty<Serialization::ClientSystemName>())
+		{
+			moduleFile << "  static readonly k_systemName = '" << systemName->getSystemName() << "';" << std::endl;
+		}
+
 		// The emitted __serializationMetadata array is the binary wire order the client runtime
 		// reads back, so it has to be the serializer's
 		const Serialization::FieldList sortedFields= Serialization::getStructFieldsInWireOrder(&structRef);

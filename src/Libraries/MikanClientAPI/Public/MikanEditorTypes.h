@@ -10,7 +10,8 @@
 #include "MikanEditorTypes.rfkh.h"
 #endif
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanEditorTypes")) MikanEditorSystemValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanEditorTypes"),
+						Serialization::ClientSystemName("EditorObjectSystem")) MikanEditorSystemValues
 	: public MikanSystemValues
 {
 	static const char* k_systemName;

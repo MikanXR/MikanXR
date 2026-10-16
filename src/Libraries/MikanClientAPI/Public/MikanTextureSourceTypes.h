@@ -17,7 +17,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanTextureSourceTypes"))
 #endif // MIKANAPI_REFLECTION_ENABLED
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanTextureSourceTypes")) MikanClientTextureSourceValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanTextureSourceTypes"),
+						Serialization::ClientComponentNames("ClientTextureSourceComponent",
+															"ClientTextureSourceSystem")) MikanClientTextureSourceValues
 	: public MikanTextureSourceValues
 {
 	static const char* k_componentClassName;
@@ -30,7 +32,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanTextureSourceTypes"))
 #endif // MIKANAPI_REFLECTION_ENABLED
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanTextureSourceTypes")) MikanSpoutTextureSourceValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanTextureSourceTypes"),
+						Serialization::ClientComponentNames("SpoutTextureSourceComponent",
+															"SpoutTextureSourceSystem")) MikanSpoutTextureSourceValues
 	: public MikanTextureSourceValues
 {
 	static const char* k_componentClassName;
@@ -43,7 +47,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanTextureSourceTypes"))
 #endif // MIKANAPI_REFLECTION_ENABLED
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanTextureSourceTypes")) MikanCEFTextureSourceValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanTextureSourceTypes"),
+						Serialization::ClientComponentNames("CEFTextureSourceComponent",
+															"CEFTextureSourceSystem")) MikanCEFTextureSourceValues
 	: public MikanTextureSourceValues
 {
 	static const char* k_componentClassName;

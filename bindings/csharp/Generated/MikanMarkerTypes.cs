@@ -15,12 +15,17 @@ namespace MikanXR
 
 	public class MikanMarkerComponentValues : MikanComponentValues
 	{
+		public const string k_componentClassName = "MarkerComponent";
+		public const string k_ownerSystemName = "MarkerObjectSystem";
+
 		[MikanFieldOrder(0)] public int aruco_id;
 		[MikanFieldOrder(1)] public float length_mm;
 	};
 
 	public class MikanMarkerSystemValues : MikanSystemValues
 	{
+		public const string k_systemName = "MarkerObjectSystem";
+
 		[MikanFieldOrder(0)] public List<int> aruco_id_list;
 		[MikanFieldOrder(1)] public MikanMarkerDictionaryType aruco_dictionary_type;
 		[MikanFieldOrder(2)] public int charuco_rows;

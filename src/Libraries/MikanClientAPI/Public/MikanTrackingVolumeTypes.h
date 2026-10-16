@@ -46,7 +46,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanTrackingVolumeTypes")
 };
 
 struct MIKAN_API
-	STRUCT(Serialization::CodeGenModule("MikanTrackingVolumeTypes")) MikanMarkerTrackingVolumeComponentValues
+	STRUCT(Serialization::CodeGenModule("MikanTrackingVolumeTypes"),
+		   Serialization::ClientComponentNames("MarkerTrackingVolumeComponent",
+											   "MarkerTrackingVolumeSystem")) MikanMarkerTrackingVolumeComponentValues
 	: public MikanTrackingVolumeComponentValues
 {
 	static const char* k_componentClassName;
@@ -57,7 +59,9 @@ struct MIKAN_API
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanTrackingVolumeTypes")) MikanVRTrackingVolumeComponentValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanTrackingVolumeTypes"),
+						Serialization::ClientComponentNames(
+							"VRTrackingVolumeComponent", "VRTrackingVolumeSystem")) MikanVRTrackingVolumeComponentValues
 	: public MikanTrackingVolumeComponentValues
 {
 	static const char* k_componentClassName;

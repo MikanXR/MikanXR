@@ -57,6 +57,8 @@ export class MikanVideoSourceValues extends MikanComponentValues {
 }
 
 export class MikanARKitVideoSourceValues extends MikanVideoSourceValues {
+  static readonly k_componentClassName = 'ARKitVideoSourceComponent';
+  static readonly k_ownerSystemName = 'ARKitVideoObjectSystem';
   base_port: number = 0;
 
   static __serializationMetadata: SerializationField[] = [
@@ -107,6 +109,8 @@ export class MikanDistortionCoefficients {
 }
 
 export class MikanFileVideoSourceValues extends MikanVideoSourceValues {
+  static readonly k_componentClassName = 'FileVideoSourceComponent';
+  static readonly k_ownerSystemName = 'FileVideoSourceSystem';
   media_path: string = '';
   pose_track_path: string = '';
   loop: boolean = false;
@@ -137,6 +141,8 @@ export class MikanMonoIntrinsics extends MikanBaseIntrinsics {
 }
 
 export class MikanNetworkVideoSourceValues extends MikanVideoSourceValues {
+  static readonly k_componentClassName = 'NetworkVideoSourceComponent';
+  static readonly k_ownerSystemName = 'NetworkVideoObjectSystem';
   protocol: string = '';
   ip_address: string = '';
   port: number = 0;
@@ -183,6 +189,7 @@ export class MikanStereoIntrinsics extends MikanBaseIntrinsics {
 }
 
 export class MikanUSBVideoSourceSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'USBVideoSourceSystem';
   usb_device_map: Record<string, string> = {};
 
   static __serializationMetadata: SerializationField[] = [
@@ -191,6 +198,8 @@ export class MikanUSBVideoSourceSystemValues extends MikanSystemValues {
 }
 
 export class MikanUSBVideoSourceValues extends MikanVideoSourceValues {
+  static readonly k_componentClassName = 'USBVideoSourceComponent';
+  static readonly k_ownerSystemName = 'USBVideoSourceSystem';
   current_friendly_name: string = '';
   current_device_path: string = '';
   video_mode: string = '';

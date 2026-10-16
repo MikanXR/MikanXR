@@ -53,6 +53,48 @@ Serialization_CodeGenModule_GENERATED
 	private : char* m_moduleName= nullptr;
 };
 
+// The names a client addresses a component class by in the property requests: the component
+// class and the object system that owns it. Carried by the Mikan*ComponentValues structs, where
+// the codegen turns it into constants on the generated types, so a client never spells them.
+class SERIALIZATION_API
+	CLASS(rfk::PropertySettings(rfk::EEntityKind::Class | rfk::EEntityKind::Struct, false, false)) ClientComponentNames
+	: public rfk::Property
+{
+public:
+	ClientComponentNames() noexcept= default;
+	ClientComponentNames(char const* componentClassName, char const* ownerSystemName) noexcept;
+	virtual ~ClientComponentNames();
+
+	char const* getComponentClassName() const { return m_componentClassName; }
+	char const* getOwnerSystemName() const { return m_ownerSystemName; }
+
+#ifndef KODGEN_PARSING
+Serialization_ClientComponentNames_GENERATED
+#endif // !KODGEN_PARSING
+
+	private : char* m_componentClassName= nullptr;
+	char* m_ownerSystemName= nullptr;
+};
+
+// The name a client addresses an object system by, carried by the Mikan*SystemValues structs
+class SERIALIZATION_API
+	CLASS(rfk::PropertySettings(rfk::EEntityKind::Class | rfk::EEntityKind::Struct, false, false)) ClientSystemName
+	: public rfk::Property
+{
+public:
+	ClientSystemName() noexcept= default;
+	ClientSystemName(char const* systemName) noexcept;
+	virtual ~ClientSystemName();
+
+	char const* getSystemName() const { return m_systemName; }
+
+#ifndef KODGEN_PARSING
+Serialization_ClientSystemName_GENERATED
+#endif // !KODGEN_PARSING
+
+	private : char* m_systemName= nullptr;
+};
+
 SERIALIZATION_API rfk::EnumValue const* findEnumValueByString(rfk::Enum const& enumType, char const* stringValue);
 SERIALIZATION_API char const* getEnumStringValue(rfk::EnumValue const& enumValue);
 } // namespace Serialization

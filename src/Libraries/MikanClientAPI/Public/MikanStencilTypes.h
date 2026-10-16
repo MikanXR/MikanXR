@@ -21,7 +21,8 @@ enum ENUM(Serialization::CodeGenModule("MikanStencilTypes")) MikanStencilCullMod
 	MikanStencilCullMode_X_AXIS ENUMVALUE_STRING("X_Axis"),
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes")) MikanQuadStencilSystemValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes"),
+						Serialization::ClientSystemName("QuadStencilSystem")) MikanQuadStencilSystemValues
 	: public MikanSystemValues
 {
 	static const char* k_systemName;
@@ -31,7 +32,8 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes")) Mikan
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes")) MikanBoxStencilSystemValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes"),
+						Serialization::ClientSystemName("BoxStencilSystem")) MikanBoxStencilSystemValues
 	: public MikanSystemValues
 {
 	static const char* k_systemName;
@@ -41,7 +43,8 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes")) Mikan
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes")) MikanModelStencilSystemValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes"),
+						Serialization::ClientSystemName("ModelStencilSystem")) MikanModelStencilSystemValues
 	: public MikanSystemValues
 {
 	static const char* k_systemName;
@@ -62,7 +65,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes")) Mikan
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes")) MikanQuadStencilComponentValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes"),
+						Serialization::ClientComponentNames("QuadStencilComponent",
+															"QuadStencilSystem")) MikanQuadStencilComponentValues
 	: public MikanStencilComponentValues
 {
 	static const char* k_componentClassName;
@@ -77,7 +82,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes")) Mikan
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes")) MikanBoxStencilComponentValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes"),
+						Serialization::ClientComponentNames("BoxStencilComponent",
+															"BoxStencilSystem")) MikanBoxStencilComponentValues
 	: public MikanStencilComponentValues
 {
 	static const char* k_componentClassName;
@@ -92,7 +99,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes")) Mikan
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes")) MikanModelStencilComponentValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes"),
+						Serialization::ClientComponentNames("ModelStencilComponent",
+															"ModelStencilSystem")) MikanModelStencilComponentValues
 	: public MikanStencilComponentValues
 {
 	static const char* k_componentClassName;

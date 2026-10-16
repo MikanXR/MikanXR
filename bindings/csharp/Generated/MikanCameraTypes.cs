@@ -21,6 +21,9 @@ namespace MikanXR
 
 	public class MikanCameraComponentValues : MikanTransformComponentValues
 	{
+		public const string k_componentClassName = "CameraComponent";
+		public const string k_ownerSystemName = "CameraObjectSystem";
+
 		[MikanFieldOrder(0)] public int stage_id;
 		[MikanFieldOrder(1)] public int tracking_mount_id;
 		[MikanFieldOrder(2)] public int video_source_id;

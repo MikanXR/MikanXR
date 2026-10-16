@@ -10,6 +10,8 @@ export enum MikanStageTrackingVolume {
 }
 
 export class MikanStageComponentValues extends MikanTransformComponentValues {
+  static readonly k_componentClassName = 'StageComponent';
+  static readonly k_ownerSystemName = 'StageObjectSystem';
   tracking_volume_id: number = -1;
   stage_bounds_min: MikanVector3f = new MikanVector3f();
   stage_bounds_max: MikanVector3f = new MikanVector3f();

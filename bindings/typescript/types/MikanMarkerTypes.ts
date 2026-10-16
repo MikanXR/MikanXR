@@ -13,6 +13,8 @@ export enum MikanMarkerDictionaryType {
 }
 
 export class MikanMarkerComponentValues extends MikanComponentValues {
+  static readonly k_componentClassName = 'MarkerComponent';
+  static readonly k_ownerSystemName = 'MarkerObjectSystem';
   aruco_id: number = -1;
   length_mm: number = 0;
 
@@ -23,6 +25,7 @@ export class MikanMarkerComponentValues extends MikanComponentValues {
 }
 
 export class MikanMarkerSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'MarkerObjectSystem';
   aruco_id_list: number[] = [];
   aruco_dictionary_type: MikanMarkerDictionaryType = MikanMarkerDictionaryType.INVALID;
   charuco_rows: number = 0;

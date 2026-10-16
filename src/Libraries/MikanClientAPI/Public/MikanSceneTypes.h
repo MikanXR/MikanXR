@@ -13,7 +13,8 @@
 #include "MikanSceneTypes.rfkh.h"
 #endif
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanSceneTypes")) MikanSceneSystemValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanSceneTypes"),
+						Serialization::ClientSystemName("SceneObjectSystem")) MikanSceneSystemValues
 	: public MikanSystemValues
 {
 	static const char* k_systemName;
@@ -25,7 +26,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanSceneTypes")) MikanSc
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanSceneTypes")) MikanSceneComponentValues
+struct MIKAN_API
+	STRUCT(Serialization::CodeGenModule("MikanSceneTypes"),
+		   Serialization::ClientComponentNames("SceneComponent", "SceneObjectSystem")) MikanSceneComponentValues
 	: public MikanTransformComponentValues
 {
 	static const char* k_componentClassName;

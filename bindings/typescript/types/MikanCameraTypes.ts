@@ -18,6 +18,8 @@ export enum MikanClientMaxBufferDimension {
 }
 
 export class MikanCameraComponentValues extends MikanTransformComponentValues {
+  static readonly k_componentClassName = 'CameraComponent';
+  static readonly k_ownerSystemName = 'CameraObjectSystem';
   stage_id: number = -1;
   tracking_mount_id: number = -1;
   video_source_id: number = -1;

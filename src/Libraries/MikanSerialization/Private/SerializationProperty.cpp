@@ -66,15 +66,43 @@ char const* getEnumStringValue(rfk::EnumValue const& enumValue)
 	return enumValue.getName();
 }
 
+static char* duplicatePropertyString(char const* value)
+{
+	assert(value != nullptr && value[0] != '\0');
+	size_t len= strlen(value);
+	char* copy= new char[len + 1];
+	std::memmove(copy, value, len);
+	copy[len]= '\0';
+
+	return copy;
+}
+
 // -- CodeGenTag -----
 CodeGenModule::CodeGenModule(char const* moduleName) noexcept
+	: m_moduleName(duplicatePropertyString(moduleName))
 {
-	assert(moduleName != nullptr && moduleName[0] != '\0');
-	size_t len= strlen(moduleName);
-	m_moduleName= new char[len + 1];
-	std::memmove(m_moduleName, moduleName, len);
-	m_moduleName[len]= '\0';
 }
 
 CodeGenModule::~CodeGenModule() { delete[] m_moduleName; }
+
+// -- ClientComponentNames -----
+ClientComponentNames::ClientComponentNames(char const* componentClassName, char const* ownerSystemName) noexcept
+	: m_componentClassName(duplicatePropertyString(componentClassName))
+	, m_ownerSystemName(duplicatePropertyString(ownerSystemName))
+{
+}
+
+ClientComponentNames::~ClientComponentNames()
+{
+	delete[] m_componentClassName;
+	delete[] m_ownerSystemName;
+}
+
+// -- ClientSystemName -----
+ClientSystemName::ClientSystemName(char const* systemName) noexcept
+	: m_systemName(duplicatePropertyString(systemName))
+{
+}
+
+ClientSystemName::~ClientSystemName() { delete[] m_systemName; }
 } // namespace Serialization

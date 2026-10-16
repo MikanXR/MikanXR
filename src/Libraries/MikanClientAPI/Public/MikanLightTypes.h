@@ -15,7 +15,8 @@
 
 // -- System Values --
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanDMXObjectSystemValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes"),
+						Serialization::ClientSystemName("DMXObjectSystem")) MikanDMXObjectSystemValues
 	: public MikanSystemValues
 {
 	static const char* k_systemName;
@@ -31,7 +32,8 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanDM
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanRGBSpotLightSystemValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes"),
+						Serialization::ClientSystemName("RGBSpotLightSystem")) MikanRGBSpotLightSystemValues
 	: public MikanSystemValues
 {
 	static const char* k_systemName;
@@ -41,7 +43,8 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanRG
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanRGBPixelGridSystemValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes"),
+						Serialization::ClientSystemName("RGBPixelGridSystem")) MikanRGBPixelGridSystemValues
 	: public MikanSystemValues
 {
 	static const char* k_systemName;
@@ -51,7 +54,8 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanRG
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanDMXFixtureGroupSystemValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes"),
+						Serialization::ClientSystemName("DMXFixtureGroupSystem")) MikanDMXFixtureGroupSystemValues
 	: public MikanSystemValues
 {
 	static const char* k_systemName;
@@ -61,7 +65,8 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanDM
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanDMXPresetSystemValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes"),
+						Serialization::ClientSystemName("DMXPresetSystem")) MikanDMXPresetSystemValues
 	: public MikanSystemValues
 {
 	static const char* k_systemName;
@@ -71,7 +76,8 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanDM
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanDMXSequenceSystemValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes"),
+						Serialization::ClientSystemName("DMXSequenceSystem")) MikanDMXSequenceSystemValues
 	: public MikanSystemValues
 {
 	static const char* k_systemName;
@@ -81,7 +87,8 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanDM
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanLightEnvironmentSystemValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes"),
+						Serialization::ClientSystemName("LightEnvironmentSystem")) MikanLightEnvironmentSystemValues
 	: public MikanSystemValues
 {
 	static const char* k_systemName;
@@ -119,7 +126,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanDM
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanRGBSpotLightComponentValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes"),
+						Serialization::ClientComponentNames("RGBSpotLightComponent",
+															"RGBSpotLightSystem")) MikanRGBSpotLightComponentValues
 	: public MikanDMXFixtureComponentValues
 {
 	static const char* k_componentClassName;
@@ -144,7 +153,9 @@ enum ENUM(Serialization::CodeGenModule("MikanLightTypes")) MikanPixelGridOrigin
 };
 
 /// Pixel grid values — pixel data is NOT included (use SetLightDMXData request for bulk writes).
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanRGBPixelGridComponentValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes"),
+						Serialization::ClientComponentNames("RGBPixelGridComponent",
+															"RGBPixelGridSystem")) MikanRGBPixelGridComponentValues
 	: public MikanDMXFixtureComponentValues
 {
 	static const char* k_componentClassName;
@@ -171,7 +182,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanRG
 };
 
 /// A named set of DMX fixtures on one stage, the unit presets and sequences address.
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanDMXFixtureGroupComponentValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes"),
+						Serialization::ClientComponentNames(
+							"DMXFixtureGroupComponent", "DMXFixtureGroupSystem")) MikanDMXFixtureGroupComponentValues
 	: public MikanComponentValues
 {
 	static const char* k_componentClassName;
@@ -189,7 +202,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanDM
 
 /// A fixed set of DMX channel bytes for the fixtures of one group. The bytes
 /// are one slice per fixture id, channel_counts long, concatenated in order.
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanDMXPresetComponentValues
+struct MIKAN_API
+	STRUCT(Serialization::CodeGenModule("MikanLightTypes"),
+		   Serialization::ClientComponentNames("DMXPresetComponent", "DMXPresetSystem")) MikanDMXPresetComponentValues
 	: public MikanComponentValues
 {
 	static const char* k_componentClassName;
@@ -234,7 +249,9 @@ enum ENUM(Serialization::CodeGenModule("MikanLightTypes")) MikanDMXScrollDirecti
 /// An animation of one fixture group, driven either by a script component's
 /// behavior or by one of the editor's rasterized content sources. playback_state is 0 stopped,
 /// 1 playing, 2 paused.
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanDMXSequenceComponentValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes"),
+						Serialization::ClientComponentNames("DMXSequenceComponent",
+															"DMXSequenceSystem")) MikanDMXSequenceComponentValues
 	: public MikanComponentValues
 {
 	static const char* k_componentClassName;
@@ -308,7 +325,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanDM
 /// This derives from MikanTransformComponentValues so the probe has a position:
 /// a single environment assumes spatially-invariant lighting, which real
 /// interiors violate, so multiple probes are the expected escape hatch.
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes")) MikanLightEnvironmentComponentValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightTypes"),
+						Serialization::ClientComponentNames(
+							"LightEnvironmentComponent", "LightEnvironmentSystem")) MikanLightEnvironmentComponentValues
 	: public MikanTransformComponentValues
 {
 	static const char* k_componentClassName;

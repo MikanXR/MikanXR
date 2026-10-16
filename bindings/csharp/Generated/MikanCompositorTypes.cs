@@ -6,6 +6,9 @@ namespace MikanXR
 {
 	public class MikanCompositorComponentValues : MikanComponentValues
 	{
+		public const string k_componentClassName = "CompositorComponent";
+		public const string k_ownerSystemName = "CompositorObjectSystem";
+
 		[MikanFieldOrder(0)] public int owner_scene_id;
 		[MikanFieldOrder(1)] public int camera_id;
 		[MikanFieldOrder(2)] public string compositor_graph_path;

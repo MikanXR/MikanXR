@@ -40,7 +40,9 @@ enum ENUM(Serialization::CodeGenModule("MikanCameraTypes")) MikanClientMaxBuffer
 };
 
 // Structures
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanCameraTypes")) MikanCameraComponentValues
+struct MIKAN_API
+	STRUCT(Serialization::CodeGenModule("MikanCameraTypes"),
+		   Serialization::ClientComponentNames("CameraComponent", "CameraObjectSystem")) MikanCameraComponentValues
 	: public MikanTransformComponentValues
 {
 	static const char* k_componentClassName;

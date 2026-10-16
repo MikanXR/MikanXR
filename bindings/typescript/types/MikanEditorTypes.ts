@@ -4,6 +4,7 @@ import { MikanSystemValues } from './MikanPropertyTypes.js';
 import type { SerializationField } from './SerializationTypes.js';
 
 export class MikanEditorSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'EditorObjectSystem';
   render_origin: boolean = false;
   render_anchors: boolean = false;
   render_quad_stencils: boolean = false;

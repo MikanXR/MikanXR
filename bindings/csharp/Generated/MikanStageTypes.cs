@@ -12,6 +12,9 @@ namespace MikanXR
 
 	public class MikanStageComponentValues : MikanTransformComponentValues
 	{
+		public const string k_componentClassName = "StageComponent";
+		public const string k_ownerSystemName = "StageObjectSystem";
+
 		[MikanFieldOrder(0)] public int tracking_volume_id;
 		[MikanFieldOrder(1)] public MikanVector3f stage_bounds_min;
 		[MikanFieldOrder(2)] public MikanVector3f stage_bounds_max;

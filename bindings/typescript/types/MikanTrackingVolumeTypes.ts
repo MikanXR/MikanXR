@@ -30,12 +30,16 @@ export class MikanTrackingVolumeComponentValues extends MikanComponentValues {
 }
 
 export class MikanMarkerTrackingVolumeComponentValues extends MikanTrackingVolumeComponentValues {
+  static readonly k_componentClassName = 'MarkerTrackingVolumeComponent';
+  static readonly k_ownerSystemName = 'MarkerTrackingVolumeSystem';
 
   static __serializationMetadata: SerializationField[] = [
   ];
 }
 
 export class MikanVRTrackingVolumeComponentValues extends MikanTrackingVolumeComponentValues {
+  static readonly k_componentClassName = 'VRTrackingVolumeComponent';
+  static readonly k_ownerSystemName = 'VRTrackingVolumeSystem';
   tracking_runtime: MikanTrackingRuntime = MikanTrackingRuntime.INVALID;
   charuco_mount_id: number = -1;
   charuco_mount_offset_mm: MikanVector3f = new MikanVector3f();

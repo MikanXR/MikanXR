@@ -20,6 +20,9 @@ namespace MikanXR
 
 	public class MikanVRDeviceComponentValues : MikanTransformComponentValues
 	{
+		public const string k_componentClassName = "VRDeviceComponent";
+		public const string k_ownerSystemName = "VRObjectSystem";
+
 		[MikanFieldOrder(0)] public MikanVRDeviceApi vr_device_api;
 		[MikanFieldOrder(1)] public MikanVRDeviceType vr_device_type;
 		[MikanFieldOrder(2)] public int vr_device_index;
@@ -29,6 +32,8 @@ namespace MikanXR
 
 	public class MikanVRObjectSystemValues : MikanSystemValues
 	{
+		public const string k_systemName = "VRObjectSystem";
+
 		[MikanFieldOrder(0)] public List<string> vr_device_path_list;
 	};
 

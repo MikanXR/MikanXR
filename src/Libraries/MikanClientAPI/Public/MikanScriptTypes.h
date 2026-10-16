@@ -20,7 +20,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanScriptTypes")) MikanS
 };
 
 // Structures
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanScriptTypes")) MikanScriptComponentValues
+struct MIKAN_API
+	STRUCT(Serialization::CodeGenModule("MikanScriptTypes"),
+		   Serialization::ClientComponentNames("ScriptComponent", "ScriptObjectSystem")) MikanScriptComponentValues
 	: public MikanComponentValues
 {
 	static const char* k_componentClassName;

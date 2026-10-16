@@ -99,6 +99,23 @@ public:
 		moduleFile << "\tpublic class " << className << structInheritance << std::endl;
 		moduleFile << "\t{" << std::endl;
 
+		// The names the property requests address this struct's component class or object
+		// system by, so a client never spells them
+		if (auto const* names= structRef.getProperty<Serialization::ClientComponentNames>())
+		{
+			moduleFile << "\t\tpublic const string k_componentClassName = \"" << names->getComponentClassName() << "\";"
+					   << std::endl;
+			moduleFile << "\t\tpublic const string k_ownerSystemName = \"" << names->getOwnerSystemName() << "\";"
+					   << std::endl;
+			moduleFile << std::endl;
+		}
+		if (auto const* systemName= structRef.getProperty<Serialization::ClientSystemName>())
+		{
+			moduleFile << "\t\tpublic const string k_systemName = \"" << systemName->getSystemName() << "\";"
+					   << std::endl;
+			moduleFile << std::endl;
+		}
+
 		// The order these go out in is the binary wire order, so it has to be the serializer's
 		const Serialization::FieldList sortedFields= Serialization::getStructFieldsInWireOrder(&structRef);
 

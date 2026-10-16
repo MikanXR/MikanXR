@@ -23,7 +23,8 @@ enum class ENUM(Serialization::CodeGenModule("MikanMarkerTypes")) MikanMarkerDic
 };
 
 // Structures
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanMarkerTypes")) MikanMarkerSystemValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanMarkerTypes"),
+						Serialization::ClientSystemName("MarkerObjectSystem")) MikanMarkerSystemValues
 	: public MikanSystemValues
 {
 	static const char* k_systemName;
@@ -41,7 +42,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanMarkerTypes")) MikanM
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanMarkerTypes")) MikanMarkerComponentValues
+struct MIKAN_API
+	STRUCT(Serialization::CodeGenModule("MikanMarkerTypes"),
+		   Serialization::ClientComponentNames("MarkerComponent", "MarkerObjectSystem")) MikanMarkerComponentValues
 	: public MikanComponentValues
 {
 	static const char* k_componentClassName;

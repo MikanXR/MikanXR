@@ -23,6 +23,8 @@ export class MikanStencilComponentValues extends MikanTransformComponentValues {
 }
 
 export class MikanBoxStencilComponentValues extends MikanStencilComponentValues {
+  static readonly k_componentClassName = 'BoxStencilComponent';
+  static readonly k_ownerSystemName = 'BoxStencilSystem';
   box_x_size: number = 0;
   box_y_size: number = 0;
   box_z_size: number = 0;
@@ -35,12 +37,15 @@ export class MikanBoxStencilComponentValues extends MikanStencilComponentValues 
 }
 
 export class MikanBoxStencilSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'BoxStencilSystem';
 
   static __serializationMetadata: SerializationField[] = [
   ];
 }
 
 export class MikanModelStencilComponentValues extends MikanStencilComponentValues {
+  static readonly k_componentClassName = 'ModelStencilComponent';
+  static readonly k_ownerSystemName = 'ModelStencilSystem';
   model_path: string = '';
 
   static __serializationMetadata: SerializationField[] = [
@@ -49,12 +54,15 @@ export class MikanModelStencilComponentValues extends MikanStencilComponentValue
 }
 
 export class MikanModelStencilSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'ModelStencilSystem';
 
   static __serializationMetadata: SerializationField[] = [
   ];
 }
 
 export class MikanQuadStencilComponentValues extends MikanStencilComponentValues {
+  static readonly k_componentClassName = 'QuadStencilComponent';
+  static readonly k_ownerSystemName = 'QuadStencilSystem';
   quad_width: number = 0;
   quad_height: number = 0;
   is_double_sided: boolean = false;
@@ -67,6 +75,7 @@ export class MikanQuadStencilComponentValues extends MikanStencilComponentValues
 }
 
 export class MikanQuadStencilSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'QuadStencilSystem';
 
   static __serializationMetadata: SerializationField[] = [
   ];

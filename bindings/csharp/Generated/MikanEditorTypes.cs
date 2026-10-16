@@ -6,6 +6,8 @@ namespace MikanXR
 {
 	public class MikanEditorSystemValues : MikanSystemValues
 	{
+		public const string k_systemName = "EditorObjectSystem";
+
 		[MikanFieldOrder(0)] public bool render_origin;
 		[MikanFieldOrder(1)] public bool render_anchors;
 		[MikanFieldOrder(2)] public bool render_quad_stencils;

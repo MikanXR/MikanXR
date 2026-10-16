@@ -31,7 +31,8 @@ enum class ENUM(Serialization::CodeGenModule("MikanVRDeviceTypes")) MikanVRDevic
 };
 
 // VR System Response Types
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVRDeviceTypes")) MikanVRObjectSystemValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVRDeviceTypes"),
+						Serialization::ClientSystemName("VRObjectSystem")) MikanVRObjectSystemValues
 	: public MikanSystemValues
 {
 	static const char* k_systemName;
@@ -44,7 +45,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVRDeviceTypes")) Mika
 };
 
 // VR Device Response Types
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVRDeviceTypes")) MikanVRDeviceComponentValues
+struct MIKAN_API
+	STRUCT(Serialization::CodeGenModule("MikanVRDeviceTypes"),
+		   Serialization::ClientComponentNames("VRDeviceComponent", "VRObjectSystem")) MikanVRDeviceComponentValues
 	: public MikanTransformComponentValues
 {
 	static const char* k_componentClassName;

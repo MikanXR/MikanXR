@@ -18,7 +18,9 @@ enum class ENUM(Serialization::CodeGenModule("MikanStageTypes")) MikanStageTrack
 	SteamVR ENUMVALUE_STRING("SteamVR")= 1
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStageTypes")) MikanStageComponentValues
+struct MIKAN_API
+	STRUCT(Serialization::CodeGenModule("MikanStageTypes"),
+		   Serialization::ClientComponentNames("StageComponent", "StageObjectSystem")) MikanStageComponentValues
 	: public MikanTransformComponentValues
 {
 	static const char* k_componentClassName;

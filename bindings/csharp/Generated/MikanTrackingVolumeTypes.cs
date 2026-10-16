@@ -26,6 +26,9 @@ namespace MikanXR
 
 	public class MikanMarkerTrackingVolumeComponentValues : MikanTrackingVolumeComponentValues
 	{
+		public const string k_componentClassName = "MarkerTrackingVolumeComponent";
+		public const string k_ownerSystemName = "MarkerTrackingVolumeSystem";
+
 	};
 
 	public class MikanTrackingVolumeComponentValues : MikanComponentValues
@@ -35,6 +38,9 @@ namespace MikanXR
 
 	public class MikanVRTrackingVolumeComponentValues : MikanTrackingVolumeComponentValues
 	{
+		public const string k_componentClassName = "VRTrackingVolumeComponent";
+		public const string k_ownerSystemName = "VRTrackingVolumeSystem";
+
 		[MikanFieldOrder(0)] public MikanTrackingRuntime tracking_runtime;
 		[MikanFieldOrder(1)] public int charuco_mount_id;
 		[MikanFieldOrder(2)] public MikanVector3f charuco_mount_offset_mm;

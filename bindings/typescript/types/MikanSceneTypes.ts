@@ -5,6 +5,8 @@ import { MikanTransformComponentValues } from './MikanTransformTypes.js';
 import type { SerializationField } from './SerializationTypes.js';
 
 export class MikanSceneComponentValues extends MikanTransformComponentValues {
+  static readonly k_componentClassName = 'SceneComponent';
+  static readonly k_ownerSystemName = 'SceneObjectSystem';
   display_compositor_id: number = -1;
   force_render: boolean = false;
 
@@ -15,6 +17,7 @@ export class MikanSceneComponentValues extends MikanTransformComponentValues {
 }
 
 export class MikanSceneSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'SceneObjectSystem';
   current_scene_id: number = -1;
 
   static __serializationMetadata: SerializationField[] = [

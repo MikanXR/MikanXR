@@ -11,7 +11,8 @@
 #include "MikanAnchorTypes.rfkh.h"
 #endif
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanAnchorTypes")) MikanAnchorSystemValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanAnchorTypes"),
+						Serialization::ClientSystemName("AnchorObjectSystem")) MikanAnchorSystemValues
 	: public MikanSystemValues
 {
 	static const char* k_systemName;
@@ -21,7 +22,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanAnchorTypes")) MikanA
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanAnchorTypes")) MikanAnchorComponentValues
+struct MIKAN_API
+	STRUCT(Serialization::CodeGenModule("MikanAnchorTypes"),
+		   Serialization::ClientComponentNames("AnchorComponent", "AnchorObjectSystem")) MikanAnchorComponentValues
 	: public MikanTransformComponentValues
 {
 	static const char* k_componentClassName;

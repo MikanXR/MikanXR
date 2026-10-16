@@ -4,6 +4,8 @@ import { MikanComponentValues } from './MikanComponentTypes.js';
 import type { SerializationField } from './SerializationTypes.js';
 
 export class MikanTrackingMountComponentValues extends MikanComponentValues {
+  static readonly k_componentClassName = 'TrackingMountComponent';
+  static readonly k_ownerSystemName = 'TrackingMountObjectSystem';
   device_path: string = '';
   socket_name: string = '';
   available_socket_names: string[] = [];

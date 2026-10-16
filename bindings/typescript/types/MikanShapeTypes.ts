@@ -13,6 +13,8 @@ export class MikanShapeComponentValues extends MikanTransformComponentValues {
 }
 
 export class MikanBoxShapeComponentValues extends MikanShapeComponentValues {
+  static readonly k_componentClassName = 'BoxShapeComponent';
+  static readonly k_ownerSystemName = 'BoxShapeSystem';
   box_x_size: number = 0;
   box_y_size: number = 0;
   box_z_size: number = 0;
@@ -25,12 +27,15 @@ export class MikanBoxShapeComponentValues extends MikanShapeComponentValues {
 }
 
 export class MikanBoxShapeSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'BoxShapeSystem';
 
   static __serializationMetadata: SerializationField[] = [
   ];
 }
 
 export class MikanModelShapeComponentValues extends MikanShapeComponentValues {
+  static readonly k_componentClassName = 'ModelShapeComponent';
+  static readonly k_ownerSystemName = 'ModelShapeSystem';
   model_path: string = '';
 
   static __serializationMetadata: SerializationField[] = [
@@ -39,12 +44,15 @@ export class MikanModelShapeComponentValues extends MikanShapeComponentValues {
 }
 
 export class MikanModelShapeSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'ModelShapeSystem';
 
   static __serializationMetadata: SerializationField[] = [
   ];
 }
 
 export class MikanQuadShapeComponentValues extends MikanShapeComponentValues {
+  static readonly k_componentClassName = 'QuadShapeComponent';
+  static readonly k_ownerSystemName = 'QuadShapeSystem';
   quad_width: number = 0;
   quad_height: number = 0;
   is_double_sided: boolean = false;
@@ -57,6 +65,7 @@ export class MikanQuadShapeComponentValues extends MikanShapeComponentValues {
 }
 
 export class MikanQuadShapeSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'QuadShapeSystem';
 
   static __serializationMetadata: SerializationField[] = [
   ];

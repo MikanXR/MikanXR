@@ -63,6 +63,8 @@ export class MikanDMXFixtureComponentValues extends MikanTransformComponentValue
 }
 
 export class MikanDMXFixtureGroupComponentValues extends MikanComponentValues {
+  static readonly k_componentClassName = 'DMXFixtureGroupComponent';
+  static readonly k_ownerSystemName = 'DMXFixtureGroupSystem';
   stage_id: number = -1;
   fixture_ids: number[] = [];
 
@@ -73,12 +75,14 @@ export class MikanDMXFixtureGroupComponentValues extends MikanComponentValues {
 }
 
 export class MikanDMXFixtureGroupSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'DMXFixtureGroupSystem';
 
   static __serializationMetadata: SerializationField[] = [
   ];
 }
 
 export class MikanDMXObjectSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'DMXObjectSystem';
   network_interface_ip: string = '';
   dmx_priority: number = 100;
   transmit_rate_hz: number = 44;
@@ -91,6 +95,8 @@ export class MikanDMXObjectSystemValues extends MikanSystemValues {
 }
 
 export class MikanDMXPresetComponentValues extends MikanComponentValues {
+  static readonly k_componentClassName = 'DMXPresetComponent';
+  static readonly k_ownerSystemName = 'DMXPresetSystem';
   group_id: number = -1;
   fixture_ids: number[] = [];
   channel_counts: number[] = [];
@@ -105,12 +111,15 @@ export class MikanDMXPresetComponentValues extends MikanComponentValues {
 }
 
 export class MikanDMXPresetSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'DMXPresetSystem';
 
   static __serializationMetadata: SerializationField[] = [
   ];
 }
 
 export class MikanDMXSequenceComponentValues extends MikanComponentValues {
+  static readonly k_componentClassName = 'DMXSequenceComponent';
+  static readonly k_ownerSystemName = 'DMXSequenceSystem';
   group_id: number = -1;
   script_component_id: number = -1;
   duration_seconds: number = 10;
@@ -157,12 +166,15 @@ export class MikanDMXSequenceComponentValues extends MikanComponentValues {
 }
 
 export class MikanDMXSequenceSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'DMXSequenceSystem';
 
   static __serializationMetadata: SerializationField[] = [
   ];
 }
 
 export class MikanLightEnvironmentComponentValues extends MikanTransformComponentValues {
+  static readonly k_componentClassName = 'LightEnvironmentComponent';
+  static readonly k_ownerSystemName = 'LightEnvironmentSystem';
   sh_coefficients: number[] = [];
   exposure_scale: number = 1;
   directionality: number = 0;
@@ -177,12 +189,15 @@ export class MikanLightEnvironmentComponentValues extends MikanTransformComponen
 }
 
 export class MikanLightEnvironmentSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'LightEnvironmentSystem';
 
   static __serializationMetadata: SerializationField[] = [
   ];
 }
 
 export class MikanRGBPixelGridComponentValues extends MikanDMXFixtureComponentValues {
+  static readonly k_componentClassName = 'RGBPixelGridComponent';
+  static readonly k_ownerSystemName = 'RGBPixelGridSystem';
   grid_columns: number = 8;
   grid_rows: number = 8;
   pixel_size_mm: MikanVector3f = new MikanVector3f();
@@ -201,12 +216,15 @@ export class MikanRGBPixelGridComponentValues extends MikanDMXFixtureComponentVa
 }
 
 export class MikanRGBPixelGridSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'RGBPixelGridSystem';
 
   static __serializationMetadata: SerializationField[] = [
   ];
 }
 
 export class MikanRGBSpotLightComponentValues extends MikanDMXFixtureComponentValues {
+  static readonly k_componentClassName = 'RGBSpotLightComponent';
+  static readonly k_ownerSystemName = 'RGBSpotLightSystem';
   cone_angle_degrees: number = 0;
   cone_range_meters: number = 0;
 
@@ -217,6 +235,7 @@ export class MikanRGBSpotLightComponentValues extends MikanDMXFixtureComponentVa
 }
 
 export class MikanRGBSpotLightSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'RGBSpotLightSystem';
 
   static __serializationMetadata: SerializationField[] = [
   ];

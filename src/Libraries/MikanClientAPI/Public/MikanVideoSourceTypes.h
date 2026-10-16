@@ -211,7 +211,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes")) M
 #endif // MIKANAPI_REFLECTION_ENABLED
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes")) MikanNetworkVideoSourceValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes"),
+						Serialization::ClientComponentNames("NetworkVideoSourceComponent",
+															"NetworkVideoObjectSystem")) MikanNetworkVideoSourceValues
 	: public MikanVideoSourceValues
 {
 	static const char* k_componentClassName;
@@ -227,7 +229,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes")) M
 #endif // MIKANAPI_REFLECTION_ENABLED
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes")) MikanARKitVideoSourceValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes"),
+						Serialization::ClientComponentNames("ARKitVideoSourceComponent",
+															"ARKitVideoObjectSystem")) MikanARKitVideoSourceValues
 	: public MikanVideoSourceValues
 {
 	static const char* k_componentClassName;
@@ -240,7 +244,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes")) M
 #endif // MIKANAPI_REFLECTION_ENABLED
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes")) MikanFileVideoSourceValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes"),
+						Serialization::ClientComponentNames("FileVideoSourceComponent",
+															"FileVideoSourceSystem")) MikanFileVideoSourceValues
 	: public MikanVideoSourceValues
 {
 	static const char* k_componentClassName;
@@ -260,7 +266,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes")) M
 #endif // MIKANAPI_REFLECTION_ENABLED
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes")) MikanUSBVideoSourceValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes"),
+						Serialization::ClientComponentNames("USBVideoSourceComponent",
+															"USBVideoSourceSystem")) MikanUSBVideoSourceValues
 	: public MikanVideoSourceValues
 {
 	static const char* k_componentClassName;
@@ -340,7 +348,8 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes")) M
 #endif // MIKANAPI_REFLECTION_ENABLED
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes")) MikanUSBVideoSourceSystemValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceTypes"),
+						Serialization::ClientSystemName("USBVideoSourceSystem")) MikanUSBVideoSourceSystemValues
 	: public MikanSystemValues
 {
 	static const char* k_systemName;

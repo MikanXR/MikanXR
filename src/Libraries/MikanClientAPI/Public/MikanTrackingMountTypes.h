@@ -14,7 +14,9 @@
 #include <assert.h>
 
 // Structures
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanTrackingMountTypes")) MikanTrackingMountComponentValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanTrackingMountTypes"),
+						Serialization::ClientComponentNames(
+							"TrackingMountComponent", "TrackingMountObjectSystem")) MikanTrackingMountComponentValues
 	: public MikanComponentValues
 {
 	static const char* k_componentClassName;

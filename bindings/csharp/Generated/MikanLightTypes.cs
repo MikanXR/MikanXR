@@ -53,16 +53,23 @@ namespace MikanXR
 
 	public class MikanDMXFixtureGroupComponentValues : MikanComponentValues
 	{
+		public const string k_componentClassName = "DMXFixtureGroupComponent";
+		public const string k_ownerSystemName = "DMXFixtureGroupSystem";
+
 		[MikanFieldOrder(0)] public int stage_id;
 		[MikanFieldOrder(1)] public List<int> fixture_ids;
 	};
 
 	public class MikanDMXFixtureGroupSystemValues : MikanSystemValues
 	{
+		public const string k_systemName = "DMXFixtureGroupSystem";
+
 	};
 
 	public class MikanDMXObjectSystemValues : MikanSystemValues
 	{
+		public const string k_systemName = "DMXObjectSystem";
+
 		[MikanFieldOrder(0)] public string network_interface_ip;
 		[MikanFieldOrder(1)] public byte dmx_priority;
 		[MikanFieldOrder(2)] public float transmit_rate_hz;
@@ -70,6 +77,9 @@ namespace MikanXR
 
 	public class MikanDMXPresetComponentValues : MikanComponentValues
 	{
+		public const string k_componentClassName = "DMXPresetComponent";
+		public const string k_ownerSystemName = "DMXPresetSystem";
+
 		[MikanFieldOrder(0)] public int group_id;
 		[MikanFieldOrder(1)] public List<int> fixture_ids;
 		[MikanFieldOrder(2)] public List<int> channel_counts;
@@ -78,10 +88,15 @@ namespace MikanXR
 
 	public class MikanDMXPresetSystemValues : MikanSystemValues
 	{
+		public const string k_systemName = "DMXPresetSystem";
+
 	};
 
 	public class MikanDMXSequenceComponentValues : MikanComponentValues
 	{
+		public const string k_componentClassName = "DMXSequenceComponent";
+		public const string k_ownerSystemName = "DMXSequenceSystem";
+
 		[MikanFieldOrder(0)] public int group_id;
 		[MikanFieldOrder(1)] public int script_component_id;
 		[MikanFieldOrder(2)] public float duration_seconds;
@@ -106,10 +121,15 @@ namespace MikanXR
 
 	public class MikanDMXSequenceSystemValues : MikanSystemValues
 	{
+		public const string k_systemName = "DMXSequenceSystem";
+
 	};
 
 	public class MikanLightEnvironmentComponentValues : MikanTransformComponentValues
 	{
+		public const string k_componentClassName = "LightEnvironmentComponent";
+		public const string k_ownerSystemName = "LightEnvironmentSystem";
+
 		[MikanFieldOrder(0)] public List<float> sh_coefficients;
 		[MikanFieldOrder(1)] public float exposure_scale;
 		[MikanFieldOrder(2)] public float directionality;
@@ -118,10 +138,15 @@ namespace MikanXR
 
 	public class MikanLightEnvironmentSystemValues : MikanSystemValues
 	{
+		public const string k_systemName = "LightEnvironmentSystem";
+
 	};
 
 	public class MikanRGBPixelGridComponentValues : MikanDMXFixtureComponentValues
 	{
+		public const string k_componentClassName = "RGBPixelGridComponent";
+		public const string k_ownerSystemName = "RGBPixelGridSystem";
+
 		[MikanFieldOrder(0)] public int grid_columns;
 		[MikanFieldOrder(1)] public int grid_rows;
 		[MikanFieldOrder(2)] public MikanVector3f pixel_size_mm;
@@ -132,16 +157,23 @@ namespace MikanXR
 
 	public class MikanRGBPixelGridSystemValues : MikanSystemValues
 	{
+		public const string k_systemName = "RGBPixelGridSystem";
+
 	};
 
 	public class MikanRGBSpotLightComponentValues : MikanDMXFixtureComponentValues
 	{
+		public const string k_componentClassName = "RGBSpotLightComponent";
+		public const string k_ownerSystemName = "RGBSpotLightSystem";
+
 		[MikanFieldOrder(0)] public float cone_angle_degrees;
 		[MikanFieldOrder(1)] public float cone_range_meters;
 	};
 
 	public class MikanRGBSpotLightSystemValues : MikanSystemValues
 	{
+		public const string k_systemName = "RGBSpotLightSystem";
+
 	};
 
 	public class MikanUniverseDMXData

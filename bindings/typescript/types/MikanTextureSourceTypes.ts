@@ -10,6 +10,8 @@ export class MikanTextureSourceValues extends MikanComponentValues {
 }
 
 export class MikanCEFTextureSourceValues extends MikanTextureSourceValues {
+  static readonly k_componentClassName = 'CEFTextureSourceComponent';
+  static readonly k_ownerSystemName = 'CEFTextureSourceSystem';
   url: string = '';
   width: number = 1280;
   height: number = 720;
@@ -22,6 +24,8 @@ export class MikanCEFTextureSourceValues extends MikanTextureSourceValues {
 }
 
 export class MikanClientTextureSourceValues extends MikanTextureSourceValues {
+  static readonly k_componentClassName = 'ClientTextureSourceComponent';
+  static readonly k_ownerSystemName = 'ClientTextureSourceSystem';
   client_source: string = '';
 
   static __serializationMetadata: SerializationField[] = [
@@ -30,6 +34,8 @@ export class MikanClientTextureSourceValues extends MikanTextureSourceValues {
 }
 
 export class MikanSpoutTextureSourceValues extends MikanTextureSourceValues {
+  static readonly k_componentClassName = 'SpoutTextureSourceComponent';
+  static readonly k_ownerSystemName = 'SpoutTextureSourceSystem';
   spout_source: string = '';
 
   static __serializationMetadata: SerializationField[] = [

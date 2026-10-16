@@ -13,7 +13,9 @@
 #include <assert.h>
 
 // Structures
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanCompositorTypes")) MikanCompositorComponentValues
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanCompositorTypes"),
+						Serialization::ClientComponentNames("CompositorComponent",
+															"CompositorObjectSystem")) MikanCompositorComponentValues
 	: public MikanComponentValues
 {
 	static const char* k_componentClassName;

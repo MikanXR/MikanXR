@@ -246,25 +246,24 @@ namespace Mikan
 
 			_mikanAPI.SendRequest(initClientRequest).AwaitResponse();
 
-			// Fetch all Mikan Components
-			// TODO: Update client API code generator to add static strings for system and component class names to avoid hardcoding strings here
-			HandleComponentListChanged<MikanAnchorComponentValues>("AnchorObjectSystem", "AnchorComponent");
-			HandleComponentListChanged<MikanCameraComponentValues>("CameraObjectSystem", "CameraComponent");
-			HandleComponentListChanged<MikanCompositorComponentValues>("CompositorObjectSystem", "CompositorComponent");
-			HandleComponentListChanged<MikanMarkerComponentValues>("MarkerObjectSystem", "MarkerComponent");
-			HandleComponentListChanged<MikanSceneComponentValues>("SceneObjectSystem", "SceneComponent");
-			HandleComponentListChanged<MikanStageComponentValues>("StageObjectSystem", "StageComponent");
-			HandleComponentListChanged<MikanQuadStencilComponentValues>("QuadStencilSystem", "QuadStencilComponent");
-			HandleComponentListChanged<MikanBoxStencilComponentValues>("BoxStencilSystem", "BoxStencilComponent");
-			HandleComponentListChanged<MikanModelStencilComponentValues>("ModelStencilSystem", "ModelStencilComponent");
-			HandleComponentListChanged<MikanTrackingMountComponentValues>("TrackingMountObjectSystem", "TrackingMountComponent");
-			HandleComponentListChanged<MikanMarkerTrackingVolumeComponentValues>("MarkerTrackingVolumeSystem", "MarkerTrackingVolumeComponent");
-			HandleComponentListChanged<MikanVRTrackingVolumeComponentValues>("VRTrackingVolumeSystem", "VRTrackingVolumeComponent");
-			HandleComponentListChanged<MikanClientTextureSourceValues>("ClientTextureSourceSystem", "ClientTextureSourceComponent");
-			HandleComponentListChanged<MikanSpoutTextureSourceValues>("SpoutTextureSourceSystem", "SpoutTextureSourceComponent");
-			HandleComponentListChanged<MikanNetworkVideoSourceValues>("NetworkVideoSourceSystem", "NetworkVideoSourceComponent");
-			HandleComponentListChanged<MikanUSBVideoSourceValues>("USBVideoSourceSystem", "USBVideoSourceComponent");
-			HandleComponentListChanged<MikanVRDeviceComponentValues>("VRObjectSystem", "VRDeviceComponent");
+			// Fetch all Mikan Components, addressed by the names the bindings generate
+			HandleComponentListChanged<MikanAnchorComponentValues>(MikanAnchorComponentValues.k_ownerSystemName, MikanAnchorComponentValues.k_componentClassName);
+			HandleComponentListChanged<MikanCameraComponentValues>(MikanCameraComponentValues.k_ownerSystemName, MikanCameraComponentValues.k_componentClassName);
+			HandleComponentListChanged<MikanCompositorComponentValues>(MikanCompositorComponentValues.k_ownerSystemName, MikanCompositorComponentValues.k_componentClassName);
+			HandleComponentListChanged<MikanMarkerComponentValues>(MikanMarkerComponentValues.k_ownerSystemName, MikanMarkerComponentValues.k_componentClassName);
+			HandleComponentListChanged<MikanSceneComponentValues>(MikanSceneComponentValues.k_ownerSystemName, MikanSceneComponentValues.k_componentClassName);
+			HandleComponentListChanged<MikanStageComponentValues>(MikanStageComponentValues.k_ownerSystemName, MikanStageComponentValues.k_componentClassName);
+			HandleComponentListChanged<MikanQuadStencilComponentValues>(MikanQuadStencilComponentValues.k_ownerSystemName, MikanQuadStencilComponentValues.k_componentClassName);
+			HandleComponentListChanged<MikanBoxStencilComponentValues>(MikanBoxStencilComponentValues.k_ownerSystemName, MikanBoxStencilComponentValues.k_componentClassName);
+			HandleComponentListChanged<MikanModelStencilComponentValues>(MikanModelStencilComponentValues.k_ownerSystemName, MikanModelStencilComponentValues.k_componentClassName);
+			HandleComponentListChanged<MikanTrackingMountComponentValues>(MikanTrackingMountComponentValues.k_ownerSystemName, MikanTrackingMountComponentValues.k_componentClassName);
+			HandleComponentListChanged<MikanMarkerTrackingVolumeComponentValues>(MikanMarkerTrackingVolumeComponentValues.k_ownerSystemName, MikanMarkerTrackingVolumeComponentValues.k_componentClassName);
+			HandleComponentListChanged<MikanVRTrackingVolumeComponentValues>(MikanVRTrackingVolumeComponentValues.k_ownerSystemName, MikanVRTrackingVolumeComponentValues.k_componentClassName);
+			HandleComponentListChanged<MikanClientTextureSourceValues>(MikanClientTextureSourceValues.k_ownerSystemName, MikanClientTextureSourceValues.k_componentClassName);
+			HandleComponentListChanged<MikanSpoutTextureSourceValues>(MikanSpoutTextureSourceValues.k_ownerSystemName, MikanSpoutTextureSourceValues.k_componentClassName);
+			HandleComponentListChanged<MikanNetworkVideoSourceValues>(MikanNetworkVideoSourceValues.k_ownerSystemName, MikanNetworkVideoSourceValues.k_componentClassName);
+			HandleComponentListChanged<MikanUSBVideoSourceValues>(MikanUSBVideoSourceValues.k_ownerSystemName, MikanUSBVideoSourceValues.k_componentClassName);
+			HandleComponentListChanged<MikanVRDeviceComponentValues>(MikanVRDeviceComponentValues.k_ownerSystemName, MikanVRDeviceComponentValues.k_componentClassName);
 		}
 
 		private void HandleMikanDisconnected(MikanDisconnectedEvent disconnectEvent)
@@ -372,23 +371,23 @@ namespace Mikan
 			}
 
 			// Route to appropriate handler based on system name
-			if (systemName == "MikanAnchorComponent")
+			if (systemName == MikanAnchorComponentValues.k_ownerSystemName)
 			{
 				HandleAnchorPropertyUpdate(propertyUpdateEvent);
 			}
-			else if (systemName == "MikanBoxStencilComponent")
+			else if (systemName == MikanBoxStencilComponentValues.k_ownerSystemName)
 			{
 				HandleBoxStencilPropertyUpdate(propertyUpdateEvent);
 			}
-			else if (systemName == "MikanModelStencilComponent")
+			else if (systemName == MikanModelStencilComponentValues.k_ownerSystemName)
 			{
 				HandleModelStencilPropertyUpdate(propertyUpdateEvent);
 			}
-			else if (systemName == "MikanQuadStencilComponent")
+			else if (systemName == MikanQuadStencilComponentValues.k_ownerSystemName)
 			{
 				HandleQuadStencilPropertyUpdate(propertyUpdateEvent);
 			}
-			else if (systemName == "MikanVRDeviceComponent")
+			else if (systemName == MikanVRDeviceComponentValues.k_ownerSystemName)
 			{
 				HandleVRDevicePropertyUpdate(propertyUpdateEvent);
 			}

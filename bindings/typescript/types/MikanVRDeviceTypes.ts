@@ -17,6 +17,8 @@ export enum MikanVRDeviceType {
 }
 
 export class MikanVRDeviceComponentValues extends MikanTransformComponentValues {
+  static readonly k_componentClassName = 'VRDeviceComponent';
+  static readonly k_ownerSystemName = 'VRObjectSystem';
   vr_device_api: MikanVRDeviceApi = MikanVRDeviceApi.INVALID;
   vr_device_type: MikanVRDeviceType = MikanVRDeviceType.INVALID;
   vr_device_index: number = -1;
@@ -33,6 +35,7 @@ export class MikanVRDeviceComponentValues extends MikanTransformComponentValues 
 }
 
 export class MikanVRObjectSystemValues extends MikanSystemValues {
+  static readonly k_systemName = 'VRObjectSystem';
   vr_device_path_list: string[] = [];
 
   static __serializationMetadata: SerializationField[] = [
