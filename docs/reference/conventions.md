@@ -28,6 +28,8 @@ The math and coordinate conventions every subsystem assumes, in one place: math 
 
 - World space is OpenGL-style right handed: +X right, +Y up, +Z toward the viewer (camera forward is -Z). Comments asserting this: `computeCameraRayAtPixel` ("-Z is forward") and `CameraComponent::makeNewCameraFrameEvent` ("Camera up is along the y-axis") in `src/Editor/ECS/Camera/CameraComponent.cpp`.
 
+- Client engines convert at one point each: Unreal's frame is a Y/Z swap away from Mikan's (the Unreal plugin's `MikanMath.cpp`), and a Unity client's is a Z mirror, position `(x, y, -z)` and quaternion `(-x, -y, z, w)`, since Unity is left handed with +Z forward and the same Y up.
+
 - Units are meters. `src/Editor/ECS/Editor/EditorObjectSystem.h` states it twice ("scene is natively meters", "world units are meters"); default clip planes are `DEFAULT_MONO_ZNEAR` 0.1 m / `DEFAULT_MONO_ZFAR` 20 m (`CameraMath.h`).
 
 - Millimeters appear only at physical-measurement boundaries and are suffixed as such: solvePnP object points and translations (`objectPointsMM`, `tvecMM`), marker size (`MarkerDefinition::k_lengthMMPropertyId`), stage bounds (`StageComponentDefinition::getStageBoundsMinMM`), mat-puck offsets. Converters `k_millimeters_to_meters` / `k_meters_to_millimeters` are in `MathTypeConversion.h`.
