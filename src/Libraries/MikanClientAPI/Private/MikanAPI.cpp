@@ -115,6 +115,7 @@ const char* MikanDMXPresetSystemValues::k_systemName= "DMXPresetSystem";
 const char* MikanDMXSequenceSystemValues::k_systemName= "DMXSequenceSystem";
 const char* MikanLightEnvironmentSystemValues::k_systemName= "LightEnvironmentSystem";
 const char* MikanVRObjectSystemValues::k_systemName= "VRObjectSystem";
+const char* MikanUSBVideoSourceSystemValues::k_systemName= "USBVideoSourceSystem";
 
 // Static component class name and owner system name definitions
 // TODO: Make these come from the System and component classes
@@ -194,10 +195,10 @@ const char* MikanCEFTextureSourceValues::k_componentClassName= "CEFTextureSource
 const char* MikanCEFTextureSourceValues::k_ownerSystemName= "CEFTextureSourceSystem";
 
 const char* MikanNetworkVideoSourceValues::k_componentClassName= "NetworkVideoSourceComponent";
-const char* MikanNetworkVideoSourceValues::k_ownerSystemName= "NetworkVideoSourceSystem";
+const char* MikanNetworkVideoSourceValues::k_ownerSystemName= "NetworkVideoObjectSystem";
 
 const char* MikanARKitVideoSourceValues::k_componentClassName= "ARKitVideoSourceComponent";
-const char* MikanARKitVideoSourceValues::k_ownerSystemName= "ARKitVideoSourceSystem";
+const char* MikanARKitVideoSourceValues::k_ownerSystemName= "ARKitVideoObjectSystem";
 
 const char* MikanFileVideoSourceValues::k_componentClassName= "FileVideoSourceComponent";
 const char* MikanFileVideoSourceValues::k_ownerSystemName= "FileVideoSourceSystem";
