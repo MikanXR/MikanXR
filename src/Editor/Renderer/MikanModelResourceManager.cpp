@@ -75,7 +75,7 @@ MikanRenderModelResourcePtr MikanModelResourceManager::fetchRenderModel(const st
 						importer->importModelFromFile(modelFilePath, overrideMaterial);
 					if (resource)
 					{
-						std::string modelName= resource->getModelFilePath().string();
+						resource->finalizeGeometryETag();
 						m_renderModelCache.insert({cacheKey, resource});
 						return resource;
 					}

@@ -26,6 +26,7 @@ namespace MikanXR
 		public const string k_ownerSystemName = "ModelShapeSystem";
 
 		[MikanFieldOrder(0)] public string model_path;
+		[MikanFieldOrder(1)] public string geometry_url;
 	};
 
 	public class MikanModelShapeSystemValues : MikanSystemValues

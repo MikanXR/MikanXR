@@ -32,15 +32,27 @@ public:
 	size_t getWireframeMeshCount() const { return m_wireframeMeshes.size(); }
 	IMkWireframeMeshPtr getWireframeMesh(int meshIndex) const { return m_wireframeMeshes[meshIndex]; }
 
-	// Serialized render geometry for clients that ask for this model's triangle data. Built on the
-	// first request and reused after, since the payload is a pure function of the loaded meshes and
-	// those never change for the life of the resource. Held as opaque bytes so the renderer stays
-	// free of client API types; the server side owns what the bytes mean.
-	inline const std::vector<uint8_t>& getClientGeometryPayload() const { return m_clientGeometryPayload; }
-	inline void setClientGeometryPayload(std::vector<uint8_t>&& payload)
+	// A file the client geometry is built from, as recorded when the model loaded
+	struct GeometrySourceFile
 	{
-		m_clientGeometryPayload= std::move(payload);
-	}
+		std::filesystem::path path;
+		uint64_t fileSize= 0;
+		int64_t lastWriteTime= 0;
+	};
+
+	// FNV-1a 64 over each file's path, size and last-write time, as 16 hex digits
+	static std::string computeGeometryETag(const std::vector<GeometrySourceFile>& sourceFiles);
+
+	// Records the model file and each mesh's diffuse texture file and derives the geometry etag from
+	// them. Called once the importer has bound the mesh materials. The resource manager never
+	// reloads a loaded model, so the etag stays valid for the life of the resource.
+	void finalizeGeometryETag();
+	inline const std::string& getGeometryETag() const { return m_geometryETag; }
+
+	// The client geometry as GLB bytes: every triangulated mesh, each with its diffuse texture
+	// embedded as an unlit base colour image. Built on the first call and shared after, so a
+	// connection thread can send it while the editor goes on. Main thread only.
+	std::shared_ptr<const std::vector<uint8_t>> getOrBuildGlbPayload();
 
 protected:
 	void disposeMeshRenderResources();
@@ -52,5 +64,10 @@ protected:
 
 	std::vector<IMkTriangulatedMeshPtr> m_triangulatedMeshes;
 	std::vector<IMkWireframeMeshPtr> m_wireframeMeshes;
-	std::vector<uint8_t> m_clientGeometryPayload;
+
+	// The distinct diffuse texture files, and per triangulated mesh an index into them or -1
+	std::vector<std::filesystem::path> m_clientTexturePaths;
+	std::vector<int> m_clientTextureIndexPerMesh;
+	std::string m_geometryETag;
+	std::shared_ptr<const std::vector<uint8_t>> m_glbPayload;
 };

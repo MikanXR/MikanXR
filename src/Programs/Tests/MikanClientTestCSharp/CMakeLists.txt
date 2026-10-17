@@ -71,6 +71,8 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DOTNET_REFERENCES
 	"System"
 	"System.Core"
 	"System.Drawing"
+	"System.Net.Http"
+	"System.Web.Extensions"
 	"System.Windows.Forms"
 	"System.Xml.Linq"
 	"System.Data.DataSetExtensions"

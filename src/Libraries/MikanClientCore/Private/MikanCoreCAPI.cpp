@@ -188,17 +188,6 @@ MikanCoreResult Mikan_SetTextResponseCallback(MikanContext context, MikanTextRes
 	return mikanClient->setTextResponseCallback(callback, callback_userdata);
 }
 
-MikanCoreResult Mikan_SetBinaryResponseCallback(MikanContext context, MikanBinaryResponseCallback callback,
-												void* callback_userdata)
-{
-	auto* mikanClient= reinterpret_cast<MikanClient*>(context);
-
-	if (mikanClient == nullptr)
-		return MikanCoreResult_Uninitialized;
-
-	return mikanClient->setBinaryResponseCallback(callback, callback_userdata);
-}
-
 MikanCoreResult Mikan_SetGraphicsDeviceInterface(MikanContext context, MikanClientGraphicsApi api,
 												 void* graphicsDeviceInterface)
 {

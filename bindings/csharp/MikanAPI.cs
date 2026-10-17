@@ -17,6 +17,9 @@ namespace MikanXR
 		private MikanEventManager _eventManager;
 		private MikanRenderTargetAPI _renderTargetAPI;
 
+		private string _connectHost= "";
+		private int _httpPort= 0;
+
 		// -- API Lifecycle ----
 
 		public MikanAPI()
@@ -165,8 +168,54 @@ namespace MikanXR
 
 		// -- Connection ----
 
+		// The editor's HTTP base, such as "http://127.0.0.1:8090". A client joins it with a
+		// component's geometry_url to fetch the model. Empty until the editor's connected event
+		// reports its HTTP port, and again after a disconnect.
+		public string HttpBaseUrl
+		{
+			get
+			{
+				if (_httpPort == 0)
+				{
+					return "";
+				}
+
+				return "http://" + NormalizeHost(_connectHost) + ":" + _httpPort;
+			}
+		}
+
+		private static string NormalizeHost(string host)
+		{
+			if (string.IsNullOrEmpty(host))
+			{
+				return "127.0.0.1";
+			}
+
+			foreach (string scheme in new[] { "ws://", "wss://", "http://" })
+			{
+				if (host.StartsWith(scheme, StringComparison.OrdinalIgnoreCase))
+				{
+					host= host.Substring(scheme.Length);
+					break;
+				}
+			}
+
+			host= host.TrimEnd('/');
+
+			// Drop a ":port" suffix, but leave a bare IPv6 literal (several colons) alone
+			int colon= host.LastIndexOf(':');
+			if (colon > 0 && host.IndexOf(':') == colon)
+			{
+				host= host.Substring(0, colon);
+			}
+
+			return host.Length > 0 ? host : "127.0.0.1";
+		}
+
 		public MikanAPIResult Connect(string host="", string port="")
 		{
+			_connectHost= host;
+			_httpPort= 0;
 			return _transport.Connect(host, port);
 		}
 
@@ -177,6 +226,7 @@ namespace MikanXR
 
 		public MikanAPIResult Disconnect()
 		{
+			_httpPort= 0;
 			return _transport.Disconnect();
 		}
 
@@ -195,7 +245,18 @@ namespace MikanXR
 
 		public MikanAPIResult FetchNextEvent(out MikanEvent outEvent)
 		{
-			return _eventManager.FetchNextEvent(out outEvent);
+			MikanAPIResult result= _eventManager.FetchNextEvent(out outEvent);
+
+			if (outEvent is MikanConnectedEvent connectedEvent)
+			{
+				_httpPort= connectedEvent.httpPort;
+			}
+			else if (outEvent is MikanDisconnectedEvent)
+			{
+				_httpPort= 0;
+			}
+
+			return result;
 		}
 
 		// -- Logging ----

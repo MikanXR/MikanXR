@@ -5232,6 +5232,11 @@ msgid "Frame Sync Mode"
 msgstr ""
 
 #. Section: properties
+msgctxt "properties.geometry_url"
+msgid "Geometry URL"
+msgstr ""
+
+#. Section: properties
 #, fuzzy
 msgctxt "properties.green"
 msgid "Green"

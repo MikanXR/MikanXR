@@ -21,6 +21,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanClientEvents")) Mikan
 
 	FIELD() bool isClientCompatible= false;
 
+	// The port of the editor's HTTP server, which serves model geometry on the host the client connected to
+	FIELD() int httpPort= 0;
+
 #ifdef MIKANAPI_REFLECTION_ENABLED
 	MikanConnectedEvent_GENERATED
 #endif

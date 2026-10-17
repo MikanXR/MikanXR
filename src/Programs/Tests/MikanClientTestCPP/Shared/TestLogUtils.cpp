@@ -82,25 +82,6 @@ void TestLogUtils::logComponent(const MikanVRDeviceComponentValues& vrDeviceInfo
 	MIKAN_LOG_INFO("VRDeviceComponent") << "Device Name: " << vrDeviceInfo.vr_device_path.getUtf8Value();
 }
 
-void TestLogUtils::logModelStencilGeometry(const MikanStencilModelRenderGeometry& geometry)
-{
-	for (size_t index= 0; index < geometry.meshes.size(); ++index)
-	{
-		const MikanTriagulatedMesh& mesh= geometry.meshes[index];
-
-		MIKAN_LOG_INFO("logModelStencilGeometry") << "  Mesh Index: " << index;
-		logModelTriMesh(mesh);
-	}
-}
-
-void TestLogUtils::logModelTriMesh(const MikanTriagulatedMesh& triMesh)
-{
-	MIKAN_LOG_INFO("logModelTriMesh") << "    Triangle Count: " << triMesh.indices.size() / 3;
-	MIKAN_LOG_INFO("logModelTriMesh") << "    Normal Count: " << triMesh.normals.size();
-	MIKAN_LOG_INFO("logModelTriMesh") << "    Vertex Count: " << triMesh.vertices.size();
-	MIKAN_LOG_INFO("logModelTriMesh") << "    Texel Count: " << triMesh.texels.size();
-}
-
 void TestLogUtils::logTransform(const MikanTransform& xform)
 {
 	const MikanVector3f& s= xform.scale;

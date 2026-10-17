@@ -1,6 +1,5 @@
 // This file is auto generated. DO NOT EDIT.
 
-import { MikanVector2f, MikanVector3f } from './MikanMathTypes.js';
 import { MikanSystemValues } from './MikanPropertyTypes.js';
 import { MikanTransformComponentValues } from './MikanTransformTypes.js';
 import type { SerializationField } from './SerializationTypes.js';
@@ -47,9 +46,11 @@ export class MikanModelStencilComponentValues extends MikanStencilComponentValue
   static readonly k_componentClassName = 'ModelStencilComponent';
   static readonly k_ownerSystemName = 'ModelStencilSystem';
   model_path: string = '';
+  geometry_url: string = '';
 
   static __serializationMetadata: SerializationField[] = [
-    { name: 'model_path', type: 'string' }
+    { name: 'model_path', type: 'string' },
+    { name: 'geometry_url', type: 'string' }
   ];
 }
 
@@ -78,28 +79,6 @@ export class MikanQuadStencilSystemValues extends MikanSystemValues {
   static readonly k_systemName = 'QuadStencilSystem';
 
   static __serializationMetadata: SerializationField[] = [
-  ];
-}
-
-export class MikanStencilModelRenderGeometry {
-  meshes: MikanTriagulatedMesh[] = [];
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'meshes', type: 'MikanTriagulatedMesh', isArray: true }
-  ];
-}
-
-export class MikanTriagulatedMesh {
-  vertices: MikanVector3f[] = [];
-  normals: MikanVector3f[] = [];
-  texels: MikanVector2f[] = [];
-  indices: number[] = [];
-
-  static __serializationMetadata: SerializationField[] = [
-    { name: 'vertices', type: 'MikanVector3f', isArray: true },
-    { name: 'normals', type: 'MikanVector3f', isArray: true },
-    { name: 'texels', type: 'MikanVector2f', isArray: true },
-    { name: 'indices', type: 'int32', isArray: true }
   ];
 }
 

@@ -26,7 +26,6 @@ public:
 	MikanCoreResult disconnect(uint16_t code, const std::string& reason);
 	MikanCoreResult fetchNextEvent(size_t utf8_buffer_size, char* out_utf8_buffer, size_t* out_utf8_bytes_written);
 	MikanCoreResult setTextResponseCallback(MikanTextResponseCallback callback, void* callback_userdata);
-	MikanCoreResult setBinaryResponseCallback(MikanBinaryResponseCallback callback, void* callback_userdata);
 	MikanCoreResult sendRequestJSON(const char* utf8_request_json);
 	MikanCoreResult shutdown();
 
@@ -50,7 +49,6 @@ protected:
 	ISharedTextureWriteAccessorPtr getSharedTextureWriteAccessor(MikanCameraID camera_id) const;
 	ISharedTextureWriteAccessorPtr addSharedTextureWriteAccessor(MikanCameraID camera_id);
 	void textResponseHandler(const std::string& utf8ResponseString);
-	void binaryResponseHandler(const uint8_t* buffer, size_t bufferSize);
 
 private:
 	std::array<void*, MikanClientGraphicsApi_COUNT> m_graphicsDeviceInterfaces;
@@ -61,8 +59,6 @@ private:
 
 	MikanTextResponseCallback m_textResponseCallback= nullptr;
 	void* m_textResponseCallbackUserData= nullptr;
-	MikanBinaryResponseCallback m_binaryResponseCallback= nullptr;
-	void* m_binaryResponseCallbackUserData= nullptr;
 
 	std::string m_clientName;
 	std::map<MikanCameraID, ISharedTextureWriteAccessorPtr> m_renderTargetWriterCameraMap;

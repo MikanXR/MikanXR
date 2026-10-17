@@ -3,6 +3,7 @@
 #include "MikanRequestManager.h"
 #include "MikanRenderTargetAPI.h"
 #include "MikanEventManager.h"
+#include "MikanClientEvents.h"
 #include "JsonSerializer.h"
 #include "TypeRegistry.h"
 
@@ -55,10 +56,8 @@
 #include "MikanStageTypes.rfks.h"
 
 #include "MikanShapeTypes.rfks.h"
-#include "MikanShapeRequests.rfks.h"
 
 #include "MikanStencilTypes.rfks.h"
-#include "MikanStencilRequests.rfks.h"
 
 #include "MikanTextureSourceEvents.rfks.h"
 #include "MikanTextureSourceTypes.rfks.h"
@@ -312,18 +311,53 @@ public:
 		return m_renderTargetAPI->getCameraPackDepthTextureResourcePtr(cameraId, outResourcePtr);
 	}
 
-	virtual MikanAPIResult connect() override { return (MikanAPIResult)Mikan_Connect(m_context, "", ""); }
+	virtual MikanAPIResult connect() override { return connect("", ""); }
 
 	virtual MikanAPIResult connect(const std::string& host, const std::string& port) override
 	{
+		m_connectHost= host;
+		m_httpPort= 0;
 		return (MikanAPIResult)Mikan_Connect(m_context, host.c_str(), port.c_str());
+	}
+
+	virtual std::string getHttpBaseUrl() const override
+	{
+		if (m_httpPort <= 0)
+			return std::string();
+
+		// The websocket host may carry a scheme, a trailing slash or its own port
+		std::string host= m_connectHost;
+		const size_t schemeEnd= host.find("://");
+		if (schemeEnd != std::string::npos)
+			host= host.substr(schemeEnd + 3);
+		const size_t pathStart= host.find('/');
+		if (pathStart != std::string::npos)
+			host= host.substr(0, pathStart);
+		const size_t portStart= host.rfind(':');
+		if (portStart != std::string::npos && host.find(']') == std::string::npos)
+			host= host.substr(0, portStart);
+		if (host.empty())
+			host= "127.0.0.1";
+
+		return "http://" + host + ":" + std::to_string(m_httpPort);
 	}
 
 	virtual bool getIsConnected() override { return Mikan_GetIsConnected(m_context); }
 
 	virtual MikanAPIResult fetchNextEvent(MikanEventPtr& out_event) override
 	{
-		return m_eventManager->fetchNextEvent(out_event);
+		const MikanAPIResult result= m_eventManager->fetchNextEvent(out_event);
+
+		if (auto connectedEvent= std::dynamic_pointer_cast<MikanConnectedEvent>(out_event))
+		{
+			m_httpPort= connectedEvent->httpPort;
+		}
+		else if (std::dynamic_pointer_cast<MikanDisconnectedEvent>(out_event))
+		{
+			m_httpPort= 0;
+		}
+
+		return result;
 	}
 
 	virtual MikanAPIResult disconnect() override { return (MikanAPIResult)Mikan_Disconnect(m_context, 0, ""); }
@@ -345,6 +379,8 @@ private:
 	std::unique_ptr<MikanRequestManager> m_requestManager;
 	std::unique_ptr<MikanEventManager> m_eventManager;
 	std::unique_ptr<MikanRenderTargetAPI> m_renderTargetAPI;
+	std::string m_connectHost;
+	int m_httpPort= 0;
 };
 
 // -- Mikan API Factory -----

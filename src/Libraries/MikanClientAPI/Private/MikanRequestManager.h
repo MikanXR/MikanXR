@@ -4,7 +4,6 @@
 #include "MikanAPITypes.h"
 #include "MikanTypeFwd.h"
 #include "MikanResponseFuture.h"
-#include "BinaryUtility.h"
 #include "JsonSerializer.h"
 
 #include <future>
@@ -30,11 +29,6 @@ protected:
 	static void textResponseHandlerStatic(MikanRequestID requestId, const char* utf8ResponseString, void* userdata);
 	void textResponseHander(MikanRequestID requestId, const char* utf8ResponseString);
 	MikanResponsePtr parseResponseString(const char* utf8ResponseString);
-
-	static void binaryResponseHandlerStatic(const uint8_t* buffer, size_t bufferSize, void* userdata);
-	void binaryResponseHander(const uint8_t* buffer, size_t bufferSize);
-	MikanResponsePtr parseResponseBinaryReader(const MikanResponse& requestHeader, const uint8_t* buffer,
-											   size_t bufferSize);
 
 private:
 	struct PendingRequest

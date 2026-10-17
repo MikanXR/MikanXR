@@ -31,7 +31,7 @@ namespace MikanXR
 		public MikanAPIResult Initialize(IMikanTransport transport)
 		{
 			_transport = transport;
-			_transport.SetResponseHandlers(InternalTextResponseCallback, InternalBinaryResponseCallback);
+			_transport.SetResponseHandler(InternalTextResponseCallback);
 
 			// Build a map from TypeName to MikanResponse Type
 			var eventTypes = from t in Assembly.GetExecutingAssembly().GetTypes()
@@ -217,71 +217,6 @@ namespace MikanXR
 			}
 
 			return response;
-		}
-
-		private void InternalBinaryResponseCallback(byte[] managedBuffer)
-		{
-			var binaryReader = new BinaryReader(managedBuffer);
-
-			try
-			{
-				// Read the response type name
-				string responseTypeName = binaryReader.ReadUTF8String();
-
-				// Read the request ID
-				int requestId = binaryReader.ReadInt32();
-
-				// Read the result code
-				MikanAPIResult resultCode = (MikanAPIResult)binaryReader.ReadInt32();
-
-				// Look up the pending request
-				PendingRequest pendingRequest = RemovePendingRequest(requestId);
-
-				// Bail if the corresponding pending request is not found
-				if (pendingRequest != null)
-				{
-					// Attempt to create the response object by class name
-					MikanResponse response = null;
-					if (_responseTypeCache.TryGetValue(responseTypeName, out Type responseType))
-					{
-						object responseObject = Activator.CreateInstance(responseType);
-
-						// Deserialize the event object from the byte array
-						if (BinaryDeserializer.DeserializeFromBytes(managedBuffer, responseObject, responseType))
-						{
-							response = (MikanResponse)responseObject;
-						}
-						else
-						{
-							_logCallback(MikanLogLevel.Error, "Failed to deserialize response object from byte array");
-						}
-					}
-					else
-					{
-						_logCallback(MikanLogLevel.Error, "Unknown response type: " + responseTypeName);
-					}
-
-					if (response == null)
-					{
-						response = new MikanResponse()
-						{
-							responseTypeName = typeof(MikanResponse).Name,
-							requestId = requestId,
-							resultCode = MikanAPIResult.MalformedResponse
-						};
-					}
-
-					pendingRequest.promise.SetResult(response);
-				}
-				else
-				{
-					_logCallback(MikanLogLevel.Error, $"Invalid pending request id({requestId}) for response type {responseTypeName}");
-				}
-			}
-			catch (Exception e)
-			{
-				_logCallback(MikanLogLevel.Error, $"Malformed binary response: {e.Message}");
-			}
 		}
 	}
 }

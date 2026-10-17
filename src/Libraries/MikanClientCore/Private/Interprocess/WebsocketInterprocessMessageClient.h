@@ -17,7 +17,6 @@ public:
 	virtual void dispose() override;
 
 	virtual void setTextResponseHandler(TextResponseHandler handler) override;
-	virtual void setBinaryResponseHandler(BinaryResponseHandler handler) override;
 
 	MikanCoreResult connect(const std::string& host, const std::string& port) override;
 	void disconnect(uint16_t code, const std::string& reason) override;

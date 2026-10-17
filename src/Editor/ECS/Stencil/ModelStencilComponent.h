@@ -28,6 +28,9 @@ public:
 									const Serialization::PolymorphicObjectPtr& initParams) override;
 
 	static const std::string k_modelStencilObjPathPropertyId;
+	// Read-only and derived from the loaded model, so the component notifies it once a model_path
+	// change has reloaded the model
+	static const std::string k_geometryUrlPropertyId;
 	bool hasModelPath() const;
 	const std::filesystem::path getModelPath() const;
 	void setModelPath(const std::filesystem::path& path, bool bForceDirty= false);

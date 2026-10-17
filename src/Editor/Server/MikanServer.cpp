@@ -7,6 +7,7 @@
 #include "FunctionRequestHandler.h"
 #include "LightRequestHandler.h"
 #include "MarkerRequestHandler.h"
+#include "ModelGeometryRequestHandler.h"
 #include "JsonDeserializer.h"
 #include "JsonSerializer.h"
 #include "Logger.h"
@@ -18,14 +19,11 @@
 #include "MikanCameraRequests.h"
 #include "MikanScriptRequests.h"
 #include "MikanServer.h"
-#include "MikanStencilRequests.h"
 #include "ProjectConfig.h"
 #include "PropertyRequestHandler.h"
 #include "RemoteControlManager.h"
 #include "ScriptRequestHandler.h"
 #include "ServerResponseHelpers.h"
-#include "ShapeRequestHandler.h"
-#include "StencilRequestHandler.h"
 #include "StringUtils.h"
 #include "TextureSourceRequestHandler.h"
 #include "VideoSourceRequestHandler.h"
@@ -60,9 +58,8 @@ MikanServer::MikanServer()
 	, m_propertyRequestHandler(new PropertyRequestHandler(this))
 	, m_remoteControlManager(new RemoteControlManager(this))
 	, m_markerRequestHandler(new MarkerRequestHandler(this))
-	, m_shapeRequestHandler(new ShapeRequestHandler(this))
+	, m_modelGeometryRequestHandler(new ModelGeometryRequestHandler(this))
 	, m_scriptRequestHandler(new ScriptRequestHandler(this))
-	, m_stencilRequestHandler(new StencilRequestHandler(this))
 	, m_textureSourceRequestHandler(new TextureSourceRequestHandler(this))
 	, m_videoSourceRequestHandler(new VideoSourceRequestHandler(this))
 {
@@ -74,8 +71,7 @@ MikanServer::~MikanServer()
 	delete m_videoSourceRequestHandler;
 	delete m_textureSourceRequestHandler;
 	delete m_markerRequestHandler;
-	delete m_shapeRequestHandler;
-	delete m_stencilRequestHandler;
+	delete m_modelGeometryRequestHandler;
 	delete m_scriptRequestHandler;
 	delete m_remoteControlManager;
 	delete m_propertyRequestHandler;
@@ -163,15 +159,9 @@ bool MikanServer::startup(MainWindow* mainWindow)
 		return false;
 	}
 
-	if (!m_shapeRequestHandler->startup(mainWindow))
+	if (!m_modelGeometryRequestHandler->startup(mainWindow))
 	{
-		MIKAN_LOG_ERROR("MikanServer::startup()") << "Failed to bind shape request handlers";
-		return false;
-	}
-
-	if (!m_stencilRequestHandler->startup(mainWindow))
-	{
-		MIKAN_LOG_ERROR("MikanServer::startup()") << "Failed to bind stencil request handlers";
+		MIKAN_LOG_ERROR("MikanServer::startup()") << "Failed to bind model geometry request handler";
 		return false;
 	}
 
@@ -241,8 +231,7 @@ void MikanServer::shutdown()
 	m_propertyRequestHandler->shutdown();
 	m_scriptRequestHandler->shutdown();
 	m_markerRequestHandler->shutdown();
-	m_shapeRequestHandler->shutdown();
-	m_stencilRequestHandler->shutdown();
+	m_modelGeometryRequestHandler->shutdown();
 	m_remoteControlManager->shutdown();
 	m_textureSourceRequestHandler->shutdown();
 	m_videoSourceRequestHandler->shutdown();
@@ -417,6 +406,7 @@ void MikanServer::onClientConnectedHandler(const ClientSocketEvent& event)
 		connectedEvent.serverVersion.version= MIKAN_SERVER_API_VERSION;
 		connectedEvent.minClientVersion.version= MIKAN_MIN_ALLOWED_CLIENT_API_VERSION;
 		connectedEvent.isClientCompatible= bIsClientCompatible;
+		connectedEvent.httpPort= App::getInstance()->getAppSettings()->getHttpServerPort();
 
 		m_messageServer->sendMessageToClient(event.connectionId, mikanTypeToJsonString(connectedEvent));
 	}

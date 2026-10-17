@@ -21,25 +21,3 @@ void writeSimpleJsonResponse(MikanRequestID requestId, MikanAPIResult result, Cl
 		response.utf8String= "";
 	}
 }
-
-void writeSimpleBinaryResponse(MikanRequestID requestId, MikanAPIResult result, ClientResponse& response)
-{
-	// Only write a response if the request ID is valid (i.e. the client expects a response)
-	if (requestId != INVALID_MIKAN_ID)
-	{
-		MikanResponse mikanResponse;
-		mikanResponse.requestId= requestId;
-		mikanResponse.resultCode= result;
-
-		std::string errorMsg;
-		if (!Serialization::serializeToBytes<MikanResponse>(mikanResponse, response.binaryData, errorMsg))
-		{
-			MIKAN_LOG_ERROR("ServerResponseHelpers::writeSimpleBinaryResponse")
-				<< "Failed to serialize MikanResponse to binary data: " << errorMsg;
-		}
-	}
-	else
-	{
-		response.binaryData.clear();
-	}
-}

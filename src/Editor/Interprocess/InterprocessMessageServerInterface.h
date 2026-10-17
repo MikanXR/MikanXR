@@ -32,7 +32,6 @@ struct ClientRequest
 struct ClientResponse
 {
 	std::string utf8String;
-	std::vector<uint8_t> binaryData;
 };
 
 using SocketEventHandler= std::function<void(const ClientSocketEvent& event)>;

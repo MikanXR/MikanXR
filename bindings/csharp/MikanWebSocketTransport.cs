@@ -43,7 +43,6 @@ namespace MikanXR
 
 		private readonly ConcurrentQueue<string> _eventQueue= new ConcurrentQueue<string>();
 		private MikanTextResponseHandler _textResponseHandler;
-		private MikanBinaryResponseHandler _binaryResponseHandler;
 
 		public string ClientName => _clientName;
 
@@ -86,10 +85,9 @@ namespace MikanXR
 			return MikanAPIResult.Success;
 		}
 
-		public void SetResponseHandlers(MikanTextResponseHandler textHandler, MikanBinaryResponseHandler binaryHandler)
+		public void SetResponseHandler(MikanTextResponseHandler textHandler)
 		{
 			_textResponseHandler= textHandler;
-			_binaryResponseHandler= binaryHandler;
 		}
 
 		public MikanAPIResult Connect(string host, string port)
@@ -272,8 +270,8 @@ namespace MikanXR
 					}
 					else
 					{
-						// Binary frames are always responses, never events
-						_binaryResponseHandler?.Invoke(message.ToArray());
+						// The protocol is text only: geometry is served over HTTP
+						Log(MikanLogLevel.Warning, $"MikanWebSocketTransport::ReceiveLoop - dropped unexpected binary frame ({message.Length} bytes)");
 					}
 				}
 			}

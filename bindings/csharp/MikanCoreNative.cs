@@ -38,12 +38,6 @@ namespace MikanXR
 			string utf8_response_string,
 			IntPtr userdata);
 
-		[global::System.Runtime.InteropServices.UnmanagedFunctionPointer(global::System.Runtime.InteropServices.CallingConvention.Cdecl)]
-		public delegate void NativeBinaryResponseCallback(
-			IntPtr buffer,
-			UIntPtr buffer_size,
-			IntPtr userdata);
-
 		[DllImport("MikanClientCore.dll", CharSet = CharSet.Ansi)]
 		public static extern int Mikan_Initialize(
 			string client_name,
@@ -168,12 +162,6 @@ namespace MikanXR
 		public static extern int Mikan_SetTextResponseCallback(
 			IntPtr context,
 			NativeTextResponseCallback callback, 
-			IntPtr callback_userdata);
-
-		[DllImport("MikanClientCore.dll")]
-		public static extern int Mikan_SetBinaryResponseCallback(
-			IntPtr context,
-			NativeBinaryResponseCallback callback,
 			IntPtr callback_userdata);
 
 		[DllImport("MikanClientCore.dll")]

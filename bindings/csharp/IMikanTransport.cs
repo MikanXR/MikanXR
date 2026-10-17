@@ -4,7 +4,6 @@ namespace MikanXR
 {
 	public delegate void MikanLogCallback(MikanLogLevel log_level, string log_message);
 	public delegate void MikanTextResponseHandler(string utf8ResponseString);
-	public delegate void MikanBinaryResponseHandler(byte[] responseBytes);
 
 	// What MikanAPI needs from whatever carries its messages to the editor. The request and
 	// event managers speak to this and nothing else, so a client picks its transport once at
@@ -24,7 +23,7 @@ namespace MikanXR
 		// the prefix of its shared texture sender names.
 		string ClientName { get; }
 
-		void SetResponseHandlers(MikanTextResponseHandler textHandler, MikanBinaryResponseHandler binaryHandler);
+		void SetResponseHandler(MikanTextResponseHandler textHandler);
 
 		// Begins connecting and returns at once. The editor's MikanConnectedEvent is the signal
 		// that the connection is up. An empty host or port selects the default.

@@ -98,7 +98,7 @@ Done: `DepthEdgeRefineNode` ([compositor.md](../reference/compositor.md)), with 
 
 ## Constraints to respect
 
-- Nothing here changes the client wire protocol. A new sidecar format, a new stencil, and a new compositor node are editor-side. If a client ever needs the occlusion mesh it already arrives through `GetModelStencilRenderGeometry`. Read [wire-protocol.md](../reference/wire-protocol.md) before adding any property.
+- Nothing here changes the client wire protocol. A new sidecar format, a new stencil, and a new compositor node are editor-side. If a client ever needs the occlusion mesh it already arrives through the stencil's `geometry_url`. Read [wire-protocol.md](../reference/wire-protocol.md) before adding any property.
 - Coordinate conventions have single conversion points ([conventions.md](../reference/conventions.md)). Do not add a flip on a hunch; verify with the reprojection check.
 - Pose track version 2 must load version 1 takes unchanged: depth sidecars are optional, and a take without them still plays and aligns.
 - Code style per [standards.md](../reference/standards.md), and no doc citations in code comments.

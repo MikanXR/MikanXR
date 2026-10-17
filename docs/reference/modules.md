@@ -140,7 +140,7 @@ Subdirectories (each is a source group, not a separate target):
 
 - `Scripting`: the project script context (LuaBridge3 bindings, `LuaDebugServer` via lrdb).
 
-- `Server` is the RPC surface: `MikanServer` plus per-domain `IServerRequestHandler` implementations (`CameraRequestHandler`, `StageRequestHandler`, `StencilRequestHandler`, `VideoSourceRequestHandler`, `MarkerRequestHandler`, `LightRequestHandler`, `PropertyRequestHandler`, `ScriptRequestHandler`, `ShapeRequestHandler`, `TextureSourceRequestHandler`, `FunctionRequestHandler`, and `AssetUploadRequestHandler`, which serves the HTTP upload route rather than a websocket request), `RemoteControlManager`/`IRemoteControllable`, and `Test/` (unit tests run by `MikanCmd -runTests`).
+- `Server` is the RPC surface: `MikanServer` plus per-domain `IServerRequestHandler` implementations (`CameraRequestHandler`, `StageRequestHandler`, `VideoSourceRequestHandler`, `MarkerRequestHandler`, `LightRequestHandler`, `PropertyRequestHandler`, `ScriptRequestHandler`, `TextureSourceRequestHandler`, `FunctionRequestHandler`, and two that serve HTTP routes rather than websocket requests: `AssetUploadRequestHandler` for the upload route and `ModelGeometryRequestHandler` for the model geometry GLBs), `RemoteControlManager`/`IRemoteControllable`, and `Test/` (unit tests run by `MikanCmd -runTests`).
 
 ---
 

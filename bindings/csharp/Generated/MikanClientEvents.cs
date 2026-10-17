@@ -9,6 +9,7 @@ namespace MikanXR
 		[MikanFieldOrder(0)] public MikanClientAPIVersion serverVersion;
 		[MikanFieldOrder(1)] public MikanClientAPIVersion minClientVersion;
 		[MikanFieldOrder(2)] public bool isClientCompatible;
+		[MikanFieldOrder(3)] public int httpPort;
 
 		public MikanConnectedEvent()
 		{

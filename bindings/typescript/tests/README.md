@@ -46,13 +46,6 @@ Contains the actual test cases:
   - Negative numbers
   - Special characters in strings
 
-- **Binary Serialization Tests** - Test binary serialization/deserialization
-  - Basic round-trip serialization
-  - Empty arrays and maps
-  - BigInt preservation
-  - UTF-8 string encoding
-  - Little-endian byte order
-
 - **Edge Cases** - Test edge conditions
   - Null polymorphic objects
   - Boolean edge cases
@@ -82,7 +75,6 @@ The tests cover the following serialization features:
 
 ### Serialization Formats
 - JSON (text-based websocket messages)
-- Binary (efficient binary websocket messages)
 
 ## Comparison with C# Tests
 
@@ -91,12 +83,11 @@ The TypeScript tests mirror the C# tests in structure and coverage:
 | C# Test | TypeScript Test | Status |
 |---------|----------------|--------|
 | `TestReflectionFromJson()` | JSON Serialization suite | ✅ Implemented |
-| `TestReflectionFromBytes()` | Binary Serialization suite | ✅ Implemented |
 | Additional edge cases | Edge Cases suite | ✅ Enhanced |
 
 ## Notes
 
 - The TypeScript implementation uses metadata decorators instead of C# reflection
 - BigInt is used for 64-bit integers (TypeScript limitation compared to C#)
-- The visitor pattern is used for both JSON and binary serialization
+- The visitor pattern is used for JSON serialization
 - TypeRegistry provides runtime type lookup similar to C# reflection

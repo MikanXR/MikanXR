@@ -16,10 +16,8 @@ namespace MikanXR
 		// they are held here to keep the garbage collector from moving or freeing them.
 		private MikanCoreNative.NativeLogCallback _nativeLogCallback;
 		private MikanCoreNative.NativeTextResponseCallback _nativeTextResponseCallback;
-		private MikanCoreNative.NativeBinaryResponseCallback _nativeBinaryResponseCallback;
 
 		private MikanTextResponseHandler _textResponseHandler;
-		private MikanBinaryResponseHandler _binaryResponseHandler;
 
 		// Grown on demand: an event larger than this is re-fetched into a buffer sized for it
 		// rather than left wedged at the head of the native queue.
@@ -32,7 +30,6 @@ namespace MikanXR
 		{
 			_nativeLogCallback= new MikanCoreNative.NativeLogCallback(InternalLogCallback);
 			_nativeTextResponseCallback= new MikanCoreNative.NativeTextResponseCallback(InternalTextResponseCallback);
-			_nativeBinaryResponseCallback= new MikanCoreNative.NativeBinaryResponseCallback(InternalBinaryResponseCallback);
 		}
 
 		public void Dispose()
@@ -54,15 +51,8 @@ namespace MikanXR
 
 			_clientName= clientName;
 
-			result= (MikanAPIResult)MikanCoreNative.Mikan_SetTextResponseCallback(
+			return (MikanAPIResult)MikanCoreNative.Mikan_SetTextResponseCallback(
 				_mikanContext, _nativeTextResponseCallback, IntPtr.Zero);
-			if (result != MikanAPIResult.Success)
-			{
-				return result;
-			}
-
-			return (MikanAPIResult)MikanCoreNative.Mikan_SetBinaryResponseCallback(
-				_mikanContext, _nativeBinaryResponseCallback, IntPtr.Zero);
 		}
 
 		public bool GetIsInitialized()
@@ -83,10 +73,9 @@ namespace MikanXR
 			return result;
 		}
 
-		public void SetResponseHandlers(MikanTextResponseHandler textHandler, MikanBinaryResponseHandler binaryHandler)
+		public void SetResponseHandler(MikanTextResponseHandler textHandler)
 		{
 			_textResponseHandler= textHandler;
-			_binaryResponseHandler= binaryHandler;
 		}
 
 		public MikanAPIResult Connect(string host, string port)
@@ -149,15 +138,6 @@ namespace MikanXR
 		private void InternalTextResponseCallback(int requestId, string utf8ResponseString, IntPtr userData)
 		{
 			_textResponseHandler?.Invoke(utf8ResponseString);
-		}
-
-		private void InternalBinaryResponseCallback(IntPtr buffer, UIntPtr bufferSize, IntPtr userData)
-		{
-			int byteCount= (int)bufferSize.ToUInt32();
-			byte[] managedBuffer= new byte[byteCount];
-			Marshal.Copy(buffer, managedBuffer, 0, byteCount);
-
-			_binaryResponseHandler?.Invoke(managedBuffer);
 		}
 	}
 }

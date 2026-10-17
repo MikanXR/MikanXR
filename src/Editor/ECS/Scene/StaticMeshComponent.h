@@ -18,7 +18,5 @@ public:
 	IMkStaticMeshInstancePtr getStaticMesh() const;
 	void setStaticMesh(IMkStaticMeshInstancePtr meshInstance);
 
-	void extractRenderGeometry(struct MikanTriagulatedMesh& outRenderGeometry);
-
 	MulticastDelegate<void(StaticMeshComponentWeakPtr meshComponent)> OnMeshChanged;
 };

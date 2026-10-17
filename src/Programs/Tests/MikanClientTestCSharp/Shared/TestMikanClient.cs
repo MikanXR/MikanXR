@@ -1,5 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Net.Http;
+using System.Text;
+using System.Web.Script.Serialization;
 using MikanXR;
 
 namespace Mikan
@@ -8,6 +12,7 @@ namespace Mikan
 	{
         private TestGraphicsContext _graphicsContext;
 		private MikanAPI _mikanAPI;
+		private readonly HttpClient _httpClient = new HttpClient();
 		private bool _mikanInitialized = false;
 		private int m_lastProcessedCamera= -1;
 		private bool _shutdownRequested = false;
@@ -70,6 +75,8 @@ namespace Mikan
 				_mikanAPI.Dispose();
 				_mikanInitialized = false;
 			}
+
+			_httpClient.Dispose();
 		}
 
 		private void OnMikanLog(MikanLogLevel logLevel, string logMessage)
@@ -193,36 +200,120 @@ namespace Mikan
 							Console.WriteLine($"INFO:   Component {componentId}: {typedComponentValues.GetType().Name}");
 						}
 
-						// Model geometry comes back as a binary response, the one path a text-only
-						// transport would miss, so every model stencil is asked for its mesh
-						if (typedComponentValues is MikanModelStencilComponentValues)
+						// Model geometry is served as GLB over HTTP, so every model stencil
+						// with a geometry_url has its mesh fetched and checked
+						if (typedComponentValues is MikanModelStencilComponentValues modelStencilValues)
 						{
-							FetchModelStencilGeometry(componentId);
+							FetchModelStencilGeometry(componentId, modelStencilValues.geometry_url);
 						}
 					}
 				}
 			}
 		}
 
-		private void FetchModelStencilGeometry(int stencilId)
+		private void FetchModelStencilGeometry(int stencilId, string geometryUrl)
 		{
-			var response = _mikanAPI.SendRequest(new GetModelStencilRenderGeometry() { stencilId = stencilId }).FetchResponse();
-			if (response.resultCode == MikanAPIResult.Success &&
-				response is MikanStencilModelRenderGeometryResponse geometryResponse)
+			if (string.IsNullOrEmpty(geometryUrl))
 			{
-				int meshCount = geometryResponse.render_geometry.meshes?.Count ?? 0;
-				int vertexCount = 0;
-				for (int meshIndex = 0; meshIndex < meshCount; ++meshIndex)
+				Console.WriteLine($"INFO:   Model stencil {stencilId} has no geometry");
+				return;
+			}
+
+			string baseUrl = _mikanAPI.HttpBaseUrl;
+			if (string.IsNullOrEmpty(baseUrl))
+			{
+				Console.WriteLine($"ERROR: Model stencil {stencilId} geometry skipped, no HTTP base url");
+				return;
+			}
+
+			try
+			{
+				byte[] glbBytes = _httpClient.GetByteArrayAsync(baseUrl + geometryUrl).GetAwaiter().GetResult();
+
+				if (TryParseGlb(glbBytes, out int meshCount, out int imageCount, out string error))
 				{
-					vertexCount += geometryResponse.render_geometry.meshes[meshIndex].vertices?.Count ?? 0;
+					Console.WriteLine($"INFO:   Model stencil {stencilId} geometry: {glbBytes.Length} bytes, {meshCount} meshes, {imageCount} images");
+				}
+				else
+				{
+					Console.WriteLine($"ERROR: Model stencil {stencilId} geometry is not a valid GLB ({error})");
+				}
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine($"ERROR: Model stencil {stencilId} geometry request failed ({e.Message})");
+			}
+		}
+
+		// Checks the GLB header and parses the JSON chunk, reporting its mesh and image counts
+		private static bool TryParseGlb(byte[] glb, out int meshCount, out int imageCount, out string error)
+		{
+			const uint kGlbMagic = 0x46546C67; // "glTF"
+			const uint kJsonChunkType = 0x4E4F534A; // "JSON"
+
+			meshCount = 0;
+			imageCount = 0;
+			error = "";
+
+			if (glb.Length < 20)
+			{
+				error = "too short";
+				return false;
+			}
+
+			using (var reader = new BinaryReader(new MemoryStream(glb)))
+			{
+				if (reader.ReadUInt32() != kGlbMagic)
+				{
+					error = "bad magic";
+					return false;
 				}
 
-				Console.WriteLine($"INFO:   Model stencil {stencilId} geometry: {meshCount} meshes, {vertexCount} vertices");
+				uint version = reader.ReadUInt32();
+				if (version != 2)
+				{
+					error = $"unsupported version {version}";
+					return false;
+				}
+
+				reader.ReadUInt32(); // total length
+
+				uint chunkLength = reader.ReadUInt32();
+				if (reader.ReadUInt32() != kJsonChunkType)
+				{
+					error = "first chunk is not JSON";
+					return false;
+				}
+
+				if (chunkLength > glb.Length - 20)
+				{
+					error = "JSON chunk overruns the file";
+					return false;
+				}
+
+				string json = Encoding.UTF8.GetString(reader.ReadBytes((int)chunkLength));
+				var root = new JavaScriptSerializer().DeserializeObject(json) as Dictionary<string, object>;
+				if (root == null)
+				{
+					error = "JSON chunk is not an object";
+					return false;
+				}
+
+				meshCount = CountArray(root, "meshes");
+				imageCount = CountArray(root, "images");
+				if (meshCount == 0)
+				{
+					error = "no meshes";
+					return false;
+				}
 			}
-			else
-			{
-				Console.WriteLine($"ERROR: Model stencil {stencilId} geometry request failed (error_code: {(int)response.resultCode})");
-			}
+
+			return true;
+		}
+
+		private static int CountArray(Dictionary<string, object> root, string key)
+		{
+			return root.TryGetValue(key, out object value) && value is System.Collections.ICollection array ? array.Count : 0;
 		}
 
 		private void HandleMikanConnected()

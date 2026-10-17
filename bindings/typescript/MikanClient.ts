@@ -9,11 +9,31 @@ import {
   MikanClientGraphicsApi,
   MikanConstants,
   MikanEvent,
+  MikanConnectedEvent,
   MikanDisconnectedEvent,
   MikanPropertyUpdateEvent
 } from './types/index.js';
 
 export type MikanLogCallback = (level: MikanLogLevel, message: string) => void;
+
+/**
+ * Builds the HTTP base URL for a server from a connect host and the httpPort
+ * reported by MikanConnectedEvent. Returns an empty string when httpPort is zero.
+ */
+export function composeHttpBaseUrl(host: string, httpPort: number): string {
+  if (!httpPort) {
+    return '';
+  }
+
+  let normalizedHost = host.trim().replace(/^(wss?|https?):\/\//i, '');
+  normalizedHost = normalizedHost.replace(/\/+$/, '');
+  normalizedHost = normalizedHost.replace(/:\d+$/, '');
+  if (normalizedHost === '') {
+    normalizedHost = '127.0.0.1';
+  }
+
+  return `http://${normalizedHost}:${httpPort}`;
+}
 
 export interface MikanClientOptions {
   host?: string;
@@ -31,6 +51,7 @@ export class MikanClient {
   private isConnected: boolean = false;
   private clientId: string = '';
   private options: MikanClientOptions;
+  private httpPort: number = 0;
 
   constructor(options: MikanClientOptions = {}) {
     this.options = {
@@ -42,6 +63,17 @@ export class MikanClient {
 
     this.requestManager = new MikanRequestManager();
     this.eventManager = new MikanEventManager();
+    this.eventManager.onConnected((event: MikanEvent) => {
+      this.httpPort = (event as MikanConnectedEvent).httpPort ?? 0;
+    });
+  }
+
+  /**
+   * Base URL of the server's HTTP endpoint, empty until a MikanConnectedEvent
+   * with a nonzero httpPort arrives. Join with a component's geometry_url.
+   */
+  public get httpBaseUrl(): string {
+    return composeHttpBaseUrl(this.options.host ?? '', this.httpPort);
   }
 
   // Initialization
@@ -146,6 +178,7 @@ export class MikanClient {
         this.ws.onclose = (event) => {
           this.log(MikanLogLevel.Info, `Disconnected from Mikan server: ${event.code} ${event.reason}`);
           this.isConnected = false;
+          this.httpPort = 0;
           this.requestManager.setSendFunction(null);
           this.requestManager.cancelAllRequests();
 
@@ -176,6 +209,7 @@ export class MikanClient {
     this.ws.close(1000, 'Client disconnect');
     this.ws = null;
     this.isConnected = false;
+    this.httpPort = 0;
 
     return MikanAPIResult.Success;
   }
@@ -185,7 +219,12 @@ export class MikanClient {
     return this.requestManager.sendRequest(request);
   }
 
-  private handleMessage(data: string): void {
+  private handleMessage(data: string | ArrayBuffer | Blob): void {
+    if (typeof data !== 'string') {
+      this.log(MikanLogLevel.Warning, 'Dropping unexpected binary websocket frame');
+      return;
+    }
+
     // Try to determine if this is a response or an event
     try {
       const parsed = JSON.parse(data);

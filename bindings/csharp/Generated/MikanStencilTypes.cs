@@ -34,6 +34,7 @@ namespace MikanXR
 		public const string k_ownerSystemName = "ModelStencilSystem";
 
 		[MikanFieldOrder(0)] public string model_path;
+		[MikanFieldOrder(1)] public string geometry_url;
 	};
 
 	public class MikanModelStencilSystemValues : MikanSystemValues
@@ -62,19 +63,6 @@ namespace MikanXR
 	{
 		[MikanFieldOrder(0)] public bool is_disabled;
 		[MikanFieldOrder(1)] public MikanStencilCullMode cull_mode;
-	};
-
-	public class MikanStencilModelRenderGeometry
-	{
-		[MikanFieldOrder(0)] public List<MikanTriagulatedMesh> meshes;
-	};
-
-	public class MikanTriagulatedMesh
-	{
-		[MikanFieldOrder(0)] public List<MikanVector3f> vertices;
-		[MikanFieldOrder(1)] public List<MikanVector3f> normals;
-		[MikanFieldOrder(2)] public List<MikanVector2f> texels;
-		[MikanFieldOrder(3)] public List<int> indices;
 	};
 
 }

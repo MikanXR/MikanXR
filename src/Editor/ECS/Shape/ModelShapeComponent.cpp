@@ -8,6 +8,7 @@
 #include "AssetReference.h"
 #include "AssetReferencePropertyMetaData.h"
 #include "ModelAssetReference.h"
+#include "ModelGeometryRequestHandler.h"
 #include "PathUtils.h"
 #include "IEditorWindow.h"
 #include "IMkGraphicsContext.h"
@@ -29,6 +30,7 @@
 
 // -- ModelShapeDefinition ------
 const std::string ModelShapeDefinition::k_modelPathPropertyId= "model_path";
+const std::string ModelShapeDefinition::k_geometryUrlPropertyId= "geometry_url";
 
 ModelShapeDefinition::ModelShapeDefinition()
 	: ShapeComponentDefinition()
@@ -179,8 +181,8 @@ void ModelShapeComponent::rebuildMeshComponents()
 	MikanRenderModelResourcePtr modelResourcePtr= modelResourceManager->fetchRenderModel(
 		PathUtils::resolveProjectResource(modelDef->getModelPath()), shapeMaterial);
 
-	// Held onto so the client render geometry request can reach the resource's cached payload
-	// without re-resolving the model path and material.
+	// Held onto so the client geometry route can reach the resource's GLB and etag without
+	// re-resolving the model path and material.
 	m_modelResource= modelResourcePtr;
 
 	if (!modelResourcePtr)
@@ -217,6 +219,10 @@ void ModelShapeComponent::onDefinitionMarkedDirty(CommonConfigPtr configPtr,
 	if (changedPropertySet.hasPropertyName(ModelShapeDefinition::k_modelPathPropertyId))
 	{
 		rebuildMeshComponents();
+
+		// Published after the reload so clients see the new model's etag
+		configPtr->notifyPropertyChanged(
+			ConfigPropertyChangeSet().addPropertyName(ModelShapeDefinition::k_geometryUrlPropertyId));
 	}
 }
 
@@ -229,6 +235,9 @@ void ModelShapeComponent::getPropertyDescriptors(std::vector<PropertyDescriptorC
 		std::make_shared<PropertyDescriptor>(ModelShapeDefinition::k_modelPathPropertyId, MikanVariantType::STRING)
 			->addMetaData(std::make_shared<AssetReferenceFactoryMetaData>(
 				AssetReferenceFactory::createFactory<ModelAssetReferenceFactory>())));
+	outDescriptors.push_back(
+		std::make_shared<PropertyDescriptor>(ModelShapeDefinition::k_geometryUrlPropertyId, MikanVariantType::STRING)
+			->setReadOnly());
 }
 
 bool ModelShapeComponent::getPropertyValue(const std::string& propertyName, MikanVariant& outValue) const
@@ -238,6 +247,13 @@ bool ModelShapeComponent::getPropertyValue(const std::string& propertyName, Mika
 	if (propertyName == ModelShapeDefinition::k_modelPathPropertyId)
 	{
 		outValue= def->getModelPath();
+		return true;
+	}
+	if (propertyName == ModelShapeDefinition::k_geometryUrlPropertyId)
+	{
+		outValue= ModelGeometryRequestHandler::makeGeometryUrl(eModelGeometryKind::shape, getComponentId(),
+															   m_modelResource ? m_modelResource->getGeometryETag()
+																			   : std::string());
 		return true;
 	}
 

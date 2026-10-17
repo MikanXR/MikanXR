@@ -45,7 +45,7 @@ The captured frame is saved as `<name>.png` next to the OBJ and referenced by a 
 
 - **In the editor** this is free - the OBJ importer already loads `map_Kd` textures.
 
-- **In Unreal** the stencil actor loads the sibling `.png` of `model_path` (same machine as the editor, which frame delivery via shared texture memory already assumes) and applies it to the placement mesh through the `TexturedPlacementMaterial` parent material - assignable per-actor or as a default on `AMikanClient` (`ModelStencilTexturedPlacementMaterial`), and it needs a Texture parameter named **`BaseTexture`**. When unset or no texture exists, the placement mesh keeps the plain color material. The actor also flips the V coordinate when building mesh sections - Mikan ships OBJ/GL-convention UVs (V up) and Unreal samples V down; the stock capture materials are untextured, so only the textured placement preview observes this.
+- **In clients** the frame arrives embedded in the stencil's geometry GLB (see [wire-protocol.md](./wire-protocol.md)), so a client on another machine sees it too. The Unreal stencil actor applies it to the placement mesh through the `TexturedPlacementMaterial` parent material - assignable per-actor or as a default on `AMikanClient` (`ModelStencilTexturedPlacementMaterial`), and it needs a Texture parameter named **`BaseTexture`**. When unset or the geometry carries no texture, the placement mesh keeps the plain color material. The GLB's UVs are V-down, which is how Unreal samples, so the actor passes them through; the stock capture materials are untextured, so only the textured placement preview observes them.
 
 ## The capture tool
 
@@ -89,7 +89,7 @@ The correction is measured against an ArUco marker of known size:
 
 `MoGeInference::run` logs the FOV, shift, and metric scale it used (`fov_x=... shift=... metric_scale=...` in the log); a wrong FOV reaching the model is the first suspect when a proxy comes out the wrong size, and that line settles it.
 
-Nothing further is needed for connected clients: creating the stencil fires the component-id-list property event, clients refetch the stencil list, and the render geometry ships over the wire via `GetModelStencilRenderGeometry` - the Unreal actor's shadow mesh component picks the proxy up automatically.
+Nothing further is needed for connected clients: creating the stencil fires the component-id-list property event, clients refetch the stencil list, and each fetches the stencil's `geometry_url`, a GLB with the captured frame embedded as its texture (see [wire-protocol.md](./wire-protocol.md)) - the Unreal actor's shadow mesh component picks the proxy up automatically.
 
 ## Headless use
 

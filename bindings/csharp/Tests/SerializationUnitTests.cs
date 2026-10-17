@@ -351,45 +351,12 @@ namespace MikanXR
 			return success;
 		}
 
-		public bool TestReflectionFromBytes()
-		{
-			bool success = true;
-
-			try
-			{
-				var expected = buildSerializationTestObject();
-
-				byte[] bytes = BinarySerializer.SerializeToBytes(expected);
-
-				var actual = new SerializationTestObject();
-				bool bCanDeserialize = BinaryDeserializer.DeserializeFromBytes(bytes, actual);
-
-				if (!bCanDeserialize)
-				{
-					success = false;
-				}
-				else
-				{
-					success = verifySerializationTestObject(actual, expected);
-				}
-			}
-			catch (Exception e)
-			{
-				Console.WriteLine("    Exception: " + e.Message);
-				success = false;
-			}
-
-			Console.WriteLine("    TestReflectionFromBytes - " + (success ? "PASSED" : "FAILED"));
-			return success;
-		}
-
 		public bool RunAllTests()
 		{
 			bool success = true;
 			Console.WriteLine("[SerializationUnitTests]");
 
 			success &= TestReflectionFromJson();
-			success &= TestReflectionFromBytes();
 
 			Console.WriteLine("  SerializationUnitTests module - " + (success ? "PASSED" : "FAILED"));
 			return success;

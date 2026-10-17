@@ -35,7 +35,7 @@
 #include "MeshTexturingTests.h"
 
 #include "ModelRepositoryTests.h"
-#include "ModelGeometryPayloadTests.h"
+#include "ModelGeometryRouteTests.h"
 #include "NodeGraphHistoryTests.h"
 #include "NodeConfigValueTextTests.h"
 #include "NodeGraphPropertyNameTests.h"
@@ -103,7 +103,7 @@ bool run_all_editor_unit_tests()
 	success&= run_localization_unit_tests();
 	success&= run_material_compiler_tests();
 	success&= run_mesh_texturing_unit_tests();
-	success&= run_model_geometry_payload_tests();
+	success&= run_model_geometry_route_tests();
 
 	success&= run_model_repository_tests();
 	success&= run_node_graph_history_tests();

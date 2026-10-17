@@ -155,9 +155,6 @@ typedef int MikanCameraID;
 typedef void(MIKAN_CALLBACK* MikanTextResponseCallback)(MikanRequestID request_id, const char* utf8_response_string,
 														void* userdata);
 
-/// Registered binary response callback function for a Mikan request
-typedef void(MIKAN_CALLBACK* MikanBinaryResponseCallback)(const uint8_t* buffer, size_t buffer_size, void* userdata);
-
 typedef void(MIKAN_CALLBACK* MikanLogCallback)(int /*log_level*/, const char* /*log_message*/);
 
 #ifdef MIKANCORE_REFLECTION_ENABLED

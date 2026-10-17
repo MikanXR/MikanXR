@@ -7,10 +7,8 @@ import { MikanResponseFuture } from './MikanResponseFuture.js';
 import {
   serializeToJsonString,
   deserializeFromJsonString,
-  deserializeFromBytes,
   TypeRegistry
 } from './Serialization/index.js';
-import { BinaryReader } from './Serialization/BinaryReader.js';
 
 interface PendingRequest {
   requestId: number;
@@ -140,64 +138,6 @@ export class MikanRequestManager {
     } catch (error) {
       console.error('Failed to parse response:', error);
       return null;
-    }
-  }
-
-  /**
-   * Handle binary response callback
-   */
-  public handleBinaryResponse(buffer: ArrayBuffer): void {
-    try {
-      const managedBuffer = new Uint8Array(buffer);
-      const binaryReader = new BinaryReader(managedBuffer);
-
-      // Read the response type name (first field after removing responseTypeId)
-      const responseTypeName = binaryReader.readUTF8String();
-
-      // Read the request ID
-      const requestId = binaryReader.readInt32();
-
-      // Read the result code
-      const resultCode = binaryReader.readInt32() as MikanAPIResult;
-
-      // Look up the pending request
-      const pendingRequest = this.pendingRequests.get(requestId);
-
-      if (!pendingRequest) {
-        console.error(`Invalid pending request id(${requestId}) for response type ${responseTypeName}`);
-        return;
-      }
-
-      // Remove from pending requests
-      this.pendingRequests.delete(requestId);
-
-      // Attempt to create the response object by class name
-      let response: MikanResponse | null = null;
-      const responseType = TypeRegistry.get(responseTypeName);
-
-      if (responseType) {
-        const responseObject = new responseType();
-
-        if (deserializeFromBytes(managedBuffer, responseObject, responseType)) {
-          response = responseObject as MikanResponse;
-        } else {
-          console.error('Failed to deserialize response object from byte array');
-        }
-      } else {
-        console.error(`Unknown response type: ${responseTypeName}`);
-      }
-
-      if (!response) {
-        response = {
-          responseTypeName: 'MikanResponse',
-          requestId: requestId,
-          resultCode: MikanAPIResult.MalformedResponse
-        };
-      }
-
-      pendingRequest.resolve(response);
-    } catch (error) {
-      console.error('Malformed binary response:', error);
     }
   }
 

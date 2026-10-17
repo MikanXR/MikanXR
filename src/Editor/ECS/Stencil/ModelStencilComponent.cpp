@@ -33,6 +33,7 @@
 #include "MikanStencilTypes.h"
 #include "AssetReferencePropertyMetaData.h"
 #include "ModelAssetReference.h"
+#include "ModelGeometryRequestHandler.h"
 #include "ModelStencilComponent.h"
 #include "MulticastDelegate.h"
 #include "StringUtils.h"
@@ -47,6 +48,7 @@
 
 // -- ModelStencilConfig -----
 const std::string ModelStencilDefinition::k_modelStencilObjPathPropertyId= "model_path";
+const std::string ModelStencilDefinition::k_geometryUrlPropertyId= "geometry_url";
 
 ModelStencilDefinition::ModelStencilDefinition()
 	: StencilComponentDefinition()
@@ -243,6 +245,10 @@ void ModelStencilComponent::onStencilDefinitionMarkedDirty(CommonConfigPtr confi
 
 			// (Re)Initialize the mesh components
 			rebuildMeshComponents();
+
+			// Published after the reload so clients see the new model's etag
+			modelStencilConfig->notifyPropertyChanged(
+				ConfigPropertyChangeSet().addPropertyName(ModelStencilDefinition::k_geometryUrlPropertyId));
 		}
 	}
 }
@@ -299,8 +305,8 @@ void ModelStencilComponent::rebuildMeshComponents()
 	MikanRenderModelResourcePtr modelResourcePtr= modelResourceManager->fetchRenderModel(
 		PathUtils::resolveProjectResource(modelStencilDefinition->getModelPath()), stencilMaterial);
 
-	// Held onto so the client render geometry request can reach the resource's cached payload
-	// without re-resolving the model path and material.
+	// Held onto so the client geometry route can reach the resource's GLB and etag without
+	// re-resolving the model path and material.
 	m_modelResource= modelResourcePtr;
 
 	// If a model loaded, create meshes and colliders for it
@@ -401,6 +407,9 @@ void ModelStencilComponent::getPropertyDescriptors(std::vector<PropertyDescripto
 								 ModelStencilDefinition::k_modelStencilObjPathPropertyId, MikanVariantType::STRING)
 								 ->addMetaData(std::make_shared<AssetReferenceFactoryMetaData>(
 									 AssetReferenceFactory::createFactory<ModelAssetReferenceFactory>())));
+	outDescriptors.push_back(
+		std::make_shared<PropertyDescriptor>(ModelStencilDefinition::k_geometryUrlPropertyId, MikanVariantType::STRING)
+			->setReadOnly());
 }
 
 bool ModelStencilComponent::getPropertyValue(const std::string& propertyName, MikanVariant& outValue) const
@@ -408,6 +417,13 @@ bool ModelStencilComponent::getPropertyValue(const std::string& propertyName, Mi
 	if (propertyName == ModelStencilDefinition::k_modelStencilObjPathPropertyId)
 	{
 		outValue= getModelStencilDefinition()->getModelPath();
+		return true;
+	}
+	if (propertyName == ModelStencilDefinition::k_geometryUrlPropertyId)
+	{
+		outValue= ModelGeometryRequestHandler::makeGeometryUrl(eModelGeometryKind::stencil, getComponentId(),
+															   m_modelResource ? m_modelResource->getGeometryETag()
+																			   : std::string());
 		return true;
 	}
 

@@ -30,13 +30,6 @@ using LockFreeMessageQueuePtr= std::shared_ptr<LockFreeMessageQueue>;
 using WebSocketWeakPtr= std::weak_ptr<ix::WebSocket>;
 using WebSocketPtr= std::shared_ptr<ix::WebSocket>;
 
-// Response bytes one tick will produce before the rest of the queued requests are left for the
-// next one. A model stencil's render geometry runs to megabytes, and several stencils fetching on
-// connect otherwise serialize and send all of it inside a single frame. The budget is checked
-// after a request is handled, so an oversized response is never withheld, only kept from sharing
-// its frame with the next one.
-static const size_t k_maxResponseBytesPerTick= 2 * 1024 * 1024;
-
 //-- WebSocketClientConnection -----
 class WebSocketClientConnection : public ix::ConnectionState
 {
@@ -173,21 +166,6 @@ public:
 		if (websocket)
 		{
 			auto sendInfo= websocket->sendText(textData);
-
-			return sendInfo.success;
-		}
-
-		return false;
-	}
-
-	bool sendBinaryData(const std::vector<uint8_t>& binaryData)
-	{
-		WebSocketPtr websocket= m_websocket.lock();
-
-		if (websocket)
-		{
-			ix::IXWebSocketSendData sendData(binaryData);
-			auto sendInfo= websocket->sendBinary(sendData);
 
 			return sendInfo.success;
 		}
@@ -420,41 +398,32 @@ void WebsocketInterprocessMessageServer::processRequests()
 	if (connections.empty())
 		return;
 
-	// Start on a different connection each tick so a chatty connection can't repeatedly consume
-	// the whole budget before the others are visited.
+	// Start on a different connection each tick so no connection is always answered first
 	const size_t connectionCount= connections.size();
 	const size_t startIndex= m_nextRequestConnectionIndex % connectionCount;
 	m_nextRequestConnectionIndex= startIndex + 1;
-
-	size_t responseBytesThisTick= 0;
 
 	for (size_t offset= 0; offset < connectionCount; ++offset)
 	{
 		WebSocketClientConnectionPtr connection= connections[(startIndex + offset) % connectionCount];
 
-		// Read pending requests in the queue until the tick runs out of budget. Anything left stays
-		// queued in arrival order and is picked up next tick.
 		std::string inRequestString;
-		while (responseBytesThisTick < k_maxResponseBytesPerTick
-			   && connection->getRequestQueue()->try_dequeue(inRequestString))
+		while (connection->getRequestQueue()->try_dequeue(inRequestString))
 		{
-			responseBytesThisTick+= processRequest(connection, inRequestString);
+			processRequest(connection, inRequestString);
 		}
-
-		if (responseBytesThisTick >= k_maxResponseBytesPerTick)
-			break;
 	}
 }
 
-size_t WebsocketInterprocessMessageServer::processRequest(const WebSocketClientConnectionPtr& connection,
-														  const std::string& requestString)
+void WebsocketInterprocessMessageServer::processRequest(const WebSocketClientConnectionPtr& connection,
+														const std::string& requestString)
 {
 	std::string requestTypeName;
 	JsonSaxStringValueSearcher typeNameSearcher;
 	if (!typeNameSearcher.fetchKeyValuePair(requestString, "requestTypeName", requestTypeName))
 	{
 		MIKAN_LOG_WARNING("processRequest") << "Request missing/invalid requestTypeName field: " << requestString;
-		return 0;
+		return;
 	}
 
 	// Request ID is optional if the request doesn't expect a response
@@ -490,7 +459,7 @@ size_t WebsocketInterprocessMessageServer::processRequest(const WebSocketClientC
 			MIKAN_LOG_WARNING("processRequest")
 				<< "Failed to serialize response for unknown request type: " << requestTypeName
 				<< ", error: " << errorMsg;
-			return 0;
+			return;
 		}
 	}
 
@@ -500,16 +469,9 @@ size_t WebsocketInterprocessMessageServer::processRequest(const WebSocketClientC
 		connection->sendText(outResponse.utf8String);
 	}
 
-	if (!outResponse.binaryData.empty())
-	{
-		connection->sendBinaryData(outResponse.binaryData);
-	}
-
-	if (requestId != INVALID_MIKAN_ID && outResponse.utf8String.empty() && outResponse.binaryData.empty())
+	if (requestId != INVALID_MIKAN_ID && outResponse.utf8String.empty())
 	{
 		MIKAN_LOG_WARNING("processRequest")
 			<< "Request handler for " << requestTypeName << " returned empty response, but response expected!";
 	}
-
-	return outResponse.utf8String.size() + outResponse.binaryData.size();
 }

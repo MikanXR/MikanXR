@@ -37,9 +37,11 @@ export class MikanModelShapeComponentValues extends MikanShapeComponentValues {
   static readonly k_componentClassName = 'ModelShapeComponent';
   static readonly k_ownerSystemName = 'ModelShapeSystem';
   model_path: string = '';
+  geometry_url: string = '';
 
   static __serializationMetadata: SerializationField[] = [
-    { name: 'model_path', type: 'string' }
+    { name: 'model_path', type: 'string' },
+    { name: 'geometry_url', type: 'string' }
   ];
 }
 

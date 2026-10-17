@@ -32,11 +32,9 @@ import { MikanSceneComponentValues, MikanSceneSystemValues } from './MikanSceneT
 import { MikanScriptMessagePostedEvent } from './MikanScriptEvents.js';
 import { InvokeScriptTrigger, SendScriptMessage } from './MikanScriptRequest.js';
 import { MikanScriptComponentValues, MikanScriptMessageInfo } from './MikanScriptTypes.js';
-import { GetModelShapeRenderGeometry, MikanShapeModelRenderGeometryResponse } from './MikanShapeRequest.js';
 import { MikanBoxShapeComponentValues, MikanBoxShapeSystemValues, MikanModelShapeComponentValues, MikanModelShapeSystemValues, MikanQuadShapeComponentValues, MikanQuadShapeSystemValues, MikanShapeComponentValues } from './MikanShapeTypes.js';
 import { MikanStageComponentValues } from './MikanStageTypes.js';
-import { GetModelStencilRenderGeometry, MikanStencilModelRenderGeometryResponse } from './MikanStencilRequest.js';
-import { MikanBoxStencilComponentValues, MikanBoxStencilSystemValues, MikanModelStencilComponentValues, MikanModelStencilSystemValues, MikanQuadStencilComponentValues, MikanQuadStencilSystemValues, MikanStencilComponentValues, MikanStencilModelRenderGeometry, MikanTriagulatedMesh } from './MikanStencilTypes.js';
+import { MikanBoxStencilComponentValues, MikanBoxStencilSystemValues, MikanModelStencilComponentValues, MikanModelStencilSystemValues, MikanQuadStencilComponentValues, MikanQuadStencilSystemValues, MikanStencilComponentValues } from './MikanStencilTypes.js';
 import { MikanTextureSourceClosedEvent, MikanTextureSourceOpenedEvent } from './MikanTextureSourceEvents.js';
 import { MikanCEFTextureSourceValues, MikanClientTextureSourceValues, MikanSpoutTextureSourceValues, MikanTextureSourceValues } from './MikanTextureSourceTypes.js';
 import { MikanTrackingMountComponentValues } from './MikanTrackingMountTypes.js';
@@ -156,8 +154,6 @@ export function registerAllTypes(): void {
   TypeRegistry.register('SendScriptMessage', SendScriptMessage);
   TypeRegistry.register('MikanScriptComponentValues', MikanScriptComponentValues);
   TypeRegistry.register('MikanScriptMessageInfo', MikanScriptMessageInfo);
-  TypeRegistry.register('GetModelShapeRenderGeometry', GetModelShapeRenderGeometry);
-  TypeRegistry.register('MikanShapeModelRenderGeometryResponse', MikanShapeModelRenderGeometryResponse);
   TypeRegistry.register('MikanBoxShapeComponentValues', MikanBoxShapeComponentValues);
   TypeRegistry.register('MikanBoxShapeSystemValues', MikanBoxShapeSystemValues);
   TypeRegistry.register('MikanModelShapeComponentValues', MikanModelShapeComponentValues);
@@ -166,8 +162,6 @@ export function registerAllTypes(): void {
   TypeRegistry.register('MikanQuadShapeSystemValues', MikanQuadShapeSystemValues);
   TypeRegistry.register('MikanShapeComponentValues', MikanShapeComponentValues);
   TypeRegistry.register('MikanStageComponentValues', MikanStageComponentValues);
-  TypeRegistry.register('GetModelStencilRenderGeometry', GetModelStencilRenderGeometry);
-  TypeRegistry.register('MikanStencilModelRenderGeometryResponse', MikanStencilModelRenderGeometryResponse);
   TypeRegistry.register('MikanBoxStencilComponentValues', MikanBoxStencilComponentValues);
   TypeRegistry.register('MikanBoxStencilSystemValues', MikanBoxStencilSystemValues);
   TypeRegistry.register('MikanModelStencilComponentValues', MikanModelStencilComponentValues);
@@ -175,8 +169,6 @@ export function registerAllTypes(): void {
   TypeRegistry.register('MikanQuadStencilComponentValues', MikanQuadStencilComponentValues);
   TypeRegistry.register('MikanQuadStencilSystemValues', MikanQuadStencilSystemValues);
   TypeRegistry.register('MikanStencilComponentValues', MikanStencilComponentValues);
-  TypeRegistry.register('MikanStencilModelRenderGeometry', MikanStencilModelRenderGeometry);
-  TypeRegistry.register('MikanTriagulatedMesh', MikanTriagulatedMesh);
   TypeRegistry.register('MikanTextureSourceClosedEvent', MikanTextureSourceClosedEvent);
   TypeRegistry.register('MikanTextureSourceOpenedEvent', MikanTextureSourceOpenedEvent);
   TypeRegistry.register('MikanCEFTextureSourceValues', MikanCEFTextureSourceValues);

@@ -42,6 +42,9 @@ public:
 	virtual bool getIsConnected()= 0;
 	virtual MikanAPIResult disconnect()= 0;
 	virtual MikanAPIResult disconnect(uint16_t code, const std::string& reason)= 0;
+	// "http://<host>:<port>" of the editor's HTTP server on the host this client connected to, which a
+	// component's geometry_url is joined to. Empty until the connected event has arrived.
+	virtual std::string getHttpBaseUrl() const= 0;
 
 	// Messaging
 	virtual MikanResponseFuture sendRequest(MikanRequest& request)= 0;

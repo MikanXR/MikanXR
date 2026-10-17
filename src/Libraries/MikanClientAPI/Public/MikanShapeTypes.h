@@ -98,6 +98,9 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanShapeTypes"),
 	static const char* k_ownerSystemName;
 
 	FIELD() Serialization::String model_path;
+	// Read-only. The server-relative path of the model's GLB, joined to the HTTP base URL, or empty
+	// when no model is loaded. Its ?v= query changes whenever the served model does.
+	FIELD() Serialization::String geometry_url;
 
 #ifdef MIKANAPI_REFLECTION_ENABLED
 	MikanModelShapeComponentValues_GENERATED

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "BinarySerializer.h"
 #include "IEntityAccessor.h"
 #include "JsonDeserializer.h"
 #include "JsonSerializer.h"
@@ -53,19 +52,4 @@ void writeTypedJsonResponse(MikanRequestID requestId, t_mikan_type& result, Clie
 	}
 }
 
-template <typename t_mikan_type>
-void writeTypedBinaryResponse(MikanRequestID requestId, t_mikan_type& result, ClientResponse& response)
-{
-	result.requestId= requestId;
-	result.resultCode= MikanAPIResult::Success;
-
-	std::string errorMsg;
-	if (!Serialization::serializeToBytes<t_mikan_type>(result, response.binaryData, errorMsg))
-	{
-		MIKAN_LOG_ERROR("ServerResponseHelpers::writeTypedBinaryResponse")
-			<< "Failed to serialize MikanResponse to binary data: " << errorMsg;
-	}
-}
-
 void writeSimpleJsonResponse(MikanRequestID requestId, MikanAPIResult result, ClientResponse& response);
-void writeSimpleBinaryResponse(MikanRequestID requestId, MikanAPIResult result, ClientResponse& response);

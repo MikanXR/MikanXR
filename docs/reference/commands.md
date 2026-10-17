@@ -95,13 +95,6 @@ python tools/automate.py "app crash access"                          # same thro
 
 CI runs the first form and requires a `.dmp` and a `.txt` in the report folder.
 
-One check needs a running editor instead, so it sits outside the suites:
-
-```
-python tools/large_response_check.py
-```
-
-It fetches a model stencil's render geometry over a raw websocket and requires the connection to keep answering afterwards, guarding the large-response stall described in [debugging.md](./debugging.md). The loaded project needs a model stencil with geometry.
 
 ---
 

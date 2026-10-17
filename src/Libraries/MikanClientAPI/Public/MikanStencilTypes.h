@@ -108,30 +108,12 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes"),
 	static const char* k_ownerSystemName;
 
 	FIELD() Serialization::String model_path;
+	// Read-only. The server-relative path of the model's GLB, joined to the HTTP base URL, or empty
+	// when no model is loaded. Its ?v= query changes whenever the served model does.
+	FIELD() Serialization::String geometry_url;
 
 #ifdef MIKANAPI_REFLECTION_ENABLED
 	MikanModelStencilComponentValues_GENERATED
-#endif
-};
-
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes")) MikanTriagulatedMesh
-{
-	FIELD() Serialization::List<MikanVector3f> vertices;
-	FIELD() Serialization::List<MikanVector3f> normals;
-	FIELD() Serialization::List<MikanVector2f> texels;
-	FIELD() Serialization::List<int> indices;
-
-#ifdef MIKANAPI_REFLECTION_ENABLED
-	MikanTriagulatedMesh_GENERATED
-#endif
-};
-
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes")) MikanStencilModelRenderGeometry
-{
-	FIELD() Serialization::List<MikanTriagulatedMesh> meshes;
-
-#ifdef MIKANAPI_REFLECTION_ENABLED
-	MikanStencilModelRenderGeometry_GENERATED
 #endif
 };
 

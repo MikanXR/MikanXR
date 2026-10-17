@@ -14,8 +14,6 @@ import {
 import {
   serializeToJsonString,
   deserializeFromJsonString,
-  serializeToBytes,
-  deserializeFromBytes,
   TypeRegistry
 } from '../Serialization';
 
@@ -170,113 +168,6 @@ describe('SerializationUnitTests', () => {
 
       expect(success).toBe(true);
       expect(deserialized.string_field).toBe('Hello "World"\nNew Line\tTab\\Backslash');
-    });
-  });
-
-  describe('Binary Serialization', () => {
-    it('should serialize and deserialize test object to/from binary', () => {
-      // Build expected object
-      const expected = buildSerializationTestObject();
-
-      // Serialize to binary bytes
-      const bytes = serializeToBytes(expected, SerializationTestObject);
-
-      // Verify bytes were created
-      expect(bytes).toBeDefined();
-      expect(bytes.length).toBeGreaterThan(0);
-
-      // Deserialize from binary bytes
-      const actual = new SerializationTestObject();
-      let canDeserialize = false;
-      try {
-        canDeserialize = deserializeFromBytes(bytes, actual, SerializationTestObject);
-      } catch (error) {
-        console.error('Binary deserialization error:', error);
-        throw error;
-      }
-
-      // Verify deserialization succeeded
-      if (!canDeserialize) {
-        console.error('Binary deserialization returned false - check console for errors');
-      }
-      expect(canDeserialize).toBe(true);
-
-      // Verify the objects match
-      const result = verifySerializationTestObject(actual, expected);
-      if (!result.success) {
-        console.error('Verification failed:', result.message);
-        console.error('Expected:', JSON.stringify(expected, (key, value) =>
-          typeof value === 'bigint' ? value.toString() : value instanceof Map ? Array.from(value.entries()) : value, 2));
-        console.error('Actual:', JSON.stringify(actual, (key, value) =>
-          typeof value === 'bigint' ? value.toString() : value instanceof Map ? Array.from(value.entries()) : value, 2));
-      }
-      expect(result.success).toBe(true);
-    });
-
-    it('should handle empty arrays in binary format', () => {
-      const testObject = new SerializationTestObject();
-      testObject.bool_array = [];
-      testObject.int_array = [];
-      testObject.point2d_array = [];
-
-      const bytes = serializeToBytes(testObject, SerializationTestObject);
-      const deserialized = new SerializationTestObject();
-      const success = deserializeFromBytes(bytes, deserialized, SerializationTestObject);
-
-      expect(success).toBe(true);
-      expect(deserialized.bool_array.length).toBe(0);
-      expect(deserialized.int_array.length).toBe(0);
-      expect(deserialized.point2d_array.length).toBe(0);
-    });
-
-    it('should handle empty maps in binary format', () => {
-      const testObject = new SerializationTestObject();
-      testObject.int_point_map = {};
-      testObject.string_point_map = {};
-
-      const bytes = serializeToBytes(testObject, SerializationTestObject);
-      const deserialized = new SerializationTestObject();
-      const success = deserializeFromBytes(bytes, deserialized, SerializationTestObject);
-
-      expect(success).toBe(true);
-      expect(Object.keys(deserialized.int_point_map).length).toBe(0);
-      expect(Object.keys(deserialized.string_point_map).length).toBe(0);
-    });
-
-    it('should preserve bigint values in binary format', () => {
-      const testObject = new SerializationTestObject();
-      testObject.long_field = 9007199254740991n; // MAX_SAFE_INTEGER as bigint
-
-      const bytes = serializeToBytes(testObject, SerializationTestObject);
-      const deserialized = new SerializationTestObject();
-      const success = deserializeFromBytes(bytes, deserialized, SerializationTestObject);
-
-      expect(success).toBe(true);
-      expect(deserialized.long_field).toBe(9007199254740991n);
-    });
-
-    it('should handle UTF-8 strings in binary format', () => {
-      const testObject = new SerializationTestObject();
-      testObject.string_field = 'Hello 世界 🌍';
-
-      const bytes = serializeToBytes(testObject, SerializationTestObject);
-      const deserialized = new SerializationTestObject();
-      const success = deserializeFromBytes(bytes, deserialized, SerializationTestObject);
-
-      expect(success).toBe(true);
-      expect(deserialized.string_field).toBe('Hello 世界 🌍');
-    });
-
-    it('should use little-endian byte order', () => {
-      const testObject = new SerializationTestObject();
-      testObject.int_field = 0x12345678;
-
-      const bytes = serializeToBytes(testObject, SerializationTestObject);
-
-      // The int field should be somewhere in the byte array as little-endian: 78 56 34 12
-      // This is a simplified check - in a real scenario we'd need to know the exact offset
-      expect(bytes).toBeDefined();
-      expect(bytes.length).toBeGreaterThan(4);
     });
   });
 
@@ -483,44 +374,6 @@ describe('SerializationUnitTests', () => {
         expect(mv.charuco_cols).toBe(5);
         expect(mv.charuco_square_length_mm).toBeCloseTo(25.0);
         expect(mv.charuco_marker_length_mm).toBeCloseTo(18.5);
-      });
-    });
-
-    describe('Binary', () => {
-      it('should deserialize MikanVariant<MikanIntValue> with .instance set', () => {
-        const original = makeIntVariant(99);
-        const bytes = serializeToBytes(original, MikanVariant);
-        const result = new MikanVariant();
-        expect(deserializeFromBytes(bytes, result, MikanVariant)).toBe(true);
-
-        expect(result.value_type).toBe(MikanVariantType.INT_TYPE);
-        expect(result.value_ptr.instance).toBeInstanceOf(MikanIntValue);
-        expect((result.value_ptr.instance as MikanIntValue).value).toBe(99);
-      });
-
-      it('should deserialize MikanVariant<MikanStringValue> with .instance set', () => {
-        const original = makeStringVariant('binary test');
-        const bytes = serializeToBytes(original, MikanVariant);
-        const result = new MikanVariant();
-        expect(deserializeFromBytes(bytes, result, MikanVariant)).toBe(true);
-
-        expect(result.value_type).toBe(MikanVariantType.MK_STRING_TYPE);
-        expect(result.value_ptr.instance).toBeInstanceOf(MikanStringValue);
-        expect((result.value_ptr.instance as MikanStringValue).value).toBe('binary test');
-      });
-
-      it('should deserialize MikanVariant<MikanVector3fValue> with .instance set', () => {
-        const original = makeVector3fVariant(4.0, 5.0, 6.0);
-        const bytes = serializeToBytes(original, MikanVariant);
-        const result = new MikanVariant();
-        expect(deserializeFromBytes(bytes, result, MikanVariant)).toBe(true);
-
-        expect(result.value_type).toBe(MikanVariantType.VECTOR3F_TYPE);
-        expect(result.value_ptr.instance).toBeInstanceOf(MikanVector3fValue);
-        const vec = (result.value_ptr.instance as MikanVector3fValue).value;
-        expect(vec.x).toBeCloseTo(4.0);
-        expect(vec.y).toBeCloseTo(5.0);
-        expect(vec.z).toBeCloseTo(6.0);
       });
     });
   });

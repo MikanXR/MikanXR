@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1135,
+		"stringCount": 1136,
 		"translatedCount": 899,
 		"reviewedCount": 0
 	},
@@ -957,6 +957,7 @@
 		"force_render": "Force Render",
 		"foreground_color": "前景色",
 		"frame_sync_mode": "Frame Sync Mode",
+		"geometry_url": "Geometry URL",
 		"green": "緑",
 		"grid_columns": "グリッド列数",
 		"grid_rows": "グリッド行数",

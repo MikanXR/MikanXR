@@ -88,9 +88,6 @@ Mikan_SendRequestJSON(MikanContext context, const char* utf8_request_json);
 MIKAN_CORE_CAPI(MikanCoreResult)
 Mikan_SetTextResponseCallback(MikanContext context, MikanTextResponseCallback callback, void* callback_userdata);
 
-MIKAN_CORE_CAPI(MikanCoreResult)
-Mikan_SetBinaryResponseCallback(MikanContext context, MikanBinaryResponseCallback callback, void* callback_userdata);
-
 /** \brief Cleans up the MikanXR Client API
  Free the resources allocated by the MikanXR Client API.
  Calling this function again after the api already cleaned up will return MikanCoreResult_Uninitialized.

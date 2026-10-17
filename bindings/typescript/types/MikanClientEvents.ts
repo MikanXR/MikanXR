@@ -9,6 +9,7 @@ export class MikanConnectedEvent extends MikanEvent {
   serverVersion: MikanClientAPIVersion = new MikanClientAPIVersion();
   minClientVersion: MikanClientAPIVersion = new MikanClientAPIVersion();
   isClientCompatible: boolean = false;
+  httpPort: number = 0;
 
   constructor() {
     super();
@@ -18,7 +19,8 @@ export class MikanConnectedEvent extends MikanEvent {
   static __serializationMetadata: SerializationField[] = [
     { name: 'serverVersion', type: 'MikanClientAPIVersion' },
     { name: 'minClientVersion', type: 'MikanClientAPIVersion' },
-    { name: 'isClientCompatible', type: 'boolean' }
+    { name: 'isClientCompatible', type: 'boolean' },
+    { name: 'httpPort', type: 'int32' }
   ];
 }
 

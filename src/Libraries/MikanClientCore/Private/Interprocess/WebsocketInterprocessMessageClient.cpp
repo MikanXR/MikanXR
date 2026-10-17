@@ -48,10 +48,6 @@ public:
 	{
 		m_textResponseHandler= handler;
 	}
-	inline void setBinaryResponseHandler(IInterprocessMessageClient::BinaryResponseHandler handler)
-	{
-		m_binaryResponseHandler= handler;
-	}
 
 	MikanCoreResult connect(const std::string& host, const std::string& port)
 	{
@@ -141,23 +137,9 @@ public:
 			}
 			else
 			{
-				// Binary message always assumed to	be a response (and not an event)
-				if (m_binaryResponseHandler != nullptr)
-				{
-					// Size from the payload, never from wireSize: IXWebSocket reports wireSize as
-					// the size of the frame as it arrived, which is the compressed size when the
-					// message carried RSV1, while str holds the decompressed bytes. The two only
-					// agree because per-message deflate never negotiates on today.
-					const uint8_t* buffer= reinterpret_cast<const uint8_t*>(msg->str.c_str());
-					const size_t bufferSize= msg->str.size();
-
-					m_binaryResponseHandler(buffer, bufferSize);
-				}
-				else
-				{
-					MIKAN_MT_LOG_ERROR("ClientConnectionState::handleClientMessage")
-						<< "Received binary message but no handler set";
-				}
+				// The protocol sends no binary frames
+				MIKAN_MT_LOG_WARNING("ClientConnectionState::handleClientMessage")
+					<< "Dropped a " << msg->str.size() << " byte binary message";
 			}
 		}
 		break;
@@ -190,7 +172,6 @@ private:
 	ix::WebSocketHttpHeaders m_headers;
 	LockFreeEventQueuePtr m_eventQueue;
 	IInterprocessMessageClient::TextResponseHandler m_textResponseHandler;
-	IInterprocessMessageClient::BinaryResponseHandler m_binaryResponseHandler;
 	std::string m_connectionRequestJson;
 };
 
@@ -211,12 +192,6 @@ const bool WebsocketInterprocessMessageClient::getIsConnected() const { return m
 void WebsocketInterprocessMessageClient::setTextResponseHandler(IInterprocessMessageClient::TextResponseHandler handler)
 {
 	m_connectionState->setTextResponseHandler(handler);
-}
-
-void WebsocketInterprocessMessageClient::setBinaryResponseHandler(
-	IInterprocessMessageClient::BinaryResponseHandler handler)
-{
-	m_connectionState->setBinaryResponseHandler(handler);
 }
 
 MikanCoreResult WebsocketInterprocessMessageClient::connect(const std::string& host, const std::string& port)

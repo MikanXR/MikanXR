@@ -11,7 +11,5 @@ public:
 	static void logComponent(const struct MikanBoxStencilComponentValues& boxInfo);
 	static void logComponent(const struct MikanModelStencilComponentValues& modelInfo);
 	static void logComponent(const struct MikanVRDeviceComponentValues& vrDeviceInfo);
-	static void logModelStencilGeometry(const struct MikanStencilModelRenderGeometry& geometry);
-	static void logModelTriMesh(const struct MikanTriagulatedMesh& triMesh);
 	static void logTransform(const struct MikanTransform& xform);
 };
