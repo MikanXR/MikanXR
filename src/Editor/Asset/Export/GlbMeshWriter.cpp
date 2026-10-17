@@ -7,10 +7,16 @@
 #include <glm/common.hpp>
 
 #include <cstring>
+#include <fstream>
 #include <system_error>
 
 namespace GlbMeshWriterUtils
 {
+constexpr uint32_t k_glbMagic= 0x46546C67; // "glTF"
+constexpr uint32_t k_glbVersion= 2;
+constexpr uint32_t k_glbJsonChunkType= 0x4E4F534A; // "JSON"
+constexpr uint32_t k_glbBinChunkType= 0x004E4942;  // "BIN\0"
+
 size_t alignTo4(size_t offset) { return (offset + 3) & ~(size_t)3; }
 
 // cgltf_write copies strings into the json verbatim, so anything that would break a json string is replaced
@@ -61,190 +67,202 @@ size_t appendToBuffer(std::vector<uint8_t>& buffer, const void* bytes, size_t by
 	memcpy(buffer.data() + offset, bytes, byteCount);
 	return offset;
 }
-}; // namespace GlbMeshWriterUtils
 
-bool GlbMeshWriter::write(const std::filesystem::path& path, const std::string& meshName,
-						  const std::vector<glm::vec3>& vertices, const std::vector<glm::vec3>& normals,
-						  const std::vector<glm::vec2>& texCoords, const std::vector<uint32_t>& indices,
-						  const std::string& textureFileName)
+void appendUint32(std::vector<uint8_t>& bytes, uint32_t value)
 {
-	const std::string pathString= path.string();
+	const uint8_t littleEndian[4]= {(uint8_t)(value & 0xFF), (uint8_t)((value >> 8) & 0xFF),
+									(uint8_t)((value >> 16) & 0xFF), (uint8_t)((value >> 24) & 0xFF)};
+	bytes.insert(bytes.end(), littleEndian, littleEndian + 4);
+}
 
-	if (vertices.empty() || indices.empty() || (indices.size() % 3) != 0)
+// cgltf_write emits the JSON document only, so the GLB container is assembled here: the 12-byte
+// header, the JSON chunk padded with spaces, then the BIN chunk padded with zeros
+void assembleGlb(const std::string& json, const std::vector<uint8_t>& bin, std::vector<uint8_t>& outBytes)
+{
+	const size_t jsonChunkSize= alignTo4(json.size());
+	const size_t binChunkSize= alignTo4(bin.size());
+	const size_t totalSize= 12 + 8 + jsonChunkSize + (bin.empty() ? 0 : 8 + binChunkSize);
+
+	outBytes.clear();
+	outBytes.reserve(totalSize);
+
+	appendUint32(outBytes, k_glbMagic);
+	appendUint32(outBytes, k_glbVersion);
+	appendUint32(outBytes, (uint32_t)totalSize);
+
+	appendUint32(outBytes, (uint32_t)jsonChunkSize);
+	appendUint32(outBytes, k_glbJsonChunkType);
+	outBytes.insert(outBytes.end(), json.begin(), json.end());
+	outBytes.resize(outBytes.size() + (jsonChunkSize - json.size()), 0x20);
+
+	if (!bin.empty())
 	{
-		MIKAN_LOG_ERROR("GlbMeshWriter") << "No triangle list to write to " << pathString;
+		appendUint32(outBytes, (uint32_t)binChunkSize);
+		appendUint32(outBytes, k_glbBinChunkType);
+		outBytes.insert(outBytes.end(), bin.begin(), bin.end());
+		outBytes.resize(outBytes.size() + (binChunkSize - bin.size()), 0x00);
+	}
+}
+
+bool validateMesh(const GlbMeshWriter::MeshData& mesh, size_t imageCount)
+{
+	if (mesh.vertices.empty() || mesh.indices.empty() || (mesh.indices.size() % 3) != 0)
+	{
+		MIKAN_LOG_ERROR("GlbMeshWriter") << "Mesh '" << mesh.name << "' has no triangle list";
 		return false;
 	}
 
-	for (const uint32_t index : indices)
+	for (const uint32_t index : mesh.indices)
 	{
-		if (index >= vertices.size())
+		if (index >= mesh.vertices.size())
 		{
-			MIKAN_LOG_ERROR("GlbMeshWriter") << "Index " << index << " out of range writing " << pathString;
+			MIKAN_LOG_ERROR("GlbMeshWriter") << "Index " << index << " out of range in mesh '" << mesh.name << "'";
 			return false;
 		}
 	}
 
-	std::error_code errorCode;
-	const std::filesystem::path parentDirectory= path.parent_path();
-	if (!parentDirectory.empty() && !std::filesystem::is_directory(parentDirectory, errorCode))
+	if (mesh.imageIndex >= (int)imageCount)
 	{
-		MIKAN_LOG_ERROR("GlbMeshWriter") << "Directory does not exist for " << pathString;
+		MIKAN_LOG_ERROR("GlbMeshWriter") << "Image index " << mesh.imageIndex << " out of range in mesh '" << mesh.name
+										 << "'";
 		return false;
 	}
 
-	const bool bHasNormals= normals.size() == vertices.size();
-	const bool bHasTexCoords= texCoords.size() == vertices.size();
-	const bool bHasTexture= !textureFileName.empty();
+	return true;
+}
+}; // namespace GlbMeshWriterUtils
 
-	// Pack the binary chunk: positions, normals, texcoords, then indices, each 4-byte aligned
-	std::vector<uint8_t> binBuffer;
+bool GlbMeshWriter::writeToBytes(const std::vector<MeshData>& meshes, const std::vector<ImageData>& images,
+								 std::vector<uint8_t>& outBytes)
+{
+	outBytes.clear();
 
-	const size_t positionOffset=
-		GlbMeshWriterUtils::appendToBuffer(binBuffer, vertices.data(), vertices.size() * sizeof(glm::vec3));
-	const size_t positionSize= vertices.size() * sizeof(glm::vec3);
-
-	size_t normalOffset= 0;
-	const size_t normalSize= normals.size() * sizeof(glm::vec3);
-	if (bHasNormals)
+	if (meshes.empty())
 	{
-		normalOffset= GlbMeshWriterUtils::appendToBuffer(binBuffer, normals.data(), normalSize);
+		MIKAN_LOG_ERROR("GlbMeshWriter") << "No meshes to write";
+		return false;
 	}
 
-	size_t texCoordOffset= 0;
-	const size_t texCoordSize= texCoords.size() * sizeof(glm::vec2);
-	if (bHasTexCoords)
+	for (const MeshData& mesh : meshes)
 	{
-		// The editor's texcoords are V-up, glTF stores V-down
-		std::vector<glm::vec2> flippedTexCoords(texCoords.size());
-		for (size_t index= 0; index < texCoords.size(); ++index)
+		if (!GlbMeshWriterUtils::validateMesh(mesh, images.size()))
 		{
-			flippedTexCoords[index]= glm::vec2(texCoords[index].x, 1.f - texCoords[index].y);
+			return false;
 		}
-		texCoordOffset= GlbMeshWriterUtils::appendToBuffer(binBuffer, flippedTexCoords.data(), texCoordSize);
 	}
 
-	const size_t indexSize= indices.size() * sizeof(uint32_t);
-	const size_t indexOffset= GlbMeshWriterUtils::appendToBuffer(binBuffer, indices.data(), indexSize);
-
-	glm::vec3 positionMin= vertices[0];
-	glm::vec3 positionMax= vertices[0];
-	for (const glm::vec3& vertex : vertices)
+	for (const ImageData& image : images)
 	{
-		positionMin= glm::min(positionMin, vertex);
-		positionMax= glm::max(positionMax, vertex);
+		if (image.uri.empty() && (image.bytes.empty() || image.mimeType.empty()))
+		{
+			MIKAN_LOG_ERROR("GlbMeshWriter") << "Image has neither a uri nor encoded bytes with a mime type";
+			return false;
+		}
 	}
+
+	// Every cgltf array is sized up front: the document links its parts by pointer, so no array may
+	// move once a pointer into it is taken. Each mesh adds up to four accessors and three attributes,
+	// and each embedded image one buffer view.
+	const size_t meshCount= meshes.size();
+	const size_t imageCount= images.size();
 
 	// cgltf_write takes mutable C strings and does not own them, so they live here until the write returns
 	std::string versionString= "2.0";
 	std::string generatorString= "MikanXR";
-	std::string meshNameString= GlbMeshWriterUtils::makeJsonSafeName(meshName);
 	std::string positionName= "POSITION";
 	std::string normalName= "NORMAL";
 	std::string texCoordName= "TEXCOORD_0";
-	std::string textureUri= GlbMeshWriterUtils::encodeUri(textureFileName);
+	std::vector<std::string> meshNames(meshCount);
+	std::vector<std::string> imageUris(imageCount);
+	std::vector<std::string> imageMimeTypes(imageCount);
 
-	// The document's arrays, zero-initialized like the C structs cgltf expects
+	std::vector<uint8_t> binBuffer;
+
 	cgltf_buffer buffer;
 	memset(&buffer, 0, sizeof(cgltf_buffer));
-	buffer.size= binBuffer.size();
 
-	std::vector<cgltf_buffer_view> bufferViews;
-	std::vector<cgltf_accessor> accessors;
-	std::vector<cgltf_attribute> attributes;
-	bufferViews.reserve(4);
-	accessors.reserve(4);
-	attributes.reserve(3);
-
-	auto addAccessor= [&](size_t byteOffset, size_t byteSize, cgltf_buffer_view_type viewType, cgltf_type type,
-						  cgltf_component_type componentType, size_t count) -> size_t
+	std::vector<cgltf_buffer_view> bufferViews(meshCount * 4 + imageCount);
+	std::vector<cgltf_accessor> accessors(meshCount * 4);
+	std::vector<cgltf_attribute> attributes(meshCount * 3);
+	std::vector<cgltf_primitive> primitives(meshCount);
+	std::vector<cgltf_mesh> cgltfMeshes(meshCount);
+	std::vector<cgltf_node> nodes(meshCount);
+	std::vector<cgltf_node*> sceneNodes(meshCount);
+	std::vector<cgltf_image> cgltfImages(imageCount);
+	std::vector<cgltf_texture> textures(imageCount);
+	std::vector<cgltf_material> materials(imageCount);
+	memset(bufferViews.data(), 0, bufferViews.size() * sizeof(cgltf_buffer_view));
+	memset(accessors.data(), 0, accessors.size() * sizeof(cgltf_accessor));
+	memset(attributes.data(), 0, attributes.size() * sizeof(cgltf_attribute));
+	memset(primitives.data(), 0, primitives.size() * sizeof(cgltf_primitive));
+	memset(cgltfMeshes.data(), 0, cgltfMeshes.size() * sizeof(cgltf_mesh));
+	memset(nodes.data(), 0, nodes.size() * sizeof(cgltf_node));
+	if (imageCount > 0)
 	{
-		cgltf_buffer_view bufferView;
-		memset(&bufferView, 0, sizeof(cgltf_buffer_view));
+		memset(cgltfImages.data(), 0, cgltfImages.size() * sizeof(cgltf_image));
+		memset(textures.data(), 0, textures.size() * sizeof(cgltf_texture));
+		memset(materials.data(), 0, materials.size() * sizeof(cgltf_material));
+	}
+
+	size_t bufferViewCount= 0;
+	size_t accessorCount= 0;
+	size_t attributeCount= 0;
+
+	auto addBufferView= [&](const void* bytes, size_t byteSize, cgltf_buffer_view_type viewType) -> cgltf_buffer_view*
+	{
+		cgltf_buffer_view& bufferView= bufferViews[bufferViewCount++];
 		bufferView.buffer= &buffer;
-		bufferView.offset= byteOffset;
+		bufferView.offset= GlbMeshWriterUtils::appendToBuffer(binBuffer, bytes, byteSize);
 		bufferView.size= byteSize;
 		bufferView.type= viewType;
-		bufferViews.push_back(bufferView);
+		return &bufferView;
+	};
 
-		cgltf_accessor accessor;
-		memset(&accessor, 0, sizeof(cgltf_accessor));
+	auto addAccessor= [&](const void* bytes, size_t byteSize, cgltf_buffer_view_type viewType, cgltf_type type,
+						  cgltf_component_type componentType, size_t count) -> cgltf_accessor*
+	{
+		cgltf_accessor& accessor= accessors[accessorCount++];
+		accessor.buffer_view= addBufferView(bytes, byteSize, viewType);
 		accessor.component_type= componentType;
 		accessor.type= type;
 		accessor.count= count;
 		accessor.stride= cgltf_calc_size(type, componentType);
-		accessors.push_back(accessor);
-
-		return accessors.size() - 1;
+		return &accessor;
 	};
 
-	const size_t positionAccessorIndex= addAccessor(positionOffset, positionSize, cgltf_buffer_view_type_vertices,
-													cgltf_type_vec3, cgltf_component_type_r_32f, vertices.size());
-	accessors[positionAccessorIndex].has_min= 1;
-	accessors[positionAccessorIndex].has_max= 1;
-	for (int axis= 0; axis < 3; ++axis)
+	auto addAttribute= [&](std::string& name, cgltf_attribute_type type, cgltf_accessor* accessor)
 	{
-		accessors[positionAccessorIndex].min[axis]= positionMin[axis];
-		accessors[positionAccessorIndex].max[axis]= positionMax[axis];
-	}
-
-	size_t normalAccessorIndex= 0;
-	if (bHasNormals)
-	{
-		normalAccessorIndex= addAccessor(normalOffset, normalSize, cgltf_buffer_view_type_vertices, cgltf_type_vec3,
-										 cgltf_component_type_r_32f, normals.size());
-	}
-
-	size_t texCoordAccessorIndex= 0;
-	if (bHasTexCoords)
-	{
-		texCoordAccessorIndex= addAccessor(texCoordOffset, texCoordSize, cgltf_buffer_view_type_vertices,
-										   cgltf_type_vec2, cgltf_component_type_r_32f, texCoords.size());
-	}
-
-	const size_t indexAccessorIndex= addAccessor(indexOffset, indexSize, cgltf_buffer_view_type_indices,
-												 cgltf_type_scalar, cgltf_component_type_r_32u, indices.size());
-
-	// Accessors reference their buffer views by pointer, so link them once both arrays stop growing
-	for (size_t index= 0; index < accessors.size(); ++index)
-	{
-		accessors[index].buffer_view= &bufferViews[index];
-	}
-
-	auto addAttribute= [&](std::string& name, cgltf_attribute_type type, size_t accessorIndex)
-	{
-		cgltf_attribute attribute;
-		memset(&attribute, 0, sizeof(cgltf_attribute));
+		cgltf_attribute& attribute= attributes[attributeCount++];
 		attribute.name= &name[0];
 		attribute.type= type;
 		attribute.index= 0;
-		attribute.data= &accessors[accessorIndex];
-		attributes.push_back(attribute);
+		attribute.data= accessor;
 	};
 
-	addAttribute(positionName, cgltf_attribute_type_position, positionAccessorIndex);
-	if (bHasNormals)
+	for (size_t imageIndex= 0; imageIndex < imageCount; ++imageIndex)
 	{
-		addAttribute(normalName, cgltf_attribute_type_normal, normalAccessorIndex);
-	}
-	if (bHasTexCoords)
-	{
-		addAttribute(texCoordName, cgltf_attribute_type_texcoord, texCoordAccessorIndex);
-	}
+		const ImageData& imageData= images[imageIndex];
+		cgltf_image& image= cgltfImages[imageIndex];
 
-	cgltf_image image;
-	memset(&image, 0, sizeof(cgltf_image));
-	cgltf_texture texture;
-	memset(&texture, 0, sizeof(cgltf_texture));
-	cgltf_material material;
-	memset(&material, 0, sizeof(cgltf_material));
-	if (bHasTexture)
-	{
-		image.uri= &textureUri[0];
-		texture.image= &image;
+		if (!imageData.uri.empty())
+		{
+			imageUris[imageIndex]= GlbMeshWriterUtils::encodeUri(imageData.uri);
+			image.uri= &imageUris[imageIndex][0];
+		}
+		else
+		{
+			imageMimeTypes[imageIndex]= GlbMeshWriterUtils::makeJsonSafeName(imageData.mimeType);
+			image.mime_type= &imageMimeTypes[imageIndex][0];
+			image.buffer_view=
+				addBufferView(imageData.bytes.data(), imageData.bytes.size(), cgltf_buffer_view_type_invalid);
+		}
 
+		textures[imageIndex].image= &image;
+
+		// The textures are captured colour, which already carries the scene's lighting
+		cgltf_material& material= materials[imageIndex];
 		material.has_pbr_metallic_roughness= 1;
-		material.pbr_metallic_roughness.base_color_texture.texture= &texture;
+		material.pbr_metallic_roughness.base_color_texture.texture= &textures[imageIndex];
 		material.pbr_metallic_roughness.base_color_texture.texcoord= 0;
 		material.pbr_metallic_roughness.base_color_texture.scale= 1.f;
 		for (int channel= 0; channel < 4; ++channel)
@@ -254,69 +272,182 @@ bool GlbMeshWriter::write(const std::filesystem::path& path, const std::string& 
 		material.pbr_metallic_roughness.metallic_factor= 0.f;
 		material.pbr_metallic_roughness.roughness_factor= 1.f;
 		material.alpha_mode= cgltf_alpha_mode_opaque;
+		material.unlit= 1;
 	}
 
-	cgltf_primitive primitive;
-	memset(&primitive, 0, sizeof(cgltf_primitive));
-	primitive.type= cgltf_primitive_type_triangles;
-	primitive.indices= &accessors[indexAccessorIndex];
-	primitive.material= bHasTexture ? &material : nullptr;
-	primitive.attributes= attributes.data();
-	primitive.attributes_count= attributes.size();
+	for (size_t meshIndex= 0; meshIndex < meshCount; ++meshIndex)
+	{
+		const MeshData& meshData= meshes[meshIndex];
+		const bool bHasNormals= meshData.normals.size() == meshData.vertices.size();
+		const bool bHasTexCoords= meshData.texCoords.size() == meshData.vertices.size();
 
-	cgltf_mesh mesh;
-	memset(&mesh, 0, sizeof(cgltf_mesh));
-	mesh.name= &meshNameString[0];
-	mesh.primitives= &primitive;
-	mesh.primitives_count= 1;
+		cgltf_attribute* firstAttribute= &attributes[attributeCount];
 
-	cgltf_node node;
-	memset(&node, 0, sizeof(cgltf_node));
-	node.name= &meshNameString[0];
-	node.mesh= &mesh;
+		cgltf_accessor* positionAccessor= addAccessor(
+			meshData.vertices.data(), meshData.vertices.size() * sizeof(glm::vec3), cgltf_buffer_view_type_vertices,
+			cgltf_type_vec3, cgltf_component_type_r_32f, meshData.vertices.size());
+		glm::vec3 positionMin= meshData.vertices[0];
+		glm::vec3 positionMax= meshData.vertices[0];
+		for (const glm::vec3& vertex : meshData.vertices)
+		{
+			positionMin= glm::min(positionMin, vertex);
+			positionMax= glm::max(positionMax, vertex);
+		}
+		positionAccessor->has_min= 1;
+		positionAccessor->has_max= 1;
+		for (int axis= 0; axis < 3; ++axis)
+		{
+			positionAccessor->min[axis]= positionMin[axis];
+			positionAccessor->max[axis]= positionMax[axis];
+		}
+		addAttribute(positionName, cgltf_attribute_type_position, positionAccessor);
 
-	cgltf_node* sceneNodes[1]= {&node};
+		if (bHasNormals)
+		{
+			cgltf_accessor* normalAccessor= addAccessor(
+				meshData.normals.data(), meshData.normals.size() * sizeof(glm::vec3), cgltf_buffer_view_type_vertices,
+				cgltf_type_vec3, cgltf_component_type_r_32f, meshData.normals.size());
+			addAttribute(normalName, cgltf_attribute_type_normal, normalAccessor);
+		}
+
+		if (bHasTexCoords)
+		{
+			// The editor's texcoords are V-up, glTF stores V-down
+			std::vector<glm::vec2> flippedTexCoords(meshData.texCoords.size());
+			for (size_t index= 0; index < meshData.texCoords.size(); ++index)
+			{
+				flippedTexCoords[index]= glm::vec2(meshData.texCoords[index].x, 1.f - meshData.texCoords[index].y);
+			}
+			cgltf_accessor* texCoordAccessor= addAccessor(
+				flippedTexCoords.data(), flippedTexCoords.size() * sizeof(glm::vec2), cgltf_buffer_view_type_vertices,
+				cgltf_type_vec2, cgltf_component_type_r_32f, flippedTexCoords.size());
+			addAttribute(texCoordName, cgltf_attribute_type_texcoord, texCoordAccessor);
+		}
+
+		cgltf_accessor* indexAccessor= addAccessor(meshData.indices.data(), meshData.indices.size() * sizeof(uint32_t),
+												   cgltf_buffer_view_type_indices, cgltf_type_scalar,
+												   cgltf_component_type_r_32u, meshData.indices.size());
+
+		cgltf_primitive& primitive= primitives[meshIndex];
+		primitive.type= cgltf_primitive_type_triangles;
+		primitive.indices= indexAccessor;
+		primitive.material= meshData.imageIndex >= 0 ? &materials[meshData.imageIndex] : nullptr;
+		primitive.attributes= firstAttribute;
+		primitive.attributes_count= &attributes[0] + attributeCount - firstAttribute;
+
+		meshNames[meshIndex]= GlbMeshWriterUtils::makeJsonSafeName(meshData.name);
+
+		cgltf_mesh& mesh= cgltfMeshes[meshIndex];
+		mesh.name= &meshNames[meshIndex][0];
+		mesh.primitives= &primitive;
+		mesh.primitives_count= 1;
+
+		cgltf_node& node= nodes[meshIndex];
+		node.name= &meshNames[meshIndex][0];
+		node.mesh= &mesh;
+		sceneNodes[meshIndex]= &node;
+	}
+
+	buffer.size= binBuffer.size();
+
 	cgltf_scene scene;
 	memset(&scene, 0, sizeof(cgltf_scene));
-	scene.nodes= sceneNodes;
-	scene.nodes_count= 1;
+	scene.nodes= sceneNodes.data();
+	scene.nodes_count= meshCount;
 
 	cgltf_data data;
 	memset(&data, 0, sizeof(cgltf_data));
 	data.file_type= cgltf_file_type_glb;
 	data.asset.version= &versionString[0];
 	data.asset.generator= &generatorString[0];
-	data.meshes= &mesh;
-	data.meshes_count= 1;
+	data.meshes= cgltfMeshes.data();
+	data.meshes_count= meshCount;
 	data.accessors= accessors.data();
-	data.accessors_count= accessors.size();
+	data.accessors_count= accessorCount;
 	data.buffer_views= bufferViews.data();
-	data.buffer_views_count= bufferViews.size();
+	data.buffer_views_count= bufferViewCount;
 	data.buffers= &buffer;
 	data.buffers_count= 1;
-	if (bHasTexture)
+	if (imageCount > 0)
 	{
-		data.materials= &material;
-		data.materials_count= 1;
-		data.images= &image;
-		data.images_count= 1;
-		data.textures= &texture;
-		data.textures_count= 1;
+		data.materials= materials.data();
+		data.materials_count= imageCount;
+		data.images= cgltfImages.data();
+		data.images_count= imageCount;
+		data.textures= textures.data();
+		data.textures_count= imageCount;
 	}
-	data.nodes= &node;
-	data.nodes_count= 1;
+	data.nodes= nodes.data();
+	data.nodes_count= meshCount;
 	data.scenes= &scene;
 	data.scenes_count= 1;
 	data.scene= &scene;
-	data.bin= binBuffer.data();
-	data.bin_size= binBuffer.size();
 
 	cgltf_options options;
 	memset(&options, 0, sizeof(cgltf_options));
 	options.type= cgltf_file_type_glb;
 
-	const cgltf_result result= cgltf_write_file(&options, pathString.c_str(), &data);
-	if (result != cgltf_result_success)
+	// The first call sizes the JSON, including its null terminator, and the second writes it
+	const cgltf_size jsonCapacity= cgltf_write(&options, nullptr, 0, &data);
+	std::string json(jsonCapacity, '\0');
+	const cgltf_size jsonWritten= cgltf_write(&options, &json[0], jsonCapacity, &data);
+	if (jsonWritten == 0 || jsonWritten != jsonCapacity)
+	{
+		MIKAN_LOG_ERROR("GlbMeshWriter") << "Failed to write the glTF JSON";
+		return false;
+	}
+	json.resize(jsonWritten - 1);
+
+	GlbMeshWriterUtils::assembleGlb(json, binBuffer, outBytes);
+	return true;
+}
+
+bool GlbMeshWriter::write(const std::filesystem::path& path, const std::string& meshName,
+						  const std::vector<glm::vec3>& vertices, const std::vector<glm::vec3>& normals,
+						  const std::vector<glm::vec2>& texCoords, const std::vector<uint32_t>& indices,
+						  const std::string& textureFileName)
+{
+	const std::string pathString= path.string();
+
+	std::error_code errorCode;
+	const std::filesystem::path parentDirectory= path.parent_path();
+	if (!parentDirectory.empty() && !std::filesystem::is_directory(parentDirectory, errorCode))
+	{
+		MIKAN_LOG_ERROR("GlbMeshWriter") << "Directory does not exist for " << pathString;
+		return false;
+	}
+
+	std::vector<MeshData> meshes(1);
+	meshes[0].name= meshName;
+	meshes[0].vertices= vertices;
+	meshes[0].normals= normals;
+	meshes[0].texCoords= texCoords;
+	meshes[0].indices= indices;
+
+	std::vector<ImageData> images;
+	if (!textureFileName.empty())
+	{
+		ImageData image;
+		image.uri= textureFileName;
+		images.push_back(image);
+		meshes[0].imageIndex= 0;
+	}
+
+	std::vector<uint8_t> glbBytes;
+	if (!writeToBytes(meshes, images, glbBytes))
+	{
+		MIKAN_LOG_ERROR("GlbMeshWriter") << "Failed to build " << pathString;
+		return false;
+	}
+
+	std::ofstream file(path, std::ios::binary | std::ios::trunc);
+	if (!file)
+	{
+		MIKAN_LOG_ERROR("GlbMeshWriter") << "Failed to open " << pathString;
+		return false;
+	}
+	file.write((const char*)glbBytes.data(), (std::streamsize)glbBytes.size());
+	if (!file)
 	{
 		MIKAN_LOG_ERROR("GlbMeshWriter") << "Failed to write " << pathString;
 		return false;

@@ -60,6 +60,36 @@ public:
 		return true;
 	}
 
+	// The same from GLB bytes in memory, which carry their only buffer in the binary chunk
+	bool loadFromMemory(const std::vector<uint8_t>& bytes)
+	{
+		cgltf_options options;
+		memset(&options, 0, sizeof(cgltf_options));
+
+		cgltf_result result= cgltf_parse(&options, bytes.data(), bytes.size(), &m_data);
+		if (result != cgltf_result_success)
+		{
+			fprintf(stdout, "    cgltf_parse failed (%d)\n", (int)result);
+			return false;
+		}
+
+		result= cgltf_load_buffers(&options, m_data, nullptr);
+		if (result != cgltf_result_success)
+		{
+			fprintf(stdout, "    cgltf_load_buffers failed (%d)\n", (int)result);
+			return false;
+		}
+
+		result= cgltf_validate(m_data);
+		if (result != cgltf_result_success)
+		{
+			fprintf(stdout, "    cgltf_validate failed (%d)\n", (int)result);
+			return false;
+		}
+
+		return true;
+	}
+
 	const cgltf_data* get() const { return m_data; }
 
 private:
@@ -355,6 +385,165 @@ bool glb_mesh_writer_test_texture_reference()
 	UNIT_TEST_COMPLETE()
 }
 
+static uint32_t glb_test_read_uint32(const std::vector<uint8_t>& bytes, size_t offset)
+{
+	return (uint32_t)bytes[offset] | ((uint32_t)bytes[offset + 1] << 8) | ((uint32_t)bytes[offset + 2] << 16)
+		   | ((uint32_t)bytes[offset + 3] << 24);
+}
+
+// Two meshes written to memory, one textured by an embedded image: the container is well formed,
+// each mesh has its own node, the image bytes come back exactly, and only the textured mesh has a
+// material, which is unlit
+bool glb_mesh_writer_test_embedded_image_to_bytes()
+{
+	UNIT_TEST_BEGIN("two meshes with an embedded image round trip through memory")
+
+	const GlbTestQuad quad= glb_test_make_quad();
+
+	std::vector<GlbMeshWriter::MeshData> meshes(2);
+	meshes[0].name= "textured";
+	meshes[0].vertices= quad.vertices;
+	meshes[0].normals= quad.normals;
+	meshes[0].texCoords= quad.texCoords;
+	meshes[0].indices= quad.indices;
+	meshes[0].imageIndex= 0;
+	meshes[1].name= "plain";
+	meshes[1].vertices= {glm::vec3(0.f, 0.f, 0.f), glm::vec3(1.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f)};
+	meshes[1].indices= {0, 1, 2};
+
+	// An odd length with embedded zeros, so the padding and the copy both show
+	std::vector<GlbMeshWriter::ImageData> images(1);
+	images[0].mimeType= "image/png";
+	images[0].bytes= {0x89, 'P', 'N', 'G', 0x00, 0x0D, 0x00};
+
+	std::vector<uint8_t> bytes;
+	if (!GlbMeshWriter::writeToBytes(meshes, images, bytes))
+	{
+		fprintf(stdout, "    writeToBytes failed\n");
+		success= false;
+	}
+
+	// Header, then the JSON chunk space-padded to 4 bytes, then the BIN chunk zero-padded
+	if (success)
+	{
+		const uint32_t jsonChunkLength= glb_test_read_uint32(bytes, 12);
+		const size_t binChunkStart= 20 + jsonChunkLength;
+		const bool bHeaderOk= glb_test_read_uint32(bytes, 0) == 0x46546C67 && glb_test_read_uint32(bytes, 4) == 2
+							  && glb_test_read_uint32(bytes, 8) == bytes.size()
+							  && glb_test_read_uint32(bytes, 16) == 0x4E4F534A && (jsonChunkLength % 4) == 0
+							  && bytes[20 + jsonChunkLength - 1] != 0x00;
+		const bool bBinOk= binChunkStart + 8 <= bytes.size()
+						   && glb_test_read_uint32(bytes, binChunkStart + 4) == 0x004E4942
+						   && (glb_test_read_uint32(bytes, binChunkStart) % 4) == 0
+						   && binChunkStart + 8 + glb_test_read_uint32(bytes, binChunkStart) == bytes.size();
+		if (!bHeaderOk || !bBinOk)
+		{
+			fprintf(stdout, "    the GLB container is malformed\n");
+			success= false;
+		}
+	}
+
+	GlbTestDocument document;
+	if (success && !document.loadFromMemory(bytes))
+	{
+		success= false;
+	}
+
+	const cgltf_data* data= document.get();
+	if (success
+		&& (data->meshes_count != 2 || data->nodes_count != 2 || data->scene == nullptr
+			|| data->scene->nodes_count != 2))
+	{
+		fprintf(stdout, "    expected two meshes, each under its own scene node\n");
+		success= false;
+	}
+
+	if (success)
+	{
+		const cgltf_image& image= data->images_count == 1 ? data->images[0] : cgltf_image();
+		const cgltf_buffer_view* imageView= image.buffer_view;
+		const bool bImageOk= data->images_count == 1 && image.uri == nullptr && image.mime_type != nullptr
+							 && strcmp(image.mime_type, "image/png") == 0 && imageView != nullptr
+							 && imageView->size == images[0].bytes.size()
+							 && memcmp((const uint8_t*)imageView->buffer->data + imageView->offset,
+									   images[0].bytes.data(), images[0].bytes.size())
+									== 0;
+		if (!bImageOk)
+		{
+			fprintf(stdout, "    the embedded image did not come back byte for byte\n");
+			success= false;
+		}
+	}
+
+	if (success)
+	{
+		const cgltf_primitive& textured= data->meshes[0].primitives[0];
+		const cgltf_primitive& plain= data->meshes[1].primitives[0];
+		const cgltf_material* material= textured.material;
+		if (data->materials_count != 1 || material == nullptr || !material->unlit
+			|| material->pbr_metallic_roughness.base_color_texture.texture == nullptr
+			|| material->pbr_metallic_roughness.base_color_texture.texture->image != &data->images[0])
+		{
+			fprintf(stdout, "    the textured mesh lacks its unlit base colour material\n");
+			success= false;
+		}
+		if (plain.material != nullptr || plain.attributes_count != 1)
+		{
+			fprintf(stdout, "    the plain mesh carries a material or optional attributes\n");
+			success= false;
+		}
+	}
+
+	// The textured mesh keeps its V-down texcoords and widened indices
+	if (success)
+	{
+		const cgltf_primitive& textured= data->meshes[0].primitives[0];
+		const cgltf_accessor* texCoordAccessor= nullptr;
+		for (cgltf_size index= 0; index < textured.attributes_count; ++index)
+		{
+			if (textured.attributes[index].type == cgltf_attribute_type_texcoord)
+				texCoordAccessor= textured.attributes[index].data;
+		}
+
+		float texCoord[2]= {0.f, 0.f};
+		if (texCoordAccessor == nullptr || !cgltf_accessor_read_float(texCoordAccessor, 0, texCoord, 2)
+			|| !glb_test_nearly_equal(texCoord[0], 0.1f) || !glb_test_nearly_equal(texCoord[1], 0.8f))
+		{
+			fprintf(stdout, "    texcoords are not flipped to V-down\n");
+			success= false;
+		}
+
+		if (textured.indices->component_type != cgltf_component_type_r_32u || textured.indices->count != 6)
+		{
+			fprintf(stdout, "    indices are not six 32-bit values\n");
+			success= false;
+		}
+	}
+
+	UNIT_TEST_COMPLETE()
+}
+
+// An image index past the image list is refused rather than written dangling
+bool glb_mesh_writer_test_bad_image_index_fails()
+{
+	UNIT_TEST_BEGIN("an out of range image index fails")
+
+	const GlbTestQuad quad= glb_test_make_quad();
+	std::vector<GlbMeshWriter::MeshData> meshes(1);
+	meshes[0].vertices= quad.vertices;
+	meshes[0].indices= quad.indices;
+	meshes[0].imageIndex= 0;
+
+	std::vector<uint8_t> bytes;
+	if (GlbMeshWriter::writeToBytes(meshes, {}, bytes) || !bytes.empty())
+	{
+		fprintf(stdout, "    a dangling image index was written\n");
+		success= false;
+	}
+
+	UNIT_TEST_COMPLETE()
+}
+
 // Writing into a directory that does not exist fails cleanly
 bool glb_mesh_writer_test_missing_directory_fails()
 {
@@ -393,6 +582,8 @@ bool run_glb_mesh_writer_tests()
 	UNIT_TEST_MODULE_CALL_TEST(glb_mesh_writer_test_positions_only);
 	UNIT_TEST_MODULE_CALL_TEST(glb_mesh_writer_test_texture_reference);
 	UNIT_TEST_MODULE_CALL_TEST(glb_mesh_writer_test_missing_directory_fails);
+	UNIT_TEST_MODULE_CALL_TEST(glb_mesh_writer_test_embedded_image_to_bytes);
+	UNIT_TEST_MODULE_CALL_TEST(glb_mesh_writer_test_bad_image_index_fails);
 	std::filesystem::remove_all(outputDirectory, errorCode);
 	UNIT_TEST_MODULE_END()
 }
