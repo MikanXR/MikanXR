@@ -81,6 +81,40 @@ struct PostOnWorker
 	}
 };
 
+// One request on a worker thread against background routes, which answer with no pumping
+struct RequestOnWorker
+{
+	int statusCode= 0;
+	std::string body;
+	ix::WebSocketHttpHeaders headers;
+
+	RequestOnWorker(int port, const std::string& verb, const char* path,
+					const ix::WebSocketHttpHeaders& extraHeaders= ix::WebSocketHttpHeaders())
+	{
+		std::thread worker(
+			[&]()
+			{
+				ix::HttpClient client;
+				ix::HttpRequestArgsPtr args= client.createRequest();
+				args->connectTimeout= 5;
+				args->transferTimeout= 20;
+				args->extraHeaders= extraHeaders;
+
+				ix::HttpResponsePtr response= client.request(makeTestUrl(port, path), verb, "", args);
+				statusCode= response->statusCode;
+				body= response->body;
+				headers= response->headers;
+			});
+		worker.join();
+	}
+
+	std::string header(const char* name) const
+	{
+		const auto it= headers.find(name);
+		return it != headers.end() ? it->second : std::string();
+	}
+};
+
 // The byte at a position of the synthetic upload body, so the body can be streamed and
 // checked without ever existing whole on either side
 uint8_t uploadByteAt(uint64_t position) { return (uint8_t)((position * 31 + (position >> 12)) & 0xFF); }
@@ -580,6 +614,71 @@ bool http_server_test_dispose_releases_parked_handler()
 	UNIT_TEST_COMPLETE()
 }
 
+bool http_server_test_prefix_routes_headers_and_preflight()
+{
+	UNIT_TEST_BEGIN("prefix routes match longest first, headers pass both ways, and preflights answer")
+
+	HttpInterprocessMessageServer server;
+	const int port= bindTestServer(server);
+	if (port == 0)
+	{
+		printf("      skipped: no test port free\n");
+		UNIT_TEST_COMPLETE()
+	}
+
+	auto makeEchoHandler= [](const char* name)
+	{
+		return [name](const HttpRouteRequest& request)
+		{
+			HttpRouteResponse response;
+			response.contentType= "text/plain";
+			response.body= std::string(name) + ":" + request.path;
+			const auto it= request.headers.find("x-test-header");
+			response.headers["X-Echo"]= it != request.headers.end() ? it->second : "";
+			return response;
+		};
+	};
+
+	success&= server.setBackgroundPrefixRouteHandler("/geo/", makeEchoHandler("short"));
+	success&= server.setBackgroundPrefixRouteHandler("/geo/deep/", makeEchoHandler("long"));
+	success&= server.setBackgroundRouteHandler("/geo/exact", makeEchoHandler("exact"));
+	success&= !server.setBackgroundPrefixRouteHandler("/geo/", makeEchoHandler("again"));
+
+	// The longest matching prefix wins, and the handler sees the full path
+	RequestOnWorker shortPrefix(port, "GET", "/geo/a/b?x=1");
+	success&= (shortPrefix.statusCode == 200 && shortPrefix.body == "short:/geo/a/b");
+	RequestOnWorker longPrefix(port, "GET", "/geo/deep/c");
+	success&= (longPrefix.body == "long:/geo/deep/c");
+
+	// An exact path outranks every prefix
+	RequestOnWorker exact(port, "GET", "/geo/exact");
+	success&= (exact.body == "exact:/geo/exact");
+
+	// Request headers arrive lowercased and response headers go out, with the CORS origin on every reply
+	ix::WebSocketHttpHeaders extraHeaders;
+	extraHeaders["X-Test-Header"]= "hello";
+	RequestOnWorker withHeaders(port, "GET", "/geo/h", extraHeaders);
+	success&= (withHeaders.header("X-Echo") == "hello");
+	success&= (withHeaders.header("Access-Control-Allow-Origin") == "*");
+
+	// A preflight to a registered path answers without reaching the handler
+	RequestOnWorker preflight(port, "OPTIONS", "/geo/a");
+	success&= (preflight.statusCode == 204 && preflight.body.empty());
+	success&= (preflight.header("Access-Control-Allow-Methods") == "GET, POST, OPTIONS");
+	success&= (preflight.header("Access-Control-Allow-Headers") == "Content-Type, If-None-Match");
+	RequestOnWorker unknownPreflight(port, "OPTIONS", "/elsewhere");
+	success&= (unknownPreflight.statusCode == 404);
+
+	// Once removed, the shorter prefix answers for the deeper path
+	server.removeBackgroundPrefixRouteHandler("/geo/deep/");
+	RequestOnWorker afterRemoval(port, "GET", "/geo/deep/c");
+	success&= (afterRemoval.body == "short:/geo/deep/c");
+
+	server.dispose();
+
+	UNIT_TEST_COMPLETE()
+}
+
 bool run_http_server_tests()
 {
 	UNIT_TEST_MODULE_BEGIN("http_server")
@@ -588,5 +687,6 @@ bool run_http_server_tests()
 	UNIT_TEST_MODULE_CALL_TEST(http_server_test_dispose_releases_parked_handler);
 	UNIT_TEST_MODULE_CALL_TEST(http_server_test_streaming_route_writes_body_to_file);
 	UNIT_TEST_MODULE_CALL_TEST(http_server_test_streaming_route_idle_timeout);
+	UNIT_TEST_MODULE_CALL_TEST(http_server_test_prefix_routes_headers_and_preflight);
 	UNIT_TEST_MODULE_END()
 }

@@ -6,6 +6,7 @@
 #include "IxWebSocket/IxNetSystem.h"
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdlib>
 #include <future>
@@ -121,12 +122,39 @@ std::map<std::string, std::string> parseQueryString(const std::string& uri)
 	return queryArgs;
 }
 
+// ix keys request headers case-insensitively; routes see them under lowercased names
+std::map<std::string, std::string> copyRequestHeaders(const ix::HttpRequest& request)
+{
+	std::map<std::string, std::string> headers;
+	for (const auto& header : request.headers)
+	{
+		std::string name= header.first;
+		std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+		headers[name]= header.second;
+	}
+	return headers;
+}
+
+HttpRouteResponse makePreflightResponse()
+{
+	HttpRouteResponse response;
+	response.statusCode= 204;
+	response.contentType= "text/plain";
+	response.headers["Access-Control-Allow-Methods"]= "GET, POST, OPTIONS";
+	response.headers["Access-Control-Allow-Headers"]= "Content-Type, If-None-Match";
+	return response;
+}
+
 std::string httpStatusDescription(int statusCode)
 {
 	switch (statusCode)
 	{
 	case 200:
 		return "OK";
+	case 204:
+		return "No Content";
+	case 304:
+		return "Not Modified";
 	case 400:
 		return "Bad Request";
 	case 404:
@@ -269,6 +297,77 @@ void HttpInterprocessMessageServer::removeBackgroundRouteHandler(const std::stri
 	m_backgroundRouteHandlers.erase(path);
 }
 
+bool HttpInterprocessMessageServer::setBackgroundPrefixRouteHandler(const std::string& prefix, HttpRouteHandler handler)
+{
+	std::lock_guard<std::mutex> lock(m_routeHandlersMutex);
+
+	if (prefix.empty() || m_backgroundPrefixRouteHandlers.find(prefix) != m_backgroundPrefixRouteHandlers.end())
+	{
+		MIKAN_LOG_WARNING("HttpInterprocessMessageServer::setBackgroundPrefixRouteHandler")
+			<< "Prefix route already registered: " << prefix;
+		return false;
+	}
+
+	m_backgroundPrefixRouteHandlers[prefix]= handler;
+	return true;
+}
+
+void HttpInterprocessMessageServer::removeBackgroundPrefixRouteHandler(const std::string& prefix)
+{
+	std::lock_guard<std::mutex> lock(m_routeHandlersMutex);
+
+	m_backgroundPrefixRouteHandlers.erase(prefix);
+}
+
+HttpRouteHandler HttpInterprocessMessageServer::findBackgroundHandler(const std::string& path) const
+{
+	std::lock_guard<std::mutex> lock(m_routeHandlersMutex);
+
+	auto handler_it= m_backgroundRouteHandlers.find(path);
+	if (handler_it != m_backgroundRouteHandlers.end())
+	{
+		return handler_it->second;
+	}
+
+	auto route_it= m_streamingRouteHandlers.find(path);
+	if (route_it != m_streamingRouteHandlers.end())
+	{
+		return route_it->second.handler;
+	}
+
+	// An exact main-thread route outranks any prefix
+	if (m_routeHandlers.find(path) != m_routeHandlers.end())
+	{
+		return HttpRouteHandler();
+	}
+
+	HttpRouteHandler prefixHandler;
+	size_t longestPrefixLength= 0;
+	for (const auto& entry : m_backgroundPrefixRouteHandlers)
+	{
+		if (entry.first.size() > longestPrefixLength && path.compare(0, entry.first.size(), entry.first) == 0)
+		{
+			prefixHandler= entry.second;
+			longestPrefixLength= entry.first.size();
+		}
+	}
+	return prefixHandler;
+}
+
+bool HttpInterprocessMessageServer::isRegisteredPath(const std::string& path) const
+{
+	{
+		std::lock_guard<std::mutex> lock(m_routeHandlersMutex);
+
+		if (m_routeHandlers.find(path) != m_routeHandlers.end())
+		{
+			return true;
+		}
+	}
+
+	return (bool)findBackgroundHandler(path);
+}
+
 bool HttpInterprocessMessageServer::setStreamingRouteHandler(const std::string& path,
 															 HttpBodyDestinationHandler destinationHandler,
 															 HttpRouteHandler handler)
@@ -367,6 +466,11 @@ ix::HttpResponsePtr makeIxResponse(const HttpRouteResponse& routeResponse)
 {
 	ix::WebSocketHttpHeaders headers;
 	headers["Content-Type"]= routeResponse.contentType;
+	headers["Access-Control-Allow-Origin"]= "*";
+	for (const auto& header : routeResponse.headers)
+	{
+		headers[header.first]= header.second;
+	}
 
 	return std::make_shared<ix::HttpResponse>(routeResponse.statusCode, httpStatusDescription(routeResponse.statusCode),
 											  ix::HttpErrorCode::Ok, headers, routeResponse.body);
@@ -376,6 +480,12 @@ ix::HttpBodyPolicy HttpInterprocessMessageServer::handleRequestHeaders(ix::HttpR
 {
 	ix::HttpBodyPolicy policy;
 	const std::string path= stripQueryString(request->uri);
+
+	// A preflight carries no body to stream
+	if (request->method == "OPTIONS")
+	{
+		return policy;
+	}
 
 	StreamingRoute route;
 	{
@@ -394,6 +504,7 @@ ix::HttpBodyPolicy HttpInterprocessMessageServer::handleRequestHeaders(ix::HttpR
 	headRequest.method= request->method;
 	headRequest.path= path;
 	headRequest.queryArgs= parseQueryString(request->uri);
+	headRequest.headers= copyRequestHeaders(*request);
 	headRequest.bodyLength= parseContentLength(*request);
 
 	std::filesystem::path bodyFilePath;
@@ -416,32 +527,30 @@ ix::HttpResponsePtr HttpInterprocessMessageServer::handleIncomingRequest(ix::Htt
 {
 	const std::string path= stripQueryString(request->uri);
 
-	// A background or streaming route answers on this thread. The body is moved rather
-	// than copied, or for a streaming route is already on disk.
-	HttpRouteHandler backgroundHandler;
+	// Preflights never reach a handler or the main thread
+	if (request->method == "OPTIONS")
 	{
-		std::lock_guard<std::mutex> lock(m_routeHandlersMutex);
+		if (isRegisteredPath(path))
+		{
+			return makeIxResponse(makePreflightResponse());
+		}
 
-		auto handler_it= m_backgroundRouteHandlers.find(path);
-		if (handler_it != m_backgroundRouteHandlers.end())
-		{
-			backgroundHandler= handler_it->second;
-		}
-		else
-		{
-			auto route_it= m_streamingRouteHandlers.find(path);
-			if (route_it != m_streamingRouteHandlers.end())
-			{
-				backgroundHandler= route_it->second.handler;
-			}
-		}
+		HttpRouteResponse notFound;
+		notFound.statusCode= 404;
+		notFound.body= R"({"error":"No route registered for path"})";
+		return makeIxResponse(notFound);
 	}
+
+	// A background, streaming or prefix route answers on this thread. The body is moved
+	// rather than copied, or for a streaming route is already on disk.
+	HttpRouteHandler backgroundHandler= findBackgroundHandler(path);
 	if (backgroundHandler)
 	{
 		HttpRouteRequest routeRequest;
 		routeRequest.method= request->method;
 		routeRequest.path= path;
 		routeRequest.queryArgs= parseQueryString(request->uri);
+		routeRequest.headers= copyRequestHeaders(*request);
 		routeRequest.body= std::move(request->body);
 		routeRequest.bodyFilePath= request->bodyFilePath;
 		routeRequest.bodyLength= parseContentLength(*request);
@@ -453,6 +562,7 @@ ix::HttpResponsePtr HttpInterprocessMessageServer::handleIncomingRequest(ix::Htt
 	pendingRequest->routeRequest.method= request->method;
 	pendingRequest->routeRequest.path= path;
 	pendingRequest->routeRequest.queryArgs= parseQueryString(request->uri);
+	pendingRequest->routeRequest.headers= copyRequestHeaders(*request);
 	pendingRequest->routeRequest.body= std::move(request->body);
 	pendingRequest->responsePromise= std::make_shared<std::promise<HttpRouteResponse>>();
 

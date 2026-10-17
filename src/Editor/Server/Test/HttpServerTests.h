@@ -6,5 +6,7 @@
 //   - a main-thread route still answers through the request queue
 //   - dispose() releases a handler parked in runOnMainThread promptly, and the
 //     hop reports failure
+//   - prefix routes match longest first after exact paths, headers pass in both
+//     directions, and an OPTIONS preflight answers with the CORS headers
 // Skips with a note when no port in its small fixed range can be bound.
 bool run_http_server_tests();

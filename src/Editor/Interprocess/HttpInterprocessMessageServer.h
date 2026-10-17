@@ -27,6 +27,8 @@ struct HttpRouteResponse
 	int statusCode= 200;
 	std::string body;
 	std::string contentType= "application/json";
+	// Extra response headers, written after Content-Type
+	std::map<std::string, std::string> headers;
 };
 
 struct HttpRouteRequest
@@ -37,6 +39,8 @@ struct HttpRouteRequest
 	std::string path;
 	// The decoded "?key=value&..." pairs, empty when the URI carried no query string
 	std::map<std::string, std::string> queryArgs;
+	// The request headers, keyed by lowercased name
+	std::map<std::string, std::string> headers;
 	// The raw request body (may be empty). Empty for a streaming route, whose body is on disk.
 	std::string body;
 	// For a streaming route: the file the body was streamed to, once it has arrived
@@ -72,12 +76,19 @@ using PendingMainThreadJobPtr= std::shared_ptr<PendingMainThreadJob>;
 //     request body moved in, so the body never crosses the main thread. A handler that
 //     needs editor state hops with runOnMainThread(), which blocks the connection thread
 //     until processRequests() has run the job.
+//   - Background prefix routes (setBackgroundPrefixRouteHandler) are background routes that
+//     answer every path under a prefix. They are matched after the exact paths, longest prefix
+//     first, and the handler receives the full path. These serve the client geometry.
 //   - Streaming routes (setStreamingRouteHandler) are background routes whose body goes
 //     to a file instead of memory: the destination handler names the file before the body
 //     is read, the library streams the body into it in chunks as it arrives, and the
 //     route handler receives the path. The body is paced by an idle timeout rather than
 //     the whole-request deadline, so a multi-gigabyte upload is not cut off while bytes
 //     still arrive, and a stalled one is. This is the asset upload route.
+//
+// Every response allows any origin, so browser clients (the CEF GUI, TypeScript clients) can
+// read it. An OPTIONS preflight to a registered path is answered on the connection thread.
+// The server binds loopback unless the user enables remote access, which bounds that scope.
 //
 // dispose() drops every parked request and job before stopping the listener, because
 // ix::HttpServer::stop() joins the connection threads and a thread parked in
@@ -108,6 +119,11 @@ public:
 	// Returns false if the path is already registered as either kind.
 	bool setBackgroundRouteHandler(const std::string& path, HttpRouteHandler handler);
 	void removeBackgroundRouteHandler(const std::string& path);
+
+	// Registers a connection-thread handler for every path that starts with prefix
+	// (e.g. "/geometry/"). Returns false if the prefix is already registered.
+	bool setBackgroundPrefixRouteHandler(const std::string& prefix, HttpRouteHandler handler);
+	void removeBackgroundPrefixRouteHandler(const std::string& prefix);
 
 	// Registers a streaming route: destinationHandler runs before the body and handler after
 	// it, both on the connection thread. Returns false if the path is already registered.
@@ -150,6 +166,11 @@ protected:
 	ix::HttpBodyPolicy handleRequestHeaders(ix::HttpRequestPtr request);
 	ix::HttpResponsePtr handleIncomingRequest(ix::HttpRequestPtr request);
 
+	// The connection-thread handler for a path: an exact background or streaming route, else the
+	// longest matching prefix route. Empty when the path has none.
+	HttpRouteHandler findBackgroundHandler(const std::string& path) const;
+	bool isRegisteredPath(const std::string& path) const;
+
 private:
 	std::shared_ptr<ix::HttpServer> m_server;
 	int m_streamingIdleTimeoutSecs= k_defaultStreamingIdleTimeoutSecs;
@@ -158,6 +179,7 @@ private:
 	std::map<std::string, HttpRouteHandler> m_routeHandlers;
 	std::map<std::string, HttpRouteHandler> m_backgroundRouteHandlers;
 	std::map<std::string, StreamingRoute> m_streamingRouteHandlers;
+	std::map<std::string, HttpRouteHandler> m_backgroundPrefixRouteHandlers;
 
 	std::mutex m_pendingRequestsMutex;
 	std::vector<PendingHttpRequestPtr> m_pendingRequests;
