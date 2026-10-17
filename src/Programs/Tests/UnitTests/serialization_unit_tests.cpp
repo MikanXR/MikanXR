@@ -5,9 +5,6 @@
 
 #include "MikanRemoteControlRequests.h"
 
-#include "BinarySerializer.h"
-#include "BinaryDeserializer.h"
-#include "BinaryUtility.h"
 #include "JsonSerializer.h"
 #include "JsonDeserializer.h"
 #include "MathUtility.h"
@@ -25,59 +22,12 @@ bool run_serialization_unit_tests()
 	Serialization::TypeRegistry::build();
 
 	UNIT_TEST_MODULE_BEGIN("serialization")
-	UNIT_TEST_MODULE_CALL_TEST(serialization_utility_test_endian_swap);
 	UNIT_TEST_MODULE_CALL_TEST(serialization_utility_test_reflection_from_json);
-	UNIT_TEST_MODULE_CALL_TEST(serialization_utility_test_reflection_from_bytes);
 	UNIT_TEST_MODULE_CALL_TEST(serialization_utility_test_remote_control);
 	UNIT_TEST_MODULE_END()
 }
 
 //-- private functions -----
-void test_endian_mode(Serialization::Endian endianMode)
-{
-	uint8_t scratch[32];
-
-	int16_t expectedValue16= 0x1234;
-	Serialization::write_int16((uint8_t*)&scratch, expectedValue16, endianMode);
-	int16_t actualValue16= Serialization::read_int16((uint8_t*)&scratch, endianMode);
-	assert(actualValue16 == expectedValue16);
-
-	int32_t expectedValue24= 0x123456;
-	Serialization::write_int24((uint8_t*)&scratch, expectedValue24, endianMode);
-	int32_t actualValue24= Serialization::read_int24((uint8_t*)&scratch, endianMode);
-	assert(actualValue24 == expectedValue24);
-
-	int32_t expectedValue32= 0x12345678;
-	Serialization::write_int32((uint8_t*)&scratch, expectedValue32, endianMode);
-	int32_t actualValue32= Serialization::read_int32((uint8_t*)&scratch, endianMode);
-	assert(actualValue32 == expectedValue32);
-
-	int64_t expectedValue64= 0x1234567890abcdef;
-	Serialization::write_int64((uint8_t*)&scratch, expectedValue64, endianMode);
-	int64_t actualValue64= Serialization::read_int64((uint8_t*)&scratch, endianMode);
-	assert(actualValue64 == expectedValue64);
-
-	float expectedFloat= k_real_pi;
-	Serialization::write_float((uint8_t*)&scratch, expectedFloat, endianMode);
-	float actualFloat= Serialization::read_float((uint8_t*)&scratch, endianMode);
-	assert(is_nearly_equal(expectedFloat, actualFloat, k_real_epsilon));
-
-	double expectedDouble= k_real64_pi;
-	Serialization::write_double((uint8_t*)&scratch, expectedDouble, endianMode);
-	double actualDouble= Serialization::read_double((uint8_t*)&scratch, endianMode);
-	assert(is_double_nearly_equal(expectedDouble, actualDouble, k_real64_epsilon));
-}
-
-bool serialization_utility_test_endian_swap()
-{
-	UNIT_TEST_BEGIN("endian swap")
-
-	test_endian_mode(Serialization::Endian::Little);
-	test_endian_mode(Serialization::Endian::Big);
-
-	UNIT_TEST_COMPLETE()
-}
-
 void build_serialization_test_struct(SerializationTestStruct& outStruct)
 {
 
@@ -247,27 +197,6 @@ bool serialization_utility_test_reflection_from_json()
 
 	verify_serialization_test_struct(actual, expected);
 
-	UNIT_TEST_COMPLETE()
-}
-
-bool serialization_utility_test_reflection_from_bytes()
-{
-	UNIT_TEST_BEGIN("reflect from bytes")
-	SerializationTestStruct expected;
-	build_serialization_test_struct(expected);
-
-	std::vector<uint8_t> bytes;
-	std::string serializeError;
-	bool bCanSerialize= Serialization::serializeToBytes(expected, bytes, serializeError);
-	assert(bCanSerialize);
-
-	std::string parseError;
-	SerializationTestStruct actual= {};
-	bool bCanDeserialize= Serialization::deserializeFromBytes(bytes, actual, parseError);
-	assert(bCanDeserialize);
-	assert(parseError.empty());
-
-	verify_serialization_test_struct(actual, expected);
 	UNIT_TEST_COMPLETE()
 }
 
