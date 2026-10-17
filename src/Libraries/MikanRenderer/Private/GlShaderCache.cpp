@@ -1515,7 +1515,8 @@ IMkShaderCodeConstPtr getPTLinearizeRGBShaderCode()
 
 	if (x_shaderCode == nullptr)
 	{
-		// Converts a non-linear (gamma/sRGB encoded) RGB texture to linear color space.
+		// Converts a non-linear (gamma/sRGB encoded) RGB texture to linear color space, carrying
+		// the texture's alpha through unchanged (1 for an RGB texture).
 		// The transferFunction uniform carries the integer value of the eVideoTransferFunction
 		// enum (from IVideoDevice.h) as a float. Only a pragmatic subset is handled; anything
 		// unrecognized (HLG, PQ, log, INVALID, etc.) falls back to an sRGB decode.
@@ -1571,7 +1572,8 @@ IMkShaderCodeConstPtr getPTLinearizeRGBShaderCode()
 
 				void main()
 				{
-					vec3 encoded = texture(rgbTexture, TexCoords).rgb;
+					vec4 sampled = texture(rgbTexture, TexCoords);
+					vec3 encoded = sampled.rgb;
 					int tf = int(floor(transferFunction + 0.5));
 
 					vec3 linearColor;
@@ -1592,7 +1594,7 @@ IMkShaderCodeConstPtr getPTLinearizeRGBShaderCode()
 					else // TF_SRGB and all unrecognized values fall back to sRGB decode
 						linearColor = srgbToLinear(encoded);
 
-					FragColor = vec4(linearColor, 1.0);
+					FragColor = vec4(linearColor, sampled.a);
 				}
 				)"""");
 		x_shaderCode->addVertexAttribute("aPos", eVertexDataType::datatype_vec2, eVertexSemantic::position);

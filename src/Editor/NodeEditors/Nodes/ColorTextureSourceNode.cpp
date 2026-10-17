@@ -5,6 +5,7 @@
 #include "IEditorWindow.h"
 #include "IMkGraphicsContext.h"
 #include "IMkFrameBuffer.h"
+#include "IMkState.h"
 #include "MkMaterial.h"
 #include "MkMaterialInstance.h"
 #include "MikanShaderCache.h"
@@ -134,8 +135,12 @@ TextureSourceComponentPtr ColorTextureSourceNode::getTextureSourceComponent() co
 
 IMkTexturePtr ColorTextureSourceNode::getTextureResource() const
 {
-	return m_colorFrameBuffer && m_colorFrameBuffer->isValid() ? m_colorFrameBuffer->getColorTexture()
-															   : getColorSourceTexture();
+	if (m_colorFrameBuffer && m_colorFrameBuffer->isValid())
+	{
+		return m_colorFrameBuffer->getColorTexture();
+	}
+
+	return m_sourceTexture ? m_sourceTexture : getColorSourceTexture();
 }
 
 bool ColorTextureSourceNode::evaluateNode(NodeEvaluator& evaluator)
@@ -144,14 +149,108 @@ bool ColorTextureSourceNode::evaluateNode(NodeEvaluator& evaluator)
 	// it's safest to just refresh the output texture pin every frame
 	auto outputPin= getFirstPinOfType<TexturePin>(eNodePinDirection::OUTPUT);
 
+	// An 8-bit color buffer arrives sRGB encoded and the working buffer is linear. A half float
+	// color buffer is linear by contract, and a shadow buffer is a linear multiplier at either
+	// depth, so only 8-bit color decodes.
+	IMkTexturePtr clientTexture= getColorSourceTexture();
+	const bool bIsColorType= m_clientTextureType == eTextureSourceColorType::colorRGBA
+							 || m_clientTextureType == eTextureSourceColorType::colorRGB;
+	if (bIsColorType && clientTexture && clientTexture->getTextureFormat() != MK_RGBA16F)
+	{
+		IMkTexturePtr linearTexture= linearizeClientTexture(evaluator, clientTexture);
+		if (linearTexture)
+		{
+			clientTexture= linearTexture;
+		}
+	}
+	else
+	{
+		releaseLinearFrameBuffer();
+	}
+	m_sourceTexture= clientTexture;
+
 	// Flip the Y axis and/or resolve a client texture rendered above the video resolution.
 	// Both are the same fullscreen pass, so they cost one draw together.
-	updateColorFrameBuffer(evaluator, getColorSourceTexture());
+	updateColorFrameBuffer(evaluator, clientTexture);
 
 	// Render the output color texture to the output pin
 	outputPin->setValue(getTextureResource());
 
 	return true;
+}
+
+IMkTexturePtr ColorTextureSourceNode::linearizeClientTexture(NodeEvaluator& evaluator, IMkTexturePtr clientTexture)
+{
+	auto compositorGraph= std::static_pointer_cast<CompositorNodeGraph>(getOwnerGraph());
+	IEditorWindow* ownerWindow= compositorGraph->getOwnerWindow();
+	if (ownerWindow == nullptr || !clientTexture)
+	{
+		return IMkTexturePtr();
+	}
+
+	if (!m_linearizeMaterialInstance)
+	{
+		MkMaterialConstPtr material=
+			ownerWindow->getGraphicsContext()->getShaderCache()->getMaterialByName(INTERNAL_MATERIAL_PT_LINEARIZE_RGB);
+		if (!material)
+		{
+			return IMkTexturePtr();
+		}
+
+		m_linearizeMaterialInstance= createMkMaterialInstance(material);
+	}
+
+	// 16 bits per channel, so the decode is not quantized back to what the client sent
+	if (!m_linearFrameBuffer)
+	{
+		m_linearFrameBuffer= createMkFrameBuffer("ColorTextureSourceNode Linearize");
+		m_linearFrameBuffer->setFrameBufferType(IMkFrameBuffer::eFrameBufferType::COLOR);
+		m_linearFrameBuffer->setColorFormat(IMkFrameBuffer::eColorFormat::RGBA16);
+	}
+	m_linearFrameBuffer->setSize(clientTexture->getTextureWidth(), clientTexture->getTextureHeight());
+	if (!m_linearFrameBuffer->isValid())
+	{
+		if (!m_linearFrameBuffer->createResources())
+		{
+			return IMkTexturePtr();
+		}
+	}
+
+	IMkGraphicsContext* graphicsContext= evaluator.getCurrentGraphicsContext();
+	MkScopedObjectBinding linearFramebufferBinding(graphicsContext->getMkStateStack().getCurrentState(),
+												   "Color Texture Linearize Scope", m_linearFrameBuffer);
+	if (linearFramebufferBinding)
+	{
+		linearFramebufferBinding.getMkState()->disableFlag(eMkStateFlagType::depthTest);
+
+		MkMaterialConstPtr material= m_linearizeMaterialInstance->getMaterial();
+		MkScopedMaterialBinding materialBinding= material->bindMaterial();
+		if (materialBinding)
+		{
+			m_linearizeMaterialInstance->setTextureBySemantic(eUniformSemantic::rgbTexture, clientTexture);
+			m_linearizeMaterialInstance->setFloatBySemantic(eUniformSemantic::floatConstant0,
+															(float)(int)eVideoTransferFunction::SRGB);
+
+			MkScopedMaterialInstanceBinding materialInstanceBinding=
+				m_linearizeMaterialInstance->bindMaterialInstance(materialBinding);
+			if (materialInstanceBinding)
+			{
+				compositorGraph->getLayerMesh()->drawElements();
+			}
+		}
+	}
+
+	return m_linearFrameBuffer->getColorTexture();
+}
+
+void ColorTextureSourceNode::releaseLinearFrameBuffer()
+{
+	if (m_linearFrameBuffer)
+	{
+		m_linearFrameBuffer->disposeResources();
+		m_linearFrameBuffer= nullptr;
+		m_linearizeMaterialInstance= nullptr;
+	}
 }
 
 IMkTexturePtr ColorTextureSourceNode::getColorSourceTexture() const
@@ -259,12 +358,19 @@ void ColorTextureSourceNode::updateColorFrameBuffer(NodeEvaluator& evaluator, IM
 		return;
 	}
 
-	// A client color buffer can be half-float, so an 8-bit target would clamp away the
-	// HDR range it was published with
-	const bool bIsFloatSource= clientTexture->getTextureFormat() == MK_RGBA16F;
-	const IMkFrameBuffer::eColorFormat colorFormat=
-		bIsFloatSource ? IMkFrameBuffer::eColorFormat::RGBA16F
-					   : (bIsRGBAVariant ? IMkFrameBuffer::eColorFormat::RGBA : IMkFrameBuffer::eColorFormat::RGB);
+	// A half float source keeps its HDR range and a decoded 8-bit source keeps its 16-bit
+	// precision through the pass; an 8-bit target would clamp the one and quantize the other
+	const uint32_t sourceFormat= clientTexture->getTextureFormat();
+	IMkFrameBuffer::eColorFormat colorFormat=
+		bIsRGBAVariant ? IMkFrameBuffer::eColorFormat::RGBA : IMkFrameBuffer::eColorFormat::RGB;
+	if (sourceFormat == MK_RGBA16F)
+	{
+		colorFormat= IMkFrameBuffer::eColorFormat::RGBA16F;
+	}
+	else if (sourceFormat == MK_RGBA16)
+	{
+		colorFormat= IMkFrameBuffer::eColorFormat::RGBA16;
+	}
 
 	if (m_colorFrameBuffer == nullptr)
 	{

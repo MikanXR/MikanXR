@@ -47,6 +47,11 @@ protected:
 	// one bilinear tap can resolve, so the node filters them down itself.
 	bool getResolveTargetSize(int& outWidth, int& outHeight) const;
 
+	// An 8-bit client color buffer is sRGB encoded, as 8-bit color is, and the composite works
+	// in linear color, so it decodes into a 16-bit frame buffer before anything else reads it
+	IMkTexturePtr linearizeClientTexture(NodeEvaluator& evaluator, IMkTexturePtr clientTexture);
+	void releaseLinearFrameBuffer();
+
 	void updateColorFrameBuffer(NodeEvaluator& evaluator, IMkTexturePtr clientTexture);
 	void evaluateColorTexture(IMkState* glState, IMkTexturePtr colorTexture);
 
@@ -54,6 +59,11 @@ protected:
 	virtual std::string editorGetTitle() const override;
 
 protected:
+	IMkFrameBufferPtr m_linearFrameBuffer;
+	MkMaterialInstancePtr m_linearizeMaterialInstance;
+	// The texture the flip and resolve pass reads this frame: the decoded client texture, or
+	// the client texture itself when it arrived linear
+	IMkTexturePtr m_sourceTexture;
 	IMkFrameBufferPtr m_colorFrameBuffer;
 	MkMaterialInstancePtr m_colorMaterialInstance;
 	eTextureSourceColorType m_clientTextureType= eTextureSourceColorType::colorRGB;
