@@ -115,7 +115,7 @@
 			"texture_source_color_type": "shadowRGBA",
 			"fallback_mode":             "auto",
 			"resolve_alpha_mode":        "none",
-			"texture_source_id":         1065,
+			"texture_source_id":         2187,
 			"vertical_flip":             false
 		},
 		{
@@ -177,7 +177,7 @@
 			"pos":             [ 1352.0, 158.0 ],
 			"float_defaults":  {
 				"grainIntensity": 0.0,
-				"time":           26.48431
+				"time":           15.447165
 			},
 			"float2_defaults": { },
 			"float3_defaults": { },
