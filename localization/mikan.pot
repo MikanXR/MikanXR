@@ -2401,6 +2401,11 @@ msgid "Client Texture Node"
 msgstr ""
 
 #. Section: nodes
+msgctxt "nodes.colorAlphaMode"
+msgid "Color Alpha"
+msgstr ""
+
+#. Section: nodes
 msgctxt "nodes.colorConstantTitle"
 msgid "Color Constant"
 msgstr ""
@@ -2513,6 +2518,27 @@ msgstr ""
 #. Section: nodes
 msgctxt "nodes.depthMaskTitle"
 msgid "Depth Mask"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthOfFieldHeader"
+msgid "Depth Of Field Node"
+msgstr ""
+
+#. Section: nodes
+#, c-format
+msgctxt "nodes.depthOfFieldLensSummaryFmt"
+msgid "Camera lens: focus %.3f m, aperture %.2f mm (0 is off)"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthOfFieldNoCamera"
+msgid "No camera is bound to this compositor"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.depthOfFieldTitle"
+msgid "Depth Of Field"
 msgstr ""
 
 #. Section: nodes
@@ -2848,6 +2874,11 @@ msgstr ""
 #. Section: nodes
 msgctxt "nodes.mathSubtractTitle"
 msgid "Subtract"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.maxBlurRadius"
+msgid "Max Blur Radius (px)"
 msgstr ""
 
 #. Section: nodes

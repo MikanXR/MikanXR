@@ -34,6 +34,10 @@
 #define INTERNAL_MATERIAL_PT_DEPTH_MINMAX_H "Internal_PT_DepthMinMaxH"
 #define INTERNAL_MATERIAL_PT_DEPTH_MINMAX_V "Internal_PT_DepthMinMaxV"
 #define INTERNAL_MATERIAL_PT_DEPTH_EDGE_REFINE "Internal_PT_DepthEdgeRefine"
+// The two depth of field passes around the depth min/max dilation: the circle of confusion of
+// a client's depth, then a disc gather of its color out to the dilated reach
+#define INTERNAL_MATERIAL_PT_DEPTH_OF_FIELD_COC "Internal_PT_DepthOfFieldCoC"
+#define INTERNAL_MATERIAL_PT_DEPTH_OF_FIELD_GATHER "Internal_PT_DepthOfFieldGather"
 #define INTERNAL_MATERIAL_PT_PM5544_TEST_CARD "Internal_PT_PM5544TestCard"
 #define INTERNAL_MATERIAL_PT_TEXTURED "Internal_PT_Textured"
 #define INTERNAL_MATERIAL_P_CONE_VOLUME "Internal_P_ConeVolume"

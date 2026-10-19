@@ -66,6 +66,10 @@ The living plan: what is in flight now, what comes next, and the open questions.
 - [ ] Occlusion mesh fusion on the GPU: the TSDF integration and ray cast are CPU loops over the frustum's voxel box; a compute shader is the obvious step once a build on a long take takes too long to wait for.
 - [ ] Switch the depth proxy capture's output from OBJ to `.glb` through `GlbMeshWriter`, now that the model importer reads it; the proxy's projected texture needs the writer's texture reference and a sibling `.png`.
 - [ ] Record ARKit's per-frame tracking state in the pose track so the fusion can skip limited-tracking frames outright instead of discovering them as rejected registrations.
+- [ ] Depth of field: follow an autofocusing camera. `focus_distance` is fixed per camera, which is what a focus-locked lens holds. A phone that refocuses would need a metric focus distance per frame from MikanARStreamer, if ARKit or AVFoundation can report one.
+- [ ] Depth of field: focus on a CG pixel. Ctrl+click in the compositor output window focuses on stencils only. Focusing on the character itself needs a readback of the client depth texel under the cursor.
+- [ ] Depth of field: publish `focus_distance` and `aperture_diameter_mm` to clients, for a client that renders its own blur. A wire change: the camera values struct and the properties event.
+- [ ] Depth of field: a half resolution gather for blur radii beyond 32 pixels, where the 64 tap spiral gets sparse.
 - [ ] Stereo calibration: `MikanStereoIntrinsics` and the rectification math exist but no stereo calibration AppStage does.
 - [ ] Video recording: `eSupportedCodec` in `CompositorConstants.h` is defined but nothing records the composited output to a file.
 - [ ] File video source hardware decode: `MovieDecoder` decodes on the CPU through OpenCV's ffmpeg backend. `cv::CAP_PROP_HW_ACCELERATION` can ask that backend for D3D11VA or CUDA decode with no other code change, worth measuring on a 4K phone recording before the software decode becomes the editor's tick budget.

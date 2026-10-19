@@ -1923,6 +1923,219 @@ IMkShaderCodeConstPtr getPTDepthEdgeRefineShaderCode()
 	return x_shaderCode;
 }
 
+// The fullscreen vertex shader the depth of field passes share
+static const char* k_depthOfFieldVertexShader= R""""(
+				#version 330 core
+				layout (location = 0) in vec2 aPos;
+				layout (location = 1) in vec2 aTexCoords;
+
+				out vec2 TexCoords;
+
+				void main()
+				{
+					TexCoords = aTexCoords;
+					gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);
+				}
+				)"""";
+
+// The thin lens circle of confusion both depth of field passes evaluate from the
+// client's linear depth, so the dilated reach and the gather's per tap test agree.
+// The depth texture may be a different size than the color the passes run at, so
+// it is fetched by normalized coordinate.
+static const char* k_depthOfFieldLensFunctions= R""""(
+				// Linear depth normalized between zNear and zFar, 1 where nothing was drawn
+				uniform sampler2D depthTexture;
+				// x zNear and y zFar in meters, z the circle of confusion scale (half the focal
+				// length in pixels times the aperture diameter in meters), w 1 / focus distance
+				uniform vec4 lensParams;
+				// Largest blur radius in pixels
+				uniform float floatConstant0;
+
+				const float k_emptyDepth = 0.999;
+
+				ivec2 depthTexelAt(vec2 uv)
+				{
+					ivec2 size = textureSize(depthTexture, 0);
+					return clamp(ivec2(uv * vec2(size)), ivec2(0), size - 1);
+				}
+
+				// Eye depth in meters, or -1 where the client drew nothing
+				float eyeDepthAt(vec2 uv)
+				{
+					float linearDepth = texelFetch(depthTexture, depthTexelAt(uv), 0).r;
+					return linearDepth >= k_emptyDepth ? -1.0 : mix(lensParams.x, lensParams.y, linearDepth);
+				}
+
+				// Blur radius in pixels, 0 where the client drew nothing
+				float cocRadius(float eyeDepth)
+				{
+					if (eyeDepth < 0.0)
+						return 0.0;
+
+					return min(lensParams.z * abs(lensParams.w - 1.0 / max(eyeDepth, 1e-4)), floatConstant0);
+				}
+				)"""";
+
+// Depth of field pass 1: the circle of confusion radius per pixel of the color, in r,
+// which the depth min/max passes then dilate into the reach of every blur.
+IMkShaderCodeConstPtr getPTDepthOfFieldCoCShaderCode()
+{
+	static IMkShaderCodePtr x_shaderCode= nullptr;
+
+	if (x_shaderCode == nullptr)
+	{
+		const std::string fragmentShader= std::string(R""""(
+				#version 330 core
+				out vec4 FragColor;
+
+				in vec2 TexCoords;
+				)"""") + k_depthOfFieldLensFunctions
+										  + R""""(
+				void main()
+				{
+					FragColor = vec4(cocRadius(eyeDepthAt(TexCoords)), 0.0, 0.0, 1.0);
+				}
+				)"""";
+
+		x_shaderCode=
+			createIMkShaderCode(INTERNAL_MATERIAL_PT_DEPTH_OF_FIELD_COC, k_depthOfFieldVertexShader, fragmentShader);
+		x_shaderCode->addVertexAttribute("aPos", eVertexDataType::datatype_vec2, eVertexSemantic::position);
+		x_shaderCode->addVertexAttribute("aTexCoords", eVertexDataType::datatype_vec2, eVertexSemantic::texCoord);
+		x_shaderCode->addUniform("depthTexture", eUniformSemantic::depthTexture);
+		x_shaderCode->addUniform("lensParams", eUniformSemantic::float4Param);
+		x_shaderCode->addUniform("floatConstant0", eUniformSemantic::floatConstant0);
+	}
+
+	return x_shaderCode;
+}
+
+// Depth of field pass 2: a scatter-as-gather disc blur of the client color. A golden
+// angle spiral of taps covers the dilated reach. Taps nearer than the center are a
+// foreground whose spread energy covers the pixel, unnormalized, so a blurry silhouette
+// fades out over the transparent region around it. The rest are a background,
+// normalized, with each tap's radius held to the center's so a blurry surface behind
+// never bleeds over a sharp one in front. Empty taps join the background at the
+// center's radius, which is what lets a blurry surface's own edge turn transparent.
+// The foreground goes over the background in premultiplied color, and the result is
+// written back in the alpha convention it was read in.
+IMkShaderCodeConstPtr getPTDepthOfFieldGatherShaderCode()
+{
+	static IMkShaderCodePtr x_shaderCode= nullptr;
+
+	if (x_shaderCode == nullptr)
+	{
+		const std::string fragmentShader= std::string(R""""(
+				#version 330 core
+				out vec4 FragColor;
+
+				in vec2 TexCoords;
+				)"""") + k_depthOfFieldLensFunctions
+										  + R""""(
+				uniform sampler2D rgbaTexture;
+				// The dilated circle of confusion, the largest radius that reaches each pixel, in g
+				uniform sampler2D reachTexture;
+				// Color size in texels
+				uniform vec2 screenSize;
+				// What the alpha channel means: 0 nothing (read as coverage), 1 coverage, 2 one minus coverage
+				uniform float floatConstant1;
+
+				const int k_tapCount = 64;
+				const float k_goldenAngle = 2.39996323;
+				const float k_pi = 3.14159265;
+
+				int alphaMode() { return int(floatConstant1 + 0.5); }
+
+				// Nearest rather than filtered: a filtered tap across a silhouette mixes the empty
+				// region's color into the edge before the alpha can weight it out
+				vec4 premultipliedAt(vec2 uv)
+				{
+					ivec2 texelCoord = clamp(ivec2(uv * screenSize), ivec2(0), ivec2(screenSize) - 1);
+					vec4 texel = texelFetch(rgbaTexture, texelCoord, 0);
+					float coverage = alphaMode() == 2 ? (1.0 - texel.a) : texel.a;
+					return vec4(texel.rgb * coverage, coverage);
+				}
+
+				// The share of a source's spread energy that one tap of the given area receives. A
+				// source covers its own half pixel plus its blur radius, and spreads over at least
+				// that half pixel's area.
+				float tapWeight(float radius, float tapDistance, float tapArea)
+				{
+					float r = max(radius, 0.5);
+					return tapArea * clamp(radius - tapDistance + 0.5, 0.0, 1.0) / (k_pi * r * r);
+				}
+
+				void main()
+				{
+					float reach = texelFetch(reachTexture, ivec2(gl_FragCoord.xy), 0).g;
+					if (reach < 0.5)
+					{
+						FragColor = texelFetch(rgbaTexture, ivec2(gl_FragCoord.xy), 0);
+						return;
+					}
+
+					float centerDepth = eyeDepthAt(TexCoords);
+					float centerRadius = cocRadius(centerDepth);
+					vec2 texelSize = 1.0 / screenSize;
+					float tapArea = k_pi * reach * reach / float(k_tapCount);
+
+					// The center pixel is background at its own area
+					float backgroundWeight = tapWeight(centerRadius, 0.0, 1.0);
+					vec4 backgroundSum = premultipliedAt(TexCoords) * backgroundWeight;
+					vec4 foregroundSum = vec4(0.0);
+					float foregroundEnergy = 0.0;
+
+					for (int i = 0; i < k_tapCount; ++i)
+					{
+						float tapDistance = reach * sqrt((float(i) + 0.5) / float(k_tapCount));
+						float angle = float(i) * k_goldenAngle;
+						vec2 uv = TexCoords + tapDistance * vec2(cos(angle), sin(angle)) * texelSize;
+
+						float tapDepth = eyeDepthAt(uv);
+						vec4 tapColor = premultipliedAt(uv);
+						bool bNearer = tapDepth >= 0.0 && (centerDepth < 0.0 || tapDepth < centerDepth * 0.98);
+						if (bNearer)
+						{
+							float weight = tapWeight(cocRadius(tapDepth), tapDistance, tapArea);
+							foregroundSum += tapColor * weight;
+							foregroundEnergy += weight;
+						}
+						else
+						{
+							float radius = tapDepth < 0.0 ? centerRadius : min(cocRadius(tapDepth), centerRadius);
+							float weight = tapWeight(radius, tapDistance, tapArea);
+							backgroundSum += tapColor * weight;
+							backgroundWeight += weight;
+						}
+					}
+
+					// A nearer surface's energy covers at most the whole pixel
+					vec4 foreground = foregroundEnergy > 0.0
+						? foregroundSum * (min(foregroundEnergy, 1.0) / foregroundEnergy)
+						: vec4(0.0);
+					vec4 background = backgroundSum / backgroundWeight;
+					vec4 result = foreground + (1.0 - foreground.a) * background;
+
+					vec3 color = result.a > 1e-5 ? result.rgb / result.a : vec3(0.0);
+					FragColor = vec4(color, alphaMode() == 2 ? (1.0 - result.a) : result.a);
+				}
+				)"""";
+
+		x_shaderCode=
+			createIMkShaderCode(INTERNAL_MATERIAL_PT_DEPTH_OF_FIELD_GATHER, k_depthOfFieldVertexShader, fragmentShader);
+		x_shaderCode->addVertexAttribute("aPos", eVertexDataType::datatype_vec2, eVertexSemantic::position);
+		x_shaderCode->addVertexAttribute("aTexCoords", eVertexDataType::datatype_vec2, eVertexSemantic::texCoord);
+		x_shaderCode->addUniform("depthTexture", eUniformSemantic::depthTexture);
+		x_shaderCode->addUniform("lensParams", eUniformSemantic::float4Param);
+		x_shaderCode->addUniform("floatConstant0", eUniformSemantic::floatConstant0);
+		x_shaderCode->addUniform("rgbaTexture", eUniformSemantic::rgbaTexture);
+		x_shaderCode->addUniform("reachTexture", eUniformSemantic::textureParam);
+		x_shaderCode->addUniform("screenSize", eUniformSemantic::screenSize);
+		x_shaderCode->addUniform("floatConstant1", eUniformSemantic::floatConstant1);
+	}
+
+	return x_shaderCode;
+}
+
 // Selection outline pass 1: writes floatConstant0 as an integer code into an R8 mask.
 // Only the position attribute is declared, so any mesh whose layout starts with a vec3
 // position draws through its own vertex array. The depth bias lets a mesh pass the depth
@@ -2101,6 +2314,8 @@ bool registerInternalShaders(GlShaderCache* shaderCache)
 		getPTDepthMinMaxHShaderCode(),
 		getPTDepthMinMaxVShaderCode(),
 		getPTDepthEdgeRefineShaderCode(),
+		getPTDepthOfFieldCoCShaderCode(),
+		getPTDepthOfFieldGatherShaderCode(),
 		getPSelectionMaskShaderCode(),
 		getPTSelectionOutlineShaderCode(),
 	};

@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1138,
-		"translatedCount": 1138,
-		"reviewedCount": 1138
+		"stringCount": 1144,
+		"translatedCount": 1144,
+		"reviewedCount": 1144
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -521,6 +521,7 @@
 		"categoryUtility": "Utility",
 		"categoryVector": "Vector",
 		"clientTextureHeader": "Client Texture Node",
+		"colorAlphaMode": "Color Alpha",
 		"colorConstantTitle": "Color Constant",
 		"colorParameterTitle": "Color Parameter",
 		"colorSigma": "Color Sigma",
@@ -544,6 +545,10 @@
 		"depthJump": "Depth Jump",
 		"depthMaskHeader": "Depth Mask Node",
 		"depthMaskTitle": "Depth Mask",
+		"depthOfFieldHeader": "Depth Of Field Node",
+		"depthOfFieldLensSummaryFmt": "Camera lens: focus %.3f m, aperture %.2f mm (0 is off)",
+		"depthOfFieldNoCamera": "No camera is bound to this compositor",
+		"depthOfFieldTitle": "Depth Of Field",
 		"depthPaletteBanded": "Banded",
 		"depthPaletteGrayscale": "Grayscale",
 		"depthPaletteGrayscaleInverted": "Grayscale Inverted",
@@ -611,6 +616,7 @@
 		"mathSqrtTitle": "Sqrt",
 		"mathStepTitle": "Step",
 		"mathSubtractTitle": "Subtract",
+		"maxBlurRadius": "Max Blur Radius (px)",
 		"mousePositionTitle": "MousePosition",
 		"name": "Name",
 		"nearPlaneTitle": "Near Plane",
