@@ -1,6 +1,6 @@
 {
 	"class_name":      "CompositorNodeGraph",
-	"next_id":         142,
+	"next_id":         151,
 	"properties":      [
 		{
 			"class_name":      "GraphMaterialProperty",
@@ -233,6 +233,30 @@
 			"pins_in":    [ 128, 129 ],
 			"pins_out":   [ 130 ],
 			"pos":        [ 378.0, -2.0 ]
+		},
+		{
+			"class_name":                "DepthTextureSourceNode",
+			"id":                        142,
+			"pins_in":                   [ ],
+			"pins_out":                  [ 143 ],
+			"pos":                       [ 1061.0, 560.0 ],
+			"texture_source_depth_type": "depthPackRGBA",
+			"texture_source_id":         1065,
+			"vertical_flip":             false,
+			"depth_preview_palette":     "grayscale",
+			"depth_preview_curve":       "linear",
+			"depth_preview_gamma":       1.0,
+			"depth_preview_range_min":   0.0,
+			"depth_preview_range_max":   1.0
+		},
+		{
+			"class_name": "DepthOfFieldNode",
+			"id":         144,
+			"pins_in":    [ 145, 146 ],
+			"pins_out":   [ 147 ],
+			"pos":        [ 1230.0, 330.0 ],
+			"max_radius": 16,
+			"alpha_mode": "inverted"
 		}
 	],
 	"pins":            [
@@ -430,7 +454,7 @@
 			"id":                48,
 			"direction":         "output",
 			"owner_node_id":     47,
-			"connected_links":   [ 66 ],
+			"connected_links":   [ 148 ],
 			"has_default_value": false,
 			"is_dynamic":        false
 		},
@@ -503,7 +527,7 @@
 			"id":                64,
 			"direction":         "input",
 			"owner_node_id":     59,
-			"connected_links":   [ 66 ],
+			"connected_links":   [ 150 ],
 			"has_default_value": true,
 			"is_dynamic":        true
 		},
@@ -640,6 +664,46 @@
 			"connected_links":   [ 141 ],
 			"has_default_value": true,
 			"is_dynamic":        true
+		},
+		{
+			"class_name":        "TexturePin",
+			"pin_name":          "texture",
+			"id":                143,
+			"direction":         "output",
+			"owner_node_id":     142,
+			"connected_links":   [ 149 ],
+			"has_default_value": false,
+			"is_dynamic":        false
+		},
+		{
+			"class_name":        "TexturePin",
+			"pin_name":          "colorTexture",
+			"id":                145,
+			"direction":         "input",
+			"owner_node_id":     144,
+			"connected_links":   [ 148 ],
+			"has_default_value": false,
+			"is_dynamic":        false
+		},
+		{
+			"class_name":        "TexturePin",
+			"pin_name":          "depthTexture",
+			"id":                146,
+			"direction":         "input",
+			"owner_node_id":     144,
+			"connected_links":   [ 149 ],
+			"has_default_value": false,
+			"is_dynamic":        false
+		},
+		{
+			"class_name":        "TexturePin",
+			"pin_name":          "texture",
+			"id":                147,
+			"direction":         "output",
+			"owner_node_id":     144,
+			"connected_links":   [ 150 ],
+			"has_default_value": false,
+			"is_dynamic":        false
 		}
 	],
 	"links":           [
@@ -672,11 +736,6 @@
 			"id":           62,
 			"start_pin_id": 58,
 			"end_pin_id":   60
-		},
-		{
-			"id":           66,
-			"start_pin_id": 48,
-			"end_pin_id":   64
 		},
 		{
 			"id":           69,
@@ -727,6 +786,21 @@
 			"id":           141,
 			"start_pin_id": 30,
 			"end_pin_id":   140
+		},
+		{
+			"id":           148,
+			"start_pin_id": 48,
+			"end_pin_id":   145
+		},
+		{
+			"id":           149,
+			"start_pin_id": 143,
+			"end_pin_id":   146
+		},
+		{
+			"id":           150,
+			"start_pin_id": 147,
+			"end_pin_id":   64
 		}
 	]
 }
