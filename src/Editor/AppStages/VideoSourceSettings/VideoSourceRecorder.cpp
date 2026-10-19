@@ -155,7 +155,14 @@ bool VideoSourceRecorder::startCapture(eCaptureKind kind, float fallbackFps)
 // once the writer has closed.
 bool VideoSourceRecorder::advanceCapture()
 {
-	if (!m_flow.isActive() || isBusy())
+	if (!m_flow.isActive())
+		return false;
+
+	// Stop is the one action taken while a job runs
+	if (m_flow.getStep() == eCaptureFlowStep::recording)
+		return stopJob();
+
+	if (isBusy())
 		return false;
 
 	const eCaptureKind kind= m_flow.getKind();

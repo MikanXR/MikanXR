@@ -107,7 +107,8 @@ public:
 	// report a frame rate, normally the settings stage's measured rate.
 	bool startCapture(eCaptureKind kind, float fallbackFps);
 	// The current step's primary action: take the marker image, take the plate,
-	// start recording, or stop recording. Refused while a job is in progress.
+	// start recording, or stop recording. Refused while a job is in progress,
+	// except for stopping the recording job.
 	bool advanceCapture();
 	// Drops the flow and its working directory
 	bool cancelCapture();
