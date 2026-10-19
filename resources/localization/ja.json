@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1136,
+		"stringCount": 1138,
 		"translatedCount": 899,
 		"reviewedCount": 0
 	},
@@ -913,6 +913,7 @@
 		"uiScaleTooltip": "Scales the editor UI on top of the scale the display already reports. Leave it at 100 to use the display scale as-is."
 	},
 	"properties": {
+		"aperture_diameter_mm": "Aperture Diameter (mm)",
 		"aruco_dictionary_type": "ArUco 辞書タイプ",
 		"aruco_id": "ArUco ID",
 		"available_language_list": "利用可能な言語",
@@ -953,6 +954,7 @@
 		"dmx_universe": "DMX ユニバース",
 		"duration_seconds": "長さ (秒)",
 		"exposure_scale": "露出スケール",
+		"focus_distance": "Focus Distance (m)",
 		"font_path": "フォント",
 		"force_render": "Force Render",
 		"foreground_color": "前景色",

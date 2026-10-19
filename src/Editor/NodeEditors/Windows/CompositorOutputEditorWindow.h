@@ -11,6 +11,8 @@
 
 #include <memory>
 
+#include "glm/ext/vector_float2.hpp"
+
 //-- definitions -----
 class CompositorOutputEditorWindow : public EditorWindow
 {
@@ -37,6 +39,8 @@ private:
 	void onSceneDefinitionChanged(CommonConfigPtr configPtr, const ConfigPropertyChangeSet& changedPropertySet);
 	void onSceneComponentDisposed(MikanObjectSystemPtr objectSystem, MikanComponentConstPtr component);
 	void onCompositorComponentDisposed(MikanObjectSystemPtr objectSystem, MikanComponentConstPtr component);
+	// Sets the bound camera's focus distance from the stencil under a window pixel
+	void pickFocusAtWindowPixel(const glm::vec2& windowPixel);
 
 	BoxStencilSystemWeakPtr m_boxStencilSystem;
 	QuadStencilSystemWeakPtr m_quadStencilSystem;

@@ -4354,6 +4354,11 @@ msgid "Scales the editor UI on top of the scale the display already reports. Lea
 msgstr ""
 
 #. Section: properties
+msgctxt "properties.aperture_diameter_mm"
+msgid "Aperture Diameter (mm)"
+msgstr ""
+
+#. Section: properties
 msgctxt "properties.aruco_dictionary_type"
 msgid "ArUco Dictionary Type"
 msgstr ""
@@ -4551,6 +4556,11 @@ msgstr ""
 #. Section: properties
 msgctxt "properties.exposure_scale"
 msgid "Exposure Scale"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.focus_distance"
+msgid "Focus Distance (m)"
 msgstr ""
 
 #. Section: properties

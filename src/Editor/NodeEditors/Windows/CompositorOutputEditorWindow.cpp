@@ -18,6 +18,7 @@
 #include "IMkTextureCache.h"
 #include "IMkTriangulatedMesh.h"
 #include "InputManager.h"
+#include "Logger.h"
 #include "LocalizationManager.h"
 #include "LocText.h"
 #include "MainWindow.h"
@@ -47,6 +48,8 @@
 #include "VideoSourceComponent.h"
 
 #include "IMkFontManager.h"
+
+#include "imgui.h"
 
 #include <easy/profiler.h>
 
@@ -242,6 +245,13 @@ void CompositorOutputEditorWindow::update(float deltaSeconds)
 
 	// Process SDL events
 	m_mkWindowContext->handleEvents(this);
+
+	// Ctrl+click focuses the camera's lens on the surface under the cursor
+	const ImGuiIO& io= ImGui::GetIO();
+	if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && io.KeyCtrl && !io.WantCaptureMouse)
+	{
+		pickFocusAtWindowPixel(glm::vec2(io.MousePos.x, io.MousePos.y));
+	}
 
 	// Update compositor camera transform each frame
 	CompositorComponentPtr compositor= m_compositorComponent.lock();
@@ -501,6 +511,40 @@ void CompositorOutputEditorWindow::shutdown()
 	shutdownStyleManager();
 	shutdownGuiContext();
 	shutdownWindow();
+}
+
+void CompositorOutputEditorWindow::pickFocusAtWindowPixel(const glm::vec2& windowPixel)
+{
+	CompositorComponentPtr compositor= m_compositorComponent.lock();
+	CameraComponentPtr cameraComponent= compositor ? compositor->getCameraComponent() : nullptr;
+	if (!cameraComponent)
+		return;
+
+	int videoWidth= 0;
+	int videoHeight= 0;
+	const float windowWidth= m_mkWindowContext->getWidth();
+	const float windowHeight= m_mkWindowContext->getHeight();
+	if (!cameraComponent->getAperturePixelDimensions(videoWidth, videoHeight) || windowWidth <= 0.f
+		|| windowHeight <= 0.f)
+		return;
+
+	// The composite is stretched over the whole window
+	const glm::vec2 videoPixel(windowPixel.x * (float)videoWidth / windowWidth,
+							   windowPixel.y * (float)videoHeight / windowHeight);
+
+	// Only stencils that shape this composite stand in for the surfaces it shows
+	auto ownsObject= [compositor](MikanObjectConstPtr object) { return compositor->ownsSceneObject(object); };
+
+	float focusDistance= 0.f;
+	if (cameraComponent->computeFocusDistanceAtVideoPixel(videoPixel, ownsObject, focusDistance))
+	{
+		cameraComponent->getCameraDefinition()->setFocusDistance(focusDistance);
+	}
+	else
+	{
+		MIKAN_LOG_INFO("CompositorOutputEditorWindow::pickFocusAtWindowPixel")
+			<< "No stencil under (" << videoPixel.x << ", " << videoPixel.y << "), focus unchanged";
+	}
 }
 
 // -- IMkWindowEventListener

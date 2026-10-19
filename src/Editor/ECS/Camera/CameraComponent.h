@@ -12,10 +12,12 @@
 #include "Transform.h"
 #include "VRDeviceComponent.h"
 
+#include <functional>
 #include <memory>
 #include <string>
 
 #include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/vector_float2.hpp"
 
 class VideoFrameDistortionView;
 using VideoFrameDistortionViewPtr= std::shared_ptr<VideoFrameDistortionView>;
@@ -100,6 +102,24 @@ public:
 	static bool computeClientRenderSize(int videoWidth, int videoHeight, float scale, int maxBufferDimension,
 										int& outWidth, int& outHeight);
 
+	/// Distance in meters from the aperture to the plane the physical lens is
+	/// focused on, measured along the aperture's forward axis. A focus-locked
+	/// lens keeps this fixed relative to the camera, so it stays correct as a
+	/// tracked camera moves. Editor-only: the compositor's depth of field reads it.
+	static const std::string k_focusDistancePropertyId;
+	inline float getFocusDistance() const { return m_focusDistance; }
+	void setFocusDistance(float distance);
+	static const float k_minFocusDistance;
+	static const float k_maxFocusDistance;
+
+	/// Diameter of the physical lens's entrance pupil in millimeters (focal
+	/// length over f-number). Zero turns the compositor's depth of field off.
+	/// Millimeters keep the realistic range for phones and webcams readable.
+	static const std::string k_apertureDiameterMMPropertyId;
+	inline float getApertureDiameterMM() const { return m_apertureDiameterMM; }
+	void setApertureDiameterMM(float diameterMM);
+	static const float k_maxApertureDiameterMM;
+
 	static const std::string k_apertureOrientationOffsetPropertyId;
 	static const std::string k_aperturePositionOffsetPropertyId;
 	inline MikanQuatd getApertureOffsetOrientation() const { return m_apertureOrientationOffset; }
@@ -172,6 +192,8 @@ private:
 	float m_clientAuxRenderScale= 1.f;
 	MikanClientMaxBufferDimension m_clientMaxBufferDimension= MikanClientMaxBufferDimension_4096;
 	float m_depthMeshScaleCorrection= 1.f;
+	float m_focusDistance= 1.f;
+	float m_apertureDiameterMM= 0.f;
 	MikanQuatd m_apertureOrientationOffset;
 	MikanVector3d m_aperturePositionOffset;
 	bool m_bHasValidApertureOffset= false;
@@ -226,6 +248,14 @@ public:
 	bool getApertureProjectionMatrix(glm::mat4& outProjectionMatrix, bool bVerticalFlip= false) const;
 	bool getApertureViewMatrix(glm::mat4& outViewMatrix) const;
 	bool getApertureViewProjectionMatrix(glm::mat4& outVPMatrix, bool bVerticalFlip= false) const;
+
+	// The eye depth of the nearest stencil the ray through a video pixel hits,
+	// measured along the aperture's forward axis, which is what focus_distance
+	// holds. Stencils stand in for real surfaces (the depth proxy and occlusion
+	// meshes are model stencils). The filter decides which objects are tested.
+	bool computeFocusDistanceAtVideoPixel(const glm::vec2& videoPixel,
+										  std::function<bool(MikanObjectConstPtr)> objectFilter,
+										  float& outDistance) const;
 
 	// The frame sync mode with Auto resolved against the pose-driven state
 	MikanCameraFrameSyncMode getEffectiveFrameSyncMode() const;

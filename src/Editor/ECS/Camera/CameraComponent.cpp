@@ -37,6 +37,10 @@
 #include "VRObjectSystem.h"
 #include "VideoSourceQueries.h"
 #include "VRTrackingVolumeComponent.h"
+#include "BoxStencilSystem.h"
+#include "ModelStencilSystem.h"
+#include "ObjectSystemColliderQueries.h"
+#include "QuadStencilSystem.h"
 
 #include "LuaMath.h"
 #include "lua.hpp"
@@ -53,6 +57,8 @@ const std::string CameraDefinition::k_poseDrivenPerFramePropertyId= "pose_driven
 const std::string CameraDefinition::k_clientColorRenderScalePropertyId= "client_color_render_scale";
 const std::string CameraDefinition::k_clientAuxRenderScalePropertyId= "client_aux_render_scale";
 const std::string CameraDefinition::k_depthMeshScaleCorrectionPropertyId= "depth_mesh_scale_correction";
+const std::string CameraDefinition::k_focusDistancePropertyId= "focus_distance";
+const std::string CameraDefinition::k_apertureDiameterMMPropertyId= "aperture_diameter_mm";
 const std::string CameraDefinition::k_apertureOrientationOffsetPropertyId= "aperture_orientation_offset";
 const std::string CameraDefinition::k_aperturePositionOffsetPropertyId= "aperture_position_offset";
 const std::string CameraDefinition::k_hasValidApertureOffsetPropertyId= "has_valid_aperture_offset";
@@ -62,6 +68,20 @@ const std::string CameraDefinition::k_clientMaxBufferDimensionPropertyId= "clien
 const float CameraDefinition::k_minClientRenderScale= 0.5f;
 const float CameraDefinition::k_maxClientRenderScale= 2.f;
 const float CameraDefinition::k_clientRenderScaleStep= 0.25f;
+
+const float CameraDefinition::k_minFocusDistance= 0.05f;
+const float CameraDefinition::k_maxFocusDistance= 100.f;
+const float CameraDefinition::k_maxApertureDiameterMM= 100.f;
+
+static float clampFocusDistance(float distance)
+{
+	return std::min(std::max(distance, CameraDefinition::k_minFocusDistance), CameraDefinition::k_maxFocusDistance);
+}
+
+static float clampApertureDiameterMM(float diameterMM)
+{
+	return std::min(std::max(diameterMM, 0.f), CameraDefinition::k_maxApertureDiameterMM);
+}
 
 static float clampClientRenderScale(float scale)
 {
@@ -181,6 +201,8 @@ configuru::Config CameraDefinition::writeToJSON()
 	pt[k_clientAuxRenderScalePropertyId]= m_clientAuxRenderScale;
 	pt[k_clientMaxBufferDimensionPropertyId]= k_clientMaxBufferDimensionJsonStrings[(int)m_clientMaxBufferDimension];
 	pt["depth_mesh_scale_correction"]= m_depthMeshScaleCorrection;
+	pt[k_focusDistancePropertyId]= m_focusDistance;
+	pt[k_apertureDiameterMMPropertyId]= m_apertureDiameterMM;
 
 	writeQuaderntiond(pt, "aperture_orientation_offset", m_apertureOrientationOffset);
 	writeVector3d(pt, "aperture_position_offset", m_aperturePositionOffset);
@@ -208,6 +230,9 @@ void CameraDefinition::readFromJSON(const configuru::Config& pt)
 		pt.get_or<std::string>(k_clientMaxBufferDimensionPropertyId.c_str(),
 							   k_clientMaxBufferDimensionJsonStrings[(int)m_clientMaxBufferDimension]));
 	m_depthMeshScaleCorrection= pt.get_or<float>("depth_mesh_scale_correction", m_depthMeshScaleCorrection);
+	m_focusDistance= clampFocusDistance(pt.get_or<float>(k_focusDistancePropertyId.c_str(), m_focusDistance));
+	m_apertureDiameterMM=
+		clampApertureDiameterMM(pt.get_or<float>(k_apertureDiameterMMPropertyId.c_str(), m_apertureDiameterMM));
 
 	readQuaterniond(pt, "aperture_orientation_offset", m_apertureOrientationOffset);
 	readVector3d(pt, "aperture_position_offset", m_aperturePositionOffset);
@@ -330,6 +355,28 @@ void CameraDefinition::setClientAuxRenderScale(float scale)
 	{
 		m_clientAuxRenderScale= clampedScale;
 		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_clientAuxRenderScalePropertyId));
+	}
+}
+
+void CameraDefinition::setFocusDistance(float distance)
+{
+	const float clampedDistance= clampFocusDistance(distance);
+
+	if (clampedDistance != m_focusDistance)
+	{
+		m_focusDistance= clampedDistance;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_focusDistancePropertyId));
+	}
+}
+
+void CameraDefinition::setApertureDiameterMM(float diameterMM)
+{
+	const float clampedDiameter= clampApertureDiameterMM(diameterMM);
+
+	if (clampedDiameter != m_apertureDiameterMM)
+	{
+		m_apertureDiameterMM= clampedDiameter;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_apertureDiameterMMPropertyId));
 	}
 }
 
@@ -867,6 +914,41 @@ bool CameraComponent::getApertureViewProjectionMatrix(glm::mat4& outVPMatrix, bo
 	return false;
 }
 
+bool CameraComponent::computeFocusDistanceAtVideoPixel(const glm::vec2& videoPixel,
+													   std::function<bool(MikanObjectConstPtr)> objectFilter,
+													   float& outDistance) const
+{
+	MikanVideoSourceIntrinsics intrinsics;
+	if (!getApertureIntrinsics(intrinsics) || intrinsics.intrinsics_type != MikanIntrinsicsType::MONO_CAMERA_INTRINSICS)
+		return false;
+
+	glm::mat4 aperturePose;
+	if (!getWorldSpaceAperturePose(aperturePose))
+		return false;
+
+	ColliderRaycastHitRequest request= {};
+	computeCameraRayAtPixel(intrinsics.getMonoIntrinsics(), aperturePose, videoPixel, request.rayOrigin,
+							request.rayDirection);
+
+	std::set<const MikanObjectSystem*> stencilSystems= {
+		getObjectSystemOfType<QuadStencilSystem>().get(),
+		getObjectSystemOfType<BoxStencilSystem>().get(),
+		getObjectSystemOfType<ModelStencilSystem>().get(),
+	};
+	stencilSystems.erase(nullptr);
+
+	const ColliderRaycastHitResult hitResult= findClosestCollisionAlongRay(stencilSystems, request, objectFilter);
+	if (!hitResult.hitValid)
+		return false;
+
+	// Eye depth rather than distance along the ray, so an off-axis pick focuses
+	// the plane through the hit and not a sphere around the aperture
+	const glm::vec3 apertureForward= glm::vec3(aperturePose[2]) * -1.f;
+	outDistance= glm::dot(hitResult.hitLocation - request.rayOrigin, apertureForward);
+
+	return outDistance > 0.f;
+}
+
 MikanCameraFrameSyncMode CameraComponent::getEffectiveFrameSyncMode() const
 {
 	CameraDefinitionPtr cameraDefinition= getCameraDefinition();
@@ -1098,6 +1180,15 @@ void CameraComponent::getPropertyDescriptors(std::vector<PropertyDescriptorConst
 								 ->setDefaultValue((int)MikanClientMaxBufferDimension_4096)
 								 ->addMetaData(std::make_shared<EnumPropertyMetaData>(
 									 k_clientMaxBufferDimensionLocKeys, k_clientMaxBufferDimensionCount)));
+	// The lens state is the editor's own: only the compositor's depth of field reads it
+	outDescriptors.push_back(
+		std::make_shared<PropertyDescriptor>(CameraDefinition::k_focusDistancePropertyId, MikanVariantType::FLOAT)
+			->setDefaultValue(1.f)
+			->setClientAPIHidden());
+	outDescriptors.push_back(
+		std::make_shared<PropertyDescriptor>(CameraDefinition::k_apertureDiameterMMPropertyId, MikanVariantType::FLOAT)
+			->setDefaultValue(0.f)
+			->setClientAPIHidden());
 	outDescriptors.push_back(
 		std::make_shared<PropertyDescriptor>(CameraDefinition::k_poseDrivenPerFramePropertyId, MikanVariantType::BOOL)
 			->setDefaultValue(false)
@@ -1166,6 +1257,16 @@ bool CameraComponent::getPropertyValue(const std::string& propertyName, MikanVar
 		outValue= (int)getCameraDefinition()->getClientMaxBufferDimension();
 		return true;
 	}
+	else if (propertyName == CameraDefinition::k_focusDistancePropertyId)
+	{
+		outValue= getCameraDefinition()->getFocusDistance();
+		return true;
+	}
+	else if (propertyName == CameraDefinition::k_apertureDiameterMMPropertyId)
+	{
+		outValue= getCameraDefinition()->getApertureDiameterMM();
+		return true;
+	}
 	else if (propertyName == CameraDefinition::k_poseDrivenPerFramePropertyId)
 	{
 		outValue= getCameraDefinition()->getIsPoseDrivenPerFrame();
@@ -1228,6 +1329,16 @@ bool CameraComponent::setPropertyValue(const std::string& propertyName, const Mi
 	else if (propertyName == CameraDefinition::k_clientMaxBufferDimensionPropertyId)
 	{
 		getCameraDefinition()->setClientMaxBufferDimension(clientMaxBufferDimensionFromInt(inValue.getIntValue()));
+		return true;
+	}
+	else if (propertyName == CameraDefinition::k_focusDistancePropertyId)
+	{
+		getCameraDefinition()->setFocusDistance(inValue.getFloatValue());
+		return true;
+	}
+	else if (propertyName == CameraDefinition::k_apertureDiameterMMPropertyId)
+	{
+		getCameraDefinition()->setApertureDiameterMM(inValue.getFloatValue());
 		return true;
 	}
 

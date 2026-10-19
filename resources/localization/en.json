@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1136,
-		"translatedCount": 1136,
-		"reviewedCount": 1136
+		"stringCount": 1138,
+		"translatedCount": 1138,
+		"reviewedCount": 1138
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -913,6 +913,7 @@
 		"uiScaleTooltip": "Scales the editor UI on top of the scale the display already reports. Leave it at 100 to use the display scale as-is."
 	},
 	"properties": {
+		"aperture_diameter_mm": "Aperture Diameter (mm)",
 		"aruco_dictionary_type": "ArUco Dictionary Type",
 		"aruco_id": "ArUco ID",
 		"available_language_list": "Available Languages",
@@ -953,6 +954,7 @@
 		"dmx_universe": "DMX Universe",
 		"duration_seconds": "Duration (s)",
 		"exposure_scale": "Exposure Scale",
+		"focus_distance": "Focus Distance (m)",
 		"font_path": "Font",
 		"force_render": "Force Render",
 		"foreground_color": "Foreground Color",
