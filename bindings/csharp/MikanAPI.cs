@@ -4,10 +4,10 @@ namespace MikanXR
 {
 	// The client's handle on the editor: initialize, connect, send requests, pump events. Which
 	// wire it rides and who owns the shared texture senders are chosen at construction through
-	// IMikanTransport and IMikanRenderTargetWriter. The parameterless constructor is the native
-	// client over MikanClientCore.dll, which is what every consumer before the managed path
-	// was built against.
-	public class MikanAPI : IDisposable
+	// IMikanTransport and IMikanRenderTargetWriter. The parameterless constructor, in Native/, is
+	// the native client over MikanClientCore.dll, which is what every consumer before the managed
+	// path was built against. A host that forbids P/Invoke leaves Native/ out and supplies both.
+	public partial class MikanAPI : IDisposable
 	{
 		private MikanLogCallback _logCallback;
 		private MikanLogCallback _internalLogCallback;
@@ -21,12 +21,6 @@ namespace MikanXR
 		private int _httpPort= 0;
 
 		// -- API Lifecycle ----
-
-		public MikanAPI()
-			: this(new MikanNativeTransport(), null)
-		{
-			_renderTargetAPI.Writer= new MikanNativeRenderTargetWriter((MikanNativeTransport)_transport);
-		}
 
 		public MikanAPI(IMikanTransport transport, IMikanRenderTargetWriter renderTargetWriter)
 		{

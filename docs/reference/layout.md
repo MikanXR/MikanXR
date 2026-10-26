@@ -114,7 +114,7 @@ File video sources are not a plugin: they decode in-process through OpenCV's ffm
 
 Client-side binding packages consumed by external applications. Generated portions are emitted by `MikanClientCodeGen`; do not hand-edit them, regenerate instead (see [wire-protocol.md](./wire-protocol.md)).
 
-- `bindings/csharp`: C# client library. Hand-written core (`MikanAPI.cs`, `MikanRequestManager.cs`, the `IMikanTransport` and `IMikanRenderTargetWriter` seams with their native and websocket implementations, ...) plus `Generated/` (generated, driven by `CSharpCodeGenConfig.json`). The assembly only builds under a Visual Studio generator; the sources also install into the client SDK as `bindings/csharp/src` for hosts that compile them.
+- `bindings/csharp`: C# client library. Hand-written core (`MikanAPI.cs`, `MikanRequestManager.cs`, the `IMikanTransport` and `IMikanRenderTargetWriter` seams with their websocket implementation, ...), `Native/` (the P/Invoke transport and writer, which a host that forbids P/Invoke leaves out), plus `Generated/` (generated, driven by `CSharpCodeGenConfig.json`). The assembly only builds under a Visual Studio generator; the sources also install into the client SDK as `bindings/csharp/src` for hosts that compile them.
 
 - `bindings/typescript`: TypeScript client package (`package.json`, `tsconfig.json`). Hand-written core at the root and `Serialization/`; `types/` is generated (driven by `TypeScriptCodeGenConfig.json`); `dist/` is compiled JS output.
 

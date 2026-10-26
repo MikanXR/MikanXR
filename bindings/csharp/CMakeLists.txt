@@ -9,6 +9,7 @@ CONFIGURE_FILE("${CMAKE_SOURCE_DIR}/bindings/csharp/AssemblyInfo.cs.template" "$
 file(GLOB MIKANCLIENT_CSHARP_SRC
 	"${CMAKE_CURRENT_LIST_DIR}/*.cs"
 	"${CMAKE_CURRENT_LIST_DIR}/Generated/*.cs"
+	"${CMAKE_CURRENT_LIST_DIR}/Native/*.cs"
 	"${CMAKE_CURRENT_LIST_DIR}/Properties/*.cs"
 	"${CMAKE_CURRENT_LIST_DIR}/Serialization/*.cs"
 )
