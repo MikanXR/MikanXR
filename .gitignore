@@ -85,6 +85,10 @@ src/MikanUI/resources/images
 src/MikanUI/resources/index.html
 src/MikanUI/resources/css
 
+# Compiled gettext catalogs POEdit writes beside a .po on save. The editor reads the
+# generated JSON tables, never these.
+/localization/*.mo
+
 #Tools
 !tools/*/*.exe
 
