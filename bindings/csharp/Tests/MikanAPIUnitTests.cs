@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Reflection;
 using Newtonsoft.Json.Linq;
 
 namespace MikanXR
@@ -13,8 +11,8 @@ namespace MikanXR
 		{
 			Console.WriteLine("[MikanAPIUnitTests]");
 			bool success = true;
-			success &= TestResponseTypeCacheContainsKnownTypes();
-			success &= TestEventTypeCacheContainsKnownTypes();
+			success &= TestRegistryCreatesKnownResponses();
+			success &= TestRegistryCreatesKnownEvents();
 			success &= TestTypeNameOnDerivedTypes();
 			success &= TestRequestNoTypeIdInJson();
 			success &= TestResponseRoundTrip();
@@ -22,28 +20,22 @@ namespace MikanXR
 			return success;
 		}
 
-		// Builds the same reflection-based cache that MikanRequestManager uses internally,
-		// then verifies that known MikanResponse-derived types are resolvable by name.
-		private bool TestResponseTypeCacheContainsKnownTypes()
+		// MikanRequestManager creates responses through the type registry, so known response
+		// types have to be resolvable by name
+		private bool TestRegistryCreatesKnownResponses()
 		{
-			const string testName = "response type cache contains known types";
+			const string testName = "type registry creates known responses";
 			bool success = true;
 
 			try
 			{
-				var cache = BuildTypeCache<MikanResponse>();
-
 				// Core base type
-				success = cache.ContainsKey("MikanResponse");
-				Debug.Assert(success, "MikanResponse not in response type cache");
+				success = MikanTypeRegistry.Create("MikanResponse") is MikanResponse;
+				Debug.Assert(success, "MikanResponse not created by the type registry");
 
 				// A concrete derived response type
-				success &= cache.ContainsKey("MikanRemoteControlCommandResult");
-				Debug.Assert(success, "MikanRemoteControlCommandResult not in response type cache");
-
-				// Cache must return the correct CLR type
-				success &= (cache["MikanResponse"] == typeof(MikanResponse));
-				Debug.Assert(success, "MikanResponse cache entry maps to wrong CLR type");
+				success &= MikanTypeRegistry.Create("MikanRemoteControlCommandResult") is MikanRemoteControlCommandResult;
+				Debug.Assert(success, "MikanRemoteControlCommandResult not created by the type registry");
 			}
 			catch (Exception e)
 			{
@@ -55,32 +47,26 @@ namespace MikanXR
 			return success;
 		}
 
-		// Builds the same reflection-based cache that MikanEventManager uses internally,
-		// then verifies that known MikanEvent-derived types are resolvable by name.
-		private bool TestEventTypeCacheContainsKnownTypes()
+		// MikanEventManager creates events through the type registry, so known event types have
+		// to be resolvable by name and unknown ones must not be
+		private bool TestRegistryCreatesKnownEvents()
 		{
-			const string testName = "event type cache contains known types";
+			const string testName = "type registry creates known events";
 			bool success = true;
 
 			try
 			{
-				var cache = BuildTypeCache<MikanEvent>();
-
 				// Core base type
-				success = cache.ContainsKey("MikanEvent");
-				Debug.Assert(success, "MikanEvent not in event type cache");
+				success = MikanTypeRegistry.Create("MikanEvent") is MikanEvent;
+				Debug.Assert(success, "MikanEvent not created by the type registry");
 
 				// A concrete derived event type
-				success &= cache.ContainsKey("MikanDisconnectedEvent");
-				Debug.Assert(success, "MikanDisconnectedEvent not in event type cache");
+				success &= MikanTypeRegistry.Create("MikanDisconnectedEvent") is MikanDisconnectedEvent;
+				Debug.Assert(success, "MikanDisconnectedEvent not created by the type registry");
 
-				// Unknown type must NOT be in the cache
-				success &= !cache.ContainsKey("ThisTypeDoesNotExist");
-				Debug.Assert(success, "Unknown type unexpectedly found in event type cache");
-
-				// Cache must return the correct CLR type
-				success &= (cache["MikanDisconnectedEvent"] == typeof(MikanDisconnectedEvent));
-				Debug.Assert(success, "MikanDisconnectedEvent cache entry maps to wrong CLR type");
+				// Unknown type must NOT be created
+				success &= MikanTypeRegistry.Create("ThisTypeDoesNotExist") == null;
+				Debug.Assert(success, "Unknown type unexpectedly created by the type registry");
 			}
 			catch (Exception e)
 			{
@@ -92,8 +78,8 @@ namespace MikanXR
 			return success;
 		}
 
-		// Verifies that C# type names match the expected wire-format names used by
-		// both the server and client for routing. Mirrors the C++ constructor test.
+		// The wire routes requests, responses and events by the type name each stamps into
+		// itself on construction, which has to be the name the registry creates it by
 		private bool TestTypeNameOnDerivedTypes()
 		{
 			const string testName = "type name on derived types";
@@ -101,24 +87,36 @@ namespace MikanXR
 
 			try
 			{
-				success = (typeof(MikanRequest).Name == "MikanRequest");
-				Debug.Assert(success, "MikanRequest.Name mismatch");
+				success = (new MikanRequest().requestTypeName == "MikanRequest");
+				Debug.Assert(success, "MikanRequest type name mismatch");
 
-				success &= (typeof(MikanResponse).Name == "MikanResponse");
-				Debug.Assert(success, "MikanResponse.Name mismatch");
+				success &= (new MikanResponse().responseTypeName == "MikanResponse");
+				Debug.Assert(success, "MikanResponse type name mismatch");
 
-				success &= (typeof(MikanEvent).Name == "MikanEvent");
-				Debug.Assert(success, "MikanEvent.Name mismatch");
+				success &= (new MikanEvent().eventTypeName == "MikanEvent");
+				Debug.Assert(success, "MikanEvent type name mismatch");
 
 				// Derived request type name must match the concrete class, not the base
-				success &= (typeof(MikanRemoteControlCommand).Name == "MikanRemoteControlCommand");
-				Debug.Assert(success, "MikanRemoteControlCommand.Name mismatch");
+				success &= (new MikanRemoteControlCommand().requestTypeName == "MikanRemoteControlCommand");
+				Debug.Assert(success, "MikanRemoteControlCommand type name mismatch");
 
-				// MikanRequestManager.SendRequest stamps requestTypeName using GetType().Name
-				var cmd = new MikanRemoteControlCommand();
-				cmd.requestTypeName = cmd.GetType().Name;
-				success &= (cmd.requestTypeName == "MikanRemoteControlCommand");
-				Debug.Assert(success, "requestTypeName stamped by SendRequest is wrong");
+				foreach (string typeName in MikanTypeRegistry.GetTypeNames())
+				{
+					string stampedName = null;
+					MikanSerializableObject instance = MikanTypeRegistry.Create(typeName);
+					if (instance is MikanRequest request)
+						stampedName = request.requestTypeName;
+					else if (instance is MikanResponse response)
+						stampedName = response.responseTypeName;
+					else if (instance is MikanEvent mikanEvent)
+						stampedName = mikanEvent.eventTypeName;
+
+					if (stampedName != null && stampedName != typeName)
+					{
+						Console.WriteLine($"    {typeName} stamps the type name {stampedName}");
+						success = false;
+					}
+				}
 			}
 			catch (Exception e)
 			{
@@ -140,12 +138,11 @@ namespace MikanXR
 			try
 			{
 				var cmd = new MikanRemoteControlCommand();
-				cmd.requestTypeName = cmd.GetType().Name;
 				cmd.requestId = 1;
 				cmd.parameters = new List<string> { "param1", "param2" };
 				cmd.command = "test_command";
 
-				string jsonString = JsonSerializer.serializeToJsonString(cmd, cmd.GetType());
+				string jsonString = JsonSerializer.serializeToJsonString(cmd);
 
 				JObject j = JObject.Parse(jsonString);
 
@@ -155,6 +152,9 @@ namespace MikanXR
 
 				success &= ((string)j["requestTypeName"] == "MikanRemoteControlCommand");
 				Debug.Assert(success, "requestTypeName has wrong value in serialized JSON");
+
+				success &= j.Property("requestTypeId") == null;
+				Debug.Assert(success, "requestTypeId present in serialized request JSON");
 			}
 			catch (Exception e)
 			{
@@ -166,27 +166,23 @@ namespace MikanXR
 			return success;
 		}
 
-		// Simulates the client-side parse path: serialize a response to JSON,
-		// then use the reflection-based type cache to reconstruct it polymorphically.
+		// Simulates the client-side parse path: serialize a response to JSON, then create it
+		// through the type registry by the name it carries and read it back.
 		private bool TestResponseRoundTrip()
 		{
-			const string testName = "response JSON round-trip via type cache";
+			const string testName = "response JSON round-trip via type registry";
 			bool success = true;
 
 			try
 			{
-				// Build the same cache MikanRequestManager uses
-				var cache = BuildTypeCache<MikanResponse>();
-
 				// Simulate a server-produced response JSON
 				var expected = new MikanResponse
 				{
-					responseTypeName = typeof(MikanResponse).Name,
 					requestId = 99,
 					resultCode = MikanAPIResult.Success
 				};
 
-				string jsonString = JsonSerializer.serializeToJsonString(expected, expected.GetType());
+				string jsonString = JsonSerializer.serializeToJsonString(expected);
 
 				// Simulate client parsing: extract responseTypeName from JSON
 				JObject j = JObject.Parse(jsonString);
@@ -195,26 +191,28 @@ namespace MikanXR
 				success = !string.IsNullOrEmpty(responseTypeName);
 				Debug.Assert(success, "responseTypeName missing from serialized JSON");
 
-				// Look up the concrete type by name and create an instance
-				success &= cache.TryGetValue(responseTypeName, out Type responseType);
-				Debug.Assert(success, $"Type '{responseTypeName}' not found in response type cache");
+				// Create the concrete type by name
+				var actual = MikanTypeRegistry.Create(responseTypeName) as MikanResponse;
+				success &= actual != null;
+				Debug.Assert(success, $"Type '{responseTypeName}' not created by the type registry");
 
-				object responseObject = Activator.CreateInstance(responseType);
-				bool bDeserialize = JsonDeserializer.deserializeFromJsonString(jsonString, responseObject, responseType);
+				bool bDeserialize = actual != null && JsonDeserializer.deserializeFromJson(j, actual);
 
 				success &= bDeserialize;
-				Debug.Assert(success, "Failed to deserialize response from JSON string");
+				Debug.Assert(success, "Failed to deserialize response from JSON");
 
 				// Verify field values survived the round-trip
-				var actual = (MikanResponse)responseObject;
-				success &= (actual.requestId == expected.requestId);
-				Debug.Assert(success, $"requestId mismatch: expected {expected.requestId}, got {actual.requestId}");
+				if (bDeserialize)
+				{
+					success &= (actual.requestId == expected.requestId);
+					Debug.Assert(success, $"requestId mismatch: expected {expected.requestId}, got {actual.requestId}");
 
-				success &= (actual.resultCode == expected.resultCode);
-				Debug.Assert(success, $"resultCode mismatch: expected {expected.resultCode}, got {actual.resultCode}");
+					success &= (actual.resultCode == expected.resultCode);
+					Debug.Assert(success, $"resultCode mismatch: expected {expected.resultCode}, got {actual.resultCode}");
 
-				success &= (actual.responseTypeName == expected.responseTypeName);
-				Debug.Assert(success, $"responseTypeName mismatch: expected {expected.responseTypeName}, got {actual.responseTypeName}");
+					success &= (actual.responseTypeName == expected.responseTypeName);
+					Debug.Assert(success, $"responseTypeName mismatch: expected {expected.responseTypeName}, got {actual.responseTypeName}");
+				}
 			}
 			catch (Exception e)
 			{
@@ -224,27 +222,6 @@ namespace MikanXR
 
 			Console.WriteLine($"    {testName} - {(success ? "PASSED" : "FAILED")}");
 			return success;
-		}
-
-		// Builds a name→Type dictionary for all non-abstract classes in this assembly
-		// that are assignable to the given base type — the same logic used by
-		// MikanRequestManager and MikanEventManager when they initialize.
-		private static Dictionary<string, Type> BuildTypeCache<TBase>() where TBase : class
-		{
-			var cache = new Dictionary<string, Type>();
-
-			var types = from t in typeof(TBase).Assembly.GetTypes()
-						where t.IsClass && !t.IsAbstract
-							&& t.Namespace == "MikanXR"
-							&& typeof(TBase).IsAssignableFrom(t)
-						select t;
-
-			foreach (var t in types)
-			{
-				cache[t.Name] = t;
-			}
-
-			return cache;
 		}
 	}
 }

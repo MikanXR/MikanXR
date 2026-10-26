@@ -2,8 +2,6 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System;
 using Newtonsoft.Json.Linq;
-using System.Reflection;
-using System.Linq;
 
 namespace MikanXR
 {
@@ -12,7 +10,6 @@ namespace MikanXR
 		private MikanLogCallback _logCallback;
 		private IMikanTransport _transport;
 		private int m_nextRequestID= 0;
-		private Dictionary<string, Type> _responseTypeCache = null;
 
 		private class PendingRequest
 		{
@@ -25,24 +22,12 @@ namespace MikanXR
 		{
 			_logCallback = logCallback;
 			_pendingRequests = new Dictionary<int, PendingRequest>();
-			_responseTypeCache = new Dictionary<string, Type>();
 		}
 
 		public MikanAPIResult Initialize(IMikanTransport transport)
 		{
 			_transport = transport;
 			_transport.SetResponseHandler(InternalTextResponseCallback);
-
-			// Build a map from TypeName to MikanResponse Type
-			var eventTypes = from t in Assembly.GetExecutingAssembly().GetTypes()
-							 where t.IsClass && t.Namespace == "MikanXR" && typeof(MikanResponse).IsAssignableFrom(t)
-							 select t;
-			eventTypes.ToList().ForEach(t =>
-			{
-				string responseTypeName = t.Name;
-
-				_responseTypeCache[responseTypeName] = t;
-			});
 
 			return MikanAPIResult.Success;
 		}
@@ -89,7 +74,7 @@ namespace MikanXR
 			{
 				MikanResponse response = new MikanResponse()
 				{
-					responseTypeName = typeof(MikanResponse).Name,
+					responseTypeName = nameof(MikanResponse),
 					requestId = requestId,
 					resultCode = result
 				};
@@ -114,9 +99,7 @@ namespace MikanXR
 			m_nextRequestID++;
 
 			// Serialize the request to a Json string
-			string jsonRequestString= 
-				JsonSerializer.serializeToJsonString(
-					request, request.GetType());
+			string jsonRequestString= JsonSerializer.serializeToJsonString(request);
 
 			// Send the request string to Mikan
 			MikanAPIResult result = _transport.SendRequestJson(jsonRequestString);
@@ -160,7 +143,7 @@ namespace MikanXR
 			{
 				response = new MikanResponse()
 				{
-					responseTypeName = typeof(MikanResponse).Name,
+					responseTypeName = nameof(MikanResponse),
 					requestId = requestId,
 					resultCode = MikanAPIResult.MalformedResponse
 				};
@@ -183,14 +166,12 @@ namespace MikanXR
 					string responseTypeName = (string)responseTypeNameElement;
 
 					// Attempt to create the response object by class name
-					if (_responseTypeCache.TryGetValue(responseTypeName, out Type responseType))
+					if (MikanTypeRegistry.Create(responseTypeName) is MikanResponse responseObject)
 					{
-						object responseObject = Activator.CreateInstance(responseType);
-
-						// Deserialize the response object from the JSON string
-						if (JsonDeserializer.deserializeFromJsonString(utf8ResponseString, responseObject, responseType))
+						// Deserialize the response object from the already parsed JSON
+						if (JsonDeserializer.deserializeFromJson(root, responseObject))
 						{
-							response = (MikanResponse)responseObject;
+							response = responseObject;
 						}
 						else
 						{

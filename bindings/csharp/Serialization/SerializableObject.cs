@@ -1,7 +1,10 @@
 ﻿namespace MikanXR
 {
-	public class PolymorphicStruct 
+	// A struct a PolymorphicObject can hold. Each generated subclass names itself, so the wire's
+	// class_name never comes from reflecting on the instance's type.
+	public class PolymorphicStruct : MikanSerializableObject
 	{
+		public virtual string RuntimeClassName => nameof(PolymorphicStruct);
 	}
 
 	public class PolymorphicObject
@@ -23,7 +26,7 @@
 
 		public void setInstance(PolymorphicStruct instance)
 		{
-			_runtimeClassName = instance.GetType().Name;
+			_runtimeClassName = instance.RuntimeClassName;
 			_instance = instance;
 		}
 	}

@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using Newtonsoft.Json.Linq;
 
 namespace MikanXR
@@ -12,28 +8,15 @@ namespace MikanXR
 
 		private MikanLogCallback _logCallback;
 		private IMikanTransport _transport;
-		private Dictionary<string, Type> _eventTypeCache = null;
 
 		public MikanEventManager(MikanLogCallback logCallback)
 		{
 			_logCallback= logCallback;
-			_eventTypeCache = new Dictionary<string, Type>();
 		}
 
 		public void Initialize(IMikanTransport transport)
 		{
 			_transport = transport;
-
-			// Build a map from TypeName to MikanEvent Type
-			var eventTypes = from t in Assembly.GetExecutingAssembly().GetTypes()
-					where t.IsClass && t.Namespace == "MikanXR" && typeof(MikanEvent).IsAssignableFrom(t)
-					select t;
-			eventTypes.ToList().ForEach(t =>
-			{
-				string eventTypeName = t.Name;
-
-				_eventTypeCache[eventTypeName] = t;
-			});
 		}
 
 		public MikanAPIResult FetchNextEvent(out MikanEvent outEvent)
@@ -72,7 +55,7 @@ namespace MikanXR
 				}
 
 				var disconnectEvent = new MikanDisconnectedEvent();
-				disconnectEvent.eventTypeName = typeof(MikanDisconnectedEvent).Name;
+				disconnectEvent.eventTypeName = nameof(MikanDisconnectedEvent);
 				disconnectEvent.code = (MikanDisconnectCode)disconnectCode;
 				disconnectEvent.reason= disconnectReason;
 
@@ -92,14 +75,12 @@ namespace MikanXR
 						string eventTypeName = (string)eventTypeNameElement;
 
 						// Attempt to create the event object by class name
-						if (_eventTypeCache.TryGetValue(eventTypeName, out Type eventType))
+						if (MikanTypeRegistry.Create(eventTypeName) is MikanEvent eventObject)
 						{
-							object eventObject = Activator.CreateInstance(eventType);
-
-							// Deserialize the event object from the JSON string
-							if (JsonDeserializer.deserializeFromJsonString(utf8ResponseString, eventObject, eventType))
+							// Deserialize the event object from the already parsed JSON
+							if (JsonDeserializer.deserializeFromJson(root, eventObject))
 							{
-								mikanEvent = (MikanEvent)eventObject;
+								mikanEvent = eventObject;
 							}
 							else
 							{

@@ -73,7 +73,7 @@ The moving parts:
 
 Two more properties ride on the values structs. `Serialization::ClientComponentNames(componentClass, ownerSystem)` on a `Mikan*ComponentValues` struct and `Serialization::ClientSystemName(system)` on a `Mikan*SystemValues` struct name what the property requests address, and the generators emit them as `k_componentClassName`, `k_ownerSystemName` and `k_systemName` constants on the generated class (`public const string` in C#, `static readonly` in TypeScript), so a client addresses a system by the constant rather than a spelled string. The C++ statics of the same names in `MikanAPI.cpp` stay for consumers built without reflection, and `client_names_unit_tests.cpp` in `unit_test_suite_cpp` holds the two in step: every annotated struct is listed there, and each listed struct's statics must equal its property.
 
-A target language is one file behind the `MikanClientLanguageGen` base class, which declares a `create*ClientGen` factory per language the way `ISharedTextureWriterBackend` does per graphics API. The base carries what every language needs from the reflection data: the wire type-name field of a request, response or event, a default-constructed instance to read real field defaults from, the inheritance ordering a language needs when its file cannot reference a type declared later, and which module owns a type. A generator emits one file per module through `generateModuleFile`, plus whatever files describe the whole output through `generateWholeOutputFiles` (TypeScript writes four: the shared field descriptor, the two registries, and the barrel; C# writes none). Adding a language is a generator file, a case in `createLanguageGen`, a `target_language` string, and a config plus CMake target under `bindings/`.
+A target language is one file behind the `MikanClientLanguageGen` base class, which declares a `create*ClientGen` factory per language the way `ISharedTextureWriterBackend` does per graphics API. The base carries what every language needs from the reflection data: the wire type-name field of a request, response or event, a default-constructed instance to read real field defaults from, the inheritance ordering a language needs when its file cannot reference a type declared later, and which module owns a type. A generator emits one file per module through `generateModuleFile`, plus whatever files describe the whole output through `generateWholeOutputFiles` (TypeScript writes four: the shared field descriptor, the two registries, and the barrel. C# writes one, the type registry). Adding a language is a generator file, a case in `createLanguageGen`, a `target_language` string, and a config plus CMake target under `bindings/`.
 
 Entity order is decided once, in `CodeGenDatabase::sortEntities`, before anything emits. The reflection database enumerates in an order that varies between runs, so a generator that walks those vectors as filled rewrites unchanged files on every regeneration. Sorting centrally is also what makes the TypeScript inheritance ordering deterministic, since it preserves input order among structs that have no relationship to each other.
 
@@ -118,7 +118,7 @@ A struct's fields are serialized in memory offset order, parents first. `Seriali
 
 Each client runtime recovers that order from the generated type, and neither infers it from reflection order:
 
-- C#: every generated field carries `[MikanFieldOrder(n)]`, which `Utils.memoryOffsetSortStructFields` sorts on. `Type.GetFields()` is documented as returning fields in no particular order, so declaration order is not something the runtime may assume.
+- C#: each generated class's `WriteFields` and `ReadFields` walk its fields in this order and call the base class first, so the order is fixed at generation rather than recovered at runtime.
 - TypeScript: each generated class carries a `__serializationMetadata` array, and the runtime walks the prototype chain base-first to concatenate them.
 
 One trap, real and verified in code:
@@ -251,6 +251,22 @@ A C++ client calls `IMikanAPI::createMikanAPI()`, `init(...)`, then `connect()` 
 The C# runtime reaches the wire through two seams, both chosen when `MikanAPI` is constructed. `IMikanTransport` carries the messages: `MikanNativeTransport` drives `MikanClientCore.dll` through the P/Invokes in `MikanCoreNative.cs`, and `MikanWebSocketTransport` speaks the protocol from managed code alone over `System.Net.WebSockets.ClientWebSocket`. `IMikanRenderTargetWriter` owns the shared texture senders: `MikanNativeRenderTargetWriter` is the native library's, and a managed host supplies its own. The parameterless `MikanAPI()` is the native pair, which is what every consumer before the managed path was built against. `MikanClientTestCSharp --managed` runs the test client on the websocket transport, rendering locally and publishing nothing, so the managed transport is exercised against a live editor without a host engine.
 
 The three native files and the parameterless constructor (`MikanAPI.Native.cs`, `MikanAPI` being `partial`) live in `bindings/csharp/Native/`, and nothing outside that folder names them. A host that forbids P/Invoke compiles the bindings without it and constructs `MikanAPI` with a managed transport and its own writer.
+
+### C# serialization
+
+The C# runtime never reflects on a type, so it compiles into hosts that forbid `System.Reflection` and `System.IO`, such as a Warudo plugin mod, whose mod tools reject any IL reference into those namespaces (including `Type.Name`, which is declared on `System.Reflection.MemberInfo`). The generator does the work reflection used to:
+
+- Every generated class derives from `MikanSerializableObject` (directly, or through its reflected parent or `PolymorphicStruct`) and overrides four members over its own fields, each calling its base first:
+	- `WriteFields(JObject)` and `ReadFields(JObject)`, in wire order
+	- `TryGetField(name, out value)` and `TrySetField(name, value)`, by wire field name, the set converting through `MikanJson.TryAssign` (the value as is, an int for an enum, or `Convert.ChangeType`)
+
+- `MikanJson` holds the wire rules the generated members call: lists as arrays, maps as arrays of `{key, value}`, a `PolymorphicObject` as `{class_name, value}`, a null string written as `""`, a missing field on read an error. Nested containers compose by passing element conversions as lambdas.
+
+- Each enum gets an `internal static class <Enum>Json`. Its writer names a value the way the C++ serializer does, through `rfk::Enum::getEnumValue`, which settles names that share a value (`MikanAPIResult`'s `InvalidSceneID` and `InvalidStageID`). Its reader takes an integer or any of the names.
+
+- `MikanTypeRegistry` creates an object from its wire type name. The generated `Generated/MikanTypeRegistry.cs` registers every generated class, and a hand-written polymorphic type calls `Register` before it is read. The event and request managers create events and responses through it, and `ReadPolymorphic` creates a `class_name`'s instance through it. A polymorphic value names itself through the generated `RuntimeClassName` override.
+
+Pointer fields (`IntPtr`, only on the `Write*RenderTargetTexture` requests, which the C# runtime handles locally) throw if serialized, and `ulong` is unsupported as on every client. The generator fails rather than emit a field type it cannot serialize. `unit_test_suite_csharp` round-trips every registered type filled with distinct values, so a generator change that breaks a type's symmetry fails there.
 
 ### Managed clients
 

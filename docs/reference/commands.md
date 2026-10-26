@@ -86,6 +86,8 @@ build\bin\unit_test_suite_cpp.exe
 
 - Both suites must pass in CI (`.github/workflows/build-and-test.yml`).
 
+- The C# bindings have their own suite, built only under the Visual Studio generator and so not in CI: `cmake --build build --target unit_test_suite_csharp --config Release`, then `build\bindings\csharp\Tests\Release\unit_test_suite_csharp.exe`. Run it after a change to `bindings/csharp` or the C# generator.
+
 The crash reporter is exercised by crashing on purpose (see [debugging.md](./debugging.md)):
 
 ```
