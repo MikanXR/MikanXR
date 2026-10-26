@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Concurrent;
-using System.IO;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -230,19 +229,26 @@ namespace MikanXR
 
 		private async Task ReceiveLoopAsync(ClientWebSocket socket, CancellationToken token)
 		{
-			var chunk= new byte[k_receiveChunkBytes];
-			var message= new MemoryStream();
+			// A message is received straight into this buffer, which doubles whenever less than a
+			// chunk of room is left, so it ends up sized to the largest message seen
+			var message= new byte[k_receiveChunkBytes];
 
 			try
 			{
 				while (!token.IsCancellationRequested && socket.State == WebSocketState.Open)
 				{
-					message.SetLength(0);
+					int messageLength= 0;
 
 					WebSocketReceiveResult result;
 					do
 					{
-						result= await socket.ReceiveAsync(new ArraySegment<byte>(chunk), token).ConfigureAwait(false);
+						if (message.Length - messageLength < k_receiveChunkBytes)
+						{
+							Array.Resize(ref message, message.Length * 2);
+						}
+
+						var room= new ArraySegment<byte>(message, messageLength, message.Length - messageLength);
+						result= await socket.ReceiveAsync(room, token).ConfigureAwait(false);
 
 						if (result.MessageType == WebSocketMessageType.Close)
 						{
@@ -261,17 +267,17 @@ namespace MikanXR
 							return;
 						}
 
-						message.Write(chunk, 0, result.Count);
+						messageLength+= result.Count;
 					} while (!result.EndOfMessage);
 
 					if (result.MessageType == WebSocketMessageType.Text)
 					{
-						HandleTextMessage(Encoding.UTF8.GetString(message.GetBuffer(), 0, (int)message.Length));
+						HandleTextMessage(Encoding.UTF8.GetString(message, 0, messageLength));
 					}
 					else
 					{
 						// The protocol is text only: geometry is served over HTTP
-						Log(MikanLogLevel.Warning, $"MikanWebSocketTransport::ReceiveLoop - dropped unexpected binary frame ({message.Length} bytes)");
+						Log(MikanLogLevel.Warning, $"MikanWebSocketTransport::ReceiveLoop - dropped unexpected binary frame ({messageLength} bytes)");
 					}
 				}
 			}
