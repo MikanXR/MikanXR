@@ -48,6 +48,9 @@ public:
 	bool hasClientSource(const std::string& clientId, MikanCameraID cameraId) const;
 	bool getClientSourceDimensions(const std::string& clientId, MikanCameraID cameraId, int& outWidth,
 								   int& outHeight) const;
+	// The first client, in client id order, with a source for the camera, for a graph that takes
+	// whichever client is rendering rather than naming one
+	bool getFirstClientIdForCamera(MikanCameraID cameraId, std::string& outClientId) const;
 	IMkTexturePtr getClientColorSourceTexture(const std::string& clientId, MikanCameraID cameraId,
 											  eTextureSourceColorType textureSourceColorType,
 											  int64_t frameIndex= -1) const;

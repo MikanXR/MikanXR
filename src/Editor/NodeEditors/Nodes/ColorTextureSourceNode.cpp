@@ -1,6 +1,7 @@
 #include "ColorTextureSourceNode.h"
-#include "CompositorComponent.h"
 #include "CameraComponent.h"
+#include "ClientSourceManager.h"
+#include "CompositorComponent.h"
 #include "MkScopedObjectBinding.h"
 #include "IEditorWindow.h"
 #include "IMkGraphicsContext.h"
@@ -49,6 +50,7 @@ configuru::Config ColorTextureSourceNodeConfig::writeToJSON()
 	pt["resolve_alpha_mode"]= k_colorTextureResolveAlphaModeStrings[(int)resolveAlphaMode];
 	pt["texture_source_id"]= textureSourceId;
 	pt["vertical_flip"]= bVerticalFlip;
+	pt["use_first_client_texture_source"]= bUseFirstClientTextureSource;
 
 	return pt;
 }
@@ -83,6 +85,7 @@ void ColorTextureSourceNodeConfig::readFromJSON(const configuru::Config& pt)
 	}
 
 	bVerticalFlip= pt.get_or<bool>("vertical_flip", false);
+	bUseFirstClientTextureSource= pt.get_or<bool>("use_first_client_texture_source", false);
 
 	textureSourceId= pt.get_or<int>("texture_source_id", INVALID_MIKAN_ID);
 }
@@ -98,6 +101,7 @@ bool ColorTextureSourceNode::loadFromConfig(NodeConfigConstPtr nodeConfig)
 		m_fallbackMode= textureSourceNodeConfig->fallbackMode;
 		m_resolveAlphaMode= textureSourceNodeConfig->resolveAlphaMode;
 		m_bVerticalFlip= textureSourceNodeConfig->bVerticalFlip;
+		m_bUseFirstClientTextureSource= textureSourceNodeConfig->bUseFirstClientTextureSource;
 
 		// Get the client video source component corresponding to the saved video source id
 		ProjectManagerPtr projectManager= getOwnerProject();
@@ -122,6 +126,7 @@ void ColorTextureSourceNode::saveToConfig(NodeConfigPtr nodeConfig) const
 	textureSourceNodeConfig->fallbackMode= m_fallbackMode;
 	textureSourceNodeConfig->resolveAlphaMode= m_resolveAlphaMode;
 	textureSourceNodeConfig->bVerticalFlip= m_bVerticalFlip;
+	textureSourceNodeConfig->bUseFirstClientTextureSource= m_bUseFirstClientTextureSource;
 	textureSourceNodeConfig->textureSourceId=
 		textureSourceComponent ? textureSourceComponent->getTextureSourceId() : INVALID_MIKAN_ID;
 
@@ -256,57 +261,80 @@ void ColorTextureSourceNode::releaseLinearFrameBuffer()
 IMkTexturePtr ColorTextureSourceNode::getColorSourceTexture() const
 {
 	auto compositorGraph= std::static_pointer_cast<CompositorNodeGraph>(getOwnerGraph());
+	IEditorWindow* editorWindow= compositorGraph->getOwnerWindow();
 	CameraComponentPtr boundCameraComponent= compositorGraph->getBoundCameraComponent();
 	CompositorComponentPtr boundCompositorComponent= compositorGraph->getBoundCompositorComponent();
-	TextureSourceComponentPtr textureSourceComponent= getTextureSourceComponent();
 
-	if (boundCompositorComponent && boundCameraComponent && textureSourceComponent)
+	IMkTexturePtr clientTexture;
+	if (boundCompositorComponent && boundCameraComponent)
 	{
+		const MikanCameraID cameraID= boundCameraComponent->getCameraId();
 		const int64_t pendingFrameIndex= boundCompositorComponent->getPendingCompositedFrameIndex();
-		IMkTexturePtr clientTexture= textureSourceComponent->getClientColorSourceTexture(
-			boundCameraComponent->getCameraId(), m_clientTextureType, pendingFrameIndex);
 
-		// If the client texture is not available, return a black texture
-		if (clientTexture)
+		if (m_bUseFirstClientTextureSource)
 		{
-			return clientTexture;
+			ClientSourceManager* clientSourceManager= editorWindow->getClientSourceManager();
+
+			std::string firstClientId;
+			if (clientSourceManager != nullptr
+				&& clientSourceManager->getFirstClientIdForCamera(cameraID, firstClientId))
+			{
+				clientTexture= clientSourceManager->getClientColorSourceTexture(firstClientId, cameraID,
+																				m_clientTextureType, pendingFrameIndex);
+			}
 		}
 		else
 		{
-			auto* textureCache= getOwnerGraph()->getOwnerWindow()->getGraphicsContext()->getTextureCache();
+			TextureSourceComponentPtr textureSourceComponent= getTextureSourceComponent();
 
-			// An explicit per-node fallback override wins over the color-type default. This is how
-			// the graph author picks the identity texture appropriate for the downstream material
-			// (e.g. opaque black for an inverted-alpha layer, white for a multiply layer), which
-			// can't be inferred here.
-			switch (m_fallbackMode)
+			if (textureSourceComponent)
 			{
-			case eColorTextureFallbackMode::transparentBlack:
-				return textureCache->tryGetTextureByName(INTERNAL_TEXTURE_BLACK_RGBA_TRANSPARENT);
-			case eColorTextureFallbackMode::opaqueBlack:
-				return textureCache->tryGetTextureByName(INTERNAL_TEXTURE_BLACK_RGBA);
-			case eColorTextureFallbackMode::opaqueWhite:
-				return textureCache->tryGetTextureByName(INTERNAL_TEXTURE_WHITE_RGBA);
-			case eColorTextureFallbackMode::autoByType:
-			default:
-				break;
+				clientTexture= textureSourceComponent->getClientColorSourceTexture(cameraID, m_clientTextureType,
+																				   pendingFrameIndex);
 			}
+		}
+	}
 
-			// Auto: derive the identity from how this color type is normally composited.
-			switch (m_clientTextureType)
-			{
-			case eTextureSourceColorType::colorRGBA:
-				return textureCache->tryGetTextureByName(INTERNAL_TEXTURE_BLACK_RGBA);
-			// Shadow buffers composite multiplicatively, so the "no data" identity is white
-			// (white * background == background, i.e. no shadow) rather than transparent black.
-			case eTextureSourceColorType::shadowRGBA:
-				return textureCache->tryGetTextureByName(INTERNAL_TEXTURE_WHITE_RGBA);
-			case eTextureSourceColorType::shadowRGB:
-				return textureCache->tryGetTextureByName(INTERNAL_TEXTURE_WHITE_RGB);
-			case eTextureSourceColorType::colorRGB:
-			default:
-				return textureCache->tryGetTextureByName(INTERNAL_TEXTURE_BLACK_RGB);
-			}
+	// If the client texture is not available, return a black texture
+	if (clientTexture)
+	{
+		return clientTexture;
+	}
+	else
+	{
+		auto* textureCache= editorWindow->getGraphicsContext()->getTextureCache();
+
+		// An explicit per-node fallback override wins over the color-type default. This is how
+		// the graph author picks the identity texture appropriate for the downstream material
+		// (e.g. opaque black for an inverted-alpha layer, white for a multiply layer), which
+		// can't be inferred here.
+		switch (m_fallbackMode)
+		{
+		case eColorTextureFallbackMode::transparentBlack:
+			return textureCache->tryGetTextureByName(INTERNAL_TEXTURE_BLACK_RGBA_TRANSPARENT);
+		case eColorTextureFallbackMode::opaqueBlack:
+			return textureCache->tryGetTextureByName(INTERNAL_TEXTURE_BLACK_RGBA);
+		case eColorTextureFallbackMode::opaqueWhite:
+			return textureCache->tryGetTextureByName(INTERNAL_TEXTURE_WHITE_RGBA);
+		case eColorTextureFallbackMode::autoByType:
+		default:
+			break;
+		}
+
+		// Auto: derive the identity from how this color type is normally composited.
+		switch (m_clientTextureType)
+		{
+		case eTextureSourceColorType::colorRGBA:
+			return textureCache->tryGetTextureByName(INTERNAL_TEXTURE_BLACK_RGBA);
+		// Shadow buffers composite multiplicatively, so the "no data" identity is white
+		// (white * background == background, i.e. no shadow) rather than transparent black.
+		case eTextureSourceColorType::shadowRGBA:
+			return textureCache->tryGetTextureByName(INTERNAL_TEXTURE_WHITE_RGBA);
+		case eTextureSourceColorType::shadowRGB:
+			return textureCache->tryGetTextureByName(INTERNAL_TEXTURE_WHITE_RGB);
+		case eTextureSourceColorType::colorRGB:
+		default:
+			return textureCache->tryGetTextureByName(INTERNAL_TEXTURE_BLACK_RGB);
 		}
 	}
 
@@ -506,10 +534,21 @@ ImVec4 ColorTextureSourceNode::editorGetHeaderColor() const
 
 std::string ColorTextureSourceNode::editorGetTitle() const
 {
+	// TODO: This should come from locFormat()
 	if (!isDefaultNode())
 	{
-		TextureSourceComponentPtr textureSource= getTextureSourceComponent();
-		std::string sourceId= textureSource ? textureSource->getName() : "<None>";
+		std::string sourceId;
+
+		if (m_bUseFirstClientTextureSource)
+		{
+			sourceId= "<First Client>";
+		}
+		else
+		{
+			TextureSourceComponentPtr textureSource= getTextureSourceComponent();
+
+			sourceId= textureSource ? textureSource->getName() : "<None>";
+		}
 
 		return StringUtils::stringify("Color Source ", sourceId);
 	}
@@ -576,18 +615,25 @@ void ColorTextureSourceNode::editorRenderPropertySheet(const NodeEditorState& ed
 			m_resolveAlphaMode= (eColorTextureResolveAlphaMode)iResolveAlphaMode;
 		}
 
-		// Texture Type
-		ProjectManagerPtr projectManager= getOwnerProject();
-		TextureSourceListDataSource dataSource(projectManager);
-		if (dataSource.getEntryCount() > 0)
-		{
-			TextureSourceComponentPtr TextureSourceComponent= getTextureSourceComponent();
+		// Use First Client Source
+		MkGui::drawCheckBoxProperty(propertyStyle, "drawColorTextureUseFirstClientSource",
+									locText("nodes.useFirstClientTextureSource"), m_bUseFirstClientTextureSource);
 
-			int selectedIndex= dataSource.getEntryIndex(TextureSourceComponent);
-			if (MkGui::drawComboBoxProperty(propertyStyle, "textureSourceIndex", locText("nodes.source"), &dataSource,
-											selectedIndex))
+		// Client Texture Source selection (if not using first available client source)
+		if (!m_bUseFirstClientTextureSource)
+		{
+			ProjectManagerPtr projectManager= getOwnerProject();
+			TextureSourceListDataSource dataSource(projectManager);
+			if (dataSource.getEntryCount() > 0)
 			{
-				m_textureSourceComponent= dataSource.getEntryAtIndex(selectedIndex);
+				TextureSourceComponentPtr TextureSourceComponent= getTextureSourceComponent();
+
+				int selectedIndex= dataSource.getEntryIndex(TextureSourceComponent);
+				if (MkGui::drawComboBoxProperty(propertyStyle, "textureSourceIndex", locText("nodes.source"),
+												&dataSource, selectedIndex))
+				{
+					m_textureSourceComponent= dataSource.getEntryAtIndex(selectedIndex);
+				}
 			}
 		}
 

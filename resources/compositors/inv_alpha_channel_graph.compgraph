@@ -56,14 +56,15 @@
 			"material_property_id": 5
 		},
 		{
-			"class_name":          "ColorTextureSourceNode",
-			"id":                  23,
-			"pins_in":             [ ],
-			"pins_out":            [ 24 ],
-			"pos":                 [ 447.0, 136.0 ],
-			"texture_source_color_type": "colorRGBA",
-			"texture_source_id":        -1,
-			"vertical_flip":       false
+			"class_name":                      "ColorTextureSourceNode",
+			"id":                              23,
+			"pins_in":                         [ ],
+			"pins_out":                        [ 24 ],
+			"pos":                             [ 447.0, 136.0 ],
+			"texture_source_color_type":       "colorRGBA",
+			"texture_source_id":               -1,
+			"vertical_flip":                   false,
+			"use_first_client_texture_source": true
 		},
 		{
 			"class_name":           "VideoTextureNode",

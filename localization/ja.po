@@ -3625,6 +3625,12 @@ msgstr "タイプ"
 
 #. Section: nodes
 #, fuzzy
+msgctxt "nodes.useFirstClientTextureSource"
+msgid "Use First Client Source"
+msgstr "最初のクライアントソース"
+
+#. Section: nodes
+#, fuzzy
 msgctxt "nodes.value"
 msgid "Value"
 msgstr "値"

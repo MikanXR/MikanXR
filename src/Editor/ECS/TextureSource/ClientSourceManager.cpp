@@ -75,6 +75,22 @@ bool ClientSourceManager::hasClientSource(const std::string& clientId, MikanCame
 	return getClientSource(clientId.c_str(), cameraId) != nullptr;
 }
 
+bool ClientSourceManager::getFirstClientIdForCamera(MikanCameraID cameraId, std::string& outClientId) const
+{
+	// The table holds one source per client and camera, keyed and so ordered by client id, so
+	// the first source rendering for the camera names the first client serving it
+	for (const auto& [tableKey, clientSource] : m_clientSources.getMap())
+	{
+		if (clientSource->readAccessor != nullptr && clientSource->readAccessor->getCameraId() == cameraId)
+		{
+			outClientId= clientSource->clientId;
+			return true;
+		}
+	}
+
+	return false;
+}
+
 bool ClientSourceManager::getClientSourceDimensions(const std::string& clientId, MikanCameraID cameraId, int& outWidth,
 													int& outHeight) const
 {

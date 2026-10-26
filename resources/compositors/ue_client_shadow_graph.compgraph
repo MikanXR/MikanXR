@@ -107,15 +107,16 @@
 			"float4_defaults":           { }
 		},
 		{
-			"class_name":                "ColorTextureSourceNode",
-			"id":                        29,
-			"pins_in":                   [ ],
-			"pins_out":                  [ 30 ],
-			"pos":                       [ 805.0, 142.0 ],
-			"texture_source_color_type": "shadowRGBA",
-			"fallback_mode":             "auto",
-			"texture_source_id":         1065,
-			"vertical_flip":             false
+			"class_name":                      "ColorTextureSourceNode",
+			"id":                              29,
+			"pins_in":                         [ ],
+			"pins_out":                        [ 30 ],
+			"pos":                             [ 805.0, 142.0 ],
+			"texture_source_color_type":       "shadowRGBA",
+			"fallback_mode":                   "auto",
+			"texture_source_id":               -1,
+			"vertical_flip":                   false,
+			"use_first_client_texture_source": true
 		},
 		{
 			"class_name":           "MaterialNode",
@@ -141,15 +142,16 @@
 			"float4_defaults":           { }
 		},
 		{
-			"class_name":                "ColorTextureSourceNode",
-			"id":                        47,
-			"pins_in":                   [ ],
-			"pins_out":                  [ 48 ],
-			"pos":                       [ 1061.0, 222.0 ],
-			"texture_source_color_type": "colorRGBA",
-			"fallback_mode":             "auto",
-			"texture_source_id":         1065,
-			"vertical_flip":             false
+			"class_name":                      "ColorTextureSourceNode",
+			"id":                              47,
+			"pins_in":                         [ ],
+			"pins_out":                        [ 48 ],
+			"pos":                             [ 1061.0, 222.0 ],
+			"texture_source_color_type":       "colorRGBA",
+			"fallback_mode":                   "auto",
+			"texture_source_id":               -1,
+			"vertical_flip":                   false,
+			"use_first_client_texture_source": true
 		},
 		{
 			"class_name":           "MaterialNode",
@@ -235,19 +237,20 @@
 			"pos":        [ 378.0, -2.0 ]
 		},
 		{
-			"class_name":                "DepthTextureSourceNode",
-			"id":                        142,
-			"pins_in":                   [ ],
-			"pins_out":                  [ 143 ],
-			"pos":                       [ 1061.0, 560.0 ],
-			"texture_source_depth_type": "depthPackRGBA",
-			"texture_source_id":         1065,
-			"vertical_flip":             false,
-			"depth_preview_palette":     "grayscale",
-			"depth_preview_curve":       "linear",
-			"depth_preview_gamma":       1.0,
-			"depth_preview_range_min":   0.0,
-			"depth_preview_range_max":   1.0
+			"class_name":                      "DepthTextureSourceNode",
+			"id":                              142,
+			"pins_in":                         [ ],
+			"pins_out":                        [ 143 ],
+			"pos":                             [ 1061.0, 560.0 ],
+			"texture_source_depth_type":       "depthPackRGBA",
+			"texture_source_id":               -1,
+			"vertical_flip":                   false,
+			"use_first_client_texture_source": true,
+			"depth_preview_palette":           "grayscale",
+			"depth_preview_curve":             "linear",
+			"depth_preview_gamma":             1.0,
+			"depth_preview_range_min":         0.0,
+			"depth_preview_range_max":         1.0
 		},
 		{
 			"class_name": "DepthOfFieldNode",

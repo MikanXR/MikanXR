@@ -127,7 +127,7 @@
     },
 
     "node_editor_property_value": {
-        "labelWidth": 100,
+        "labelWidth": 175,
         "valueWidth": 150,
         "colors": [
             { "name": "PopupBg", "value": [0.13, 0.13, 0.13, 1.0] }

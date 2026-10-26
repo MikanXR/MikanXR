@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1144,
-		"translatedCount": 1144,
-		"reviewedCount": 1144
+		"stringCount": 1145,
+		"translatedCount": 1145,
+		"reviewedCount": 1145
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -671,6 +671,7 @@
 		"transferLinear": "Linear",
 		"transferSrgb": "sRGB",
 		"type": "Type",
+		"useFirstClientTextureSource": "Use First Client Source",
 		"value": "Value",
 		"variableHeader": "Variable Node",
 		"vertexColorTitle": "Vertex Color",

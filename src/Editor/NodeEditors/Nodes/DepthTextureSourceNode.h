@@ -19,6 +19,7 @@ public:
 	eTextureSourceDepthType textureSourceColorType;
 	MikanVideoSourceID textureVideoSourceId;
 	bool bVerticalFlip;
+	bool bUseFirstClientTextureSource= false;
 	DepthPreviewSettings depthPreviewSettings;
 };
 
@@ -54,6 +55,7 @@ protected:
 	eTextureSourceDepthType m_clientTextureType= eTextureSourceDepthType::depthPackRGBA;
 	TextureSourceComponentWeakPtr m_textureSourceComponent;
 	bool m_bVerticalFlip= false;
+	bool m_bUseFirstClientTextureSource= false;
 
 	// Editor preview only. The output pin always carries the untouched linear depth.
 	DepthPreviewSettings m_depthPreviewSettings;

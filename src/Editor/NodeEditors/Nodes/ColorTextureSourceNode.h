@@ -19,6 +19,7 @@ public:
 	eColorTextureResolveAlphaMode resolveAlphaMode= eColorTextureResolveAlphaMode::none;
 	MikanTextureSourceID textureSourceId;
 	bool bVerticalFlip;
+	bool bUseFirstClientTextureSource= false;
 };
 
 class ColorTextureSourceNode : public Node
@@ -71,6 +72,7 @@ protected:
 	eColorTextureResolveAlphaMode m_resolveAlphaMode= eColorTextureResolveAlphaMode::none;
 	TextureSourceComponentWeakPtr m_textureSourceComponent;
 	bool m_bVerticalFlip= false;
+	bool m_bUseFirstClientTextureSource= false;
 	// True while the framebuffer pass is downsampling rather than only flipping, which
 	// selects the material and keeps the instance from being reused across the two
 	bool m_bIsResolving= false;

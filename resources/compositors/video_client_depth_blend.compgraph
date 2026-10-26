@@ -49,24 +49,26 @@
 			"float4_defaults":           { }
 		},
 		{
-			"class_name":                "ColorTextureSourceNode",
-			"id":                        19,
-			"pins_in":                   [ ],
-			"pins_out":                  [ 20 ],
-			"pos":                       [ 177.0, 264.0 ],
-			"texture_source_color_type": "colorRGB",
-			"texture_source_id":         1034,
-			"vertical_flip":             false
+			"class_name":                      "ColorTextureSourceNode",
+			"id":                              19,
+			"pins_in":                         [ ],
+			"pins_out":                        [ 20 ],
+			"pos":                             [ 177.0, 264.0 ],
+			"texture_source_color_type":       "colorRGB",
+			"texture_source_id":               -1,
+			"vertical_flip":                   false,
+			"use_first_client_texture_source": true
 		},
 		{
-			"class_name":                "DepthTextureSourceNode",
-			"id":                        22,
-			"pins_in":                   [ ],
-			"pins_out":                  [ 23 ],
-			"pos":                       [ 168.0, 108.0 ],
-			"texture_source_depth_type": "depthPackRGBA",
-			"texture_source_id":         1034,
-			"vertical_flip":             false
+			"class_name":                      "DepthTextureSourceNode",
+			"id":                              22,
+			"pins_in":                         [ ],
+			"pins_out":                        [ 23 ],
+			"pos":                             [ 168.0, 108.0 ],
+			"texture_source_depth_type":       "depthPackRGBA",
+			"texture_source_id":               -1,
+			"vertical_flip":                   false,
+			"use_first_client_texture_source": true
 		},
 		{
 			"class_name":             "DepthMaskNode",

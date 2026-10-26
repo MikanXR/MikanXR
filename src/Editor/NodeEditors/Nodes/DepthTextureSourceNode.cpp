@@ -1,6 +1,7 @@
-#include "CameraComponent.h"
-#include "CompositorComponent.h"
 #include "DepthTextureSourceNode.h"
+#include "CameraComponent.h"
+#include "ClientSourceManager.h"
+#include "CompositorComponent.h"
 #include "MkScopedObjectBinding.h"
 #include "IEditorWindow.h"
 #include "IMkFrameBuffer.h"
@@ -45,6 +46,7 @@ configuru::Config DepthTextureSourceNodeConfig::writeToJSON()
 	pt["texture_source_depth_type"]= k_textureSourceDepthTypeStrings[(int)textureSourceColorType];
 	pt["texture_source_id"]= textureVideoSourceId;
 	pt["vertical_flip"]= bVerticalFlip;
+	pt["use_first_client_texture_source"]= bUseFirstClientTextureSource;
 	depthPreviewSettings.writeToJSON(pt);
 
 	return pt;
@@ -59,6 +61,7 @@ void DepthTextureSourceNodeConfig::readFromJSON(const configuru::Config& pt)
 	textureSourceColorType=
 		StringUtils::FindEnumValue<eTextureSourceDepthType>(clientTextureTypeString, k_textureSourceDepthTypeStrings);
 	bVerticalFlip= pt.get_or<bool>("vertical_flip", false);
+	bUseFirstClientTextureSource= pt.get_or<bool>("use_first_client_texture_source", false);
 
 	textureVideoSourceId= pt.get_or<int>("texture_source_id", INVALID_MIKAN_ID);
 	depthPreviewSettings.readFromJSON(pt);
@@ -73,6 +76,7 @@ bool DepthTextureSourceNode::loadFromConfig(NodeConfigConstPtr nodeConfig)
 
 		m_clientTextureType= clientTextureNodeConfig->textureSourceColorType;
 		m_bVerticalFlip= clientTextureNodeConfig->bVerticalFlip;
+		m_bUseFirstClientTextureSource= clientTextureNodeConfig->bUseFirstClientTextureSource;
 		m_depthPreviewSettings= clientTextureNodeConfig->depthPreviewSettings;
 
 		// Get the client video source component corresponding to the saved video source id
@@ -96,6 +100,7 @@ void DepthTextureSourceNode::saveToConfig(NodeConfigPtr nodeConfig) const
 
 	textureSourceNodeConfig->textureSourceColorType= m_clientTextureType;
 	textureSourceNodeConfig->bVerticalFlip= m_bVerticalFlip;
+	textureSourceNodeConfig->bUseFirstClientTextureSource= m_bUseFirstClientTextureSource;
 	textureSourceNodeConfig->depthPreviewSettings= m_depthPreviewSettings;
 	textureSourceNodeConfig->textureVideoSourceId=
 		textureSourceComponent ? textureSourceComponent->getTextureSourceId() : INVALID_MIKAN_ID;
@@ -144,31 +149,52 @@ bool DepthTextureSourceNode::evaluateNode(NodeEvaluator& evaluator)
 IMkTexturePtr DepthTextureSourceNode::getDepthSourceTexture() const
 {
 	auto compositorGraph= std::static_pointer_cast<CompositorNodeGraph>(getOwnerGraph());
+	IEditorWindow* editorWindow= compositorGraph->getOwnerWindow();
 	CameraComponentPtr boundCameraComponent= compositorGraph->getBoundCameraComponent();
 	CompositorComponentPtr boundCompositorComponent= compositorGraph->getBoundCompositorComponent();
-	TextureSourceComponentPtr textureSourceComponent= getTextureSourceComponent();
 
-	if (boundCameraComponent != nullptr && boundCompositorComponent != nullptr && textureSourceComponent != nullptr)
+	IMkTexturePtr clientTexture;
+	if (boundCameraComponent != nullptr && boundCompositorComponent != nullptr)
 	{
+		const MikanCameraID cameraId= boundCameraComponent->getCameraId();
 		const int64_t pendingFrameIndex= boundCompositorComponent->getPendingCompositedFrameIndex();
-		IMkTexturePtr clientTexture= textureSourceComponent->getClientDepthSourceTexture(
-			boundCameraComponent->getCameraId(), m_clientTextureType, pendingFrameIndex);
 
-		// If the client texture is not available, return a white texture
-		// (white RGBA decodes to linearDepth ≈ 1.004, which is always behind videoZ ≤ 0.9998)
-		if (clientTexture)
+		if (m_bUseFirstClientTextureSource)
 		{
-			return clientTexture;
+			ClientSourceManager* clientSourceManager= editorWindow->getClientSourceManager();
+
+			std::string firstClientId;
+			if (clientSourceManager != nullptr
+				&& clientSourceManager->getFirstClientIdForCamera(cameraId, firstClientId))
+			{
+				clientTexture= clientSourceManager->getClientDepthSourceTexture(firstClientId, cameraId,
+																				m_clientTextureType, pendingFrameIndex);
+			}
 		}
 		else
 		{
-			auto* textureCache= getOwnerGraph()->getOwnerWindow()->getGraphicsContext()->getTextureCache();
+			TextureSourceComponentPtr textureSourceComponent= getTextureSourceComponent();
 
-			if (m_clientTextureType == eTextureSourceDepthType::depthPackRGBA)
+			if (textureSourceComponent != nullptr)
 			{
-				return textureCache->tryGetTextureByName(INTERNAL_TEXTURE_WHITE_RGBA);
+				clientTexture= textureSourceComponent->getClientDepthSourceTexture(cameraId, m_clientTextureType,
+																				   pendingFrameIndex);
 			}
 		}
+	}
+
+	if (clientTexture)
+	{
+		return clientTexture;
+	}
+
+	// If the client texture is not available, return a white texture
+	// (white RGBA decodes to linearDepth ≈ 1.004, which is always behind videoZ ≤ 0.9998)
+	if (m_clientTextureType == eTextureSourceDepthType::depthPackRGBA)
+	{
+		auto* textureCache= editorWindow->getGraphicsContext()->getTextureCache();
+
+		return textureCache->tryGetTextureByName(INTERNAL_TEXTURE_WHITE_RGBA);
 	}
 
 	return IMkTexturePtr();
@@ -248,8 +274,18 @@ std::string DepthTextureSourceNode::editorGetTitle() const
 {
 	if (!isDefaultNode())
 	{
-		TextureSourceComponentPtr textureSource= getTextureSourceComponent();
-		std::string sourceId= textureSource ? textureSource->getName() : "<NONE>";
+		std::string sourceId;
+
+		if (m_bUseFirstClientTextureSource)
+		{
+			sourceId= "<First Client>";
+		}
+		else
+		{
+			TextureSourceComponentPtr textureSource= getTextureSourceComponent();
+
+			sourceId= textureSource ? textureSource->getName() : "<NONE>";
+		}
 
 		return StringUtils::stringify("Depth Source", sourceId);
 	}
@@ -295,18 +331,25 @@ void DepthTextureSourceNode::editorRenderPropertySheet(const NodeEditorState& ed
 			m_clientTextureType= (eTextureSourceDepthType)iTextureType;
 		}
 
-		// Texture Type
-		ProjectManagerPtr projectManager= getOwnerProject();
-		TextureSourceListDataSource dataSource(projectManager);
-		if (dataSource.getEntryCount() > 0)
-		{
-			TextureSourceComponentPtr videoSourceComponent= getTextureSourceComponent();
+		// Use First Client Source
+		MkGui::drawCheckBoxProperty(propertyStyle, "drawDepthTextureUseFirstClientSource",
+									locText("nodes.useFirstClientTextureSource"), m_bUseFirstClientTextureSource);
 
-			int selectedIndex= dataSource.getEntryIndex(videoSourceComponent);
-			if (MkGui::drawComboBoxProperty(propertyStyle, "textureSourceIndex", locText("nodes.source"), &dataSource,
-											selectedIndex))
+		// Client Texture Source selection (if not using first available client source)
+		if (!m_bUseFirstClientTextureSource)
+		{
+			ProjectManagerPtr projectManager= getOwnerProject();
+			TextureSourceListDataSource dataSource(projectManager);
+			if (dataSource.getEntryCount() > 0)
 			{
-				m_textureSourceComponent= dataSource.getEntryAtIndex(selectedIndex);
+				TextureSourceComponentPtr videoSourceComponent= getTextureSourceComponent();
+
+				int selectedIndex= dataSource.getEntryIndex(videoSourceComponent);
+				if (MkGui::drawComboBoxProperty(propertyStyle, "textureSourceIndex", locText("nodes.source"),
+												&dataSource, selectedIndex))
+				{
+					m_textureSourceComponent= dataSource.getEntryAtIndex(selectedIndex);
+				}
 			}
 		}
 

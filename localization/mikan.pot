@@ -3152,6 +3152,11 @@ msgid "Type"
 msgstr ""
 
 #. Section: nodes
+msgctxt "nodes.useFirstClientTextureSource"
+msgid "Use First Client Source"
+msgstr ""
+
+#. Section: nodes
 msgctxt "nodes.value"
 msgid "Value"
 msgstr ""

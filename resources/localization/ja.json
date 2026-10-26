@@ -2,8 +2,8 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1144,
-		"translatedCount": 899,
+		"stringCount": 1145,
+		"translatedCount": 900,
 		"reviewedCount": 0
 	},
 	"CEFTextureSourceComponent": {
@@ -671,6 +671,7 @@
 		"transferLinear": "リニア",
 		"transferSrgb": "sRGB",
 		"type": "タイプ",
+		"useFirstClientTextureSource": "最初のクライアントソース",
 		"value": "値",
 		"variableHeader": "変数ノード",
 		"vertexColorTitle": "頂点カラー",

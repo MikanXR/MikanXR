@@ -107,16 +107,17 @@
 			"float4_defaults":           { }
 		},
 		{
-			"class_name":                "ColorTextureSourceNode",
-			"id":                        29,
-			"pins_in":                   [ ],
-			"pins_out":                  [ 30 ],
-			"pos":                       [ 805.0, 142.0 ],
-			"texture_source_color_type": "shadowRGBA",
-			"fallback_mode":             "auto",
-			"resolve_alpha_mode":        "none",
-			"texture_source_id":         2187,
-			"vertical_flip":             false
+			"class_name":                      "ColorTextureSourceNode",
+			"id":                              29,
+			"pins_in":                         [ ],
+			"pins_out":                        [ 30 ],
+			"pos":                             [ 805.0, 142.0 ],
+			"texture_source_color_type":       "shadowRGBA",
+			"fallback_mode":                   "auto",
+			"resolve_alpha_mode":              "none",
+			"texture_source_id":               -1,
+			"vertical_flip":                   false,
+			"use_first_client_texture_source": true
 		},
 		{
 			"class_name":           "MaterialNode",
@@ -142,16 +143,17 @@
 			"float4_defaults":           { }
 		},
 		{
-			"class_name":                "ColorTextureSourceNode",
-			"id":                        47,
-			"pins_in":                   [ ],
-			"pins_out":                  [ 48 ],
-			"pos":                       [ 1061.0, 222.0 ],
-			"texture_source_color_type": "colorRGBA",
-			"fallback_mode":             "auto",
-			"resolve_alpha_mode":        "none",
-			"texture_source_id":         2187,
-			"vertical_flip":             false
+			"class_name":                      "ColorTextureSourceNode",
+			"id":                              47,
+			"pins_in":                         [ ],
+			"pins_out":                        [ 48 ],
+			"pos":                             [ 810.0, 334.0 ],
+			"texture_source_color_type":       "colorRGBA",
+			"fallback_mode":                   "auto",
+			"resolve_alpha_mode":              "none",
+			"texture_source_id":               -1,
+			"vertical_flip":                   false,
+			"use_first_client_texture_source": true
 		},
 		{
 			"class_name":           "MaterialNode",
@@ -177,7 +179,7 @@
 			"pos":             [ 1352.0, 158.0 ],
 			"float_defaults":  {
 				"grainIntensity": 0.0,
-				"time":           15.447165
+				"time":           232.57101
 			},
 			"float2_defaults": { },
 			"float3_defaults": { },
@@ -188,7 +190,7 @@
 			"id":         67,
 			"pins_in":    [ ],
 			"pins_out":   [ 68 ],
-			"pos":        [ 1208.0, 414.0 ]
+			"pos":        [ 1208.0, 542.0 ]
 		},
 		{
 			"class_name":          "ShapeSelectNode",
@@ -242,26 +244,27 @@
 			"pos":        [ 378.0, -2.0 ]
 		},
 		{
-			"class_name":                "DepthTextureSourceNode",
-			"id":                        142,
-			"pins_in":                   [ ],
-			"pins_out":                  [ 143 ],
-			"pos":                       [ 1061.0, 560.0 ],
-			"texture_source_depth_type": "depthPackRGBA",
-			"texture_source_id":         2187,
-			"vertical_flip":             false,
-			"depth_preview_palette":     "grayscale",
-			"depth_preview_curve":       "linear",
-			"depth_preview_gamma":       1.0,
-			"depth_preview_range_min":   0.0,
-			"depth_preview_range_max":   1.0
+			"class_name":                      "DepthTextureSourceNode",
+			"id":                              142,
+			"pins_in":                         [ ],
+			"pins_out":                        [ 143 ],
+			"pos":                             [ 810.0, 494.0 ],
+			"texture_source_depth_type":       "depthPackRGBA",
+			"texture_source_id":               -1,
+			"vertical_flip":                   false,
+			"use_first_client_texture_source": true,
+			"depth_preview_palette":           "grayscale",
+			"depth_preview_curve":             "linear",
+			"depth_preview_gamma":             1.0,
+			"depth_preview_range_min":         0.0,
+			"depth_preview_range_max":         1.0
 		},
 		{
 			"class_name": "DepthOfFieldNode",
 			"id":         144,
 			"pins_in":    [ 145, 146 ],
 			"pins_out":   [ 147 ],
-			"pos":        [ 1230.0, 330.0 ],
+			"pos":        [ 1064.0, 280.0 ],
 			"max_radius": 16,
 			"alpha_mode": "straight"
 		}
