@@ -23,7 +23,8 @@ public:
 	WebsocketInterprocessMessageServer();
 	virtual ~WebsocketInterprocessMessageServer();
 
-	bool initialize() override;
+	bool initialize(bool bAllowRemote) override;
+	bool getIsAllowRemote() const override { return m_bAllowRemote; }
 	void dispose() override;
 	void setSocketEventHandler(const std::string& eventType, SocketEventHandler handler) override;
 	void setRequestHandler(const std::string& requestTypeName, RequestHandler handler) override;
@@ -49,7 +50,6 @@ private:
 
 	// Round-robin cursor into the connection list, advanced once per processRequests() so no
 	// connection is always answered first.
+	bool m_bAllowRemote= false;
 	size_t m_nextRequestConnectionIndex= 0;
 };
-
-#pragma once

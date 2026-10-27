@@ -91,7 +91,7 @@ The generated outputs are checked into git (`bindings/csharp/CMakeLists.txt` car
 
 ## Message flow over the websocket
 
-`src/Editor/Interprocess/WebsocketInterprocessMessageServer` hosts the socket (IXWebSocket, `ws://127.0.0.1`, port `8080`, protocol prefix `Mikan-`, all `#define`d in `InterprocessMessageServerInterface.h`).
+`src/Editor/Interprocess/WebsocketInterprocessMessageServer` hosts the socket (IXWebSocket, `ws://127.0.0.1`, port `8080`, protocol prefix `Mikan-`, all `#define`d in `InterprocessMessageServerInterface.h`). It binds loopback unless the "Allow connections from other machines" setting is on, the same setting and the same rule as the HTTP server, so a client on another machine (the phone) reaches both or neither. Toggling the setting restarts the websocket server through `MikanServer::restartMessageServers`, which drops every connected client; they reconnect as after an editor restart. The port is advertised as the `ws` key of the editor's DNS-SD TXT record ([videosources.md](./videosources.md)).
 
 - Requests are JSON text frames. `WebsocketInterprocessMessageServer::processRequests` SAX-scans the incoming string for `requestTypeName` and dispatches to the handler registered under that exact name; `requestId` is optional (fire-and-forget when absent). An unregistered type name gets a plain `MikanResponse` with `MikanAPIResult::UnknownFunction`.
 

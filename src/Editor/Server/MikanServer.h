@@ -39,10 +39,10 @@ public:
 	inline class IInterprocessMessageServer* getMessageServer() { return m_messageServer; }
 	inline class HttpInterprocessMessageServer* getHttpMessageServer() { return m_httpMessageServer; }
 
-	// Stops and restarts the HTTP server on the port and bind scope the app settings hold.
-	// Previously registered routes are preserved (dispose() only stops the listener, it
-	// doesn't clear the route table).
-	void restartHttpMessageServer();
+	// Stops and restarts the HTTP server on the port and bind scope the app settings hold,
+	// and the websocket server when its bind scope changed. Registered routes and request
+	// handlers are preserved, since dispose() only stops the listeners.
+	void restartMessageServers();
 	inline class ARKitAlignmentRequestHandler* getARKitAlignmentRequestHandler() const
 	{
 		return m_arkitAlignmentRequestHandler;

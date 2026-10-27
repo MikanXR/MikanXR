@@ -95,7 +95,8 @@ bool MikanServer::startup(MainWindow* mainWindow)
 
 	m_ownerWindow= mainWindow;
 
-	if (!m_messageServer->initialize())
+	AppSettingsConfigPtr appSettings= App::getInstance()->getAppSettings();
+	if (!m_messageServer->initialize(appSettings->getHttpServerAllowRemote()))
 	{
 		MIKAN_LOG_ERROR("MikanServer::startup()") << "Failed to initialize interprocess message server";
 		return false;
@@ -105,7 +106,6 @@ bool MikanServer::startup(MainWindow* mainWindow)
 	// integrations) - failing to bind its port shouldn't prevent the primary websocket RPC server
 	// (and the rest of the app) from starting up.
 	{
-		AppSettingsConfigPtr appSettings= App::getInstance()->getAppSettings();
 		const int httpPort= appSettings->getHttpServerPort();
 		if (!m_httpMessageServer->initialize(httpPort, appSettings->getHttpServerAllowRemote()))
 		{
@@ -249,15 +249,26 @@ void MikanServer::shutdown()
 }
 	m_compositorStreamRequestHandler->shutdown();
 
-void MikanServer::restartHttpMessageServer()
+void MikanServer::restartMessageServers()
 {
 	AppSettingsConfigPtr appSettings= App::getInstance()->getAppSettings();
 	const int port= appSettings->getHttpServerPort();
 
 	m_httpMessageServer->dispose();
-	if (!m_httpMessageServer->initialize(port, appSettings->getHttpServerAllowRemote()))
+	if (!m_httpMessageServer->initialize(port, bAllowRemote))
 	{
-		MIKAN_LOG_WARNING("MikanServer::restartHttpMessageServer") << "Failed to restart HTTP server on port " << port;
+		MIKAN_LOG_WARNING("MikanServer::restartMessageServers") << "Failed to restart HTTP server on port " << port;
+	}
+
+	// The websocket server follows the same setting. Restarting it drops every client,
+	// which reconnect as after an editor restart, so it only happens when the scope changed.
+	if (m_messageServer->getIsAllowRemote() != bAllowRemote)
+	{
+		m_messageServer->dispose();
+		if (!m_messageServer->initialize(bAllowRemote))
+		{
+			MIKAN_LOG_WARNING("MikanServer::restartMessageServers") << "Failed to restart the websocket server";
+		}
 	}
 }
 
@@ -265,6 +276,7 @@ ProjectManagerPtr MikanServer::getProjectManager() const { return m_ownerWindow-
 
 // Fetched live rather than cached: loading a project replaces the ProjectConfig instance
 ProjectConfigPtr MikanServer::getProjectConfig() const
+	const bool bAllowRemote= appSettings->getHttpServerAllowRemote();
 {
 	return m_ownerWindow != nullptr ? getProjectManager()->getProjectConfig() : nullptr;
 }

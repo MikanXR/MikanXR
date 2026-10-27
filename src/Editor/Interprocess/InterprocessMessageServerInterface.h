@@ -8,6 +8,7 @@
 #define WEBSOCKET_PROTOCOL_PREFIX "Mikan-"
 
 #define WEBSOCKET_CONNECT_EVENT "connect"
+#define WEBSOCKET_SERVER_PORT_NUMBER 8080
 #define WEBSOCKET_DISCONNECT_EVENT "disconnect"
 #define WEBSOCKET_ERROR_EVENT "error"
 #define WEBSOCKET_PING_EVENT "ping"
@@ -42,7 +43,10 @@ class IInterprocessMessageServer
 public:
 	virtual ~IInterprocessMessageServer() {}
 
-	virtual bool initialize()= 0;
+	// bAllowRemote binds every interface instead of loopback, the scope the HTTP server
+	// takes from the same setting, so a client on another machine can connect
+	virtual bool initialize(bool bAllowRemote)= 0;
+	virtual bool getIsAllowRemote() const= 0;
 	virtual void dispose()= 0;
 	virtual void setSocketEventHandler(const std::string& eventType, SocketEventHandler handler)= 0;
 	virtual void setRequestHandler(const std::string& requestTypeName, RequestHandler handler)= 0;

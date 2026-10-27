@@ -63,7 +63,7 @@ void GuiPanel_HttpTriggers::drawServerSettings()
 			[appSettings, httpPort]()
 			{
 				appSettings->setHttpServerPort(httpPort);
-				MikanServer::getInstance()->restartHttpMessageServer();
+				MikanServer::getInstance()->restartMessageServers();
 			});
 	}
 
@@ -76,7 +76,7 @@ void GuiPanel_HttpTriggers::drawServerSettings()
 			[appSettings, bAllowRemote]()
 			{
 				appSettings->setHttpServerAllowRemote(bAllowRemote);
-				MikanServer::getInstance()->restartHttpMessageServer();
+				MikanServer::getInstance()->restartMessageServers();
 			});
 	}
 }

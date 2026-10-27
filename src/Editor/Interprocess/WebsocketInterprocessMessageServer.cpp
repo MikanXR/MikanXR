@@ -187,8 +187,10 @@ WebsocketInterprocessMessageServer::WebsocketInterprocessMessageServer()
 }
 
 WebsocketInterprocessMessageServer::~WebsocketInterprocessMessageServer() { dispose(); }
+	m_bAllowRemote= bAllowRemote;
 
-bool WebsocketInterprocessMessageServer::initialize()
+
+bool WebsocketInterprocessMessageServer::initialize(bool bAllowRemote)
 {
 	bool bSuccess= true;
 
@@ -202,7 +204,9 @@ bool WebsocketInterprocessMessageServer::initialize()
 	{
 		WebsocketInterprocessMessageServer* ownerMessageServer= this;
 
-		m_server= std::make_shared<ix::WebSocketServer>();
+		// Loopback unless the app settings open the server to the LAN
+		const std::string host= bAllowRemote ? "0.0.0.0" : "127.0.0.1";
+		m_server= std::make_shared<ix::WebSocketServer>(WEBSOCKET_SERVER_PORT_NUMBER, host);
 
 		auto connectionStateFactory= [ownerMessageServer]() -> WebSocketClientConnectionPtr
 		{ return std::make_shared<WebSocketClientConnection>(ownerMessageServer); };
@@ -247,6 +251,9 @@ bool WebsocketInterprocessMessageServer::initialize()
 		m_server->setConnectionStateFactory(connectionStateFactory);
 		m_server->setOnConnectionCallback(clientConnectCallback);
 
+			MIKAN_LOG_INFO("WebsocketInterprocessMessageServer::initialize()")
+				<< "Listening on " << host << ":" << WEBSOCKET_SERVER_PORT_NUMBER
+				<< (bAllowRemote ? "" : " (loopback only)");
 		// Start listening for connections
 		std::pair<bool, std::string> result= m_server->listen();
 		if (result.first)

@@ -2,6 +2,7 @@
 #include "App.h"
 #include "AppSettingsConfig.h"
 #include "ARKitVideoSourceSystem.h"
+#include "InterprocessMessageServerInterface.h"
 #include "Logger.h"
 #include "MainWindow.h"
 #include "ProjectManager.h"
@@ -108,7 +109,8 @@ static std::string getLocalComputerName()
 
 const char* ServiceAdvertiser::k_serviceType= "_mikanxr._tcp";
 
-ServiceAdvertiser::TxtRecord ServiceAdvertiser::buildTxtRecord(const std::vector<int>& arkitBasePorts)
+ServiceAdvertiser::TxtRecord ServiceAdvertiser::buildTxtRecord(const std::vector<int>& arkitBasePorts,
+															   int websocketPort)
 {
 	std::vector<int> sortedPorts= arkitBasePorts;
 	std::sort(sortedPorts.begin(), sortedPorts.end());
@@ -125,6 +127,7 @@ ServiceAdvertiser::TxtRecord ServiceAdvertiser::buildTxtRecord(const std::vector
 	TxtRecord record;
 	record.emplace_back("txtvers", std::to_string(k_txtVersion));
 	record.emplace_back("arkit", portList.str());
+	record.emplace_back("ws", std::to_string(websocketPort));
 	return record;
 }
 
@@ -223,6 +226,7 @@ ServiceAdvertiser::AdvertisedState ServiceAdvertiser::gatherDesiredState() const
 		return state;
 
 	state.httpPort= appSettings->getHttpServerPort();
+	state.websocketPort= WEBSOCKET_SERVER_PORT_NUMBER;
 
 	ProjectManagerPtr projectManager= m_ownerWindow->getProjectManager();
 	ARKitVideoSourceSystemPtr arkitSystem=
@@ -253,7 +257,7 @@ void ServiceAdvertiser::registerService(const AdvertisedState& state)
 
 	std::vector<std::wstring> txtKeys;
 	std::vector<std::wstring> txtValues;
-	for (const auto& entry : buildTxtRecord(state.arkitBasePorts))
+	for (const auto& entry : buildTxtRecord(state.arkitBasePorts, state.websocketPort))
 	{
 		txtKeys.push_back(StringUtils::convertUTF8StringToWString(entry.first));
 		txtValues.push_back(StringUtils::convertUTF8StringToWString(entry.second));
@@ -362,7 +366,7 @@ void ServiceAdvertiser::logRegistrationResult()
 	if (phase == eRegistrationPhase::registered)
 	{
 		std::ostringstream txtText;
-		for (const auto& entry : buildTxtRecord(m_advertisedState.arkitBasePorts))
+		for (const auto& entry : buildTxtRecord(m_advertisedState.arkitBasePorts, m_advertisedState.websocketPort))
 		{
 			txtText << " " << entry.first << "=" << entry.second;
 		}

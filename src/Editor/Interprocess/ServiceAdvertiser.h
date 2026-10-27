@@ -31,10 +31,10 @@ public:
 
 	using TxtRecord= std::vector<std::pair<std::string, std::string>>;
 
-	/// The TXT record for a set of ARKit base ports: `txtvers`, then `arkit`
-	/// holding the ports sorted ascending and comma separated, empty when the
-	/// project has no ARKit source.
-	static TxtRecord buildTxtRecord(const std::vector<int>& arkitBasePorts);
+	/// The TXT record: `txtvers`, then `arkit` holding the ARKit base ports sorted
+	/// ascending and comma separated, empty when the project has no ARKit source,
+	/// then `ws` holding the client API websocket port.
+	static TxtRecord buildTxtRecord(const std::vector<int>& arkitBasePorts, int websocketPort);
 
 	/// The DNS-SD instance name shown to browsers, e.g. `MikanXR (DESKTOP-1)`
 	static std::string buildInstanceLabel(const std::string& computerName);
@@ -64,11 +64,13 @@ private:
 	{
 		bool bEnabled= false;
 		int httpPort= 0;
+		int websocketPort= 0;
 		std::vector<int> arkitBasePorts;
 
 		bool operator==(const AdvertisedState& other) const
 		{
-			return bEnabled == other.bEnabled && httpPort == other.httpPort && arkitBasePorts == other.arkitBasePorts;
+			return bEnabled == other.bEnabled && httpPort == other.httpPort && websocketPort == other.websocketPort
+				   && arkitBasePorts == other.arkitBasePorts;
 		}
 		bool operator!=(const AdvertisedState& other) const { return !(*this == other); }
 	};
