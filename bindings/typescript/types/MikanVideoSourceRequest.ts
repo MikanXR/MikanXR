@@ -4,6 +4,21 @@ import { MikanRequest, MikanResponse } from './../MikanAPITypes.js';
 import { MikanVideoSourceIntrinsics, MikanVideoSourceType } from './MikanVideoSourceTypes.js';
 import type { SerializationField } from './SerializationTypes.js';
 
+export class GetVideoSourceAlignment extends MikanRequest {
+  video_source_id: number = -1;
+
+  constructor() {
+    super();
+    this.requestTypeName = 'GetVideoSourceAlignment';
+  }
+
+  static readonly responseTypeName: string = 'MikanVideoSourceAlignmentResponse';
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'video_source_id', type: 'int32' }
+  ];
+}
+
 export class GetVideoSourceIntrinsics extends MikanRequest {
   video_source_id: number = -1;
 
@@ -31,6 +46,25 @@ export class GetVideoSourceMode extends MikanRequest {
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'video_source_id', type: 'int32' }
+  ];
+}
+
+export class MikanVideoSourceAlignmentResponse extends MikanResponse {
+  video_source_id: number = -1;
+  is_aligned: boolean = false;
+  marker_visible: boolean = false;
+  is_watching: boolean = false;
+
+  constructor() {
+    super();
+    this.responseTypeName = 'MikanVideoSourceAlignmentResponse';
+  }
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'video_source_id', type: 'int32' },
+    { name: 'is_aligned', type: 'boolean' },
+    { name: 'marker_visible', type: 'boolean' },
+    { name: 'is_watching', type: 'boolean' }
   ];
 }
 
@@ -137,6 +171,23 @@ export class SetUSBVideoSourceResolution extends MikanRequest {
   static __serializationMetadata: SerializationField[] = [
     { name: 'video_source_id', type: 'int32' },
     { name: 'resolution', type: 'string' }
+  ];
+}
+
+export class SetVideoSourceAlignmentWatch extends MikanRequest {
+  video_source_id: number = -1;
+  watch: boolean = false;
+
+  constructor() {
+    super();
+    this.requestTypeName = 'SetVideoSourceAlignmentWatch';
+  }
+
+  static readonly responseTypeName: string = 'MikanResponse';
+
+  static __serializationMetadata: SerializationField[] = [
+    { name: 'video_source_id', type: 'int32' },
+    { name: 'watch', type: 'boolean' }
   ];
 }
 

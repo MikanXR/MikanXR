@@ -42,8 +42,8 @@ import { MikanMarkerTrackingVolumeComponentValues, MikanTrackingVolumeComponentV
 import { MikanTransformComponentValues } from './MikanTransformTypes.js';
 import { MikanVRDeviceComponentValues, MikanVRObjectSystemValues } from './MikanVRDeviceTypes.js';
 import { MikanBoolArrayValue, MikanBoolValue, MikanDoubleValue, MikanFloatArrayValue, MikanFloatValue, MikanIntArrayValue, MikanIntValue, MikanLongValue, MikanMatrix4fValue, MikanQuatdValue, MikanQuatfValue, MikanStringArrayValue, MikanStringMapValue, MikanStringValue, MikanUByteArrayValue, MikanUByteValue, MikanUShortValue, MikanVariant, MikanVariantBase, MikanVector2dValue, MikanVector2fValue, MikanVector3dValue, MikanVector3fValue, MikanVector4dValue, MikanVector4fValue } from './MikanVariantTypes.js';
-import { MikanVideoSourceClosedEvent, MikanVideoSourceModeChangedEvent, MikanVideoSourceOpenedEvent } from './MikanVideoSourceEvents.js';
-import { GetVideoSourceIntrinsics, GetVideoSourceMode, MikanVideoSourceIntrinsicsResponse, MikanVideoSourceModeResponse, SetUSBVideoSourceDevice, SetUSBVideoSourceFormat, SetUSBVideoSourceFrameRate, SetUSBVideoSourceResolution } from './MikanVideoSourceRequest.js';
+import { MikanVideoSourceAlignmentEvent, MikanVideoSourceClosedEvent, MikanVideoSourceModeChangedEvent, MikanVideoSourceOpenedEvent } from './MikanVideoSourceEvents.js';
+import { GetVideoSourceAlignment, GetVideoSourceIntrinsics, GetVideoSourceMode, MikanVideoSourceAlignmentResponse, MikanVideoSourceIntrinsicsResponse, MikanVideoSourceModeResponse, SetUSBVideoSourceDevice, SetUSBVideoSourceFormat, SetUSBVideoSourceFrameRate, SetUSBVideoSourceResolution, SetVideoSourceAlignmentWatch } from './MikanVideoSourceRequest.js';
 import { MikanARKitVideoSourceValues, MikanBaseIntrinsics, MikanDistortionCoefficients, MikanFileVideoSourceValues, MikanMonoIntrinsics, MikanNetworkVideoSourceValues, MikanStereoIntrinsics, MikanUSBVideoSourceSystemValues, MikanUSBVideoSourceValues, MikanVideoSourceIntrinsics, MikanVideoSourceValues } from './MikanVideoSourceTypes.js';
 
 export function registerAllTypes(): void {
@@ -207,17 +207,21 @@ export function registerAllTypes(): void {
   TypeRegistry.register('MikanVector3fValue', MikanVector3fValue);
   TypeRegistry.register('MikanVector4dValue', MikanVector4dValue);
   TypeRegistry.register('MikanVector4fValue', MikanVector4fValue);
+  TypeRegistry.register('MikanVideoSourceAlignmentEvent', MikanVideoSourceAlignmentEvent);
   TypeRegistry.register('MikanVideoSourceClosedEvent', MikanVideoSourceClosedEvent);
   TypeRegistry.register('MikanVideoSourceModeChangedEvent', MikanVideoSourceModeChangedEvent);
   TypeRegistry.register('MikanVideoSourceOpenedEvent', MikanVideoSourceOpenedEvent);
+  TypeRegistry.register('GetVideoSourceAlignment', GetVideoSourceAlignment);
   TypeRegistry.register('GetVideoSourceIntrinsics', GetVideoSourceIntrinsics);
   TypeRegistry.register('GetVideoSourceMode', GetVideoSourceMode);
+  TypeRegistry.register('MikanVideoSourceAlignmentResponse', MikanVideoSourceAlignmentResponse);
   TypeRegistry.register('MikanVideoSourceIntrinsicsResponse', MikanVideoSourceIntrinsicsResponse);
   TypeRegistry.register('MikanVideoSourceModeResponse', MikanVideoSourceModeResponse);
   TypeRegistry.register('SetUSBVideoSourceDevice', SetUSBVideoSourceDevice);
   TypeRegistry.register('SetUSBVideoSourceFormat', SetUSBVideoSourceFormat);
   TypeRegistry.register('SetUSBVideoSourceFrameRate', SetUSBVideoSourceFrameRate);
   TypeRegistry.register('SetUSBVideoSourceResolution', SetUSBVideoSourceResolution);
+  TypeRegistry.register('SetVideoSourceAlignmentWatch', SetVideoSourceAlignmentWatch);
   TypeRegistry.register('MikanARKitVideoSourceValues', MikanARKitVideoSourceValues);
   TypeRegistry.register('MikanBaseIntrinsics', MikanBaseIntrinsics);
   TypeRegistry.register('MikanDistortionCoefficients', MikanDistortionCoefficients);

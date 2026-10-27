@@ -21,6 +21,7 @@ namespace MikanXR
 			Register("GetDMXData", () => new GetDMXData());
 			Register("GetFunctionListRequest", () => new GetFunctionListRequest());
 			Register("GetPropertyDescriptors", () => new GetPropertyDescriptors());
+			Register("GetVideoSourceAlignment", () => new GetVideoSourceAlignment());
 			Register("GetVideoSourceIntrinsics", () => new GetVideoSourceIntrinsics());
 			Register("GetVideoSourceMode", () => new GetVideoSourceMode());
 			Register("InitClientRequest", () => new InitClientRequest());
@@ -156,6 +157,8 @@ namespace MikanXR
 			Register("MikanVector4dValue", () => new MikanVector4dValue());
 			Register("MikanVector4f", () => new MikanVector4f());
 			Register("MikanVector4fValue", () => new MikanVector4fValue());
+			Register("MikanVideoSourceAlignmentEvent", () => new MikanVideoSourceAlignmentEvent());
+			Register("MikanVideoSourceAlignmentResponse", () => new MikanVideoSourceAlignmentResponse());
 			Register("MikanVideoSourceClosedEvent", () => new MikanVideoSourceClosedEvent());
 			Register("MikanVideoSourceIntrinsics", () => new MikanVideoSourceIntrinsics());
 			Register("MikanVideoSourceIntrinsicsResponse", () => new MikanVideoSourceIntrinsicsResponse());
@@ -181,6 +184,7 @@ namespace MikanXR
 			Register("SetUSBVideoSourceFormat", () => new SetUSBVideoSourceFormat());
 			Register("SetUSBVideoSourceFrameRate", () => new SetUSBVideoSourceFrameRate());
 			Register("SetUSBVideoSourceResolution", () => new SetUSBVideoSourceResolution());
+			Register("SetVideoSourceAlignmentWatch", () => new SetVideoSourceAlignmentWatch());
 			Register("SystemCreateObjectRequest", () => new SystemCreateObjectRequest());
 			Register("SystemDestroyObjectRequest", () => new SystemDestroyObjectRequest());
 			Register("SystemGetValuesRequest", () => new SystemGetValuesRequest());
