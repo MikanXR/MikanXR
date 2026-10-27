@@ -14,6 +14,8 @@ namespace MikanXR
 			requestTypeName = "GetVideoSourceIntrinsics";
 		}
 
+		public override string ResponseTypeName => nameof(MikanVideoSourceIntrinsicsResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);
@@ -53,6 +55,8 @@ namespace MikanXR
 		{
 			requestTypeName = "GetVideoSourceMode";
 		}
+
+		public override string ResponseTypeName => nameof(MikanVideoSourceModeResponse);
 
 		public override void WriteFields(JObject json)
 		{
@@ -205,6 +209,8 @@ namespace MikanXR
 			requestTypeName = "SetUSBVideoSourceDevice";
 		}
 
+		public override string ResponseTypeName => nameof(MikanResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);
@@ -249,6 +255,8 @@ namespace MikanXR
 		{
 			requestTypeName = "SetUSBVideoSourceFormat";
 		}
+
+		public override string ResponseTypeName => nameof(MikanResponse);
 
 		public override void WriteFields(JObject json)
 		{
@@ -295,6 +303,8 @@ namespace MikanXR
 			requestTypeName = "SetUSBVideoSourceFrameRate";
 		}
 
+		public override string ResponseTypeName => nameof(MikanResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);
@@ -339,6 +349,8 @@ namespace MikanXR
 		{
 			requestTypeName = "SetUSBVideoSourceResolution";
 		}
+
+		public override string ResponseTypeName => nameof(MikanResponse);
 
 		public override void WriteFields(JObject json)
 		{

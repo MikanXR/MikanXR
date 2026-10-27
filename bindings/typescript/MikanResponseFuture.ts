@@ -1,4 +1,4 @@
-import { MikanResponse } from './types';
+import { MikanResponse } from './MikanAPITypes.js';
 
 export class MikanResponseFuture {
   private promise: Promise<MikanResponse>;

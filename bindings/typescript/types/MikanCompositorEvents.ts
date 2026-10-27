@@ -1,6 +1,6 @@
 // This file is auto generated. DO NOT EDIT.
 
-import { MikanEvent } from './MikanAPITypes.js';
+import { MikanEvent } from './../MikanAPITypes.js';
 import type { SerializationField } from './SerializationTypes.js';
 
 export class MikanCompositorStartedEvent extends MikanEvent {

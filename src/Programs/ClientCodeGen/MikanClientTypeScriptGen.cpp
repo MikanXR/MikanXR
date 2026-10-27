@@ -176,7 +176,8 @@ public:
 	{
 		std::filesystem::path filePath= m_context.outputPath / "TypeRegistration.ts";
 
-		// Build (moduleName -> [classNames]) map, preserving module iteration order
+		// Build (source module -> [classNames]) map, preserving module iteration order. A class
+		// the runtime writes by hand is imported from where it lives, not from its module.
 		std::map<std::string, std::vector<std::string>> moduleToClasses;
 		std::vector<std::string> allClassNames; // ordered for registration calls
 
@@ -185,7 +186,8 @@ public:
 			for (rfk::Struct const* structRef : modulePtr->serializableStructs)
 			{
 				const std::string className= structRef->getName();
-				moduleToClasses[moduleName].push_back(className);
+				const std::string sourceModuleName= findModuleForType(className);
+				moduleToClasses[sourceModuleName.empty() ? moduleName : sourceModuleName].push_back(className);
 				allClassNames.push_back(className);
 			}
 		}
@@ -237,6 +239,16 @@ public:
 
 	void emitTypeScriptModuleEntities(std::ofstream& moduleFile, ClientModulePtr const& module)
 	{
+		// The request, response and event bases are the runtime's own, so they are not emitted
+		std::vector<rfk::Struct const*> emittedStructs;
+		for (rfk::Struct const* structRef : module->serializableStructs)
+		{
+			if (!isRuntimeBaseStruct(*structRef))
+			{
+				emittedStructs.push_back(structRef);
+			}
+		}
+
 		// Collect import dependencies and group them by source module
 		std::set<std::string> importedTypes;
 		collectTypeScriptImports(module, importedTypes);
@@ -271,12 +283,12 @@ public:
 			moduleFile << " } from './" << sourceModule << ".js';" << std::endl;
 		}
 		// If this module has structs, import SerializationField from the shared generated file
-		if (module->serializableStructs.size() > 0)
+		if (emittedStructs.size() > 0)
 		{
 			moduleFile << "import type { SerializationField } from './SerializationTypes.js';" << std::endl;
 		}
 
-		if (!moduleImports.empty() || module->serializableStructs.size() > 0)
+		if (!moduleImports.empty() || emittedStructs.size() > 0)
 		{
 			moduleFile << std::endl;
 		}
@@ -290,9 +302,9 @@ public:
 
 		// Emit interfaces. A TypeScript interface cannot extend one declared later in the
 		// file, so these are reordered to put every base ahead of its derived types.
-		if (module->serializableStructs.size() > 0)
+		if (emittedStructs.size() > 0)
 		{
-			std::vector<rfk::Struct const*> sortedStructs= sortStructsByInheritance(module->serializableStructs);
+			std::vector<rfk::Struct const*> sortedStructs= sortStructsByInheritance(emittedStructs);
 
 			for (rfk::Struct const* structRef : sortedStructs)
 			{
@@ -771,6 +783,15 @@ public:
 			}
 			moduleFile << "    this." << typeNameField << " = '" << className << "';" << std::endl;
 			moduleFile << "  }" << std::endl;
+		}
+
+		// A result carries no type name, so a request names the response it is answered with.
+		// A name rather than the class, since the response may be declared later in the file.
+		if (typeNameField == "requestTypeName")
+		{
+			moduleFile << std::endl;
+			moduleFile << "  static readonly responseTypeName: string = '" << getResponseTypeForRequest(structRef)
+					   << "';" << std::endl;
 		}
 
 		// Emit serialization metadata

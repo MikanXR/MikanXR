@@ -1,5 +1,7 @@
 #include "MikanClientLanguageGen.h"
 
+#include "ReflectionHandles.h"
+
 #include <functional>
 #include <map>
 #include <set>
@@ -21,6 +23,20 @@ std::string MikanClientLanguageGen::getTypeNameFieldForStruct(rfk::Struct const&
 		return "eventTypeName";
 
 	return "";
+}
+
+std::string MikanClientLanguageGen::getResponseTypeForRequest(rfk::Struct const& structRef)
+{
+	char const* responseTypeName= Serialization::getResponseTypeName(&structRef);
+
+	return responseTypeName != nullptr ? responseTypeName : MikanResponse::staticGetArchetype().getName();
+}
+
+bool MikanClientLanguageGen::isRuntimeBaseStruct(rfk::Struct const& structRef)
+{
+	return structRef.getId() == MikanRequest::staticGetArchetype().getId()
+		   || structRef.getId() == MikanResponse::staticGetArchetype().getId()
+		   || structRef.getId() == MikanEvent::staticGetArchetype().getId();
 }
 
 AllocatedInstance MikanClientLanguageGen::tryAllocateStructInstance(rfk::Struct const& structRef)
@@ -127,6 +143,14 @@ std::string MikanClientLanguageGen::findModuleForType(std::string const& typeNam
 	if (typeName == "PolymorphicObject" || typeName == "PolymorphicStruct")
 	{
 		return "../PolymorphicObject";
+	}
+
+	// So are the request, response and event bases, which the runtime writes by hand
+	if (typeName == MikanRequest::staticGetArchetype().getName()
+		|| typeName == MikanResponse::staticGetArchetype().getName()
+		|| typeName == MikanEvent::staticGetArchetype().getName())
+	{
+		return "../MikanAPITypes";
 	}
 
 	if (!m_context.database)

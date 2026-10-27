@@ -1,6 +1,6 @@
 // This file is auto generated. DO NOT EDIT.
 
-import { MikanRequest, MikanResponse } from './MikanAPITypes.js';
+import { MikanRequest, MikanResponse } from './../MikanAPITypes.js';
 import { MikanRenderTargetDescriptor } from './MikanCoreTypes.js';
 import { MikanVector2d, MikanVector2i, MikanVector3f } from './MikanMathTypes.js';
 import type { SerializationField } from './SerializationTypes.js';
@@ -13,6 +13,8 @@ export class AllocateCameraRenderTargetTextures extends MikanRequest {
     super();
     this.requestTypeName = 'AllocateCameraRenderTargetTextures';
   }
+
+  static readonly responseTypeName: string = 'MikanResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'camera_id', type: 'int32' },
@@ -28,6 +30,8 @@ export class FreeCameraRenderTargetTextures extends MikanRequest {
     this.requestTypeName = 'FreeCameraRenderTargetTextures';
   }
 
+  static readonly responseTypeName: string = 'MikanResponse';
+
   static __serializationMetadata: SerializationField[] = [
     { name: 'camera_id', type: 'int32' }
   ];
@@ -40,6 +44,8 @@ export class GetCameraProperties extends MikanRequest {
     super();
     this.requestTypeName = 'GetCameraProperties';
   }
+
+  static readonly responseTypeName: string = 'MikanCameraPropertiesResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'camera_id', type: 'int32' }
@@ -86,6 +92,8 @@ export class PublishCameraRenderTargetTextures extends MikanRequest {
     this.requestTypeName = 'PublishCameraRenderTargetTextures';
   }
 
+  static readonly responseTypeName: string = 'MikanResponse';
+
   static __serializationMetadata: SerializationField[] = [
     { name: 'camera_id', type: 'int32' },
     { name: 'frame_index', type: 'int64' }
@@ -100,6 +108,8 @@ export class WriteCameraColorRenderTargetTexture extends MikanRequest {
     super();
     this.requestTypeName = 'WriteCameraColorRenderTargetTexture';
   }
+
+  static readonly responseTypeName: string = 'MikanResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'camera_id', type: 'int32' },
@@ -118,6 +128,8 @@ export class WriteCameraDepthRenderTargetTexture extends MikanRequest {
     this.requestTypeName = 'WriteCameraDepthRenderTargetTexture';
   }
 
+  static readonly responseTypeName: string = 'MikanResponse';
+
   static __serializationMetadata: SerializationField[] = [
     { name: 'camera_id', type: 'int32' },
     { name: 'api_depth_texture_ptr', type: 'any' },
@@ -134,6 +146,8 @@ export class WriteCameraShadowRenderTargetTexture extends MikanRequest {
     super();
     this.requestTypeName = 'WriteCameraShadowRenderTargetTexture';
   }
+
+  static readonly responseTypeName: string = 'MikanResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'camera_id', type: 'int32' },

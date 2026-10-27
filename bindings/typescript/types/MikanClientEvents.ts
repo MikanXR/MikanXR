@@ -1,6 +1,6 @@
 // This file is auto generated. DO NOT EDIT.
 
-import { MikanEvent } from './MikanAPITypes.js';
+import { MikanEvent } from './../MikanAPITypes.js';
 import { MikanDisconnectCode } from './MikanCoreConstants.js';
 import { MikanClientAPIVersion } from './MikanCoreTypes.js';
 import type { SerializationField } from './SerializationTypes.js';

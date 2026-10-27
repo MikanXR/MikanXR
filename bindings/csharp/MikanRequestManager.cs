@@ -14,6 +14,8 @@ namespace MikanXR
 		private class PendingRequest
 		{
 			public int requestId;
+			// The struct a result is read into, since a result carries no type name
+			public string responseTypeName;
 			public TaskCompletionSource<MikanResponse> promise;
 		};
 		private Dictionary<int, PendingRequest> _pendingRequests;
@@ -55,7 +57,10 @@ namespace MikanXR
 			return pendingRequest;
 		}
 
-		public MikanResponseFuture AddResponseHandler(int requestId, MikanAPIResult result)
+		public MikanResponseFuture AddResponseHandler(
+			int requestId,
+			MikanAPIResult result,
+			string responseTypeName= nameof(MikanResponse))
 		{
 			TaskCompletionSource<MikanResponse> promise = new TaskCompletionSource<MikanResponse>();
 			var future= new MikanResponseFuture(this, requestId, promise);
@@ -65,6 +70,7 @@ namespace MikanXR
 				PendingRequest pendingRequest = new PendingRequest()
 				{
 					requestId = requestId,
+					responseTypeName = responseTypeName,
 					promise = promise
 				};
 
@@ -98,39 +104,40 @@ namespace MikanXR
 			request.requestId= m_nextRequestID;
 			m_nextRequestID++;
 
-			// Serialize the request to a Json string
-			string jsonRequestString= JsonSerializer.serializeToJsonString(request);
+			// The request struct's own fields are the params, since the envelope members are not
+			// wire fields, and its type name is the method
+			JObject parameters= JsonSerializer.serializeToJson(request);
+			string requestFrame= MikanJsonRpc.FormatRequest(request.requestTypeName, parameters, request.requestId);
 
-			// Send the request string to Mikan
-			MikanAPIResult result = _transport.SendRequestJson(jsonRequestString);
+			// Send the request frame to Mikan
+			MikanAPIResult result = _transport.SendRequestJson(requestFrame);
 
 			// Create a request handler
-			return AddResponseHandler(request.requestId, result);
+			return AddResponseHandler(request.requestId, result, request.ResponseTypeName);
 		}
 
 		private void InternalTextResponseCallback(string utf8ResponseString)
 		{
-			// The request id is read from the message itself rather than handed in beside it, so
+			// The request id is read from the frame itself rather than handed in beside it, so
 			// a transport only has to deliver the frame. A response that fails to parse still
 			// completes its request, as malformed, rather than leaving it to time out.
-			JObject root;
-			try
+			JObject frame= MikanJsonRpc.TryParse(utf8ResponseString);
+			if (MikanJsonRpc.Classify(frame) != MikanJsonRpcFrameKind.Response)
 			{
-				root = JObject.Parse(utf8ResponseString);
-			}
-			catch (Exception e)
-			{
-				_logCallback(MikanLogLevel.Error, $"Malformed response JSON: {e.Message}");
+				_logCallback(MikanLogLevel.Error, "Not a response: " + utf8ResponseString);
 				return;
 			}
 
-			if (!root.TryGetValue("requestId", out JToken requestIdElement) || requestIdElement.Type != JTokenType.Integer)
+			// Requests are only ever sent with integer ids, so any other id answers nothing this
+			// client sent, such as the null id of a reply to an unreadable frame
+			JToken idToken= frame["id"];
+			if (idToken.Type != JTokenType.Integer)
 			{
-				_logCallback(MikanLogLevel.Error, "Response carries no requestId: " + utf8ResponseString);
+				_logCallback(MikanLogLevel.Error, "Received a response to no request of ours: " + utf8ResponseString);
 				return;
 			}
 
-			int requestId = (int)requestIdElement;
+			int requestId = (int)idToken;
 			PendingRequest pendingRequest = RemovePendingRequest(requestId);
 			if (pendingRequest == null)
 			{
@@ -138,66 +145,74 @@ namespace MikanXR
 				return;
 			}
 
-			MikanResponse response = ParseResponseString(utf8ResponseString, root);
+			MikanResponse response = ParseResponse(utf8ResponseString, frame, pendingRequest.responseTypeName);
 			if (response == null)
 			{
 				response = new MikanResponse()
 				{
-					responseTypeName = nameof(MikanResponse),
-					requestId = requestId,
 					resultCode = MikanAPIResult.MalformedResponse
 				};
 			}
 
+			response.requestId= requestId;
 			pendingRequest.promise.SetResult(response);
 		}
 
-		private MikanResponse ParseResponseString(string utf8ResponseString, JObject root)
+		private MikanResponse ParseResponse(string utf8ResponseString, JObject frame, string responseTypeName)
 		{
-			MikanResponse response = null;
-
-			// Check if the key "responseType" exists
-			if (root.TryGetValue("responseTypeName", out JToken responseTypeNameElement))
+			// An error answers with the plain response whatever the request expected
+			if (frame["error"] is JObject error)
 			{
-				// Check if the value of "responseType" is a string
-				if (responseTypeNameElement.Type == JTokenType.String)
+				return new MikanResponse()
 				{
-					// Get the string value of "responseType"
-					string responseTypeName = (string)responseTypeNameElement;
+					resultCode = GetErrorResultCode(error, utf8ResponseString)
+				};
+			}
 
-					// Attempt to create the response object by class name
-					if (MikanTypeRegistry.Create(responseTypeName) is MikanResponse responseObject)
-					{
-						// Deserialize the response object from the already parsed JSON
-						if (JsonDeserializer.deserializeFromJson(root, responseObject))
-						{
-							response = responseObject;
-						}
-						else
-						{
-							_logCallback(
-								MikanLogLevel.Error,
-								"Failed to deserialize response object from JSON string: " + utf8ResponseString);
-						}
-					}
-					else
-					{
-						_logCallback(MikanLogLevel.Error,
-							"Unknown response type: " + responseTypeName +
-							" (className: " + responseTypeName + ")");
-					}
-				}
-				else
-				{
-					_logCallback(MikanLogLevel.Error, "responseTypes are not of expected types.");
-				}
-			}
-			else
+			if (!(frame["result"] is JObject result))
 			{
-				_logCallback(MikanLogLevel.Error, "responseType keys not found.");
+				_logCallback(MikanLogLevel.Error, "Response result is not an object: " + utf8ResponseString);
+				return null;
 			}
+
+			// The type registry is the reflection-free factory. The response's constructor stamps
+			// its type name.
+			if (!(MikanTypeRegistry.Create(responseTypeName) is MikanResponse response))
+			{
+				_logCallback(MikanLogLevel.Error, "Unknown response type: " + responseTypeName);
+				return null;
+			}
+
+			if (!JsonDeserializer.deserializeFromJson(result, response))
+			{
+				_logCallback(
+					MikanLogLevel.Error,
+					$"Failed to deserialize {responseTypeName} from JSON string: {utf8ResponseString}");
+				return null;
+			}
+
+			response.resultCode= MikanAPIResult.Success;
 
 			return response;
+		}
+
+		// An error's data carries the MikanAPIResult name, which is what fills in the response
+		private MikanAPIResult GetErrorResultCode(JObject error, string utf8ResponseString)
+		{
+			if (error["data"] is JObject data && data["resultCode"] is JToken resultCodeToken)
+			{
+				try
+				{
+					return MikanAPIResultJson.FromJson(resultCodeToken);
+				}
+				catch (Exception)
+				{
+					// Falls through to the warning below
+				}
+			}
+
+			_logCallback(MikanLogLevel.Warning, "Error carries no known resultCode: " + utf8ResponseString);
+			return MikanAPIResult.GeneralError;
 		}
 	}
 }

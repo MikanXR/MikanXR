@@ -63,51 +63,42 @@ namespace MikanXR
 			}
 			else
 			{
-				var root = JObject.Parse(utf8ResponseString);
-
-				// Check if the "eventTypeName" key exists
-				if (root.TryGetValue("eventTypeName", out JToken eventTypeNameElement))
-				{
-					// Check if the value of eventType keys
-					if (eventTypeNameElement.Type == JTokenType.String)
-					{
-						// Get the string value of "eventTypeName"
-						string eventTypeName = (string)eventTypeNameElement;
-
-						// Attempt to create the event object by class name
-						if (MikanTypeRegistry.Create(eventTypeName) is MikanEvent eventObject)
-						{
-							// Deserialize the event object from the already parsed JSON
-							if (JsonDeserializer.deserializeFromJson(root, eventObject))
-							{
-								mikanEvent = eventObject;
-							}
-							else
-							{
-								_logCallback(
-									MikanLogLevel.Error,
-									"Failed to deserialize event object from JSON string: " + utf8ResponseString);
-							}
-						}
-						else
-						{
-							_logCallback(MikanLogLevel.Error,
-								"Unknown event type: " + eventTypeName +
-								" (className: " + eventTypeNameElement + ")");
-						}
-					}
-					else
-					{
-						_logCallback(MikanLogLevel.Error, "eventTypes not of expected types.");
-					}
-				}
-				else
-				{
-					_logCallback(MikanLogLevel.Error, "eventType keys not found.");
-				}
+				mikanEvent = parseEventNotification(utf8ResponseString);
 			}
 
 			return mikanEvent;
+		}
+
+		// An event is a notification from the editor whose method is the event struct's name
+		private MikanEvent parseEventNotification(string utf8EventString)
+		{
+			JObject frame= MikanJsonRpc.TryParse(utf8EventString);
+			if (MikanJsonRpc.Classify(frame) != MikanJsonRpcFrameKind.Event)
+			{
+				_logCallback(MikanLogLevel.Error, "Not an event notification: " + utf8EventString);
+				return null;
+			}
+
+			string eventTypeName= (string)frame["method"];
+			if (!(MikanTypeRegistry.Create(eventTypeName) is MikanEvent eventObject))
+			{
+				_logCallback(MikanLogLevel.Warning, "Received an event of unknown type: " + eventTypeName);
+				return null;
+			}
+
+			// A notification may leave out params, which reads as an event with no fields
+			JObject parameters= frame["params"] as JObject ?? new JObject();
+			if (!JsonDeserializer.deserializeFromJson(parameters, eventObject))
+			{
+				_logCallback(
+					MikanLogLevel.Error,
+					$"Failed to deserialize {eventTypeName} from JSON string: {utf8EventString}");
+				return null;
+			}
+
+			eventObject.eventTypeName= eventTypeName;
+
+			return eventObject;
 		}
 	}
 }

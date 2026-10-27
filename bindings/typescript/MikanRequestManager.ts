@@ -1,19 +1,31 @@
-import {
-  MikanRequest,
-  MikanResponse,
-  MikanAPIResult,
-} from './types/index.js';
+import { MikanRequest, MikanResponse } from './MikanAPITypes.js';
+import { MikanAPIResult } from './types/index.js';
 import { MikanResponseFuture } from './MikanResponseFuture.js';
 import {
-  serializeToJsonString,
-  deserializeFromJsonString,
+  serializeToJson,
+  deserializeFromJson,
   TypeRegistry
 } from './Serialization/index.js';
+import {
+  MikanJsonRpcFrameKind,
+  classifyJsonRpcFrame,
+  formatJsonRpcRequest,
+  parseJsonRpcFrame
+} from './MikanJsonRpc.js';
 
 interface PendingRequest {
   requestId: number;
+  // The class a result is read into, since a result carries no type name
+  responseTypeName: string;
   resolve: (response: MikanResponse) => void;
   reject: (error: Error) => void;
+}
+
+function makeResponse(requestId: number, resultCode: MikanAPIResult): MikanResponse {
+  const response = new MikanResponse();
+  response.requestId = requestId;
+  response.resultCode = resultCode;
+  return response;
 }
 
 export class MikanRequestManager {
@@ -34,36 +46,31 @@ export class MikanRequestManager {
     // Stamp with next request id
     request.requestId = this.nextRequestId++;
 
+    const responseTypeName =
+      (request.constructor as typeof MikanRequest).responseTypeName ?? MikanRequest.responseTypeName;
+
     // Create promise for response
     const promise = new Promise<MikanResponse>((resolve, reject) => {
       if (!this.sendFunction) {
-        const errorResponse: MikanResponse = {
-          responseTypeName: 'MikanResponse',
-          requestId: request.requestId,
-          resultCode: MikanAPIResult.NotConnected
-        };
-        resolve(errorResponse);
+        resolve(makeResponse(request.requestId, MikanAPIResult.NotConnected));
         return;
       }
 
       // Store pending request
       this.pendingRequests.set(request.requestId, {
         requestId: request.requestId,
+        responseTypeName,
         resolve,
         reject
       });
 
       try {
-        // Serialize and send — convert bigints to unquoted JSON numbers
-        let jsonString = JSON.stringify(request, (key, value) => {
-          if (typeof value === 'bigint') {
-            return `__BIGINT__${value.toString()}__BIGINT__`;
-          }
-          return value;
-        });
-        jsonString = jsonString.replace(/"__BIGINT__(-?\d+)__BIGINT__"/g, '$1');
+        // The request class's own fields are the params, since the envelope members are not
+        // wire fields, and its type name is the method
+        const requestFrame = formatJsonRpcRequest(
+          request.requestTypeName, serializeToJson(request), request.requestId);
 
-        this.sendFunction(jsonString);
+        this.sendFunction(requestFrame);
       } catch (error) {
         this.pendingRequests.delete(request.requestId);
         reject(error);
@@ -74,71 +81,79 @@ export class MikanRequestManager {
   }
 
   public handleResponse(responseJson: string): void {
-    try {
-      const response = this.parseResponse(responseJson);
-
-      if (response) {
-        const pendingRequest = this.pendingRequests.get(response.requestId);
-
-        if (pendingRequest) {
-          this.pendingRequests.delete(response.requestId);
-          pendingRequest.resolve(response);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to handle response:', error);
+    const frame = parseJsonRpcFrame(responseJson);
+    if (classifyJsonRpcFrame(frame) !== MikanJsonRpcFrameKind.Response) {
+      console.error('Not a response:', responseJson);
+      return;
     }
+
+    // Requests are only ever sent with integer ids, so any other id answers nothing this
+    // client sent, such as the null id of a reply to an unreadable frame
+    const requestId = frame.id;
+    if (!Number.isInteger(requestId)) {
+      console.error('Received a response to no request of ours:', responseJson);
+      return;
+    }
+
+    const pendingRequest = this.pendingRequests.get(requestId);
+    if (!pendingRequest) {
+      console.error(`Invalid pending request id(${requestId}) for response`);
+      return;
+    }
+    this.pendingRequests.delete(requestId);
+
+    // A response that fails to parse still completes its request, as malformed, rather than
+    // leaving it to time out
+    const response =
+      this.parseResponse(frame, pendingRequest.responseTypeName, responseJson) ??
+      makeResponse(requestId, MikanAPIResult.MalformedResponse);
+    response.requestId = requestId;
+
+    pendingRequest.resolve(response);
   }
 
-  private parseResponse(responseJson: string): MikanResponse | null {
-    try {
-      const parsed = JSON.parse(responseJson);
-
-      if (!parsed.responseTypeName) {
-        console.error('Response missing responseTypeName');
-        return null;
-      }
-
-      // Use TypeRegistry for proper deserialization when the response type is known.
-      // This correctly handles nested PolymorphicObject fields (e.g. valuesObject).
-      const responseType = TypeRegistry.get(parsed.responseTypeName);
-      if (responseType) {
-        const response = new responseType();
-        deserializeFromJsonString(responseJson, response, responseType);
-        return response as MikanResponse;
-      }
-
-      // Fallback for unknown response types: shallow-copy JSON fields.
-      let resultCode = MikanAPIResult.Success;
-      if (parsed.resultCode !== undefined) {
-        if (typeof parsed.resultCode === 'string') {
-          resultCode = (MikanAPIResult as any)[parsed.resultCode];
-          if (resultCode === undefined) {
-            console.warn(`Unknown resultCode string: ${parsed.resultCode}`);
-            resultCode = MikanAPIResult.GeneralError;
-          }
-        } else {
-          resultCode = Number(parsed.resultCode);
-        }
-      }
-
-      const response: MikanResponse = {
-        responseTypeName: parsed.responseTypeName,
-        requestId: parsed.requestId,
-        resultCode: resultCode
-      };
-
-      // Copy any additional properties from specific response types
-      Object.assign(response, parsed);
-
-      // Restore the numeric resultCode after Object.assign
-      response.resultCode = resultCode;
-
+  private parseResponse(frame: any, responseTypeName: string, responseJson: string): MikanResponse | null {
+    // An error answers with the plain response whatever the request expected
+    if ('error' in frame) {
+      const response = new MikanResponse();
+      response.resultCode = this.getErrorResultCode(frame.error, responseJson);
       return response;
-    } catch (error) {
-      console.error('Failed to parse response:', error);
+    }
+
+    if (frame.result === null || typeof frame.result !== 'object') {
+      console.error('Response result is not an object:', responseJson);
       return null;
     }
+
+    // The response's constructor stamps its type name
+    const responseType = TypeRegistry.get(responseTypeName);
+    if (!responseType) {
+      console.error(`Unknown response type: ${responseTypeName}`);
+      return null;
+    }
+
+    const response = new responseType() as MikanResponse;
+    if (!deserializeFromJson(frame.result, response, responseType)) {
+      console.error(`Failed to deserialize ${responseTypeName} from:`, responseJson);
+      return null;
+    }
+
+    response.resultCode = MikanAPIResult.Success;
+    return response;
+  }
+
+  // An error's data carries the MikanAPIResult name, which is what fills in the response
+  private getErrorResultCode(error: any, responseJson: string): MikanAPIResult {
+    const resultCodeName = error?.data?.resultCode;
+    if (typeof resultCodeName === 'string') {
+      const resultCode = (MikanAPIResult as any)[resultCodeName];
+      if (typeof resultCode === 'number') {
+        return resultCode as MikanAPIResult;
+      }
+    }
+
+    console.warn('Error carries no known resultCode:', responseJson);
+    return MikanAPIResult.GeneralError;
   }
 
   public cancelRequest(requestId: number): MikanAPIResult {

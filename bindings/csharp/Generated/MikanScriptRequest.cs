@@ -16,6 +16,8 @@ namespace MikanXR
 			requestTypeName = "InvokeScriptTrigger";
 		}
 
+		public override string ResponseTypeName => nameof(MikanResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);
@@ -63,6 +65,8 @@ namespace MikanXR
 		{
 			requestTypeName = "SendScriptMessage";
 		}
+
+		public override string ResponseTypeName => nameof(MikanResponse);
 
 		public override void WriteFields(JObject json)
 		{

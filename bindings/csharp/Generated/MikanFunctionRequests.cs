@@ -55,6 +55,8 @@ namespace MikanXR
 			requestTypeName = "GetFunctionListRequest";
 		}
 
+		public override string ResponseTypeName => nameof(FunctionDescriptorResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);
@@ -100,6 +102,8 @@ namespace MikanXR
 		{
 			requestTypeName = "InvokeComponentFunctionRequest";
 		}
+
+		public override string ResponseTypeName => nameof(MikanResponse);
 
 		public override void WriteFields(JObject json)
 		{
@@ -149,6 +153,8 @@ namespace MikanXR
 		{
 			requestTypeName = "InvokeSystemFunctionRequest";
 		}
+
+		public override string ResponseTypeName => nameof(MikanResponse);
 
 		public override void WriteFields(JObject json)
 		{

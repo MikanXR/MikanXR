@@ -14,6 +14,8 @@ namespace MikanXR
 			requestTypeName = "DisposeClientRequest";
 		}
 
+		public override string ResponseTypeName => nameof(MikanResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);
@@ -53,6 +55,8 @@ namespace MikanXR
 		{
 			requestTypeName = "InitClientRequest";
 		}
+
+		public override string ResponseTypeName => nameof(MikanResponse);
 
 		public override void WriteFields(JObject json)
 		{

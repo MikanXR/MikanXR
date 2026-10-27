@@ -1,6 +1,6 @@
 // This file is auto generated. DO NOT EDIT.
 
-import { MikanRequest, MikanResponse } from './MikanAPITypes.js';
+import { MikanRequest, MikanResponse } from './../MikanAPITypes.js';
 import type { SerializationField } from './SerializationTypes.js';
 
 export class ArucoMarkerImageResponse extends MikanResponse {
@@ -24,6 +24,8 @@ export class GetArucoMarkerImageRequest extends MikanRequest {
     super();
     this.requestTypeName = 'GetArucoMarkerImageRequest';
   }
+
+  static readonly responseTypeName: string = 'ArucoMarkerImageResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'markerId', type: 'int32' },

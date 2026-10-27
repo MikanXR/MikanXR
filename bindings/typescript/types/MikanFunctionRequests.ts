@@ -1,6 +1,6 @@
 // This file is auto generated. DO NOT EDIT.
 
-import { MikanRequest, MikanResponse } from './MikanAPITypes.js';
+import { MikanRequest, MikanResponse } from './../MikanAPITypes.js';
 import { MikanFunctionDescriptor } from './MikanFunctionTypes.js';
 import type { SerializationField } from './SerializationTypes.js';
 
@@ -26,6 +26,8 @@ export class GetFunctionListRequest extends MikanRequest {
     this.requestTypeName = 'GetFunctionListRequest';
   }
 
+  static readonly responseTypeName: string = 'FunctionDescriptorResponse';
+
   static __serializationMetadata: SerializationField[] = [
     { name: 'systemFilter', type: 'string' },
     { name: 'componentFilter', type: 'string' }
@@ -42,6 +44,8 @@ export class InvokeComponentFunctionRequest extends MikanRequest {
     this.requestTypeName = 'InvokeComponentFunctionRequest';
   }
 
+  static readonly responseTypeName: string = 'MikanResponse';
+
   static __serializationMetadata: SerializationField[] = [
     { name: 'ownerSystem', type: 'string' },
     { name: 'componentId', type: 'int32' },
@@ -57,6 +61,8 @@ export class InvokeSystemFunctionRequest extends MikanRequest {
     super();
     this.requestTypeName = 'InvokeSystemFunctionRequest';
   }
+
+  static readonly responseTypeName: string = 'MikanResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'ownerSystem', type: 'string' },

@@ -117,6 +117,9 @@ private:
 
 		for (rfk::Struct const* structRef : module->serializableStructs)
 		{
+			if (isRuntimeBaseStruct(*structRef))
+				continue;
+
 			success&= emitCSharpSerializableClass(moduleFile, *structRef);
 			moduleFile << std::endl;
 		}
@@ -198,6 +201,16 @@ private:
 			moduleFile << "\t\t{" << std::endl;
 			moduleFile << "\t\t\t" << typeNameField << " = \"" << className << "\";" << std::endl;
 			moduleFile << "\t\t}" << std::endl;
+		}
+
+		// A result carries no type name, so a request names the response it is answered with.
+		// nameof rather than typeof, since the runtime compiles into hosts that forbid reading a
+		// Type's members.
+		if (typeNameField == "requestTypeName")
+		{
+			moduleFile << std::endl;
+			moduleFile << "\t\tpublic override string ResponseTypeName => nameof("
+					   << getResponseTypeForRequest(structRef) << ");" << std::endl;
 		}
 
 		// A polymorphic value names itself for the wire's class_name

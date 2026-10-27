@@ -1,6 +1,6 @@
 // This file is auto generated. DO NOT EDIT.
 
-import { MikanRequest } from './MikanAPITypes.js';
+import { MikanRequest } from './../MikanAPITypes.js';
 import { MikanScriptMessageInfo } from './MikanScriptTypes.js';
 import type { SerializationField } from './SerializationTypes.js';
 
@@ -13,6 +13,8 @@ export class InvokeScriptTrigger extends MikanRequest {
     super();
     this.requestTypeName = 'InvokeScriptTrigger';
   }
+
+  static readonly responseTypeName: string = 'MikanResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'script_name', type: 'string' },
@@ -28,6 +30,8 @@ export class SendScriptMessage extends MikanRequest {
     super();
     this.requestTypeName = 'SendScriptMessage';
   }
+
+  static readonly responseTypeName: string = 'MikanResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'message', type: 'MikanScriptMessageInfo' }

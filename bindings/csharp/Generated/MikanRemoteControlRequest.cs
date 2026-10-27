@@ -12,6 +12,8 @@ namespace MikanXR
 		{
 			requestTypeName = "GetAppStageInfo";
 		}
+
+		public override string ResponseTypeName => nameof(MikanAppStageInfoResponse);
 	};
 
 	public class MikanAppStageInfoResponse : MikanResponse
@@ -63,6 +65,8 @@ namespace MikanXR
 		{
 			requestTypeName = "MikanRemoteControlCommand";
 		}
+
+		public override string ResponseTypeName => nameof(MikanRemoteControlCommandResult);
 
 		public override void WriteFields(JObject json)
 		{
@@ -146,6 +150,8 @@ namespace MikanXR
 		{
 			requestTypeName = "PopAppStage";
 		}
+
+		public override string ResponseTypeName => nameof(MikanResponse);
 	};
 
 	public class PushAppStage : MikanRequest
@@ -156,6 +162,8 @@ namespace MikanXR
 		{
 			requestTypeName = "PushAppStage";
 		}
+
+		public override string ResponseTypeName => nameof(MikanResponse);
 
 		public override void WriteFields(JObject json)
 		{

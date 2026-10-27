@@ -92,7 +92,8 @@ class JsonWriteVisitor implements IVisitor {
     const jsonRuntimeObject: any = {};
 
     if (instance) {
-      className = instance.constructor.name;
+      // The name the object was given, since a minified build renames classes
+      className = polymorphicObject.runtimeClassName || instance.constructor.name;
 
       // Serialize the instance
       const jsonVisitor = new JsonWriteVisitor(jsonRuntimeObject);
@@ -109,16 +110,17 @@ class JsonWriteVisitor implements IVisitor {
 
   visitEnum(accessor: ValueAccessor): void {
     let enumValue = accessor.getValueObject();
-    // If the stored value is a string enum name (e.g. "NONE"), convert to integer
-    if (typeof enumValue === 'string') {
+    // The wire carries an enum value by name, as the other runtimes write it. A value of an
+    // enum the registry does not know, or one with no name, goes out as its integer.
+    if (typeof enumValue === 'number') {
       const fieldMetadata = (accessor as any).fieldMetadata;
       const enumTypeName = fieldMetadata?.type?.startsWith('enum:')
         ? fieldMetadata.type.substring(5)
         : null;
       if (enumTypeName) {
-        const intValue = EnumRegistry.stringToInt(enumTypeName, enumValue);
-        if (intValue !== null) {
-          enumValue = intValue;
+        const enumName = EnumRegistry.intToString(enumTypeName, enumValue);
+        if (enumName !== null) {
+          enumValue = enumName;
         }
       }
     }
@@ -153,15 +155,14 @@ class JsonWriteVisitor implements IVisitor {
     this.setJsonValueFromAccessor<number>(accessor);
   }
 
+  // A 64-bit integer stays a bigint in the JSON object, and stringifyJson writes it as a bare
+  // integer, which is the only form the editor reads one in
   visitLong(accessor: ValueAccessor): void {
-    const value = accessor.getValue<bigint>();
-    // Convert bigint to string for JSON compatibility
-    this.setJsonValueFromJsonToken(accessor.valueField, value.toString());
+    this.setJsonValueFromAccessor<bigint>(accessor);
   }
 
   visitULong(accessor: ValueAccessor): void {
-    const value = accessor.getValue<bigint>();
-    this.setJsonValueFromJsonToken(accessor.valueField, value.toString());
+    this.setJsonValueFromAccessor<bigint>(accessor);
   }
 
   visitFloat(accessor: ValueAccessor): void {
@@ -196,7 +197,21 @@ class JsonWriteVisitor implements IVisitor {
  */
 export function serializeToJsonString(instance: any, instanceType?: any): string {
   const json = serializeToJson(instance, instanceType);
-  return JSON.stringify(json);
+  return stringifyJson(json);
+}
+
+/**
+ * JSON.stringify, except that a bigint is written as a bare integer rather than refused
+ */
+export function stringifyJson(value: any): string {
+  const jsonString = JSON.stringify(value, (key, fieldValue) => {
+    if (typeof fieldValue === 'bigint') {
+      return `__BIGINT__${fieldValue.toString()}__BIGINT__`;
+    }
+    return fieldValue;
+  });
+
+  return jsonString.replace(/"__BIGINT__(-?\d+)__BIGINT__"/g, '$1');
 }
 
 /**

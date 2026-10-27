@@ -9,9 +9,10 @@ namespace MikanXR
 {
 	// The transport that speaks the editor's websocket protocol from managed code alone, for a
 	// host that cannot or would rather not load MikanClientCore.dll. It mirrors the native
-	// client's rules: the Mikan-<version> sub-protocol on the handshake, text frames carrying
-	// eventTypeName are events and those carrying responseTypeName are responses, binary frames
-	// are always responses, and a close becomes the disconnect event string.
+	// client's rules: the Mikan-<version> sub-protocol on the handshake, JSON-RPC text frames
+	// where a notification (a method with no id) is an event and a frame with an id and a result
+	// or an error is a response, binary frames are unexpected and dropped, and a close becomes the
+	// disconnect event string.
 	//
 	// Connect returns at once with the handshake in flight, as the native transport does. A
 	// connect that fails is logged and reported through GetIsConnected; the caller retries on
@@ -23,8 +24,6 @@ namespace MikanXR
 
 		private const string k_subProtocolPrefix= "Mikan-";
 		private const string k_disconnectEventPrefix= "disconnect";
-		private const string k_eventTypeKey= "\"eventTypeName\"";
-		private const string k_responseTypeKey= "\"responseTypeName\"";
 		private const int k_receiveChunkBytes= 64 * 1024;
 		private const int k_closeTimeoutMilliseconds= 1000;
 
@@ -293,19 +292,17 @@ namespace MikanXR
 
 		private void HandleTextMessage(string message)
 		{
-			// The type name keys only ever appear at the top level of a message, since no wire
-			// type carries a field by either name, so a substring test is the whole check
-			if (message.Contains(k_eventTypeKey))
+			switch (MikanJsonRpc.Classify(MikanJsonRpc.TryParse(message)))
 			{
-				_eventQueue.Enqueue(message);
-			}
-			else if (message.Contains(k_responseTypeKey))
-			{
-				_textResponseHandler?.Invoke(message);
-			}
-			else
-			{
-				Log(MikanLogLevel.Error, $"MikanWebSocketTransport::ReceiveLoop - unrecognized message: {message}");
+				case MikanJsonRpcFrameKind.Event:
+					_eventQueue.Enqueue(message);
+					break;
+				case MikanJsonRpcFrameKind.Response:
+					_textResponseHandler?.Invoke(message);
+					break;
+				default:
+					Log(MikanLogLevel.Error, $"MikanWebSocketTransport::ReceiveLoop - unrecognized message: {message}");
+					break;
 			}
 		}
 

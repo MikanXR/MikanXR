@@ -14,6 +14,8 @@ namespace MikanXR
 			requestTypeName = "GetDMXData";
 		}
 
+		public override string ResponseTypeName => nameof(MikanDMXDataResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);
@@ -94,6 +96,8 @@ namespace MikanXR
 		{
 			requestTypeName = "SetLightDMXDataSubcription";
 		}
+
+		public override string ResponseTypeName => nameof(MikanResponse);
 
 		public override void WriteFields(JObject json)
 		{

@@ -61,6 +61,14 @@ protected:
 	// empty string for every other struct.
 	static std::string getTypeNameFieldForStruct(rfk::Struct const& structRef);
 
+	// The name of the response struct a request is answered with: the one its ResponseType
+	// property names, or MikanResponse when it carries none
+	static std::string getResponseTypeForRequest(rfk::Struct const& structRef);
+
+	// True for MikanRequest, MikanResponse and MikanEvent. The envelope carries their members, so
+	// each runtime writes these three by hand and no generator emits them.
+	static bool isRuntimeBaseStruct(rfk::Struct const& structRef);
+
 	// A default-constructed instance of structRef, or an invalid one when no known base class
 	// is found or allocation fails.
 	static AllocatedInstance tryAllocateStructInstance(rfk::Struct const& structRef);

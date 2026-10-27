@@ -53,6 +53,8 @@ namespace MikanXR
 			requestTypeName = "ComponentGetValuesRequest";
 		}
 
+		public override string ResponseTypeName => nameof(ComponentGetValuesResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);
@@ -188,6 +190,8 @@ namespace MikanXR
 			requestTypeName = "GetComponentListRequest";
 		}
 
+		public override string ResponseTypeName => nameof(ComponentListResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);
@@ -233,6 +237,8 @@ namespace MikanXR
 		{
 			requestTypeName = "GetPropertyDescriptors";
 		}
+
+		public override string ResponseTypeName => nameof(PropertyDescriptorResponse);
 
 		public override void WriteFields(JObject json)
 		{
@@ -323,6 +329,8 @@ namespace MikanXR
 		{
 			requestTypeName = "PropertyGetValueRequest";
 		}
+
+		public override string ResponseTypeName => nameof(PropertyGetValueResponse);
 
 		public override void WriteFields(JObject json)
 		{
@@ -415,6 +423,8 @@ namespace MikanXR
 			requestTypeName = "PropertySetValueRequest";
 		}
 
+		public override string ResponseTypeName => nameof(PropertySetValueResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);
@@ -479,6 +489,8 @@ namespace MikanXR
 			requestTypeName = "SetPropertyNotifyMode";
 		}
 
+		public override string ResponseTypeName => nameof(MikanResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);
@@ -533,6 +545,8 @@ namespace MikanXR
 			requestTypeName = "SystemCreateObjectRequest";
 		}
 
+		public override string ResponseTypeName => nameof(MikanResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);
@@ -583,6 +597,8 @@ namespace MikanXR
 			requestTypeName = "SystemDestroyObjectRequest";
 		}
 
+		public override string ResponseTypeName => nameof(MikanResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);
@@ -630,6 +646,8 @@ namespace MikanXR
 		{
 			requestTypeName = "SystemGetValuesRequest";
 		}
+
+		public override string ResponseTypeName => nameof(SystemGetValuesResponse);
 
 		public override void WriteFields(JObject json)
 		{

@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
+import { MikanEvent } from './MikanAPITypes.js';
 import {
-  MikanEvent,
   MikanDisconnectedEvent,
   MikanDisconnectCode,
   MikanPropertyUpdateEvent,
@@ -8,7 +8,8 @@ import {
 import {
   MikanAppStageChangedEvent,
 } from './types/MikanRemoteControlEvents.js';
-import { deserializeFromJsonString, TypeRegistry } from './Serialization/index.js';
+import { deserializeFromJson, TypeRegistry } from './Serialization/index.js';
+import { MikanJsonRpcFrameKind, classifyJsonRpcFrame, parseJsonRpcFrame } from './MikanJsonRpc.js';
 
 export class MikanEventManager extends EventEmitter {
   private static readonly WEBSOCKET_DISCONNECT_EVENT = 'disconnect';
@@ -36,27 +37,32 @@ export class MikanEventManager extends EventEmitter {
         return this.parseDisconnectEvent(message);
       }
 
-      // Parse JSON events
-      const parsed = JSON.parse(message);
-
-      if (!parsed.eventTypeName) {
-        console.error('Event missing eventTypeName');
+      // An event is a notification from the editor whose method is the event class's name
+      const frame = parseJsonRpcFrame(message);
+      if (classifyJsonRpcFrame(frame) !== MikanJsonRpcFrameKind.Event) {
+        console.error('Not an event notification:', message);
         return null;
       }
 
+      const eventTypeName: string = frame.method;
+      // A notification may leave out params, which reads as an event with no fields
+      const params = frame.params !== null && typeof frame.params === 'object' ? frame.params : {};
+
       // Use TypeRegistry for proper deserialization when the event type is known
-      const eventType = TypeRegistry.get(parsed.eventTypeName);
+      const eventType = TypeRegistry.get(eventTypeName);
       if (eventType) {
-        const event = new eventType();
-        deserializeFromJsonString(message, event, eventType);
-        return event as MikanEvent;
+        const event = new eventType() as MikanEvent;
+        if (!deserializeFromJson(params, event, eventType)) {
+          return null;
+        }
+        event.eventTypeName = eventTypeName;
+        return event;
       }
 
-      // Fallback: shallow-copy JSON fields for unknown event types
-      const event: MikanEvent = {
-        eventTypeName: parsed.eventTypeName
-      };
-      Object.assign(event, parsed);
+      // Fallback: shallow-copy the params for event types newer than these bindings
+      const event = new MikanEvent();
+      Object.assign(event, params);
+      event.eventTypeName = eventTypeName;
 
       return event;
     } catch (error) {
@@ -75,11 +81,11 @@ export class MikanEventManager extends EventEmitter {
       disconnectReason = tokens[2];
     }
 
-    return {
-      eventTypeName: 'MikanDisconnectedEvent',
-      code: disconnectCode,
-      reason: disconnectReason
-    };
+    const event = new MikanDisconnectedEvent();
+    event.code = disconnectCode;
+    event.reason = disconnectReason;
+
+    return event;
   }
 
   // Typed event listeners

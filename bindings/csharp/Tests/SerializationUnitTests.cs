@@ -533,10 +533,15 @@ namespace MikanXR
 			success &= !floatValue.TryGetField("no_such_field", out object _);
 
 			// A field declared on a base class is reached through the derived type
+			var stencil = new MikanBoxStencilComponentValues();
+			success &= stencil.TrySetField("is_disabled", true) && stencil.is_disabled;
+			success &= stencil.TryGetField("is_disabled", out object boxedDisabled) && boxedDisabled is bool b && b;
+
+			// The envelope carries the response's own members, so they are not fields
 			var response = new MikanCameraPropertiesResponse();
-			success &= response.TrySetField("resultCode", (int)MikanAPIResult.Timeout) &&
-				response.resultCode == MikanAPIResult.Timeout;
-			success &= response.TrySetField("responseTypeName", null) && response.responseTypeName == null;
+			success &= !response.TrySetField("resultCode", (int)MikanAPIResult.Timeout);
+			success &= !response.TrySetField("responseTypeName", null);
+			success &= !response.TryGetField("requestId", out object _);
 
 			Console.WriteLine("    TestFieldAccessByName - " + (success ? "PASSED" : "FAILED"));
 			return success;

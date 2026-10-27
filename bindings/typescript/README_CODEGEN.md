@@ -18,7 +18,7 @@ ClientCodeGen.exe ../../../src/Programs/ClientCodeGen/config_typescript.json
 
 The following files are auto-generated and should NOT be edited manually:
 
-- `MikanAPITypes.ts` - Core API types, base event/request/response interfaces
+- `MikanAPITypes.ts` - The `MikanAPIResult` enum (the base request/response/event classes are hand-written in `../MikanAPITypes.ts`, since the JSON-RPC envelope carries their members)
 - `MikanCoreTypes.ts` - Core enums and constants
 - `MikanMathTypes.ts` - Math types (vectors, quaternions, transforms, matrices)
 - `MikanClientTypes.ts` - Client information structures
@@ -52,6 +52,8 @@ The following files are maintained manually and are NOT generated:
 - `index.ts` - Main export file (update this when new modules are added)
 - `PolymorphicObject.ts` - Base classes for polymorphic types
 - `MikanClient.ts` - Main WebSocket client implementation
+- `MikanAPITypes.ts` - The `MikanRequest`, `MikanResponse` and `MikanEvent` bases
+- `MikanJsonRpc.ts` - The JSON-RPC 2.0 envelope: format a request, parse and classify a frame
 - `MikanRequestManager.ts` - Request/response handling
 - `MikanEventManager.ts` - Event handling
 - `MikanResponseFuture.ts` - Promise-based response futures

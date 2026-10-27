@@ -1,6 +1,6 @@
 // This file is auto generated. DO NOT EDIT.
 
-import { MikanRequest } from './MikanAPITypes.js';
+import { MikanRequest } from './../MikanAPITypes.js';
 import { MikanClientInfo } from './MikanClientTypes.js';
 import type { SerializationField } from './SerializationTypes.js';
 
@@ -11,6 +11,8 @@ export class DisposeClientRequest extends MikanRequest {
     super();
     this.requestTypeName = 'DisposeClientRequest';
   }
+
+  static readonly responseTypeName: string = 'MikanResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'clientId', type: 'string' }
@@ -24,6 +26,8 @@ export class InitClientRequest extends MikanRequest {
     super();
     this.requestTypeName = 'InitClientRequest';
   }
+
+  static readonly responseTypeName: string = 'MikanResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'clientInfo', type: 'MikanClientInfo' }

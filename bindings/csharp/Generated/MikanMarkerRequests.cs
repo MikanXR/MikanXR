@@ -55,6 +55,8 @@ namespace MikanXR
 			requestTypeName = "GetArucoMarkerImageRequest";
 		}
 
+		public override string ResponseTypeName => nameof(ArucoMarkerImageResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);

@@ -1,7 +1,7 @@
 // This file is auto generated. DO NOT EDIT.
 
+import { MikanRequest, MikanResponse } from './../MikanAPITypes.js';
 import { PolymorphicObject, PolymorphicStruct } from './../PolymorphicObject.js';
-import { MikanRequest, MikanResponse } from './MikanAPITypes.js';
 import { MikanPropertyDescriptor, MikanPropertyValue } from './MikanPropertyTypes.js';
 import { MikanVariant } from './MikanVariantTypes.js';
 import type { SerializationField } from './SerializationTypes.js';
@@ -20,6 +20,8 @@ export class ComponentGetValuesRequest extends MikanRequest {
     super();
     this.requestTypeName = 'ComponentGetValuesRequest';
   }
+
+  static readonly responseTypeName: string = 'ComponentGetValuesResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'ownerSystem', type: 'string' },
@@ -66,6 +68,8 @@ export class GetComponentListRequest extends MikanRequest {
     this.requestTypeName = 'GetComponentListRequest';
   }
 
+  static readonly responseTypeName: string = 'ComponentListResponse';
+
   static __serializationMetadata: SerializationField[] = [
     { name: 'ownerSystem', type: 'string' },
     { name: 'componentClassName', type: 'string' }
@@ -81,6 +85,8 @@ export class GetPropertyDescriptors extends MikanRequest {
     super();
     this.requestTypeName = 'GetPropertyDescriptors';
   }
+
+  static readonly responseTypeName: string = 'PropertyDescriptorResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'systemFilter', type: 'string' },
@@ -111,6 +117,8 @@ export class PropertyGetValueRequest extends MikanRequest {
     super();
     this.requestTypeName = 'PropertyGetValueRequest';
   }
+
+  static readonly responseTypeName: string = 'PropertyGetValueResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'ownerSystem', type: 'string' },
@@ -143,6 +151,8 @@ export class PropertySetValueRequest extends MikanRequest {
     this.requestTypeName = 'PropertySetValueRequest';
   }
 
+  static readonly responseTypeName: string = 'PropertySetValueResponse';
+
   static __serializationMetadata: SerializationField[] = [
     { name: 'ownerSystem', type: 'string' },
     { name: 'componentId', type: 'int32' },
@@ -173,6 +183,8 @@ export class SetPropertyNotifyMode extends MikanRequest {
     this.requestTypeName = 'SetPropertyNotifyMode';
   }
 
+  static readonly responseTypeName: string = 'MikanResponse';
+
   static __serializationMetadata: SerializationField[] = [
     { name: 'systemFilter', type: 'string' },
     { name: 'componentFilter', type: 'string' },
@@ -191,6 +203,8 @@ export class SystemCreateObjectRequest extends MikanRequest {
     this.requestTypeName = 'SystemCreateObjectRequest';
   }
 
+  static readonly responseTypeName: string = 'MikanResponse';
+
   static __serializationMetadata: SerializationField[] = [
     { name: 'ownerSystem', type: 'string' },
     { name: 'componentClassName', type: 'string' },
@@ -208,6 +222,8 @@ export class SystemDestroyObjectRequest extends MikanRequest {
     this.requestTypeName = 'SystemDestroyObjectRequest';
   }
 
+  static readonly responseTypeName: string = 'MikanResponse';
+
   static __serializationMetadata: SerializationField[] = [
     { name: 'ownerSystem', type: 'string' },
     { name: 'componentClassName', type: 'string' },
@@ -222,6 +238,8 @@ export class SystemGetValuesRequest extends MikanRequest {
     super();
     this.requestTypeName = 'SystemGetValuesRequest';
   }
+
+  static readonly responseTypeName: string = 'SystemGetValuesResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'ownerSystem', type: 'string' }

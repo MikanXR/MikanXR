@@ -11,7 +11,7 @@ Updated `src/Programs/ClientCodeGen/ClientCodeGen.cpp` to support TypeScript gen
 
 ### ✅ Generated Type Files (`bindings/typescript/types/`)
 All Mikan API types are now auto-generated:
-- `MikanAPITypes.ts` - Base types (Event, Request, Response)
+- `MikanAPITypes.ts` - The `MikanAPIResult` enum (the base classes are hand-written at the package root)
 - `MikanCoreTypes.ts` - Enums and constants
 - `MikanMathTypes.ts` - Math types (vectors, quaternions, transforms)
 - `MikanClientTypes.ts` - Client info structures
@@ -147,6 +147,8 @@ bindings/typescript/
 │   └── ... (all API types)
 │   └── index.ts               # Re-exports all types
 ├── MikanClient.ts             # Manual - Main client
+├── MikanAPITypes.ts           # Manual - Request/Response/Event bases
+├── MikanJsonRpc.ts            # Manual - JSON-RPC 2.0 envelope
 ├── MikanRequestManager.ts     # Manual - Request handling
 ├── MikanEventManager.ts       # Manual - Event handling
 ├── MikanResponseFuture.ts     # Manual - Promise wrapper

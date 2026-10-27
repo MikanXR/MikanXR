@@ -1,6 +1,6 @@
 // This file is auto generated. DO NOT EDIT.
 
-import { MikanRequest, MikanResponse } from './MikanAPITypes.js';
+import { MikanRequest, MikanResponse } from './../MikanAPITypes.js';
 import { MikanDMXData } from './MikanLightTypes.js';
 import type { SerializationField } from './SerializationTypes.js';
 
@@ -11,6 +11,8 @@ export class GetDMXData extends MikanRequest {
     super();
     this.requestTypeName = 'GetDMXData';
   }
+
+  static readonly responseTypeName: string = 'MikanDMXDataResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'dmx_universe_ids', type: 'int32', isArray: true }
@@ -38,6 +40,8 @@ export class SetLightDMXDataSubcription extends MikanRequest {
     super();
     this.requestTypeName = 'SetLightDMXDataSubcription';
   }
+
+  static readonly responseTypeName: string = 'MikanResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'light_ids', type: 'int32', isArray: true },

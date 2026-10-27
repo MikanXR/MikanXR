@@ -1,14 +1,14 @@
 import { MikanRequestManager } from './MikanRequestManager.js';
 import { MikanEventManager } from './MikanEventManager.js';
 import { MikanResponseFuture } from './MikanResponseFuture.js';
+import { MikanRequest, MikanEvent } from './MikanAPITypes.js';
+import { MikanJsonRpcFrameKind, classifyJsonRpcFrame, parseJsonRpcFrame } from './MikanJsonRpc.js';
 import {
-  MikanRequest,
   MikanAPIResult,
   MikanLogLevel,
   MikanClientInfo,
   MikanClientGraphicsApi,
   MikanConstants,
-  MikanEvent,
   MikanConnectedEvent,
   MikanDisconnectedEvent,
   MikanPropertyUpdateEvent
@@ -225,26 +225,18 @@ export class MikanClient {
       return;
     }
 
-    // Try to determine if this is a response or an event
-    try {
-      const parsed = JSON.parse(data);
-
-      if (parsed.responseTypeName) {
-        // This is a response
+    // A notification (a method with no id) is an event, and a frame with an id and a result or
+    // an error is a response. The disconnect event is raised by onclose, never received.
+    switch (classifyJsonRpcFrame(parseJsonRpcFrame(data))) {
+      case MikanJsonRpcFrameKind.Event:
+        this.eventManager.handleEventMessage(data);
+        break;
+      case MikanJsonRpcFrameKind.Response:
         this.requestManager.handleResponse(data);
-      } else if (parsed.eventTypeName) {
-        // This is an event
-        this.eventManager.handleEventMessage(data);
-      } else {
+        break;
+      default:
         this.log(MikanLogLevel.Warning, `Unknown message type: ${data}`);
-      }
-    } catch (error) {
-      // If not JSON, might be a disconnect event
-      if (data.startsWith('disconnect')) {
-        this.eventManager.handleEventMessage(data);
-      } else {
-        this.log(MikanLogLevel.Error, `Failed to parse message: ${error}`);
-      }
+        break;
     }
   }
 

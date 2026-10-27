@@ -1,6 +1,6 @@
 // This file is auto generated. DO NOT EDIT.
 
-import { MikanEvent } from './MikanAPITypes.js';
+import { MikanEvent } from './../MikanAPITypes.js';
 import { MikanPropertyValue } from './MikanPropertyTypes.js';
 import type { SerializationField } from './SerializationTypes.js';
 

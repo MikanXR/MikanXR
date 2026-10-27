@@ -1,7 +1,7 @@
 // This file is auto generated. DO NOT EDIT.
 
 import { TypeRegistry } from '../Serialization/JsonDeserializer.js';
-import { MikanEvent, MikanRequest, MikanResponse } from './MikanAPITypes.js';
+import { MikanEvent, MikanRequest, MikanResponse } from './../MikanAPITypes.js';
 import { MikanAnchorComponentValues, MikanAnchorSystemValues } from './MikanAnchorTypes.js';
 import { MikanCameraNewFrameEvent, MikanCameraNewPropertiesEvent } from './MikanCameraEvents.js';
 import { AllocateCameraRenderTargetTextures, FreeCameraRenderTargetTextures, GetCameraProperties, MikanCameraPropertiesResponse, PublishCameraRenderTargetTextures, WriteCameraColorRenderTargetTexture, WriteCameraDepthRenderTargetTexture, WriteCameraShadowRenderTargetTexture } from './MikanCameraRequests.js';

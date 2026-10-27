@@ -15,6 +15,8 @@ namespace MikanXR
 			requestTypeName = "AllocateCameraRenderTargetTextures";
 		}
 
+		public override string ResponseTypeName => nameof(MikanResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);
@@ -59,6 +61,8 @@ namespace MikanXR
 			requestTypeName = "FreeCameraRenderTargetTextures";
 		}
 
+		public override string ResponseTypeName => nameof(MikanResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);
@@ -98,6 +102,8 @@ namespace MikanXR
 		{
 			requestTypeName = "GetCameraProperties";
 		}
+
+		public override string ResponseTypeName => nameof(MikanCameraPropertiesResponse);
 
 		public override void WriteFields(JObject json)
 		{
@@ -225,6 +231,8 @@ namespace MikanXR
 			requestTypeName = "PublishCameraRenderTargetTextures";
 		}
 
+		public override string ResponseTypeName => nameof(MikanResponse);
+
 		public override void WriteFields(JObject json)
 		{
 			base.WriteFields(json);
@@ -269,6 +277,8 @@ namespace MikanXR
 		{
 			requestTypeName = "WriteCameraColorRenderTargetTexture";
 		}
+
+		public override string ResponseTypeName => nameof(MikanResponse);
 
 		public override void WriteFields(JObject json)
 		{
@@ -316,6 +326,8 @@ namespace MikanXR
 		{
 			requestTypeName = "WriteCameraDepthRenderTargetTexture";
 		}
+
+		public override string ResponseTypeName => nameof(MikanResponse);
 
 		public override void WriteFields(JObject json)
 		{
@@ -369,6 +381,8 @@ namespace MikanXR
 		{
 			requestTypeName = "WriteCameraShadowRenderTargetTexture";
 		}
+
+		public override string ResponseTypeName => nameof(MikanResponse);
 
 		public override void WriteFields(JObject json)
 		{

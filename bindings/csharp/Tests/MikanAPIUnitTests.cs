@@ -14,8 +14,11 @@ namespace MikanXR
 			success &= TestRegistryCreatesKnownResponses();
 			success &= TestRegistryCreatesKnownEvents();
 			success &= TestTypeNameOnDerivedTypes();
-			success &= TestRequestNoTypeIdInJson();
+			success &= TestRequestsNameKnownResponses();
+			success &= TestRequestEnvelope();
 			success &= TestResponseRoundTrip();
+			success &= TestErrorResponseResultCode();
+			success &= TestEventNotificationRoundTrip();
 			Console.WriteLine($"  MikanAPIUnitTests module - {(success ? "PASSED" : "FAILED")}");
 			return success;
 		}
@@ -128,33 +131,30 @@ namespace MikanXR
 			return success;
 		}
 
-		// Verifies the serialized JSON has requestTypeName present and
-		// requestTypeId absent — confirming the wire-format change is complete.
-		private bool TestRequestNoTypeIdInJson()
+		// Every request names a response the type registry can create, since a result carries no
+		// type name and is read into whatever the request names
+		private bool TestRequestsNameKnownResponses()
 		{
-			const string testName = "request JSON has typeName but no typeId";
+			const string testName = "requests name known response types";
 			bool success = true;
 
 			try
 			{
-				var cmd = new MikanRemoteControlCommand();
-				cmd.requestId = 1;
-				cmd.parameters = new List<string> { "param1", "param2" };
-				cmd.command = "test_command";
+				success = new MikanRequest().ResponseTypeName == nameof(MikanResponse);
+				Debug.Assert(success, "MikanRequest does not default to the plain MikanResponse");
 
-				string jsonString = JsonSerializer.serializeToJsonString(cmd);
+				success &= new GetAppStageInfo().ResponseTypeName == nameof(MikanAppStageInfoResponse);
+				Debug.Assert(success, "GetAppStageInfo does not name MikanAppStageInfoResponse");
 
-				JObject j = JObject.Parse(jsonString);
-
-				// requestTypeName must be present (needed for server routing)
-				success = j.Property("requestTypeName") != null;
-				Debug.Assert(success, "requestTypeName missing from serialized request JSON");
-
-				success &= ((string)j["requestTypeName"] == "MikanRemoteControlCommand");
-				Debug.Assert(success, "requestTypeName has wrong value in serialized JSON");
-
-				success &= j.Property("requestTypeId") == null;
-				Debug.Assert(success, "requestTypeId present in serialized request JSON");
+				foreach (string typeName in MikanTypeRegistry.GetTypeNames())
+				{
+					if (MikanTypeRegistry.Create(typeName) is MikanRequest request &&
+						!(MikanTypeRegistry.Create(request.ResponseTypeName) is MikanResponse))
+					{
+						Console.WriteLine($"    {typeName} names the unknown response type {request.ResponseTypeName}");
+						success = false;
+					}
+				}
 			}
 			catch (Exception e)
 			{
@@ -166,53 +166,43 @@ namespace MikanXR
 			return success;
 		}
 
-		// Simulates the client-side parse path: serialize a response to JSON, then create it
-		// through the type registry by the name it carries and read it back.
-		private bool TestResponseRoundTrip()
+		// A request goes out as a JSON-RPC request whose method is the request's type name, whose
+		// params are the struct's own fields and whose id is the request id
+		private bool TestRequestEnvelope()
 		{
-			const string testName = "response JSON round-trip via type registry";
+			const string testName = "request is a JSON-RPC request whose params are the struct's fields";
 			bool success = true;
 
 			try
 			{
-				// Simulate a server-produced response JSON
-				var expected = new MikanResponse
-				{
-					requestId = 99,
-					resultCode = MikanAPIResult.Success
-				};
+				var transport = new FakeTransport();
+				var requestManager = new MikanRequestManager(IgnoreLog);
+				requestManager.Initialize(transport);
 
-				string jsonString = JsonSerializer.serializeToJsonString(expected);
+				var cmd = new MikanRemoteControlCommand();
+				cmd.parameters = new List<string> { "param1", "param2" };
+				cmd.command = "test_command";
+				requestManager.SendRequest(cmd);
 
-				// Simulate client parsing: extract responseTypeName from JSON
-				JObject j = JObject.Parse(jsonString);
-				string responseTypeName = (string)j["responseTypeName"];
+				JObject frame = JObject.Parse(transport.LastSentFrame);
 
-				success = !string.IsNullOrEmpty(responseTypeName);
-				Debug.Assert(success, "responseTypeName missing from serialized JSON");
+				success = (string)frame["jsonrpc"] == "2.0";
+				Debug.Assert(success, "jsonrpc is not 2.0");
 
-				// Create the concrete type by name
-				var actual = MikanTypeRegistry.Create(responseTypeName) as MikanResponse;
-				success &= actual != null;
-				Debug.Assert(success, $"Type '{responseTypeName}' not created by the type registry");
+				success &= (string)frame["method"] == "MikanRemoteControlCommand";
+				Debug.Assert(success, "method is not the request's type name");
 
-				bool bDeserialize = actual != null && JsonDeserializer.deserializeFromJson(j, actual);
+				success &= frame["id"].Type == JTokenType.Integer && (int)frame["id"] == cmd.requestId;
+				Debug.Assert(success, "id is not the request id");
 
-				success &= bDeserialize;
-				Debug.Assert(success, "Failed to deserialize response from JSON");
+				var parameters = frame["params"] as JObject;
+				success &= parameters != null && (string)parameters["command"] == "test_command";
+				Debug.Assert(success, "params does not carry the request's fields");
 
-				// Verify field values survived the round-trip
-				if (bDeserialize)
-				{
-					success &= (actual.requestId == expected.requestId);
-					Debug.Assert(success, $"requestId mismatch: expected {expected.requestId}, got {actual.requestId}");
-
-					success &= (actual.resultCode == expected.resultCode);
-					Debug.Assert(success, $"resultCode mismatch: expected {expected.resultCode}, got {actual.resultCode}");
-
-					success &= (actual.responseTypeName == expected.responseTypeName);
-					Debug.Assert(success, $"responseTypeName mismatch: expected {expected.responseTypeName}, got {actual.responseTypeName}");
-				}
+				success &= parameters != null &&
+					parameters.Property("requestTypeName") == null &&
+					parameters.Property("requestId") == null;
+				Debug.Assert(success, "params carries the envelope members");
 			}
 			catch (Exception e)
 			{
@@ -222,6 +212,222 @@ namespace MikanXR
 
 			Console.WriteLine($"    {testName} - {(success ? "PASSED" : "FAILED")}");
 			return success;
+		}
+
+		// A result is read into the response type the request names, and an empty result
+		// completes a request answered with the plain MikanResponse
+		private bool TestResponseRoundTrip()
+		{
+			const string testName = "response result round-trip into the request's response type";
+			bool success = true;
+
+			try
+			{
+				var transport = new FakeTransport();
+				var requestManager = new MikanRequestManager(IgnoreLog);
+				requestManager.Initialize(transport);
+
+				var request = new GetAppStageInfo();
+				MikanResponseFuture future = requestManager.SendRequest(request);
+
+				var expected = new MikanAppStageInfoResponse();
+				expected.app_stage_info = new MikanAppStageInfo() { app_state_name = "MainMenu" };
+				transport.Respond(MakeResultFrame(request.requestId, JsonSerializer.serializeToJson(expected)));
+
+				success = future.TryFetchResponse(out MikanResponse response);
+				Debug.Assert(success, "response not delivered");
+
+				var typedResponse = response as MikanAppStageInfoResponse;
+				success &= typedResponse != null;
+				Debug.Assert(success, "response not read into MikanAppStageInfoResponse");
+
+				if (typedResponse != null)
+				{
+					success &= typedResponse.app_stage_info.app_state_name == "MainMenu";
+					Debug.Assert(success, "result field lost in the round-trip");
+
+					success &= typedResponse.requestId == request.requestId;
+					Debug.Assert(success, "requestId not taken from the envelope id");
+
+					success &= typedResponse.resultCode == MikanAPIResult.Success;
+					Debug.Assert(success, "resultCode of a result is not Success");
+
+					success &= typedResponse.responseTypeName == nameof(MikanAppStageInfoResponse);
+					Debug.Assert(success, "responseTypeName not stamped");
+				}
+
+				var plainRequest = new PopAppStage();
+				MikanResponseFuture plainFuture = requestManager.SendRequest(plainRequest);
+				transport.Respond(MakeResultFrame(plainRequest.requestId, new JObject()));
+
+				success &= plainFuture.TryFetchResponse(out MikanResponse plainResponse) &&
+					plainResponse.GetType() == typeof(MikanResponse) &&
+					plainResponse.resultCode == MikanAPIResult.Success &&
+					plainResponse.requestId == plainRequest.requestId;
+				Debug.Assert(success, "empty result not read into the plain MikanResponse");
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine($"    {testName} - EXCEPTION: {e.Message}");
+				success = false;
+			}
+
+			Console.WriteLine($"    {testName} - {(success ? "PASSED" : "FAILED")}");
+			return success;
+		}
+
+		// An error answers with the plain MikanResponse, whose result code is the error data's
+		// MikanAPIResult name
+		private bool TestErrorResponseResultCode()
+		{
+			const string testName = "error response carries the MikanAPIResult name";
+			bool success = true;
+
+			try
+			{
+				var transport = new FakeTransport();
+				var requestManager = new MikanRequestManager(IgnoreLog);
+				requestManager.Initialize(transport);
+
+				var request = new GetAppStageInfo();
+				MikanResponseFuture future = requestManager.SendRequest(request);
+				transport.Respond(
+					"{\"jsonrpc\":\"2.0\",\"id\":" + request.requestId + "," +
+					"\"error\":{\"code\":-32601,\"message\":\"UnknownFunction\"," +
+					"\"data\":{\"resultCode\":\"UnknownFunction\"}}}");
+
+				success = future.TryFetchResponse(out MikanResponse response) &&
+					response.GetType() == typeof(MikanResponse) &&
+					response.resultCode == MikanAPIResult.UnknownFunction &&
+					response.requestId == request.requestId;
+				Debug.Assert(success, "error not read into a plain MikanResponse with its result code");
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine($"    {testName} - EXCEPTION: {e.Message}");
+				success = false;
+			}
+
+			Console.WriteLine($"    {testName} - {(success ? "PASSED" : "FAILED")}");
+			return success;
+		}
+
+		// An event is a notification typed by its method, and the disconnect string still
+		// becomes MikanDisconnectedEvent
+		private bool TestEventNotificationRoundTrip()
+		{
+			const string testName = "event is a notification typed by its method";
+			bool success = true;
+
+			try
+			{
+				var transport = new FakeTransport();
+				var eventManager = new MikanEventManager(IgnoreLog);
+				eventManager.Initialize(transport);
+
+				var expected = new MikanConnectedEvent();
+				expected.serverVersion = new MikanClientAPIVersion() { version = 1 };
+				expected.minClientVersion = new MikanClientAPIVersion() { version = 1 };
+				expected.isClientCompatible = true;
+				expected.httpPort = 8090;
+
+				var frame = new JObject();
+				frame.Add("jsonrpc", "2.0");
+				frame.Add("method", nameof(MikanConnectedEvent));
+				frame.Add("params", JsonSerializer.serializeToJson(expected));
+				transport.QueueEvent(frame.ToString());
+
+				success = eventManager.FetchNextEvent(out MikanEvent mikanEvent) == MikanAPIResult.Success;
+				Debug.Assert(success, "event not fetched");
+
+				var connectedEvent = mikanEvent as MikanConnectedEvent;
+				success &= connectedEvent != null &&
+					connectedEvent.eventTypeName == nameof(MikanConnectedEvent) &&
+					connectedEvent.httpPort == 8090 &&
+					connectedEvent.isClientCompatible;
+				Debug.Assert(success, "notification not read into MikanConnectedEvent");
+
+				transport.QueueEvent("disconnect:1000:bye");
+				success &= eventManager.FetchNextEvent(out MikanEvent disconnectEvent) == MikanAPIResult.Success &&
+					disconnectEvent is MikanDisconnectedEvent disconnected &&
+					disconnected.code == MikanDisconnectCode.Normal &&
+					disconnected.reason == "bye";
+				Debug.Assert(success, "disconnect string not read into MikanDisconnectedEvent");
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine($"    {testName} - EXCEPTION: {e.Message}");
+				success = false;
+			}
+
+			Console.WriteLine($"    {testName} - {(success ? "PASSED" : "FAILED")}");
+			return success;
+		}
+
+		private static string MakeResultFrame(int requestId, JObject result)
+		{
+			var frame = new JObject();
+			frame.Add("jsonrpc", "2.0");
+			frame.Add("id", requestId);
+			frame.Add("result", result);
+
+			return frame.ToString();
+		}
+
+		private static void IgnoreLog(MikanLogLevel logLevel, string logMessage)
+		{
+		}
+
+		// Records what the managers send and hands back whatever a test feeds it, in place of
+		// a connection to the editor
+		private class FakeTransport : IMikanTransport
+		{
+			private MikanTextResponseHandler _textResponseHandler;
+			private readonly Queue<string> _events = new Queue<string>();
+
+			public string LastSentFrame { get; private set; }
+			public string ClientName => "FakeTransport";
+
+			public void Respond(string responseFrame)
+			{
+				_textResponseHandler?.Invoke(responseFrame);
+			}
+
+			public void QueueEvent(string eventFrame)
+			{
+				_events.Enqueue(eventFrame);
+			}
+
+			public MikanAPIResult Initialize(string clientName, MikanLogLevel minLogLevel, MikanLogCallback logCallback)
+			{
+				return MikanAPIResult.Success;
+			}
+
+			public bool GetIsInitialized() { return true; }
+			public MikanAPIResult Shutdown() { return MikanAPIResult.Success; }
+			public void SetResponseHandler(MikanTextResponseHandler textHandler) { _textResponseHandler = textHandler; }
+			public MikanAPIResult Connect(string host, string port) { return MikanAPIResult.Success; }
+			public MikanAPIResult Disconnect() { return MikanAPIResult.Success; }
+			public bool GetIsConnected() { return true; }
+			public void Dispose() { }
+
+			public MikanAPIResult SendRequestJson(string utf8RequestJson)
+			{
+				LastSentFrame = utf8RequestJson;
+				return MikanAPIResult.Success;
+			}
+
+			public MikanAPIResult FetchNextEvent(out string utf8EventString)
+			{
+				if (_events.Count > 0)
+				{
+					utf8EventString = _events.Dequeue();
+					return MikanAPIResult.Success;
+				}
+
+				utf8EventString = null;
+				return MikanAPIResult.NoData;
+			}
 		}
 	}
 }

@@ -1,6 +1,6 @@
 // This file is auto generated. DO NOT EDIT.
 
-import { MikanRequest, MikanResponse } from './MikanAPITypes.js';
+import { MikanRequest, MikanResponse } from './../MikanAPITypes.js';
 import { MikanAppStageInfo } from './MikanRemoteControlTypes.js';
 import type { SerializationField } from './SerializationTypes.js';
 
@@ -10,6 +10,8 @@ export class GetAppStageInfo extends MikanRequest {
     super();
     this.requestTypeName = 'GetAppStageInfo';
   }
+
+  static readonly responseTypeName: string = 'MikanAppStageInfoResponse';
 
   static __serializationMetadata: SerializationField[] = [
   ];
@@ -37,6 +39,8 @@ export class MikanRemoteControlCommand extends MikanRequest {
     this.requestTypeName = 'MikanRemoteControlCommand';
   }
 
+  static readonly responseTypeName: string = 'MikanRemoteControlCommandResult';
+
   static __serializationMetadata: SerializationField[] = [
     { name: 'command', type: 'string' },
     { name: 'parameters', type: 'string', isArray: true }
@@ -63,6 +67,8 @@ export class PopAppStage extends MikanRequest {
     this.requestTypeName = 'PopAppStage';
   }
 
+  static readonly responseTypeName: string = 'MikanResponse';
+
   static __serializationMetadata: SerializationField[] = [
   ];
 }
@@ -74,6 +80,8 @@ export class PushAppStage extends MikanRequest {
     super();
     this.requestTypeName = 'PushAppStage';
   }
+
+  static readonly responseTypeName: string = 'MikanResponse';
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'app_state_name', type: 'string' }
