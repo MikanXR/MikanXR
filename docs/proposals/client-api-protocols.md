@@ -90,7 +90,7 @@ Part 1 removed the binary frames before Part 2 redefines the text envelope, and 
 
 ### Value flow
 
-- Reads: `getPropertyValue` on the main thread. An HTTP GET of a subtree hops with `runOnMainThread(..., 2000)` (the `ARKitAlignmentRequestHandler` pattern) and serializes the JSON there.
+- Reads: `getPropertyValue` on the main thread. An HTTP GET of a subtree hops with `runOnMainThread(..., 2000)` (the pattern `ModelGeometryRequestHandler` uses) and serializes the JSON there.
 - Writes: an OSC message (UDP or websocket binary frame) is converted by `OscPropertyBridge` against the descriptor's type, rejected when the address is unknown, read-only, or the argument tags do not match, and applied with `setPropertyValue` on the main thread. Nothing else is needed for capture: `TransactionHistory` records every definition change passively, and its 0.75 s coalescing window (`k_coalesceWindowSeconds`) already merges a fader stream on one component into one transaction. Interleaved streams on two components seal alternately, which is acceptable and noted in transactions.md.
 - Pushes: `OscQueryServer` subscribes to `ProjectConfig::OnPropertyChanged` exactly as `PropertyRequestHandler::onProjectConfigChanged` does, including the rebind on project load, resolves the leaf definition to its system or component, and for each listened address whose property changed reads the value and sends one OSC message per listening connection. Undo and redo arrive here like any write. A writer that also listens hears its own write echoed, which is standard OSCQuery behavior and what makes undo reach it.
 
