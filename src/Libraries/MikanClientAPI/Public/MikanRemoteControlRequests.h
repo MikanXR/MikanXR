@@ -32,7 +32,8 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanRemoteControlRequest"
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanRemoteControlRequest")) GetAppStageInfo : public MikanRequest
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanRemoteControlRequest"),
+						Serialization::ResponseType("MikanAppStageInfoResponse")) GetAppStageInfo : public MikanRequest
 {
 	GetAppStageInfo(){MIKAN_REQUEST_TYPE_INFO_INIT(GetAppStageInfo)}
 
@@ -41,7 +42,8 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanRemoteControlRequest"
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanRemoteControlRequest")) MikanRemoteControlCommand
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanRemoteControlRequest"),
+						Serialization::ResponseType("MikanRemoteControlCommandResult")) MikanRemoteControlCommand
 	: public MikanRequest
 {
 	MikanRemoteControlCommand(){MIKAN_REQUEST_TYPE_INFO_INIT(MikanRemoteControlCommand)}

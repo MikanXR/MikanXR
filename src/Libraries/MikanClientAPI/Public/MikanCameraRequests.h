@@ -106,7 +106,9 @@ public:
 /// Pulls the camera state a client renders from. A client that starts, or binds a
 /// camera, after the last MikanCameraNewPropertiesEvent went out asks for it here
 /// rather than waiting for the state to change.
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanCameraRequests")) GetCameraProperties : public MikanRequest
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanCameraRequests"),
+						Serialization::ResponseType("MikanCameraPropertiesResponse")) GetCameraProperties
+	: public MikanRequest
 {
 public:
 	GetCameraProperties(){MIKAN_REQUEST_TYPE_INFO_INIT(GetCameraProperties)}

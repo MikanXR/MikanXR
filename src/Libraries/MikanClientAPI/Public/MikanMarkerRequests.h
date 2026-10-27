@@ -8,7 +8,8 @@
 #include "MikanMarkerRequests.rfkh.h"
 #endif
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanMarkerRequests")) GetArucoMarkerImageRequest
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanMarkerRequests"),
+						Serialization::ResponseType("ArucoMarkerImageResponse")) GetArucoMarkerImageRequest
 	: public MikanRequest
 {
 public:

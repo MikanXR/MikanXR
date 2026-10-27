@@ -17,6 +17,7 @@ int main(int argc, char* argv[])
 	UNIT_TEST_SUITE_CALL_CPP_MODULE(run_crash_handler_unit_tests);
 	UNIT_TEST_SUITE_CALL_CPP_MODULE(run_math_glm_unit_tests);
 	UNIT_TEST_SUITE_CALL_CPP_MODULE(run_serialization_unit_tests);
+	UNIT_TEST_SUITE_CALL_CPP_MODULE(run_jsonrpc_unit_tests);
 	UNIT_TEST_SUITE_CALL_CPP_MODULE(run_mikan_api_unit_tests);
 	UNIT_TEST_SUITE_CALL_CPP_MODULE(run_csharp_interop_unit_tests);
 	UNIT_TEST_SUITE_CALL_CPP_MODULE(run_client_names_unit_tests);

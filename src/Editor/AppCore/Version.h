@@ -20,10 +20,10 @@
 
 // Latest Mikan API Protocol Version used by the server
 // Increment this value when the server API changes
-#define MIKAN_SERVER_API_VERSION 0
+#define MIKAN_SERVER_API_VERSION 1
 
 // Oldest Mikan API Protocol Version allowed by the server
 // Increment this value when deprecating old client API versions
-#define MIKAN_MIN_ALLOWED_CLIENT_API_VERSION 0
+#define MIKAN_MIN_ALLOWED_CLIENT_API_VERSION 1
 
 #endif // VERSION_H

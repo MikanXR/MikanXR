@@ -73,8 +73,10 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanAPITypes")) MikanRequ
 	MikanRequest() { MIKAN_TYPE_INFO_INIT(request, MikanRequest) }
 	virtual ~MikanRequest() {} // Virtual destructor for RTTI
 
-	FIELD() Serialization::String requestTypeName;
-	FIELD() MikanRequestID requestId= -1;
+	// The envelope carries these, so they are not reflected fields: requestTypeName is the
+	// JSON-RPC method and requestId the id
+	Serialization::String requestTypeName;
+	MikanRequestID requestId= INVALID_MIKAN_ID;
 
 #ifdef MIKANAPI_REFLECTION_ENABLED
 	MikanRequest_GENERATED
@@ -86,9 +88,12 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanAPITypes")) MikanResp
 	MikanResponse() { MIKAN_TYPE_INFO_INIT(response, MikanResponse) }
 	virtual ~MikanResponse() {} // Virtual destructor for RTTI
 
-	FIELD() Serialization::String responseTypeName;
-	FIELD() MikanRequestID requestId= INVALID_MIKAN_ID;
-	FIELD() MikanAPIResult resultCode= MikanAPIResult::Success;
+	// The envelope carries these, so they are not reflected fields: the id is the answered
+	// request's, and resultCode is Success for a result and error.data.resultCode for an error.
+	// responseTypeName names the struct the result was read into.
+	Serialization::String responseTypeName;
+	MikanRequestID requestId= INVALID_MIKAN_ID;
+	MikanAPIResult resultCode= MikanAPIResult::Success;
 
 #ifdef MIKANAPI_REFLECTION_ENABLED
 	MikanResponse_GENERATED
@@ -100,7 +105,8 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanAPITypes")) MikanEven
 	MikanEvent() { MIKAN_TYPE_INFO_INIT(event, MikanEvent) }
 	virtual ~MikanEvent() {} // Virtual destructor for RTTI
 
-	FIELD() Serialization::String eventTypeName;
+	// The envelope carries this as the JSON-RPC method, so it is not a reflected field
+	Serialization::String eventTypeName;
 
 #ifdef MIKANAPI_REFLECTION_ENABLED
 	MikanEvent_GENERATED

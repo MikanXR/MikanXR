@@ -16,7 +16,7 @@
 enum ENUM(Serialization::CodeGenModule("MikanCoreConstants")) MikanConstants
 {
 	MikanConstants_InvalidMikanID ENUMVALUE_STRING("InvalidMikanID")= -1,
-	MikanConstants_ClientAPIVersion ENUMVALUE_STRING("ClientAPIVersion")= 0,
+	MikanConstants_ClientAPIVersion ENUMVALUE_STRING("ClientAPIVersion")= 1,
 };
 
 /// Result enum for Client Core API

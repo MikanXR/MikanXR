@@ -95,6 +95,27 @@ Serialization_ClientSystemName_GENERATED
 	private : char* m_systemName= nullptr;
 };
 
+// The response struct a request struct is answered with, carried by the request structs whose
+// answer is not the plain MikanResponse. A response carries no type name on the wire, so this is
+// what a client deserializes the result into and what the discovery document names as the result.
+class SERIALIZATION_API
+	CLASS(rfk::PropertySettings(rfk::EEntityKind::Class | rfk::EEntityKind::Struct, false, false)) ResponseType
+	: public rfk::Property
+{
+public:
+	ResponseType() noexcept= default;
+	ResponseType(char const* responseTypeName) noexcept;
+	virtual ~ResponseType();
+
+	char const* getResponseTypeName() const { return m_responseTypeName; }
+
+#ifndef KODGEN_PARSING
+Serialization_ResponseType_GENERATED
+#endif // !KODGEN_PARSING
+
+	private : char* m_responseTypeName= nullptr;
+};
+
 SERIALIZATION_API rfk::EnumValue const* findEnumValueByString(rfk::Enum const& enumType, char const* stringValue);
 SERIALIZATION_API char const* getEnumStringValue(rfk::EnumValue const& enumValue);
 } // namespace Serialization

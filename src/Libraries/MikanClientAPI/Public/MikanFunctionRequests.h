@@ -39,7 +39,8 @@ public:
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanFunctionRequests")) GetFunctionListRequest
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanFunctionRequests"),
+						Serialization::ResponseType("FunctionDescriptorResponse")) GetFunctionListRequest
 	: public MikanRequest
 {
 public:

@@ -13,6 +13,7 @@ class SERIALIZATION_API TypeRegistry
 public:
 	static void build();
 	static StructTypeHandle getStructByName(const std::string& typeName);
+	static EnumTypeHandle getEnumByName(const std::string& typeName);
 };
 } // namespace Serialization
 #endif // SERIALIZATION_REFLECTION_ENABLED

@@ -12,7 +12,8 @@
 // Video Source Request Types
 // ------
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceRequest")) GetVideoSourceMode
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceRequest"),
+						Serialization::ResponseType("MikanVideoSourceModeResponse")) GetVideoSourceMode
 	: public MikanRequest
 {
 public:
@@ -25,7 +26,8 @@ public:
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceRequest")) GetVideoSourceIntrinsics
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanVideoSourceRequest"),
+						Serialization::ResponseType("MikanVideoSourceIntrinsicsResponse")) GetVideoSourceIntrinsics
 	: public MikanRequest
 {
 public:

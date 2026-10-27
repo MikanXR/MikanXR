@@ -10,7 +10,8 @@
 #include "MikanPropertyRequests.rfkh.h"
 #endif
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanPropertyRequests")) PropertySetValueRequest
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanPropertyRequests"),
+						Serialization::ResponseType("PropertySetValueResponse")) PropertySetValueRequest
 	: public MikanRequest
 {
 public:
@@ -26,7 +27,8 @@ public:
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanPropertyRequests")) PropertyGetValueRequest
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanPropertyRequests"),
+						Serialization::ResponseType("PropertyGetValueResponse")) PropertyGetValueRequest
 	: public MikanRequest
 {
 public:
@@ -41,7 +43,8 @@ public:
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanPropertyRequests")) ComponentGetValuesRequest
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanPropertyRequests"),
+						Serialization::ResponseType("ComponentGetValuesResponse")) ComponentGetValuesRequest
 	: public MikanRequest
 {
 public:
@@ -55,7 +58,8 @@ public:
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanPropertyRequests")) GetComponentListRequest
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanPropertyRequests"),
+						Serialization::ResponseType("ComponentListResponse")) GetComponentListRequest
 	: public MikanRequest
 {
 public:
@@ -69,7 +73,8 @@ public:
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanPropertyRequests")) SystemGetValuesRequest
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanPropertyRequests"),
+						Serialization::ResponseType("SystemGetValuesResponse")) SystemGetValuesRequest
 	: public MikanRequest
 {
 public:
@@ -131,7 +136,8 @@ public:
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanPropertyRequests")) GetPropertyDescriptors
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanPropertyRequests"),
+						Serialization::ResponseType("PropertyDescriptorResponse")) GetPropertyDescriptors
 	: public MikanRequest
 {
 public:

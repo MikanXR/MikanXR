@@ -24,7 +24,8 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightRequests")) SetL
 #endif
 };
 
-struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightRequests")) GetDMXData : public MikanRequest
+struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanLightRequests"),
+						Serialization::ResponseType("MikanDMXDataResponse")) GetDMXData : public MikanRequest
 {
 	GetDMXData(){MIKAN_REQUEST_TYPE_INFO_INIT(GetDMXData)}
 

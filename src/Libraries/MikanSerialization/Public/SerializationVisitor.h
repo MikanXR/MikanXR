@@ -128,6 +128,11 @@ public:
 	std::size_t getTemplateArgumentCount() const;
 	std::string getTemplateArgumentTypeName(std::size_t index) const;
 
+	// The reflected struct or enum a template argument names, or null when it names
+	// something else, a fundamental for instance
+	StructTypeHandle getTemplateArgumentStructType(std::size_t index) const;
+	EnumTypeHandle getTemplateArgumentEnumType(std::size_t index) const;
+
 	template <typename t_value_type>
 	bool isTemplateArgumentType(std::size_t index) const
 	{

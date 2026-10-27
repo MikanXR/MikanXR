@@ -105,4 +105,12 @@ ClientSystemName::ClientSystemName(char const* systemName) noexcept
 }
 
 ClientSystemName::~ClientSystemName() { delete[] m_systemName; }
+
+// -- ResponseType -----
+ResponseType::ResponseType(char const* responseTypeName) noexcept
+	: m_responseTypeName(duplicatePropertyString(responseTypeName))
+{
+}
+
+ResponseType::~ResponseType() { delete[] m_responseTypeName; }
 } // namespace Serialization

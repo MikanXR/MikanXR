@@ -257,6 +257,20 @@ std::string ValueAccessor::getTemplateArgumentTypeName(std::size_t index) const
 	return archetype != nullptr ? archetype->getName() : "<Null Archetype>";
 }
 
+StructTypeHandle ValueAccessor::getTemplateArgumentStructType(std::size_t index) const
+{
+	rfk::Type const* argumentType= templateArgumentTypeOf(m_pimpl->type, index);
+
+	return argumentType != nullptr ? rfk::structCast(argumentType->getArchetype()) : nullptr;
+}
+
+EnumTypeHandle ValueAccessor::getTemplateArgumentEnumType(std::size_t index) const
+{
+	rfk::Type const* argumentType= templateArgumentTypeOf(m_pimpl->type, index);
+
+	return argumentType != nullptr ? rfk::enumCast(argumentType->getArchetype()) : nullptr;
+}
+
 bool ValueAccessor::isTemplateArgumentStructType(std::size_t index, StructTypeHandle archetype) const
 {
 	rfk::Type const* argumentType= templateArgumentTypeOf(m_pimpl->type, index);

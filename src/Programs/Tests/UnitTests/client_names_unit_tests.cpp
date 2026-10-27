@@ -2,7 +2,8 @@
 // without reflection, and as the ClientComponentNames and ClientSystemName properties the
 // codegen emits as constants for C# and TypeScript. These tests hold the two in step: every
 // listed struct's statics must equal its property, and every struct that carries a property
-// must be listed.
+// must be listed. The last test holds the requests' ResponseType property to the response structs.
+#include "MikanAPITypes.h"
 #include "MikanAnchorTypes.h"
 #include "MikanCameraTypes.h"
 #include "MikanCompositorTypes.h"
@@ -19,14 +20,18 @@
 #include "MikanTrackingVolumeTypes.h"
 #include "MikanVRDeviceTypes.h"
 #include "MikanVideoSourceTypes.h"
+#include "ReflectionHandles.h"
 #include "SerializationProperty.h"
+#include "TypeRegistry.h"
 
 #include "unit_test.h"
 
 #include "Refureku/Refureku.h"
 
 #include <cstring>
+#include <set>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -200,11 +205,72 @@ bool client_names_test_every_annotated_struct_is_listed()
 	UNIT_TEST_COMPLETE()
 }
 
+// A response carries no type name on the wire, so a client reads a result into the struct the
+// request's ResponseType property names. Every name must be a response struct, and every
+// response struct must be named, or a client could never receive it.
+bool client_names_test_response_types_resolve()
+{
+	UNIT_TEST_BEGIN("every ResponseType names a response struct and every response struct is named")
+
+	Serialization::TypeRegistry::build();
+
+	Serialization::StructTypeHandle baseResponse= &MikanResponse::staticGetArchetype();
+	std::set<Serialization::StructTypeHandle> responseStructs;
+	Serialization::forEachSubclass(baseResponse, [&responseStructs](Serialization::StructTypeHandle subclass)
+								   { responseStructs.insert(subclass); });
+
+	std::vector<Serialization::StructTypeHandle> requestStructs;
+	Serialization::forEachSubclass(&MikanRequest::staticGetArchetype(),
+								   [&requestStructs](Serialization::StructTypeHandle subclass)
+								   { requestStructs.push_back(subclass); });
+
+	if (requestStructs.empty() || responseStructs.empty())
+	{
+		fprintf(stdout, "      found %zu request and %zu response structs\n", requestStructs.size(),
+				responseStructs.size());
+		success= false;
+	}
+
+	std::set<Serialization::StructTypeHandle> namedResponses;
+	for (Serialization::StructTypeHandle requestStruct : requestStructs)
+	{
+		const char* responseTypeName= Serialization::getResponseTypeName(requestStruct);
+		if (responseTypeName == nullptr)
+		{
+			continue;
+		}
+
+		Serialization::StructTypeHandle responseStruct= Serialization::TypeRegistry::getStructByName(responseTypeName);
+		if (responseStruct == nullptr || responseStructs.count(responseStruct) == 0)
+		{
+			fprintf(stdout, "      %s: ResponseType %s is not a reflected MikanResponse subclass\n",
+					Serialization::getStructTypeName(requestStruct), responseTypeName);
+			success= false;
+			continue;
+		}
+
+		namedResponses.insert(responseStruct);
+	}
+
+	for (Serialization::StructTypeHandle responseStruct : responseStructs)
+	{
+		if (namedResponses.count(responseStruct) == 0)
+		{
+			fprintf(stdout, "      %s is named by no request's ResponseType\n",
+					Serialization::getStructTypeName(responseStruct));
+			success= false;
+		}
+	}
+
+	UNIT_TEST_COMPLETE()
+}
+
 bool run_client_names_unit_tests()
 {
 	UNIT_TEST_MODULE_BEGIN("client_names")
 	UNIT_TEST_MODULE_CALL_TEST(client_names_test_component_statics_match_properties);
 	UNIT_TEST_MODULE_CALL_TEST(client_names_test_system_statics_match_properties);
 	UNIT_TEST_MODULE_CALL_TEST(client_names_test_every_annotated_struct_is_listed);
+	UNIT_TEST_MODULE_CALL_TEST(client_names_test_response_types_resolve);
 	UNIT_TEST_MODULE_END()
 }
