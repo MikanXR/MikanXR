@@ -12,7 +12,7 @@ Two DLLs define everything that crosses the process boundary:
 
 - `src/Libraries/MikanClientAPI`: the typed C++ API. `Public/MikanAPI.h` declares `IMikanAPI` (`connect`, `sendRequest`, `fetchNextEvent`). The rest of `Public/` is one header per domain holding the request/response/event structs and shared value types: `Mikan*Requests.h`, `Mikan*Events.h`, `Mikan*Types.h` (camera, stencil, stage, marker, light, property, script, shape, texture source, video source, remote control, ...).
 
-Base types live in `Public/MikanAPITypes.h`: `MikanRequest` (`requestTypeName`, `requestId`), `MikanResponse` (`responseTypeName`, `requestId`, `resultCode`), `MikanEvent` (`eventTypeName`). Every concrete request/response/event derives from one of these.
+Base types live in `Public/MikanAPITypes.h`: `MikanRequest` (`requestTypeName`, `requestId`), `MikanResponse` (`responseTypeName`, `requestId`, `resultCode`), `MikanEvent` (`eventTypeName`). Every concrete request/response/event derives from one of these. Those base members are plain members, not `FIELD()`s: the JSON-RPC envelope carries them (the type name as `method`, the id as `id`, the result code as the error object), and the struct's own reflected fields are the `params` or `result` object. The deserializers are strict about reflected fields, which is why the envelope members are unreflected rather than merely omitted from the JSON. A request struct names its response type with `Serialization::ResponseType("<ResponseStructName>")` beside `CodeGenModule`; a request without it answers the plain `MikanResponse`. The `client_names` unit test checks both directions: every named response type is a reflected `MikanResponse` subclass, and every `MikanResponse` subclass other than the base is named by some request.
 
 Rules that follow from this being the wire contract:
 
@@ -93,13 +93,32 @@ The generated outputs are checked into git (`bindings/csharp/CMakeLists.txt` car
 
 `src/Editor/Interprocess/WebsocketInterprocessMessageServer` hosts the socket (IXWebSocket, `ws://127.0.0.1`, port `8080`, protocol prefix `Mikan-`, all `#define`d in `InterprocessMessageServerInterface.h`). It binds loopback unless the "Allow connections from other machines" setting is on, the same setting and the same rule as the HTTP server, so a client on another machine (the phone) reaches both or neither. Toggling the setting restarts the websocket server through `MikanServer::restartMessageServers`, which drops every connected client; they reconnect as after an editor restart. The port is advertised as the `ws` key of the editor's DNS-SD TXT record ([videosources.md](./videosources.md)).
 
-- Requests are JSON text frames. `WebsocketInterprocessMessageServer::processRequests` SAX-scans the incoming string for `requestTypeName` and dispatches to the handler registered under that exact name; `requestId` is optional (fire-and-forget when absent). An unregistered type name gets a plain `MikanResponse` with `MikanAPIResult::UnknownFunction`.
+Every frame is a JSON-RPC 2.0 text frame. The envelope codec is `JsonRpc.h` in `MikanUtility` (`JsonRpcRequest`, `JsonRpcResponse`, `JsonRpcError`, `JsonRpc::parseIncoming` classifying a frame as request, notification, response or invalid, and the `format*` builders), shared by the server and the C++ client, with its own `jsonrpc` unit test module.
 
-- Responses fill a `ClientResponse` with `utf8String`, serialized with `Serialization::serializeToJsonString` and sent as a text frame. The websocket carries no binary frames. Bulk model geometry is served over HTTP instead (see "Model geometry over HTTP" below).
+- Request: `{"jsonrpc":"2.0","method":"<RequestStructName>","params":{<request fields>},"id":<n>}`. Params are by name. A request that carries no params, or an empty array, reaches the handler as `{}`. The id is an integer from the runtimes, and a string or null id is accepted and echoed back, which is what the OpenRPC inspector's client sends. A request without `id` is a notification: the handler runs and nothing is sent back, not even for an unknown method.
 
-- `processRequests` drains every connection's queue each tick, in arrival order per connection, starting on a different connection each tick.
+- Response: `{"jsonrpc":"2.0","id":<n>,"result":{<response fields>}}`. A request whose response is the plain `MikanResponse` answers `"result":{}`.
 
-- Events are server-to-client JSON pushes. `MikanServer::publishMikanJsonEvent` fans a serialized `MikanEvent` subclass out to every connection. Clients poll them off a queue via `IMikanAPI::fetchNextEvent` / `Mikan_FetchNextEvent`; there is no per-event acknowledgement.
+- Error: `{"jsonrpc":"2.0","id":<n>,"error":{"code":<int>,"message":"<MikanAPIResult name>","data":{"resultCode":"<MikanAPIResult name>"}}}`. `code` is -32601 for `UnknownFunction`, -32602 for `MalformedParameters` and for a non-empty params array, -32700 for an unparsable frame (with `"id":null`), -32600 for a frame that is not a JSON-RPC object (batch arrays included, answered with one -32600, and scalar params), and otherwise the `MikanAPIResult` numeric value, which lies outside the reserved range. `data.resultCode` is always present so a runtime fills the response struct from it. A response-shaped frame sent to the server is dropped with a warning.
+
+- Event: `{"jsonrpc":"2.0","method":"<EventStructName>","params":{<event fields>}}`, a notification from the server. Every publish site goes through `mikanEventToJsonRpc` in `ServerResponseHelpers.h`, and `MikanServer::publishMikanJsonEvent` fans it out to every connection. Clients poll events off a queue via `IMikanAPI::fetchNextEvent` / `Mikan_FetchNextEvent`; there is no per-event acknowledgement.
+
+- Dispatch: `WebsocketInterprocessMessageServer::processRequest` parses with the codec and dispatches by `method` through the registered handlers (`dispatchRequestFrame` is the static core the `jsonrpc_server` test module drives without a socket). `ClientRequest` carries the connection id, the method, the optional id and the params text, and `readTypedRequest` deserializes the params into the request struct, so the handlers are untouched by the envelope. `writeTypedJsonResponse` wraps the response struct as `result`, `writeSimpleJsonResponse` emits `result:{}` on `Success` and an error object otherwise, and both emit nothing for a notification.
+
+- `processRequests` drains every connection's queue each tick, in arrival order per connection, starting on a different connection each tick. The websocket carries no binary frames. Bulk model geometry is served over HTTP instead (see "Model geometry over HTTP" below).
+
+---
+
+## OpenRPC discovery
+
+`rpc.discover` is registered on the dispatcher in `MikanServer::startup` once every handler has registered, and answers an OpenRPC 1.3.2 document built by `OpenRpcDocument` (`src/Editor/Server/OpenRpcDocument.h`) from reflection, so tools such as the inspector at inspector.open-rpc.org list every method with its schemas. The same text is served at `GET /openrpc.json` on the HTTP server as a background route, so `curl` verifies the document without a websocket client. The document is built once at startup, since it depends only on the registered names and reflection.
+
+- `info.version` is `MIKAN_RELEASE_VERSION_STRING`, `servers` names the editor's websocket URL.
+- One method per registered name except `rpc.discover` itself, with `paramStructure: "by-name"`, one content descriptor per reflected field of the request struct, the result as a `$ref` to the response struct the request's `ResponseType` names, and errors as `$ref`s into `components.errors`, one per distinct `MikanAPIResult` value (`InvalidStageID` shares `InvalidSceneID`'s value and is folded into it).
+- `components.schemas` holds every struct and enum a method or event reaches, keyed by struct name, in the shapes the serializer writes: bool as `boolean`, integer fundamentals as `integer`, float and double as `number`, `Serialization::String` as `string`, enums as `string` with the `ENUMVALUE_STRING` names, `List<T>` as `array`, `Map<String,String>` as an array of `{key,value}` objects, nested structs as `$ref`, and `PolymorphicObjectPtr` as one shared `{class_name, value}` schema whose `oneOf` lists every reflected `PolymorphicStruct` subclass. Inherited fields are flattened into the subclass schema and every field is required.
+- Events are not callable, so they sit under a top-level `x-mikan-events` array with the same content-descriptor shape. `MikanDisconnectedEvent` appears there although the runtimes synthesize it locally.
+- The reflection walk uses the `Serialization::StructTypeHandle` and `ValueAccessor` vocabulary the schema guard test uses (`forEachEnumValue`, `forEachSubclass`, `getStructTypeName`, `getResponseTypeName` in `ReflectionHandles.h`), never `rfk::` directly.
+- `MikanLongValue::value` is declared `long`, a type the serializer does not support, so the document logs one warning at startup and that schema has no `value` property.
 
 ---
 
@@ -139,7 +158,7 @@ messageServer->setRequestHandler(GetVideoSourceMode::staticGetArchetype().getNam
 
 Recipe for a new remote-controllable capability (do not modify request routing in `MikanServer` beyond construction/startup wiring):
 
-1. Define the request/response structs in a `MikanClientAPI/Public` header, annotated with `STRUCT(Serialization::CodeGenModule(...))` and `FIELD()`, with the `MIKAN_*_TYPE_INFO_INIT` constructor macro. Add the header to `RefurekuSettings.toml` if new.
+1. Define the request/response structs in a `MikanClientAPI/Public` header, annotated with `STRUCT(Serialization::CodeGenModule(...))` and `FIELD()`, with the `MIKAN_*_TYPE_INFO_INIT` constructor macro, and `Serialization::ResponseType("<ResponseStructName>")` on the request when its response is not the plain `MikanResponse`. Add the header to `RefurekuSettings.toml` if new.
 2. Add (or extend) an `IServerRequestHandler` in `src/Editor/Server` that registers the type names and implements the behavior, and wire it into `MikanServer`'s constructor/`startup` if it is a new handler class.
 3. Rebuild and regenerate the C#/TypeScript bindings.
 
@@ -246,7 +265,7 @@ Every reply on the HTTP server carries `Access-Control-Allow-Origin: *`, and an 
 
 ## Client side
 
-A C++ client calls `IMikanAPI::createMikanAPI()`, `init(...)`, then `connect()` (defaults) or `connect(host, port)`, and drives everything through `sendRequest(MikanRequest&)`, which returns a `MikanResponseFuture` keyed by `requestId`. Events arrive by polling `fetchNextEvent(MikanEventPtr&)` each frame. The C# (`bindings/csharp/MikanAPI.cs`, `MikanRequestManager.cs`, `MikanEventManager.cs`) and TypeScript (`bindings/typescript/MikanClient.ts`, `MikanRequestManager.ts`, `MikanEventManager.ts`) runtimes mirror this shape over the same JSON protocol, using the generated types in `Generated/` and `types/` respectively. Under the hood all three serialize the request struct to JSON (with `requestTypeName` and `requestId`), send it as a websocket text frame, and match responses back to futures by `requestId`.
+A C++ client calls `IMikanAPI::createMikanAPI()`, `init(...)`, then `connect()` (defaults) or `connect(host, port)`, and drives everything through `sendRequest(MikanRequest&)`, which returns a `MikanResponseFuture` keyed by `requestId`. Events arrive by polling `fetchNextEvent(MikanEventPtr&)` each frame. The C# (`bindings/csharp/MikanAPI.cs`, `MikanRequestManager.cs`, `MikanEventManager.cs`) and TypeScript (`bindings/typescript/MikanClient.ts`, `MikanRequestManager.ts`, `MikanEventManager.ts`) runtimes mirror this shape over the same JSON protocol, using the generated types in `Generated/` and `types/` respectively. Under the hood all three serialize the request struct's fields as the `params` object of a JSON-RPC request whose `method` is the struct name, send it as a websocket text frame, and match responses back to futures by `id`. Each runtime records the expected response type when it sends (the generated request classes carry the type their `ResponseType` property names), reads `result` into that type, and on an `error` builds a base `MikanResponse` with `resultCode` from `error.data.resultCode`. Events are typed from `method`. The C++ runtime's `MikanClient::textResponseHandler` hands the envelope id to the C callback `MikanTextResponseCallback`, whose signature did not change.
 
 The C# runtime reaches the wire through two seams, both chosen when `MikanAPI` is constructed. `IMikanTransport` carries the messages: `MikanNativeTransport` drives `MikanClientCore.dll` through the P/Invokes in `MikanCoreNative.cs`, and `MikanWebSocketTransport` speaks the protocol from managed code alone over `System.Net.WebSockets.ClientWebSocket`. `IMikanRenderTargetWriter` owns the shared texture senders: `MikanNativeRenderTargetWriter` is the native library's, and a managed host supplies its own. The parameterless `MikanAPI()` is the native pair, which is what every consumer before the managed path was built against. `MikanClientTestCSharp --managed` runs the test client on the websocket transport, rendering locally and publishing nothing, so the managed transport is exercised against a live editor without a host engine.
 
@@ -274,9 +293,9 @@ A client that loads no Mikan DLL has two contracts to keep, both of which the na
 
 The transport contract, from `WebsocketInterprocessMessageClient.cpp` and `WebsocketInterprocessMessageServer.cpp`:
 
-- The URL is `ws://<host>:<port>`, `ws://127.0.0.1:8080` by default, with the sub-protocol `Mikan-<ClientAPIVersion>` (`Mikan-0`) on the handshake. The server connects without one and logs a warning.
-- Every frame in both directions is a text frame. A runtime logs and drops a binary frame.
-- A frame carrying `eventTypeName` is an event, one carrying `responseTypeName` is a response. Neither key is a field of any other wire type, so a substring test on the frame is the whole check.
+- The URL is `ws://<host>:<port>`, `ws://127.0.0.1:8080` by default, with the sub-protocol `Mikan-<ClientAPIVersion>` (`Mikan-1`) on the handshake. The server echoes that sub-protocol only when it was among the client's offers, since RFC 6455 has a client fail the handshake when the server names one it did not offer; a client that offered none, such as a browser running the OpenRPC inspector, gets no sub-protocol header and is accepted with a warning. `MikanConnectedEvent.isClientCompatible` reports whether any offered `Mikan-<N>` meets `MIKAN_MIN_ALLOWED_CLIENT_API_VERSION`; the connection is never refused.
+- Every frame in both directions is a JSON-RPC 2.0 text frame. A runtime logs and drops a binary frame.
+- A frame with `id` and `result` or `error` is a response, a frame with `method` and no `id` is an event. A response whose id is not an integer is dropped by the C++ runtime with an error log.
 - A close is surfaced to the event parser as the string `disconnect:<code>:<reason>`, which `MikanEventManager` turns into `MikanDisconnectedEvent` in every runtime.
 - The editor sends `MikanConnectedEvent` once the connection is up, so connect returns at once and that event is the signal.
 
