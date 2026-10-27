@@ -67,7 +67,7 @@ Part 1 removed the binary frames before Part 2 redefines the text envelope, and 
 
 - wire-protocol.md: "The contract libraries" (the base types and macro rule), "Message flow over the websocket", "Client side" and "Managed clients" rewritten for the envelope, the `ResponseType` property, the notification rule and the error mapping, plus a new "OpenRPC discovery" section naming `rpc.discover`, `GET /openrpc.json`, the schema mapping, and that the inspector at inspector.open-rpc.org connects to `ws://127.0.0.1:8080` with no sub-protocol.
 - README.md: one sentence under the client API description that the websocket speaks JSON-RPC 2.0 with OpenRPC discovery.
-- plan.md: Next items for the Unreal plugin (the timeout response it synthesizes in `UMikanEngineSubsystem` and the vendored SDK headers), the CEF GUI (`npm install` against the rebuilt package) and the Unity package.
+- plan.md: Next items for the Unreal plugin (the timeout response it synthesizes in `UMikanEngineSubsystem` and the vendored SDK headers) and the Unity package.
 
 ---
 
