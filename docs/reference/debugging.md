@@ -107,6 +107,10 @@ Filtering the offending directory out of `PATH` needs care from a shell: Git Bas
 
 Before suspecting pipeline code, check how the process was launched, then run the identical pipeline string through a standalone `gst-launch-1.0.exe`. A failed hardware open also produces harmless `GStreamer-CRITICAL`/`GLib-GObject-CRITICAL` assertion spam (GStreamer's own cleanup on this failure mode); it does not crash the process.
 
+## ARKit video silence watchdog
+
+`No video frame received for 10s - reopening video pipeline` from `MikanARKitVideoDevice::update` is the device's silence watchdog, not a decode failure. It fires when the phone stops sending: the stream paused in the app, the app in the background, or no frames captured yet after a launch. The device rebuilds its pipeline and logs `Video stream started` on the next decoded frame, so a log that alternates the two lines is a sender that keeps going quiet. Check the phone first: `arkit send stats` over the automation server reports `framesCaptured` and `packetsSent`, and a count that stands still is the answer. Relaunching the app against a running editor does not trip the watchdog: the stream carries a fixed SSRC and the jitter buffer rides through the sequence restart, verified three times in a row with hardware decode at 30 fps.
+
 ---
 
 ## Spout logging
