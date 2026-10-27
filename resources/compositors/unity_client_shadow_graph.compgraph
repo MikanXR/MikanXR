@@ -149,7 +149,7 @@
 			"pins_out":                        [ 48 ],
 			"pos":                             [ 810.0, 334.0 ],
 			"texture_source_color_type":       "colorRGBA",
-			"fallback_mode":                   "auto",
+			"fallback_mode":                   "transparentBlack",
 			"resolve_alpha_mode":              "none",
 			"texture_source_id":               -1,
 			"vertical_flip":                   false,
