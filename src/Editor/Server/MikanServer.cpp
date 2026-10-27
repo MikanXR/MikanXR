@@ -2,6 +2,7 @@
 #include "App.h"
 #include "AppSettingsConfig.h"
 #include "ARKitAlignmentRequestHandler.h"
+#include "CompositorStreamRequestHandler.h"
 #include "AssetUploadRequestHandler.h"
 #include "CameraRequestHandler.h"
 #include "FunctionRequestHandler.h"
@@ -53,6 +54,7 @@ MikanServer::MikanServer()
 	, m_arkitAlignmentRequestHandler(new ARKitAlignmentRequestHandler(this))
 	, m_assetUploadRequestHandler(new AssetUploadRequestHandler(this))
 	, m_cameraRequestHandler(new CameraRequestHandler(this))
+	, m_compositorStreamRequestHandler(new CompositorStreamRequestHandler(this))
 	, m_functionRequestHandler(new FunctionRequestHandler(this))
 	, m_lightRequestHandler(new LightRequestHandler(this))
 	, m_propertyRequestHandler(new PropertyRequestHandler(this))
@@ -81,6 +83,7 @@ MikanServer::~MikanServer()
 	delete m_arkitAlignmentRequestHandler;
 	delete m_assetUploadRequestHandler;
 	delete m_httpMessageServer;
+	delete m_compositorStreamRequestHandler;
 	delete m_messageServer;
 	m_instance= nullptr;
 }
@@ -118,6 +121,12 @@ bool MikanServer::startup(MainWindow* mainWindow)
 	}
 
 	if (!m_assetUploadRequestHandler->startup(mainWindow))
+	if (!m_compositorStreamRequestHandler->startup(mainWindow))
+	{
+		MIKAN_LOG_ERROR("MikanServer::startup()") << "Failed to bind compositor stream request handler";
+		return false;
+	}
+
 	{
 		MIKAN_LOG_ERROR("MikanServer::startup()") << "Failed to bind asset upload request handler";
 		return false;
@@ -238,6 +247,7 @@ void MikanServer::shutdown()
 
 	m_ownerWindow= nullptr;
 }
+	m_compositorStreamRequestHandler->shutdown();
 
 void MikanServer::restartHttpMessageServer()
 {

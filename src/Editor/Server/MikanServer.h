@@ -48,6 +48,10 @@ public:
 		return m_arkitAlignmentRequestHandler;
 	}
 	inline class AssetUploadRequestHandler* getAssetUploadRequestHandler() const { return m_assetUploadRequestHandler; }
+	inline class CompositorStreamRequestHandler* getCompositorStreamRequestHandler() const
+	{
+		return m_compositorStreamRequestHandler;
+	}
 	inline class CameraRequestHandler* getCameraRequestHandler() const { return m_cameraRequestHandler; }
 	inline class FunctionRequestHandler* getFunctionRequestHandler() const { return m_functionRequestHandler; }
 	inline class LightRequestHandler* getLightRequestHandler() const { return m_lightRequestHandler; }
@@ -103,6 +107,7 @@ private:
 
 	class ARKitAlignmentRequestHandler* m_arkitAlignmentRequestHandler;
 	class AssetUploadRequestHandler* m_assetUploadRequestHandler;
+	class CompositorStreamRequestHandler* m_compositorStreamRequestHandler;
 	class CameraRequestHandler* m_cameraRequestHandler;
 	class FunctionRequestHandler* m_functionRequestHandler;
 	class LightRequestHandler* m_lightRequestHandler;

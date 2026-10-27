@@ -221,7 +221,7 @@ The phone takes the first editor it finds and the lowest port in `arkit`, and fi
 
 ### Alignment status for the phone
 
-The phone's stream mode asks the editor whether its stream is aligned, so it can show "look at the origin marker" until it is. This is the one GET route the editor serves, a background route that checks the verb:
+The phone's stream mode asks the editor whether its stream is aligned, so it can show "look at the origin marker" until it is. This is a GET route served as a background route that checks the verb:
 
 ```
 GET /arkit/alignment?port=<base_port>
@@ -230,6 +230,16 @@ GET /arkit/alignment?port=<base_port>
 `ARKitAlignmentRequestHandler` (`src/Editor/Server/ARKitAlignmentRequestHandler.h`) owns it. It hops to the main thread once, finds the `ARKitVideoSourceComponent` whose `base_port` matches, and replies `{"marker_visible": bool, "aligned": bool}`, or 404 when no ARKit source streams to that port, 405 for another verb, 400 for a missing or malformed port, and 504 when the editor did not answer. `aligned` is the source's `hasPoseOffset`, which the source drops itself when the phone restarts its ARKit session. A poll of an unaligned source starts, or keeps alive, the `ARKitMarkerAutoAligner` described under [ARKit world-to-stage offset](#arkit-world-to-stage-offset), and `marker_visible` is that aligner's last detection. The `arkit_alignment_route` test module drives the route through a stub editor and checks the shared averaging.
 
 ### Recording from the editor
+### Session description for the compositor's RTP output
+
+A player receives the compositor's RTP output ([compositor.md](./compositor.md)) from a session description rather than a hand-written file, so the document follows the output's size and destination:
+
+```
+GET /compositor/stream.sdp?compositor=<id>
+```
+
+`CompositorStreamRequestHandler` (`src/Editor/Server/CompositorStreamRequestHandler.h`) owns it, a background route that hops to the main thread once. The id may be left off when the project has one compositor. The reply is `application/sdp` with the destination as its connection address, the port, `H264/90000` on payload 96 with `packetization-mode=1`, the picture size and the frame rate. It answers 405 for another verb, 400 for a malformed id or for no id when the project has several compositors, 404 when the compositor is missing or its RTP output is off, and 504 when the editor did not answer. Saving the body as a `.sdp` file and opening it in VLC or `ffplay` on the destination machine plays the stream. Another machine reaches the route only while "Allow connections from other machines" is on, like the phone's routes. The `compositor_stream_route` test module drives the route through a stub editor and checks the size math and the SDP text.
+
 
 The video source settings stage records the live feed of any source as a capture, through the same step-by-step flow of a kind the phone walks, with a kind selector in place of the old marker toggle. `CaptureFlow` (`src/Editor/Capture/CaptureFlow.h`) is the step machine, pure logic the tests drive directly: a `stillphoto` takes the marker image then the clean plate, a `stillcamera` takes both then records until stopped, and a `trackcamera` records straight away with no marker steps, since its poses are stage space and need no alignment. Track Camera is offered only when a camera on the source has a tracked pose, from a tracking mount or a frame-coupled source, with mono intrinsics. `VideoSourceRecorder` (`src/Editor/AppStages/VideoSourceSettings/VideoSourceRecorder.h`) owns the work: each shot is written as a file into a hidden working directory `captures/.capture_<take>/` (`marker.jpg` with its one-frame `marker.pose.json`, `plate.jpg`, `movie.<ext>` with `movie.pose.json` for a trackcamera), and when the flow completes `CapturePacker` (`src/Editor/Capture/CapturePacker.h`) packs the members into `captures/take_YYYYMMDD_HHMMSS.<kind>` on a worker thread, with `pose_space` `stage` and the editor as producer, and the working directory is removed. A cancelled flow removes it too, and leaving the stage mid-flow cancels. A shot that fails leaves the flow on its step for a retry. The stage answers `capture_start <kind>`, `capture_advance`, `capture_cancel`, and `get_capture_state` over the automation channel ([automation.md](./automation.md)).
 
