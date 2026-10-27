@@ -178,6 +178,7 @@ namespace MikanXR
 			Register("PublishCameraRenderTargetTextures", () => new PublishCameraRenderTargetTextures());
 			Register("PushAppStage", () => new PushAppStage());
 			Register("SendScriptMessage", () => new SendScriptMessage());
+			Register("SetCompositorReturnFeed", () => new SetCompositorReturnFeed());
 			Register("SetLightDMXDataSubcription", () => new SetLightDMXDataSubcription());
 			Register("SetPropertyNotifyMode", () => new SetPropertyNotifyMode());
 			Register("SetUSBVideoSourceDevice", () => new SetUSBVideoSourceDevice());

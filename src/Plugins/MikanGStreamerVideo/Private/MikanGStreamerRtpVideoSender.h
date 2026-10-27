@@ -19,6 +19,7 @@ public:
 
 	virtual bool open(const RtpVideoSenderSettings& settings) override;
 	virtual bool pushFrameRGBA(const uint8_t* pixels, size_t byteCount) override;
+	virtual bool setDestinations(const std::vector<RtpDestination>& destinations) override;
 	virtual void update() override;
 	virtual void close() override;
 

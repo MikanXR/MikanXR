@@ -1,10 +1,12 @@
 #pragma once
 
+#include "IRtpVideoSender.h"
 #include "MikanCoreTypes.h"
 #include "MikanClientTypes.h"
 #include "MikanPropertyTypes.h"
 #include "MikanTypeFwd.h"
 
+#include <map>
 #include <set>
 #include <string>
 
@@ -43,6 +45,15 @@ public:
 		return m_alignmentWatches.count(videoSourceId) > 0;
 	}
 
+	// Where this connection receives a compositor's RTP output, keyed by compositor id,
+	// INVALID_MIKAN_ID meaning whichever compositor publishes output
+	void setReturnFeed(MikanCompositorID compositorId, const RtpDestination& destination)
+	{
+		m_returnFeeds[compositorId]= destination;
+	}
+	void clearReturnFeed(MikanCompositorID compositorId) { m_returnFeeds.erase(compositorId); }
+	const std::map<MikanCompositorID, RtpDestination>& getReturnFeeds() const { return m_returnFeeds; }
+
 private:
 	class MikanServer* m_ownerServer;
 	std::string m_connectionId;
@@ -50,4 +61,5 @@ private:
 	class RenderTargetClientState* m_renderTargetClientState= nullptr;
 	PropertyNotifyDatabasePtr m_propertyNotifyDatabase;
 	std::set<MikanVideoSourceID> m_alignmentWatches;
+	std::map<MikanCompositorID, RtpDestination> m_returnFeeds;
 };

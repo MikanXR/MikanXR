@@ -19,6 +19,7 @@
 
 #include <map>
 #include <memory>
+#include <vector>
 
 class MikanClientConnectionState;
 using MikanClientConnectionStatePtr= std::shared_ptr<MikanClientConnectionState>;
@@ -44,6 +45,7 @@ public:
 	// handlers are preserved, since dispose() only stops the listeners.
 	void restartMessageServers();
 	inline class AssetUploadRequestHandler* getAssetUploadRequestHandler() const { return m_assetUploadRequestHandler; }
+	inline class CompositorRequestHandler* getCompositorRequestHandler() const { return m_compositorRequestHandler; }
 	inline class CompositorStreamRequestHandler* getCompositorStreamRequestHandler() const
 	{
 		return m_compositorStreamRequestHandler;
@@ -76,6 +78,10 @@ public:
 	const MikanClientConnectionStateMap& getConnectedClientStateMap() { return m_clientConnections; }
 	// Whether any connected client asked the editor to watch the source for the origin marker
 	bool isVideoSourceAlignmentWatched(MikanVideoSourceID videoSourceId) const;
+	// The return feeds connected clients asked of a compositor: those naming it, plus those
+	// naming no compositor when it publishes output. Each host and port appears once.
+	void collectReturnFeedDestinations(MikanCompositorID compositorId, bool bPublishesOutput,
+									   std::vector<struct RtpDestination>& outDestinations) const;
 
 	MulticastDelegate<void(const std::string& clientId, const MikanClientInfo& clientInfo)> OnClientInitialized;
 	MulticastDelegate<void(const std::string& clientId)> OnClientDisposed;
@@ -104,6 +110,7 @@ private:
 	class HttpInterprocessMessageServer* m_httpMessageServer;
 
 	class AssetUploadRequestHandler* m_assetUploadRequestHandler;
+	class CompositorRequestHandler* m_compositorRequestHandler;
 	class CompositorStreamRequestHandler* m_compositorStreamRequestHandler;
 	class CameraRequestHandler* m_cameraRequestHandler;
 	class FunctionRequestHandler* m_functionRequestHandler;

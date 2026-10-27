@@ -23,6 +23,7 @@
 #include "MikanComponentTypes.rfks.h"
 
 #include "MikanCompositorEvents.rfks.h"
+#include "MikanCompositorRequests.rfks.h"
 #include "MikanCompositorTypes.rfks.h"
 
 #include "MikanEditorTypes.rfks.h"

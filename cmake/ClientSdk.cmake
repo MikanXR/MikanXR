@@ -51,6 +51,7 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 		"${_sdk_client_api_dir}/MikanClientTypes.h"
 		"${_sdk_client_api_dir}/MikanComponentTypes.h"
 		"${_sdk_client_api_dir}/MikanCompositorEvents.h"
+		"${_sdk_client_api_dir}/MikanCompositorRequests.h"
 		"${_sdk_client_api_dir}/MikanCompositorTypes.h"
 		"${_sdk_client_api_dir}/MikanEditorTypes.h"
 		"${_sdk_client_api_dir}/MikanFunctionRequests.h"

@@ -4,6 +4,7 @@
 #include "CompositorRtpOutput.h"
 #include "CompositorStreamRequestHandler.h"
 #include "HttpInterprocessMessageServer.h"
+#include "IRtpVideoSender.h"
 
 #include "IxWebSocket/IXHttpClient.h"
 
@@ -67,6 +68,14 @@ bool sizeIs(int sourceWidth, int sourceHeight, int requestedHeight, int expected
 	}
 	return bMatches;
 }
+
+RtpDestination makeDestination(const char* host, uint16_t port)
+{
+	RtpDestination destination;
+	destination.host= host;
+	destination.port= port;
+	return destination;
+}
 } // namespace
 
 bool run_compositor_stream_route_tests()
@@ -75,6 +84,8 @@ bool run_compositor_stream_route_tests()
 	UNIT_TEST_MODULE_CALL_TEST(compositor_stream_route_test_output_size);
 	UNIT_TEST_MODULE_CALL_TEST(compositor_stream_route_test_sdp);
 	UNIT_TEST_MODULE_CALL_TEST(compositor_stream_route_test_replies);
+	UNIT_TEST_MODULE_CALL_TEST(compositor_stream_route_test_destination_host);
+	UNIT_TEST_MODULE_CALL_TEST(compositor_stream_route_test_merge_destinations);
 	UNIT_TEST_MODULE_END()
 }
 
@@ -219,6 +230,65 @@ bool compositor_stream_route_test_replies()
 	success&= (RequestOnWorker(port, "GET", "/compositor/stream.sdp?compositor=3").statusCode == 504);
 
 	server.dispose();
+
+	UNIT_TEST_COMPLETE()
+}
+
+bool compositor_stream_route_test_destination_host()
+{
+	UNIT_TEST_BEGIN("an RTP destination host is a unicast hostname or address")
+
+	success&= isValidRtpDestinationHost("phone.local");
+	success&= isValidRtpDestinationHost("my-phone");
+	success&= isValidRtpDestinationHost("192.168.1.50");
+	success&= isValidRtpDestinationHost("127.0.0.1");
+	success&= isValidRtpDestinationHost("fe80::1");
+	// The first octet below the multicast range
+	success&= isValidRtpDestinationHost("223.1.1.1");
+	// A leading number that is not an IPv4 octet
+	success&= isValidRtpDestinationHost("239host");
+
+	success&= !isValidRtpDestinationHost("");
+	success&= !isValidRtpDestinationHost("phone local");
+	success&= !isValidRtpDestinationHost("10.0.0.1/24");
+	success&= !isValidRtpDestinationHost("host port=5004");
+	success&= !isValidRtpDestinationHost("239.1.1.1");
+	success&= !isValidRtpDestinationHost("224.0.0.251");
+
+	UNIT_TEST_COMPLETE()
+}
+
+bool compositor_stream_route_test_merge_destinations()
+{
+	UNIT_TEST_BEGIN("the RTP destinations merge the persisted one with the client feeds, each once, in order")
+
+	const RtpDestination monitor= makeDestination("192.168.1.10", 5004);
+	const RtpDestination phone= makeDestination("192.168.1.50", 5006);
+	const RtpDestination tablet= makeDestination("192.168.1.51", 5006);
+
+	// The persisted destination leads, the client feeds follow in their order
+	{
+		const std::vector<RtpDestination> merged= CompositorRtpOutput::mergeDestinations({monitor}, {phone, tablet});
+		success&= merged == std::vector<RtpDestination>({monitor, phone, tablet});
+	}
+
+	// A client feed naming the persisted destination is sent once
+	{
+		const std::vector<RtpDestination> merged=
+			CompositorRtpOutput::mergeDestinations({monitor}, {phone, monitor, phone});
+		success&= merged == std::vector<RtpDestination>({monitor, phone});
+	}
+
+	// The same host on another port is another destination
+	{
+		const RtpDestination phoneOtherPort= makeDestination("192.168.1.50", 5008);
+		const std::vector<RtpDestination> merged= CompositorRtpOutput::mergeDestinations({}, {phone, phoneOtherPort});
+		success&= merged == std::vector<RtpDestination>({phone, phoneOtherPort});
+	}
+
+	// Either side may be empty
+	success&= CompositorRtpOutput::mergeDestinations({}, {}).empty();
+	success&= CompositorRtpOutput::mergeDestinations({monitor}, {}) == std::vector<RtpDestination>({monitor});
 
 	UNIT_TEST_COMPLETE()
 }

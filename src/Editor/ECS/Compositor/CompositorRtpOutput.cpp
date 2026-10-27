@@ -50,6 +50,24 @@ void CompositorRtpOutput::computeOutputSize(int sourceWidth, int sourceHeight, i
 	outHeight= height & ~1;
 }
 
+std::vector<RtpDestination> CompositorRtpOutput::mergeDestinations(const std::vector<RtpDestination>& persisted,
+																   const std::vector<RtpDestination>& clientFeeds)
+{
+	std::vector<RtpDestination> merged;
+	for (const std::vector<RtpDestination>* list : {&persisted, &clientFeeds})
+	{
+		for (const RtpDestination& destination : *list)
+		{
+			if (std::find(merged.begin(), merged.end(), destination) == merged.end())
+			{
+				merged.push_back(destination);
+			}
+		}
+	}
+
+	return merged;
+}
+
 bool CompositorRtpOutput::start(IRtpVideoSenderPtr sender, const Settings& settings, int sourceWidth, int sourceHeight)
 {
 	stop();
@@ -90,6 +108,18 @@ void CompositorRtpOutput::stop()
 
 bool CompositorRtpOutput::getIsStreaming() const { return m_sender && m_sender->getIsOpen(); }
 
+bool CompositorRtpOutput::setDestinations(const std::vector<RtpDestination>& destinations)
+{
+	if (!getIsStreaming() || !m_sender->setDestinations(destinations))
+		return false;
+
+	// A source size change reopens the sender from these settings
+	m_settings.destinations= destinations;
+	refreshStatusText();
+
+	return true;
+}
+
 void CompositorRtpOutput::setUnavailable(const std::string& reason)
 {
 	if (m_unavailableReason != reason)
@@ -117,8 +147,7 @@ bool CompositorRtpOutput::openSender(int sourceWidth, int sourceHeight)
 	senderSettings.width= m_outputWidth;
 	senderSettings.height= m_outputHeight;
 	senderSettings.bitrateKbps= m_settings.bitrateKbps;
-	senderSettings.host= m_settings.host;
-	senderSettings.port= static_cast<uint16_t>(std::clamp(m_settings.port, 0, 65535));
+	senderSettings.destinations= m_settings.destinations;
 
 	// The frame rate as a fraction: whole rates as N/1, the broadcast rates as N/1001
 	// (29.97 is 30000/1001), which is the form the encoders' rate control expects
@@ -270,8 +299,8 @@ void CompositorRtpOutput::refreshStatusText()
 	{
 		const RtpVideoSenderStatus& status= m_sender->getStatus();
 		ss << rtpEncoderTierName(status.tier) << " " << m_outputWidth << "x" << m_outputHeight << " " << std::fixed
-		   << std::setprecision(1) << m_measuredFps << " fps sent " << status.framesPushed << " dropped "
-		   << status.framesDropped;
+		   << std::setprecision(1) << m_measuredFps << " fps to " << m_settings.destinations.size() << " sent "
+		   << status.framesPushed << " dropped " << status.framesDropped;
 	}
 	else
 	{

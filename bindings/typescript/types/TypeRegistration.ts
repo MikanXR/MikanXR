@@ -11,6 +11,7 @@ import { DisposeClientRequest, InitClientRequest } from './MikanClientRequests.j
 import { MikanClientInfo } from './MikanClientTypes.js';
 import { MikanComponentValues } from './MikanComponentTypes.js';
 import { MikanCompositorStartedEvent, MikanCompositorStoppedEvent } from './MikanCompositorEvents.js';
+import { SetCompositorReturnFeed } from './MikanCompositorRequest.js';
 import { MikanCompositorComponentValues } from './MikanCompositorTypes.js';
 import { MikanClientAPIVersion, MikanRenderTargetDescriptor } from './MikanCoreTypes.js';
 import { MikanEditorSystemValues } from './MikanEditorTypes.js';
@@ -71,6 +72,7 @@ export function registerAllTypes(): void {
   TypeRegistry.register('MikanComponentValues', MikanComponentValues);
   TypeRegistry.register('MikanCompositorStartedEvent', MikanCompositorStartedEvent);
   TypeRegistry.register('MikanCompositorStoppedEvent', MikanCompositorStoppedEvent);
+  TypeRegistry.register('SetCompositorReturnFeed', SetCompositorReturnFeed);
   TypeRegistry.register('MikanCompositorComponentValues', MikanCompositorComponentValues);
   TypeRegistry.register('MikanClientAPIVersion', MikanClientAPIVersion);
   TypeRegistry.register('MikanRenderTargetDescriptor', MikanRenderTargetDescriptor);

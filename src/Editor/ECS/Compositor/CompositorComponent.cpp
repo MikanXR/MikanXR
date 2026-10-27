@@ -36,6 +36,7 @@
 #include "VideoSourceComponent.h"
 #include "Windows/CompositorNodeEditorWindow.h"
 #include "IMkWindowContext.h"
+#include "IRtpVideoSender.h"
 
 #include "AssetReferencePropertyMetaData.h"
 #include "Graphs/CompositorNodeGraph.h"
@@ -46,6 +47,8 @@
 
 #include <assert.h>
 #include <easy/profiler.h>
+
+#include <algorithm>
 
 // -- CompositorConfig -----
 const std::string CompositorDefinition::k_compositorGraphPathPropertyId= "compositor_graph_path";
@@ -733,8 +736,29 @@ void CompositorComponent::stopOutputStreaming()
 void CompositorComponent::updateRtpOutputStreaming()
 {
 	CompositorDefinitionConstPtr definition= getCompositorDefinition();
-	const bool bWantsOutput=
-		m_bOutputStreamingAllowed && definition->getIsRtpOutputStreaming() && !definition->getRtpOutputHost().empty();
+
+	// The persisted destination plus the return feeds connected clients asked for, so a
+	// client joining or leaving changes the receivers of one encode
+	std::vector<RtpDestination> persistedDestinations;
+	if (definition->getIsRtpOutputStreaming() && !definition->getRtpOutputHost().empty())
+	{
+		RtpDestination destination;
+		destination.host= definition->getRtpOutputHost();
+		destination.port= static_cast<uint16_t>(std::clamp(definition->getRtpOutputPort(), 0, 65535));
+		persistedDestinations.push_back(destination);
+	}
+
+	// MikanCmd runs no server
+	std::vector<RtpDestination> clientFeeds;
+	if (MikanServer* mikanServer= MikanServer::getInstance())
+	{
+		mikanServer->collectReturnFeedDestinations(getCompositorId(), m_bOutputStreamingAllowed, clientFeeds);
+	}
+	m_bHasRtpClientFeeds= !clientFeeds.empty();
+
+	const std::vector<RtpDestination> desiredDestinations=
+		CompositorRtpOutput::mergeDestinations(persistedDestinations, clientFeeds);
+	const bool bWantsOutput= m_bOutputStreamingAllowed && !desiredDestinations.empty();
 	const bool bIsStreaming= getIsRtpOutputStreaming();
 
 	// An output whose sender refused its settings or failed mid-stream is left as it is,
@@ -743,15 +767,19 @@ void CompositorComponent::updateRtpOutputStreaming()
 
 	if (bWantsOutput && !bIsStreaming && !bHasFailed)
 	{
-		startRtpOutputStreaming();
+		startRtpOutputStreaming(desiredDestinations);
 	}
 	else if (!bWantsOutput && m_rtpOutput)
 	{
 		stopRtpOutputStreaming();
 	}
+	else if (bWantsOutput && bIsStreaming && desiredDestinations != m_rtpOutput->getDestinations())
+	{
+		m_rtpOutput->setDestinations(desiredDestinations);
+	}
 }
 
-bool CompositorComponent::startRtpOutputStreaming()
+bool CompositorComponent::startRtpOutputStreaming(const std::vector<RtpDestination>& destinations)
 {
 	IMkTextureConstPtr compositorTexture= getCompositedFrameTexture();
 	if (compositorTexture == nullptr)
@@ -786,8 +814,7 @@ bool CompositorComponent::startRtpOutputStreaming()
 
 	CompositorDefinitionConstPtr definition= getCompositorDefinition();
 	CompositorRtpOutput::Settings settings;
-	settings.host= definition->getRtpOutputHost();
-	settings.port= definition->getRtpOutputPort();
+	settings.destinations= destinations;
 	settings.height= definition->getRtpOutputHeight();
 	settings.bitrateKbps= definition->getRtpOutputBitrateKbps();
 	settings.fps= getRtpOutputFrameRate();
@@ -828,10 +855,10 @@ void CompositorComponent::stopRtpOutputStreaming() { m_rtpOutput= nullptr; }
 const char* CompositorComponent::getRtpOutputStatusText() const
 {
 	CompositorDefinitionConstPtr definition= getCompositorDefinition();
-	if (!definition->getIsRtpOutputStreaming())
+	if (!definition->getIsRtpOutputStreaming() && !m_bHasRtpClientFeeds)
 		return "off";
-	if (definition->getRtpOutputHost().empty())
-		return "no destination host";
+	if (definition->getRtpOutputHost().empty() && !m_bHasRtpClientFeeds)
+		return "no destination";
 	if (!m_bOutputStreamingAllowed)
 		return "not the display compositor";
 	if (!m_rtpOutput)
@@ -873,6 +900,7 @@ void CompositorComponent::stop()
 	stopVideoSourceStreaming();
 	stopOutputStreaming();
 	stopRtpOutputStreaming();
+	m_bHasRtpClientFeeds= false;
 
 	m_lastPublishedCameraProperties.reset();
 	if (bWasRunning)
@@ -1085,7 +1113,8 @@ void CompositorComponent::onDefinitionChanged(CommonConfigPtr configPtr,
 		updateOutputStreaming();
 	}
 
-	// Any RTP setting rebuilds the output, since the sender's caps and destination are fixed at open
+	// Any RTP setting rebuilds the output, since the sender's caps are fixed at open and a
+	// rebuild is what clears a failed sender
 	if (changedPropertySet.hasPropertyName(CompositorDefinition::k_rtpEnableOutputPropertyId)
 		|| changedPropertySet.hasPropertyName(CompositorDefinition::k_rtpOutputHostPropertyId)
 		|| changedPropertySet.hasPropertyName(CompositorDefinition::k_rtpOutputPortPropertyId)

@@ -1,6 +1,7 @@
 //-- includes -----
 #include "App.h"
 #include "AppSettingsConfig.h"
+#include "CompositorRequestHandler.h"
 #include "CompositorStreamRequestHandler.h"
 #include "AssetUploadRequestHandler.h"
 #include "CameraRequestHandler.h"
@@ -31,11 +32,14 @@
 #include "Version.h"
 #include "WebsocketInterprocessMessageServer.h"
 #include "HttpInterprocessMessageServer.h"
+#include "IRtpVideoSender.h"
 
 #include <Refureku/Refureku.h>
 #include <easy/profiler.h>
 
 #include <nlohmann/json.hpp>
+
+#include <algorithm>
 
 using json= nlohmann::json;
 
@@ -52,6 +56,7 @@ MikanServer::MikanServer()
 	: m_messageServer(new WebsocketInterprocessMessageServer())
 	, m_httpMessageServer(new HttpInterprocessMessageServer())
 	, m_assetUploadRequestHandler(new AssetUploadRequestHandler(this))
+	, m_compositorRequestHandler(new CompositorRequestHandler(this))
 	, m_compositorStreamRequestHandler(new CompositorStreamRequestHandler(this))
 	, m_cameraRequestHandler(new CameraRequestHandler(this))
 	, m_functionRequestHandler(new FunctionRequestHandler(this))
@@ -80,6 +85,7 @@ MikanServer::~MikanServer()
 	delete m_functionRequestHandler;
 	delete m_cameraRequestHandler;
 	delete m_assetUploadRequestHandler;
+	delete m_compositorRequestHandler;
 	delete m_compositorStreamRequestHandler;
 	delete m_httpMessageServer;
 	delete m_messageServer;
@@ -127,6 +133,12 @@ bool MikanServer::startup(MainWindow* mainWindow)
 	if (!m_cameraRequestHandler->startup(mainWindow))
 	{
 		MIKAN_LOG_ERROR("MikanServer::startup()") << "Failed to bind camera request handlers";
+		return false;
+	}
+
+	if (!m_compositorRequestHandler->startup(mainWindow))
+	{
+		MIKAN_LOG_ERROR("MikanServer::startup()") << "Failed to bind compositor request handlers";
 		return false;
 	}
 
@@ -234,6 +246,7 @@ void MikanServer::shutdown()
 	m_httpMessageServer->removeBackgroundRouteHandler(OpenRpcDocument::k_routePath);
 
 	m_assetUploadRequestHandler->shutdown();
+	m_compositorRequestHandler->shutdown();
 	m_compositorStreamRequestHandler->shutdown();
 	m_cameraRequestHandler->shutdown();
 	m_functionRequestHandler->shutdown();
@@ -298,6 +311,26 @@ bool MikanServer::isVideoSourceAlignmentWatched(MikanVideoSourceID videoSourceId
 	}
 
 	return false;
+}
+
+void MikanServer::collectReturnFeedDestinations(MikanCompositorID compositorId, bool bPublishesOutput,
+												std::vector<RtpDestination>& outDestinations) const
+{
+	outDestinations.clear();
+
+	for (const auto& connection_it : m_clientConnections)
+	{
+		for (const auto& feed_it : connection_it.second->getReturnFeeds())
+		{
+			const bool bWanted=
+				feed_it.first == compositorId || (bPublishesOutput && feed_it.first == INVALID_MIKAN_ID);
+			if (bWanted
+				&& std::find(outDestinations.begin(), outDestinations.end(), feed_it.second) == outDestinations.end())
+			{
+				outDestinations.push_back(feed_it.second);
+			}
+		}
+	}
 }
 
 // RPC Callbacks

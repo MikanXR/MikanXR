@@ -4,9 +4,8 @@
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
 
+#include <algorithm>
 #include <atomic>
-#include <cctype>
-#include <cstdlib>
 #include <sstream>
 
 // -- RtpSenderGStreamerImpl -----
@@ -32,6 +31,7 @@ struct RtpSenderGStreamerImpl
 
 	GstElement* pipeline= nullptr;
 	GstElement* appsrc= nullptr;
+	GstElement* sink= nullptr;
 	GstBus* bus= nullptr;
 
 	// Buffers that have left the encoder for the current tier, counted on the
@@ -93,7 +93,49 @@ struct RtpSenderGStreamerImpl
 		   << " ! videoconvert ! video/x-raw,format=" << tierDesc.rawFormat << " ! "
 		   << buildEncoderSegment(tierDesc.tier, settings) << " ! h264parse"
 		   << " ! rtph264pay pt=96 mtu=1400 config-interval=-1 aggregate-mode=zero-latency"
-		   << " ! udpsink host=" << settings.host << " port=" << settings.port << " sync=false async=false";
+		   << " ! udpsink name=sink sync=false async=false";
+
+		return ss.str();
+	}
+
+	// The receivers go in through the sink's action signals rather than its clients
+	// string, whose host:port parse splits an IPv6 literal at its first colon
+	static void addClient(GstElement* sink, const RtpDestination& destination)
+	{
+		g_signal_emit_by_name(sink, "add", destination.host.c_str(), static_cast<gint>(destination.port));
+	}
+
+	static void removeClient(GstElement* sink, const RtpDestination& destination)
+	{
+		g_signal_emit_by_name(sink, "remove", destination.host.c_str(), static_cast<gint>(destination.port));
+	}
+
+	static bool containsDestination(const std::vector<RtpDestination>& destinations, const RtpDestination& destination)
+	{
+		return std::find(destinations.begin(), destinations.end(), destination) != destinations.end();
+	}
+
+	static std::vector<RtpDestination> dedupDestinations(const std::vector<RtpDestination>& destinations)
+	{
+		std::vector<RtpDestination> unique;
+		for (const RtpDestination& destination : destinations)
+		{
+			if (!containsDestination(unique, destination))
+			{
+				unique.push_back(destination);
+			}
+		}
+
+		return unique;
+	}
+
+	static std::string formatDestinations(const std::vector<RtpDestination>& destinations)
+	{
+		std::ostringstream ss;
+		for (size_t index= 0; index < destinations.size(); ++index)
+		{
+			ss << (index > 0 ? ", " : "") << destinations[index].host << ":" << destinations[index].port;
+		}
 
 		return ss.str();
 	}
@@ -156,6 +198,7 @@ bool MikanGStreamerRtpVideoSender::open(const RtpVideoSenderSettings& settings)
 	}
 
 	m_settings= settings;
+	m_settings.destinations= RtpSenderGStreamerImpl::dedupDestinations(settings.destinations);
 
 	if (!openFirstAvailableTier(0))
 	{
@@ -190,6 +233,52 @@ bool MikanGStreamerRtpVideoSender::pushFrameRGBA(const uint8_t* pixels, size_t b
 	}
 
 	return pushFrameInternal(pixels, byteCount);
+}
+
+bool MikanGStreamerRtpVideoSender::setDestinations(const std::vector<RtpDestination>& destinations)
+{
+	if (!m_bIsOpen || m_impl->sink == nullptr)
+		return false;
+
+	for (const RtpDestination& destination : destinations)
+	{
+		if (!isValidRtpDestinationHost(destination.host) || destination.port == 0)
+		{
+			MIKAN_LOG_WARNING("MikanGStreamerRtpVideoSender::setDestinations")
+				<< "Refused destination " << destination.host << ":" << destination.port;
+			return false;
+		}
+	}
+
+	// The sink counts repeated adds of one destination, so the wanted set is made
+	// unique and only the differences are applied
+	const std::vector<RtpDestination> wanted= RtpSenderGStreamerImpl::dedupDestinations(destinations);
+	if (wanted == m_settings.destinations)
+		return true;
+
+	for (const RtpDestination& current : m_settings.destinations)
+	{
+		if (!RtpSenderGStreamerImpl::containsDestination(wanted, current))
+		{
+			RtpSenderGStreamerImpl::removeClient(m_impl->sink, current);
+		}
+	}
+
+	for (const RtpDestination& destination : wanted)
+	{
+		if (!RtpSenderGStreamerImpl::containsDestination(m_settings.destinations, destination))
+		{
+			RtpSenderGStreamerImpl::addClient(m_impl->sink, destination);
+		}
+	}
+
+	// A tier fallback reopens with this list
+	m_settings.destinations= wanted;
+
+	MIKAN_LOG_INFO("MikanGStreamerRtpVideoSender::setDestinations")
+		<< "Sending to " << wanted.size() << " destinations: " << RtpSenderGStreamerImpl::formatDestinations(wanted);
+
+	return true;
 }
 
 void MikanGStreamerRtpVideoSender::update()
@@ -277,32 +366,23 @@ bool MikanGStreamerRtpVideoSender::validateSettings(const RtpVideoSenderSettings
 		return false;
 	}
 
-	if (settings.host.empty() || settings.port == 0)
+	if (settings.destinations.empty())
 	{
-		outError= "missing destination host or port";
+		outError= "no destination";
 		return false;
 	}
 
-	// The host is spliced into the pipeline description, so only hostname and
-	// address characters are allowed through
-	for (char c : settings.host)
+	for (const RtpDestination& destination : settings.destinations)
 	{
-		const bool bAllowed= std::isalnum(static_cast<unsigned char>(c)) || c == '.' || c == '-' || c == ':';
-		if (!bAllowed)
+		if (destination.host.empty() || destination.port == 0)
 		{
-			outError= "invalid destination host";
+			outError= "missing destination host or port";
 			return false;
 		}
-	}
 
-	// IPv4 multicast is 224.0.0.0/4, first octet 224 through 239
-	if (std::isdigit(static_cast<unsigned char>(settings.host[0])))
-	{
-		char* end= nullptr;
-		const long firstOctet= std::strtol(settings.host.c_str(), &end, 10);
-		if (end != nullptr && *end == '.' && firstOctet >= 224 && firstOctet <= 239)
+		if (!isValidRtpDestinationHost(destination.host))
 		{
-			outError= "multicast destination refused";
+			outError= "invalid or multicast destination host " + destination.host;
 			return false;
 		}
 	}
@@ -366,6 +446,7 @@ bool MikanGStreamerRtpVideoSender::openTier(int tierIndex)
 
 	m_impl->pipeline= pipeline;
 	m_impl->appsrc= gst_bin_get_by_name(GST_BIN(pipeline), "src");
+	m_impl->sink= gst_bin_get_by_name(GST_BIN(pipeline), "sink");
 	m_impl->bus= gst_pipeline_get_bus(GST_PIPELINE(pipeline));
 	m_impl->encodedFrames.store(0);
 
@@ -382,12 +463,19 @@ bool MikanGStreamerRtpVideoSender::openTier(int tierIndex)
 		gst_object_unref(encoder);
 	}
 
-	if (m_impl->appsrc == nullptr || m_impl->bus == nullptr)
+	if (m_impl->appsrc == nullptr || m_impl->sink == nullptr || m_impl->bus == nullptr)
 	{
-		m_status.lastError= std::string(tierName) + " pipeline is missing its appsrc or bus";
+		m_status.lastError= std::string(tierName) + " pipeline is missing its appsrc, sink or bus";
 		MIKAN_LOG_WARNING("MikanGStreamerRtpVideoSender::openTier") << m_status.lastError;
 		teardownPipeline();
 		return false;
+	}
+
+	// udpsink starts out holding its default host and port as a client
+	g_signal_emit_by_name(m_impl->sink, "clear");
+	for (const RtpDestination& destination : m_settings.destinations)
+	{
+		RtpSenderGStreamerImpl::addClient(m_impl->sink, destination);
 	}
 
 	if (gst_element_set_state(pipeline, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE)
@@ -410,8 +498,9 @@ bool MikanGStreamerRtpVideoSender::openTier(int tierIndex)
 	m_status.lastError.clear();
 
 	MIKAN_LOG_INFO("MikanGStreamerRtpVideoSender::openTier")
-		<< "Sending " << m_settings.width << "x" << m_settings.height << " H.264 RTP to " << m_settings.host << ":"
-		<< m_settings.port << " with the " << tierName << " encoder";
+		<< "Sending " << m_settings.width << "x" << m_settings.height << " H.264 RTP to "
+		<< RtpSenderGStreamerImpl::formatDestinations(m_settings.destinations) << " with the " << tierName
+		<< " encoder";
 
 	return true;
 }
@@ -473,6 +562,12 @@ void MikanGStreamerRtpVideoSender::teardownPipeline()
 	{
 		gst_object_unref(m_impl->appsrc);
 		m_impl->appsrc= nullptr;
+	}
+
+	if (m_impl->sink != nullptr)
+	{
+		gst_object_unref(m_impl->sink);
+		m_impl->sink= nullptr;
 	}
 
 	if (m_impl->pipeline != nullptr)

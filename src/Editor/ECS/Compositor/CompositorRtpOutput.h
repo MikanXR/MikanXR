@@ -17,8 +17,8 @@ class CompositorRtpOutput
 public:
 	struct Settings
 	{
-		std::string host;
-		int port= 0;
+		// Every receiver of the one encode
+		std::vector<RtpDestination> destinations;
 		// 0 keeps the composited frame's own size
 		int height= 0;
 		int bitrateKbps= 0;
@@ -32,6 +32,11 @@ public:
 	bool start(IRtpVideoSenderPtr sender, const Settings& settings, int sourceWidth, int sourceHeight);
 	void stop();
 	bool getIsStreaming() const;
+
+	// Replaces the receivers while streaming without restarting the encoder, and is
+	// remembered for a reopen. Returns false when not streaming or a destination is refused.
+	bool setDestinations(const std::vector<RtpDestination>& destinations);
+	const std::vector<RtpDestination>& getDestinations() const { return m_settings.destinations; }
 
 	// Set once the sender refused its settings or failed mid-stream. The owner then
 	// leaves the output alone until the settings change.
@@ -48,6 +53,11 @@ public:
 	// Width follows the source aspect, both dimensions even, floor 160x64
 	static void computeOutputSize(int sourceWidth, int sourceHeight, int requestedHeight, int& outWidth,
 								  int& outHeight);
+
+	// The persisted destinations followed by the client feeds, each host and port once,
+	// in first-seen order
+	static std::vector<RtpDestination> mergeDestinations(const std::vector<RtpDestination>& persisted,
+														 const std::vector<RtpDestination>& clientFeeds);
 
 private:
 	bool openSender(int sourceWidth, int sourceHeight);

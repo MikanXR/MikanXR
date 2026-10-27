@@ -24,6 +24,7 @@
 #include <optional>
 #include <queue>
 #include <string>
+#include <vector>
 
 #include "glm/ext/matrix_float4x4.hpp"
 
@@ -98,6 +99,7 @@ private:
 };
 
 class CompositorRtpOutput;
+struct RtpDestination;
 using CompositorRtpOutputPtr= std::shared_ptr<CompositorRtpOutput>;
 
 class CompositorComponent : public MikanComponent
@@ -206,7 +208,7 @@ protected:
 
 	// RTP Output
 	void updateRtpOutputStreaming();
-	bool startRtpOutputStreaming();
+	bool startRtpOutputStreaming(const std::vector<RtpDestination>& destinations);
 	bool getIsRtpOutputStreaming() const;
 	void stopRtpOutputStreaming();
 	const char* getRtpOutputStatusText() const;
@@ -250,6 +252,8 @@ private:
 	// Output sinks: the Spout sender and the RTP sender
 	ISharedTextureWriteAccessorPtr m_renderTargetWriteAccessor;
 	CompositorRtpOutputPtr m_rtpOutput;
+	// Whether a connected client asked for this compositor's output on the last update
+	bool m_bHasRtpClientFeeds= false;
 
 	bool m_bIsRunning= false;
 	bool m_bEditorHeld= false;
