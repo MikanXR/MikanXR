@@ -140,7 +140,13 @@ Each client runtime recovers that order from the generated type, and neither inf
 - C#: each generated class's `WriteFields` and `ReadFields` walk its fields in this order and call the base class first, so the order is fixed at generation rather than recovered at runtime.
 - TypeScript: each generated class carries a `__serializationMetadata` array, and the runtime walks the prototype chain base-first to concatenate them.
 
-One trap, real and verified in code:
+Two traps, real and verified in code:
+
+**The client SDK's public interface carries no STL strings or containers.** Under MSVC, `std::string`, `std::vector`, `std::map`, and the other containers change layout with `_ITERATOR_DEBUG_LEVEL`: a Debug build adds a `_Container_proxy` pointer. One built by a client against the Debug CRT and read by the Release SDK DLLs, or the reverse, corrupts memory. Every public header of `MikanClientAPI`, `MikanClientCore`, and `MikanSerialization` therefore passes and returns `const char*` and the `Serialization::` types (`String`, `List`, `Map`), whose layouts are the same under both CRTs. A returned `const char*` is owned by the SDK, with its lifetime stated beside the method. `IMikanAPI` follows this (`getClientName` and `getHttpBaseUrl` return `const char*`, and `connect` and `disconnect` take it), as does `PolymorphicObjectPtr` (`allocateByClassName` takes a class name as `const char*`, and `getRuntimeClassName` returns one), whose methods the serializer invokes through reflection. The existing exceptions, and why each holds:
+
+- `std::shared_ptr` crosses as `IMikanAPIPtr`, `MikanEventPtr`, and `MikanResponsePtr`. Its layout does not change with the debug level, and its control block carries the deleter of the DLL that allocated the object.
+
+- The `MikanVariant` setters that take `std::string` and `std::vector` compile only under the reflection macros private to `MikanClientAPI`, so a non-reflection consumer never sees them.
 
 **`Serialization::String` is `const char*`-only. Do not widen it.** `Public/SerializableString.h` exposes only `const char*` (`setUtf8Value`/`getUtf8Value`, `const char*` constructor and assignment) and hides `std::string` in a pimpl. The header comment states why: `std::string` memory layout differs between Debug and Release CRTs, so passing it across a DLL boundary built against a different CRT (the Unreal plugin uses the Release CRT) corrupts the data. Bytes are always UTF-8; convert at the ingestion boundary. Keep the interface `const char*` even though `std::string` would be more convenient.
 

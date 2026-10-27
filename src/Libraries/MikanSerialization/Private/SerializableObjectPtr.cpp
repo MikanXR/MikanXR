@@ -77,9 +77,9 @@ void PolymorphicObjectPtr::reset()
 	m_impl->runtimeClassRawPtr= nullptr;
 }
 
-void* PolymorphicObjectPtr::allocateByClassName(const std::string& className)
+void* PolymorphicObjectPtr::allocateByClassName(const char* className)
 {
-	return allocateByType(TypeRegistry::getStructByName(className));
+	return className != nullptr ? allocateByType(TypeRegistry::getStructByName(className)) : nullptr;
 }
 
 void* PolymorphicObjectPtr::allocateByType(rfk::Struct const* objectClass)
@@ -100,7 +100,7 @@ const void* PolymorphicObjectPtr::getRawPtr() const { return m_impl->runtimeClas
 
 void* PolymorphicObjectPtr::getRawPtrMutable() { return const_cast<void*>(getRawPtr()); }
 
-std::string PolymorphicObjectPtr::getRuntimeClassName() const { return m_impl->runtimeClassName; }
+const char* PolymorphicObjectPtr::getRuntimeClassName() const { return m_impl->runtimeClassName.c_str(); }
 
 bool PolymorphicObjectPtr::isTypeCompatibleWith(rfk::Struct const& objectClass) const
 {

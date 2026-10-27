@@ -8,7 +8,6 @@
 #endif
 
 #include <memory>
-#include <string>
 
 namespace rfk
 {
@@ -73,14 +72,16 @@ public:
 
 	void reset();
 
-	// Methods invoked by reflection (serialization code)
-	METHOD() void* allocateByClassName(const std::string& className);
+	// Methods invoked by reflection (serialization code). Class names cross as const char*, never
+	// std::string, since a client built against another CRT lays std::string out differently.
+	METHOD() void* allocateByClassName(const char* className);
 
 	METHOD() const void* getRawPtr() const;
 
 	METHOD() void* getRawPtrMutable();
 
-	METHOD() std::string getRuntimeClassName() const;
+	// Empty when nothing is stored. Owned by the pointer, valid until it is next assigned or reset.
+	METHOD() const char* getRuntimeClassName() const;
 
 #ifdef SERIALIZATION_REFLECTION_ENABLED
 Serialization_PolymorphicObjectPtr_GENERATED

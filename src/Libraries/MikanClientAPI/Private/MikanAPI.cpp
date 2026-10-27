@@ -7,6 +7,8 @@
 #include "JsonSerializer.h"
 #include "TypeRegistry.h"
 
+#include <string>
+
 #ifdef MIKANAPI_REFLECTION_ENABLED
 #include "MikanAnchorTypes.rfks.h"
 
@@ -256,14 +258,14 @@ public:
 
 	virtual int getClientAPIVersion() const override { return MikanConstants_ClientAPIVersion; }
 
-	virtual std::string getClientName() const override { return Mikan_GetClientName(m_context); }
+	virtual const char* getClientName() const override { return Mikan_GetClientName(m_context); }
 
 	virtual MikanClientInfo allocateClientInfo() const override
 	{
 		MikanClientInfo clientInfo= {};
 
 		// Stamp the request with the core sdk version and client id
-		clientInfo.clientId= getClientName().c_str();
+		clientInfo.clientId= getClientName();
 
 		return clientInfo;
 	}
@@ -314,16 +316,51 @@ public:
 
 	virtual MikanAPIResult connect() override { return connect("", ""); }
 
-	virtual MikanAPIResult connect(const std::string& host, const std::string& port) override
+	virtual MikanAPIResult connect(const char* host, const char* port) override
 	{
-		m_connectHost= host;
-		m_httpPort= 0;
-		return (MikanAPIResult)Mikan_Connect(m_context, host.c_str(), port.c_str());
+		m_connectHost= host != nullptr ? host : "";
+		m_httpBaseUrl.clear();
+		return (MikanAPIResult)Mikan_Connect(m_context, m_connectHost.c_str(), port != nullptr ? port : "");
 	}
 
-	virtual std::string getHttpBaseUrl() const override
+	virtual const char* getHttpBaseUrl() const override { return m_httpBaseUrl.c_str(); }
+
+	virtual bool getIsConnected() override { return Mikan_GetIsConnected(m_context); }
+
+	virtual MikanAPIResult fetchNextEvent(MikanEventPtr& out_event) override
 	{
-		if (m_httpPort <= 0)
+		const MikanAPIResult result= m_eventManager->fetchNextEvent(out_event);
+
+		if (auto connectedEvent= std::dynamic_pointer_cast<MikanConnectedEvent>(out_event))
+		{
+			m_httpBaseUrl= buildHttpBaseUrl(connectedEvent->httpPort);
+		}
+		else if (std::dynamic_pointer_cast<MikanDisconnectedEvent>(out_event))
+		{
+			m_httpBaseUrl.clear();
+		}
+
+		return result;
+	}
+
+	virtual MikanAPIResult disconnect() override { return (MikanAPIResult)Mikan_Disconnect(m_context, 0, ""); }
+
+	virtual MikanAPIResult disconnect(uint16_t code, const char* reason) override
+	{
+		return (MikanAPIResult)Mikan_Disconnect(m_context, code, reason != nullptr ? reason : "");
+	}
+
+	virtual MikanAPIResult shutdown() override
+	{
+		auto result= (MikanAPIResult)Mikan_Shutdown(m_context);
+		m_context= nullptr;
+		return result;
+	}
+
+private:
+	std::string buildHttpBaseUrl(int httpPort) const
+	{
+		if (httpPort <= 0)
 			return std::string();
 
 		// The websocket host may carry a scheme, a trailing slash or its own port
@@ -340,48 +377,15 @@ public:
 		if (host.empty())
 			host= "127.0.0.1";
 
-		return "http://" + host + ":" + std::to_string(m_httpPort);
+		return "http://" + host + ":" + std::to_string(httpPort);
 	}
 
-	virtual bool getIsConnected() override { return Mikan_GetIsConnected(m_context); }
-
-	virtual MikanAPIResult fetchNextEvent(MikanEventPtr& out_event) override
-	{
-		const MikanAPIResult result= m_eventManager->fetchNextEvent(out_event);
-
-		if (auto connectedEvent= std::dynamic_pointer_cast<MikanConnectedEvent>(out_event))
-		{
-			m_httpPort= connectedEvent->httpPort;
-		}
-		else if (std::dynamic_pointer_cast<MikanDisconnectedEvent>(out_event))
-		{
-			m_httpPort= 0;
-		}
-
-		return result;
-	}
-
-	virtual MikanAPIResult disconnect() override { return (MikanAPIResult)Mikan_Disconnect(m_context, 0, ""); }
-
-	virtual MikanAPIResult disconnect(uint16_t code, const std::string& reason) override
-	{
-		return (MikanAPIResult)Mikan_Disconnect(m_context, code, reason.c_str());
-	}
-
-	virtual MikanAPIResult shutdown() override
-	{
-		auto result= (MikanAPIResult)Mikan_Shutdown(m_context);
-		m_context= nullptr;
-		return result;
-	}
-
-private:
 	MikanContext m_context;
 	std::unique_ptr<MikanRequestManager> m_requestManager;
 	std::unique_ptr<MikanEventManager> m_eventManager;
 	std::unique_ptr<MikanRenderTargetAPI> m_renderTargetAPI;
 	std::string m_connectHost;
-	int m_httpPort= 0;
+	std::string m_httpBaseUrl;
 };
 
 // -- Mikan API Factory -----

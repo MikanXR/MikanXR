@@ -124,7 +124,7 @@ public:
 
 			// Allocate a default instance of the object assigned to the shared pointer
 			void* objectInstance=
-				allocateMethod->invokeUnsafe<void*, const std::string&>(objPtrInstance, objectClassName);
+				allocateMethod->invokeUnsafe<void*, const char*>(objPtrInstance, objectClassName.c_str());
 
 			// Deserialize the object from the json
 			json objectJson= ownerJsonObject["value"];

@@ -77,7 +77,7 @@ public:
 		// Use reflection to get the runtime class name of the object pointed at
 		rfk::Method const* getRuntimeClassNameMethod=
 			objPtrClassType->getMethodByName("getRuntimeClassName", rfk::EMethodFlags::Default, true);
-		const std::string className= getRuntimeClassNameMethod->invokeUnsafe<std::string>(objPtrInstance);
+		const std::string className= getRuntimeClassNameMethod->invokeUnsafe<const char*>(objPtrInstance);
 
 		// Get the runtime class for the object
 		rfk::Struct const* objectStruct= nullptr;

@@ -115,9 +115,9 @@ void verify_serialization_test_struct(const SerializationTestStruct& actual, con
 	assert(is_nearly_equal(expected_point3d->z_field, actual_point3d->z_field, k_real_epsilon));
 
 	assert(expected.null_ptr_field.getRawPtr() == nullptr);
-	assert(expected.null_ptr_field.getRuntimeClassName().empty());
+	assert(expected.null_ptr_field.getRuntimeClassName()[0] == '\0');
 	assert(actual.null_ptr_field.getRawPtr() == nullptr);
-	assert(actual.null_ptr_field.getRuntimeClassName().empty());
+	assert(actual.null_ptr_field.getRuntimeClassName()[0] == '\0');
 
 	assert(actual.bool_array.size() == expected.bool_array.size());
 	for (size_t i= 0; i < actual.bool_array.size(); ++i)
