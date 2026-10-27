@@ -199,9 +199,17 @@ bool WebsocketInterprocessMessageServer::initialize(bool bAllowRemote)
 	{
 		WebsocketInterprocessMessageServer* ownerMessageServer= this;
 
-		// Loopback unless the app settings open the server to the LAN
+		// Loopback unless the app settings open the server to the LAN. Each connection
+		// pings the client on an interval and closes itself when no pong comes back by
+		// the next one, so a client that drops off the network without a close frame,
+		// such as a phone leaving Wi-Fi, is torn down with its connection-scoped state
+		// within two intervals instead of lingering until the editor quits.
 		const std::string host= bAllowRemote ? "0.0.0.0" : "127.0.0.1";
-		m_server= std::make_shared<ix::WebSocketServer>(WEBSOCKET_SERVER_PORT_NUMBER, host);
+		constexpr int k_pingIntervalSeconds= 5;
+		m_server= std::make_shared<ix::WebSocketServer>(
+			WEBSOCKET_SERVER_PORT_NUMBER, host, ix::SocketServer::kDefaultTcpBacklog,
+			ix::SocketServer::kDefaultMaxConnections, ix::WebSocketServer::kDefaultHandShakeTimeoutSecs,
+			ix::SocketServer::kDefaultAddressFamily, k_pingIntervalSeconds);
 
 		auto connectionStateFactory= [ownerMessageServer]() -> WebSocketClientConnectionPtr
 		{ return std::make_shared<WebSocketClientConnection>(ownerMessageServer); };
