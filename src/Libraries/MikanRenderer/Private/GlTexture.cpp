@@ -240,6 +240,8 @@ public:
 			{
 				// Assumes no extra padding in stride
 				m_PBOByteSize= m_width * m_height * getBytesPerPixel(m_bufferFormat, m_pixelType);
+				m_pboWriteIndex= 0;
+				m_bPboReadPrimed= false;
 
 				switch (m_pboMode)
 				{
@@ -447,102 +449,58 @@ public:
 		return glGetError() == GL_NO_ERROR;
 	}
 
-	virtual void copyTextureIntoBuffer(uint8_t* outBuffer, size_t bufferSize) override
+	virtual bool copyTextureIntoBuffer(uint8_t* outBuffer, size_t bufferSize) override
 	{
-		if (m_pboMode == PixelBufferObjectMode::SinglePBORead || m_pboMode == PixelBufferObjectMode::DoublePBORead)
+		if (outBuffer == nullptr || m_glTextureId == 0)
 		{
-			// Make sure buffer size matches the PBO size
-			assert(bufferSize == m_PBOByteSize);
+			return false;
+		}
 
-			int nextPBOIndex= 0;
+		if (m_pboMode != PixelBufferObjectMode::SinglePBORead && m_pboMode != PixelBufferObjectMode::DoublePBORead)
+		{
+			// No pixel buffer object to stream through, so the read is the synchronous one
+			return readTextureIntoBuffer(outBuffer, bufferSize);
+		}
 
-			if (m_pboMode == PixelBufferObjectMode::SinglePBORead)
-			{
-				// In single PBO mode, the index and nextIndex are set to 0
-				m_pboWriteIndex= nextPBOIndex= 0;
-			}
-			else if (m_pboMode == PixelBufferObjectMode::DoublePBORead)
-			{
-				// In double PBO mode, increment current index first then get the next index
-				m_pboWriteIndex= (m_pboWriteIndex + 1) % 2;
-				nextPBOIndex= (m_pboWriteIndex + 1) % 2;
-			}
+		if (bufferSize < m_PBOByteSize)
+		{
+			return false;
+		}
 
-			// Bind the the current PBO to write to the texture
-			glBindBuffer(GL_PIXEL_PACK_BUFFER, m_glPixelBufferObjectIDs[m_pboWriteIndex]);
+		// Queue this call's transfer into the write PBO. With a pack buffer bound the
+		// pointer argument is an offset into that buffer, so the copy runs on the GPU
+		// and this returns without waiting for it.
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, m_glTextureId);
+		glBindBuffer(GL_PIXEL_PACK_BUFFER, m_glPixelBufferObjectIDs[m_pboWriteIndex]);
+		glGetTexImage(GL_TEXTURE_2D, 0, m_bufferFormat, m_pixelType, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
 
-			// Bind tge texture to read from
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, m_glTextureId);
-
-			// Copy pixels from texture object to PBO
-			glGetTexImage(GL_TEXTURE_2D, 0, m_bufferFormat, m_pixelType,
-						  0); // Treated as offset instead of pointer to pixel data
-
-			// Bind PBO to fill in from main memory
-			glBindBuffer(GL_PIXEL_PACK_BUFFER, m_glPixelBufferObjectIDs[nextPBOIndex]);
-
-			// Map the buffer object into system memory
-			// Note that glMapBuffer() causes sync issue.
-			// If GPU is working with this buffer, glMapBuffer() will wait(stall)
-			// for GPU to finish its job. To avoid waiting (stall), you can call
-			// first glBufferData() with NULL pointer before glMapBuffer().
-			// If you do that, the previous data in PBO will be discarded and
-			// glMapBuffer() returns a new allocated pointer immediately
-			// even if GPU is still working with the previous data.
-			glBufferData(GL_PIXEL_PACK_BUFFER, bufferSize, 0, GL_STREAM_READ);
-			GLubyte* readPointer= (GLubyte*)glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
-			if (readPointer)
-			{
-				// update data directly on the mapped buffer
-				std::memcpy(outBuffer, readPointer, bufferSize);
-				glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
-			}
-
-			// ensure we don't try and read data before the transfer is complete
-			//		GLsync sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-			//
-			//		// then regularly check for completion
-			//		bool bCompleted= false;
-			//		while (!bCompleted)
-			//		{
-			//			GLint result;
-			//			glGetSynciv(sync, GL_SYNC_STATUS, sizeof(result), NULL, &result);
-			//			if (result == GL_SIGNALED)
-			//			{
-			//				glBindBuffer(GL_PIXEL_PACK_BUFFER, m_glPixelBufferObjectIDs[nextPBOIndex]);
-			//				void* readPointer = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
-			//
-			//				if (readPointer != nullptr)
-			//				{
-			//					std::memcpy(outBuffer, readPointer, bufferSize);
-			//					glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
-			//					bCompleted= true;
-			//				}
-			//			}
-			//			else
-			//			{
-			// #ifdef _MSC_VER
-			//				Sleep(1);
-			// #else
-			//				struct timespec req = { 0 };
-			//				req.tv_sec = 0;
-			//				req.tv_nsec = 1 * MILLISECONDS_TO_NANOSECONDS;
-			//				nanosleep(&req, (struct timespec*)NULL);
-			// #endif
-			//			}
-			//		}
-
-			// it is good idea to release PBOs with ID 0 after use.
-			// Once bound with 0, all pixel operations behave normal ways.
-			glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+		bool bRead= false;
+		if (m_pboMode == PixelBufferObjectMode::SinglePBORead)
+		{
+			// One buffer: mapping it waits for the transfer just queued, so the pixels
+			// are current and the stall is the price of this mode.
+			bRead= copyBoundPackBufferInto(outBuffer);
 		}
 		else
 		{
-			glBindTexture(GL_TEXTURE_2D, m_glTextureId);
-			glGetTexImage(GL_TEXTURE_2D, 0, m_bufferFormat, m_pixelType, outBuffer);
-			glBindTexture(GL_TEXTURE_2D, 0);
+			// Two buffers: map the one the previous call filled, which the GPU has had
+			// a whole call to finish, so this does not wait. The pixels are one call
+			// old, and the first call after creation has nothing to hand back yet.
+			const uint16_t readIndex= (m_pboWriteIndex + 1) % 2;
+			if (m_bPboReadPrimed)
+			{
+				glBindBuffer(GL_PIXEL_PACK_BUFFER, m_glPixelBufferObjectIDs[readIndex]);
+				bRead= copyBoundPackBufferInto(outBuffer);
+			}
+			m_bPboReadPrimed= true;
+			m_pboWriteIndex= readIndex;
 		}
+
+		glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+
+		return bRead;
 	}
 
 	virtual void disposeTexture() override
@@ -553,16 +511,23 @@ public:
 			m_glTextureId= 0;
 		}
 
-		if (m_pboMode == PixelBufferObjectMode::DoublePBOWrite)
+		switch (m_pboMode)
 		{
+		case PixelBufferObjectMode::DoublePBOWrite:
+		case PixelBufferObjectMode::DoublePBORead:
 			glDeleteBuffers(2, m_glPixelBufferObjectIDs);
-		}
-		else if (m_pboMode == PixelBufferObjectMode::SinglePBOWrite)
-		{
+			break;
+		case PixelBufferObjectMode::SinglePBOWrite:
+		case PixelBufferObjectMode::SinglePBORead:
 			glDeleteBuffers(1, m_glPixelBufferObjectIDs);
+			break;
+		default:
+			break;
 		}
 		m_glPixelBufferObjectIDs[0]= 0;
 		m_glPixelBufferObjectIDs[1]= 0;
+		m_pboWriteIndex= 0;
+		m_bPboReadPrimed= false;
 	}
 
 	virtual bool bindTexture(int textureUnit) const override
@@ -694,6 +659,20 @@ protected:
 	}
 
 protected:
+	bool copyBoundPackBufferInto(uint8_t* outBuffer) const
+	{
+		const GLubyte* readPointer= (const GLubyte*)glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
+		if (readPointer == nullptr)
+		{
+			return false;
+		}
+
+		std::memcpy(outBuffer, readPointer, m_PBOByteSize);
+		glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+
+		return true;
+	}
+
 	std::string m_name;
 	uint32_t m_glTextureId= 0;
 	uint16_t m_width= 0;
@@ -703,6 +682,7 @@ protected:
 	uint32_t m_pixelType= 0;
 	uint32_t m_glPixelBufferObjectIDs[2]= {0, 0};
 	uint16_t m_pboWriteIndex= 0;
+	bool m_bPboReadPrimed= false;
 	PixelBufferObjectMode m_pboMode= PixelBufferObjectMode::NoPBO;
 	size_t m_PBOByteSize= 0;
 	bool m_bGenerateMipMap= true;
@@ -894,10 +874,10 @@ public:
 		return;
 	}
 
-	virtual void copyTextureIntoBuffer(uint8_t* outBuffer, size_t bufferSize) override
+	virtual bool copyTextureIntoBuffer(uint8_t* outBuffer, size_t bufferSize) override
 	{
-		// Do nothing
-		return;
+		// An external texture owns no pixel buffer objects to stream through
+		return false;
 	}
 
 	virtual bool readTextureIntoBuffer(uint8_t* outBuffer, size_t bufferSize) override
@@ -1013,10 +993,9 @@ bool saveMkTextureToPNG(IMkTexturePtr texture, const char* filename)
 	const size_t bufferSize= (size_t)width * height * channels * bytesPerChannel;
 	uint8_t* buffer= new uint8_t[bufferSize];
 
-	// Synchronous read rather than copyTextureIntoBuffer. That path streams through pixel buffer
-	// objects, and for a texture in a read PBO mode it maps the buffer it just orphaned, so a
-	// one-shot caller gets an empty image. Framebuffer color textures are created in
-	// DoublePBORead, which is every texture this function is pointed at from the compositor.
+	// Synchronous read rather than copyTextureIntoBuffer. That path hands back the previous
+	// call's pixels in a double PBO read mode, which is how framebuffer color textures are
+	// created, so a one-shot caller would get nothing on its first call.
 	if (!texture->readTextureIntoBuffer(buffer, bufferSize))
 	{
 		delete[] buffer;

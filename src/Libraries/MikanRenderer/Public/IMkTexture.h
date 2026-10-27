@@ -56,11 +56,15 @@ public:
 
 	virtual bool createTexture()= 0;
 	virtual void copyBufferIntoTexture(const uint8_t* buffer, size_t bufferSize)= 0;
-	virtual void copyTextureIntoBuffer(uint8_t* outBuffer, size_t bufferSize)= 0;
-	// Synchronous read that needs no pixel buffer object. copyTextureIntoBuffer
-	// only services textures created in a PBO read mode and quietly does nothing
-	// otherwise, which covers per-frame readback where stalling matters. This is
-	// for the occasional one-off read of a texture that was never set up for it,
+	// Per-frame readback through the pixel buffer objects the texture was created
+	// with. In a double PBO read mode the pixels handed back are the ones captured
+	// by the previous call, so the read never waits on the GPU, and the first call
+	// after creation returns false because nothing has been captured yet. In a
+	// single PBO read mode the pixels are current and the call waits. Without a
+	// read PBO this falls back to readTextureIntoBuffer.
+	virtual bool copyTextureIntoBuffer(uint8_t* outBuffer, size_t bufferSize)= 0;
+	// Synchronous read that needs no pixel buffer object, for the occasional
+	// one-off read of a texture that was never set up for streaming readback,
 	// such as pulling a GPU-direct video frame back for marker detection.
 	// Returns false when the texture is invalid or the buffer is the wrong size.
 	virtual bool readTextureIntoBuffer(uint8_t* outBuffer, size_t bufferSize)= 0;
