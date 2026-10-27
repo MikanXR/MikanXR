@@ -18,7 +18,8 @@
 class IInterprocessMessageClient
 {
 public:
-	using TextResponseHandler= std::function<void(const std::string& utf8ResponseString)>;
+	// Called with a JSON-RPC response frame and the id it answers
+	using TextResponseHandler= std::function<void(MikanRequestID requestId, const std::string& utf8ResponseString)>;
 
 	virtual ~IInterprocessMessageClient() {}
 

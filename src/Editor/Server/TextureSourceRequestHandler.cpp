@@ -19,12 +19,12 @@ void TextureSourceRequestHandler::publishTextureSourceOpenedEvent()
 {
 	MikanTextureSourceOpenedEvent openedEvent= {};
 
-	m_owner->publishMikanJsonEvent(mikanTypeToJsonString(openedEvent));
+	m_owner->publishMikanJsonEvent(mikanEventToJsonRpc(openedEvent));
 }
 
 void TextureSourceRequestHandler::publishTextureSourceClosedEvent()
 {
 	MikanTextureSourceClosedEvent closedEvent= {};
 
-	m_owner->publishMikanJsonEvent(mikanTypeToJsonString(closedEvent));
+	m_owner->publishMikanJsonEvent(mikanEventToJsonRpc(closedEvent));
 }

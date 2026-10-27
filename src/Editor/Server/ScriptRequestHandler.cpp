@@ -153,7 +153,7 @@ void ScriptRequestHandler::publishScriptMessageEvent(const std::string& message)
 	MikanScriptMessagePostedEvent messageInfo;
 	messageInfo.message= message.c_str();
 
-	m_owner->publishMikanJsonEvent(mikanTypeToJsonString(messageInfo));
+	m_owner->publishMikanJsonEvent(mikanEventToJsonRpc(messageInfo));
 }
 
 // Scripting Requests

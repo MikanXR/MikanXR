@@ -317,12 +317,12 @@ void CameraRequestHandler::getCameraPropertiesHandler(const ClientRequest& reque
 // -- Camera Events -----
 void CameraRequestHandler::publishCameraNewFrameEvent(const MikanCameraNewFrameEvent& newFrameEvent)
 {
-	m_owner->publishMikanJsonEvent(mikanTypeToJsonString(newFrameEvent));
+	m_owner->publishMikanJsonEvent(mikanEventToJsonRpc(newFrameEvent));
 }
 
 void CameraRequestHandler::publishCameraNewPropertiesEvent(const MikanCameraNewPropertiesEvent& propertiesEvent)
 {
-	m_owner->publishMikanJsonEvent(mikanTypeToJsonString(propertiesEvent));
+	m_owner->publishMikanJsonEvent(mikanEventToJsonRpc(propertiesEvent));
 }
 
 // -- Compositor Events -----
@@ -332,7 +332,7 @@ void CameraRequestHandler::publishCompositorStartedEvent(MikanCompositorID compo
 	startedEvent.compositor_id= compositorId;
 	startedEvent.camera_id= cameraId;
 
-	m_owner->publishMikanJsonEvent(mikanTypeToJsonString(startedEvent));
+	m_owner->publishMikanJsonEvent(mikanEventToJsonRpc(startedEvent));
 }
 
 void CameraRequestHandler::publishCompositorStoppedEvent(MikanCompositorID compositorId, MikanCameraID cameraId)
@@ -341,5 +341,5 @@ void CameraRequestHandler::publishCompositorStoppedEvent(MikanCompositorID compo
 	stoppedEvent.compositor_id= compositorId;
 	stoppedEvent.camera_id= cameraId;
 
-	m_owner->publishMikanJsonEvent(mikanTypeToJsonString(stoppedEvent));
+	m_owner->publishMikanJsonEvent(mikanEventToJsonRpc(stoppedEvent));
 }

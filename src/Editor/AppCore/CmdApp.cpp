@@ -29,6 +29,7 @@
 #include "FrameRegistrationTests.h"
 #include "GlbMeshWriterTests.h"
 #include "HttpServerTests.h"
+#include "JsonRpcServerTests.h"
 #include "LegacyContentMigrationTests.h"
 #include "LegacyTakeMigrationTests.h"
 #include "LightEnvironmentPersistenceTests.h"
@@ -89,8 +90,8 @@ bool run_all_editor_unit_tests()
 	success&= run_capture_archive_tests();
 	success&= run_client_api_property_schema_tests();
 	success&= run_component_naming_tests();
-	success&= run_depth_edge_refine_tests();
 	success&= run_compositor_stream_route_tests();
+	success&= run_depth_edge_refine_tests();
 	success&= run_depth_of_field_tests();
 	success&= run_depth_mesh_generator_unit_tests();
 	success&= run_directory_watcher_tests();
@@ -101,6 +102,7 @@ bool run_all_editor_unit_tests()
 	success&= run_frame_registration_unit_tests();
 	success&= run_glb_mesh_writer_tests();
 	success&= run_http_server_tests();
+	success&= run_jsonrpc_server_tests();
 	success&= run_legacy_content_migration_tests();
 	success&= run_legacy_take_migration_tests();
 	success&= run_light_environment_persistence_tests();

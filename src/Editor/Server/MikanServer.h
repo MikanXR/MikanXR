@@ -120,4 +120,7 @@ private:
 	class VideoSourceRequestHandler* m_videoSourceRequestHandler;
 
 	MikanClientConnectionStateMap m_clientConnections;
+
+	// The rpc.discover answer, built once every request handler is registered
+	nlohmann::json m_openRpcDocument;
 };

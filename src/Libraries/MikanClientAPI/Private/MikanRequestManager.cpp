@@ -6,6 +6,8 @@
 #include "JsonDeserializer.h"
 #include "SerializableObjectPtr.h"
 #include "TypeRegistry.h"
+#include "JsonRpc.h"
+#include "ReflectionHandles.h"
 
 #include <nlohmann/json.hpp>
 
@@ -20,6 +22,54 @@ MikanAPIResult MikanRequestManager::init(MikanContext context)
 	return (MikanAPIResult)Mikan_SetTextResponseCallback(context, textResponseHandlerStatic, this);
 }
 
+namespace
+{
+// The struct a request is answered with: the one its ResponseType property names, or the
+// plain MikanResponse when it carries none
+Serialization::StructTypeHandle getExpectedResponseType(Serialization::StructTypeHandle requestStruct)
+{
+	const char* responseTypeName= Serialization::getResponseTypeName(requestStruct);
+	if (responseTypeName == nullptr)
+	{
+		return &MikanResponse::staticGetArchetype();
+	}
+
+	Serialization::StructTypeHandle responseStruct= Serialization::TypeRegistry::getStructByName(responseTypeName);
+	if (responseStruct == nullptr)
+	{
+		MIKAN_MT_LOG_ERROR("MikanRequestManager::getExpectedResponseType()")
+			<< requestStruct->getName() << " names an unknown response type " << responseTypeName;
+		return &MikanResponse::staticGetArchetype();
+	}
+
+	return responseStruct;
+}
+
+// An error's data carries the MikanAPIResult name, which is what fills in the response
+MikanAPIResult getErrorResultCode(const JsonRpcError& error)
+{
+	if (error.data.is_object())
+	{
+		auto resultCodeIt= error.data.find("resultCode");
+		if (resultCodeIt != error.data.end() && resultCodeIt->is_string())
+		{
+			const std::string resultCodeName= resultCodeIt->get<std::string>();
+
+			int64_t resultCodeValue= 0;
+			if (Serialization::findEnumValueByName(Serialization::TypeRegistry::getEnumByName("MikanAPIResult"),
+												   resultCodeName.c_str(), resultCodeValue))
+			{
+				return (MikanAPIResult)resultCodeValue;
+			}
+		}
+	}
+
+	MIKAN_MT_LOG_WARNING("MikanRequestManager::getErrorResultCode()")
+		<< "Error " << error.code << " (" << error.message << ") carries no known resultCode";
+	return MikanAPIResult::GeneralError;
+}
+} // namespace
+
 MikanResponseFuture MikanRequestManager::sendRequest(MikanRequest& inRequest)
 {
 	Serialization::StructTypeHandle requestStruct=
@@ -30,13 +80,23 @@ MikanResponseFuture MikanRequestManager::sendRequest(MikanRequest& inRequest)
 	inRequest.requestId= m_nextRequestID;
 	m_nextRequestID++;
 
-	std::string jsonString;
-	std::string serializeError;
-	if (Serialization::serializeToJsonString(&inRequest, requestStruct, jsonString, serializeError))
-	{
-		MikanAPIResult result= (MikanAPIResult)Mikan_SendRequestJSON(m_context, jsonString.c_str());
+	Serialization::StructTypeHandle expectedResponseType= getExpectedResponseType(requestStruct);
 
-		return addResponseHandler(inRequest.requestId, result);
+	// The request struct's own fields are the params, since the envelope fields are not reflected
+	json params;
+	std::string serializeError;
+	if (Serialization::serializeToJson(&inRequest, requestStruct, params, serializeError))
+	{
+		if (params.is_null())
+		{
+			params= json::object();
+		}
+
+		const std::string requestFrame=
+			JsonRpc::formatRequest(inRequest.requestTypeName.getUtf8Value(), params, inRequest.requestId);
+		MikanAPIResult result= (MikanAPIResult)Mikan_SendRequestJSON(m_context, requestFrame.c_str());
+
+		return addResponseHandler(inRequest.requestId, result, expectedResponseType);
 	}
 	else
 	{
@@ -46,7 +106,8 @@ MikanResponseFuture MikanRequestManager::sendRequest(MikanRequest& inRequest)
 	}
 }
 
-MikanResponseFuture MikanRequestManager::addResponseHandler(MikanRequestID requestId, MikanAPIResult result)
+MikanResponseFuture MikanRequestManager::addResponseHandler(MikanRequestID requestId, MikanAPIResult result,
+															Serialization::StructTypeHandle expectedResponseType)
 {
 	MikanResponsePromise promise;
 	MikanResponseFuture future(this, requestId, promise);
@@ -56,6 +117,8 @@ MikanResponseFuture MikanRequestManager::addResponseHandler(MikanRequestID reque
 		auto pendingRequest= std::make_shared<PendingRequest>();
 		pendingRequest->id= requestId;
 		pendingRequest->promise= std::move(promise);
+		pendingRequest->expectedResponseType=
+			expectedResponseType != nullptr ? expectedResponseType : &MikanResponse::staticGetArchetype();
 
 		// Insert into the pending request map
 		insertPendingRequest(pendingRequest);
@@ -63,7 +126,6 @@ MikanResponseFuture MikanRequestManager::addResponseHandler(MikanRequestID reque
 	else
 	{
 		auto errorResponse= std::make_shared<MikanResponse>();
-		errorResponse->responseTypeName= MikanResponse::staticGetArchetype().getName();
 		errorResponse->requestId= requestId;
 		errorResponse->resultCode= result;
 
@@ -110,12 +172,12 @@ void MikanRequestManager::textResponseHander(MikanRequestID requestId, const cha
 	// Fulfill the promise with the response
 	if (pendingRequest)
 	{
-		MikanResponsePtr response= parseResponseString(utf8ResponseString);
+		MikanResponsePtr response=
+			parseResponseString(requestId, utf8ResponseString, pendingRequest->expectedResponseType);
 
 		if (!response)
 		{
 			response= std::make_shared<MikanResponse>();
-			response->responseTypeName= MikanResponse::staticGetArchetype().getName();
 			response->requestId= requestId;
 			response->resultCode= MikanAPIResult::MalformedResponse;
 		}
@@ -136,55 +198,43 @@ void MikanRequestManager::textResponseHandlerStatic(MikanRequestID requestId, co
 	self->textResponseHander(requestId, utf8ResponseString);
 }
 
-MikanResponsePtr MikanRequestManager::parseResponseString(const char* utf8ResponseString)
+MikanResponsePtr MikanRequestManager::parseResponseString(MikanRequestID requestId, const char* utf8ResponseString,
+														  Serialization::StructTypeHandle expectedResponseType)
 {
+	JsonRpcFrame frame;
+	if (JsonRpc::parseIncoming(utf8ResponseString, frame) != eJsonRpcFrameKind::response)
+	{
+		MIKAN_MT_LOG_ERROR("MikanClient::parseResponseString()") << "Not a response: " << utf8ResponseString;
+		return nullptr;
+	}
+
+	const JsonRpcResponse& rpcResponse= frame.response;
 	MikanResponsePtr responsePtr;
 
-	try
+	// An error answers with the plain response whatever the request expected
+	if (rpcResponse.error.has_value())
 	{
-		json jsonResponse= json::parse(utf8ResponseString);
+		responsePtr= std::make_shared<MikanResponse>();
+		responsePtr->resultCode= getErrorResultCode(*rpcResponse.error);
+	}
+	else
+	{
+		responsePtr= expectedResponseType->makeSharedInstance<MikanResponse>();
 
-		MikanResponse responseHeader= {};
-		std::string parseHeaderError;
-		if (Serialization::deserializeFromJson(jsonResponse, &responseHeader, &MikanResponse::staticGetArchetype(),
-											   parseHeaderError))
-		{
-			Serialization::StructTypeHandle responseStruct=
-				Serialization::TypeRegistry::getStructByName(responseHeader.responseTypeName.getUtf8Value());
-			if (responseStruct != nullptr)
-			{
-				responsePtr= responseStruct->makeSharedInstance<MikanResponse>();
-
-				std::string parseResponseError;
-				if (!Serialization::deserializeFromJson(jsonResponse, responsePtr.get(), responseStruct,
-														parseResponseError))
-				{
-					MIKAN_MT_LOG_ERROR("MikanClient::parseResponseString()")
-						<< "Failed to parse struct of type " << responseHeader.responseTypeName.getUtf8Value() << ": "
-						<< parseResponseError;
-					responsePtr= nullptr;
-				}
-			}
-			else
-			{
-				MIKAN_MT_LOG_ERROR("MikanClient::parseResponseString()")
-					<< "Failed to find struct of type " << responseHeader.responseTypeName.getUtf8Value();
-			}
-		}
-		else
+		std::string parseResponseError;
+		if (!Serialization::deserializeFromJson(*rpcResponse.result, responsePtr.get(), expectedResponseType,
+												parseResponseError))
 		{
 			MIKAN_MT_LOG_ERROR("MikanClient::parseResponseString()")
-				<< "Failed to parse response header: " << parseHeaderError;
+				<< "Failed to parse struct of type " << expectedResponseType->getName() << ": " << parseResponseError;
+			return nullptr;
 		}
+
+		responsePtr->resultCode= MikanAPIResult::Success;
 	}
-	catch (json::parse_error& e)
-	{
-		MIKAN_MT_LOG_ERROR("MikanClient::parseResponseString()") << "Failed to parse response: " << e.what();
-	}
-	catch (json::exception& e)
-	{
-		MIKAN_MT_LOG_ERROR("MikanClient::parseResponseString()") << "Failed to parse response: " << e.what();
-	}
+
+	// The type name was stamped by the struct's constructor
+	responsePtr->requestId= requestId;
 
 	return responsePtr;
 }

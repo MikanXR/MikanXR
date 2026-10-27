@@ -1,23 +1,46 @@
 #include "ServerResponseHelpers.h"
+#include "TypeRegistry.h"
 
-void writeSimpleJsonResponse(MikanRequestID requestId, MikanAPIResult result, ClientResponse& response)
+JsonRpcError makeMikanJsonRpcError(MikanAPIResult result)
 {
-	// Only write a response if the request ID is valid (i.e. the client expects a response)
-	if (requestId != INVALID_MIKAN_ID)
-	{
-		MikanResponse mikanResponse;
-		mikanResponse.requestId= requestId;
-		mikanResponse.resultCode= result;
+	const char* resultName=
+		Serialization::getEnumValueName(Serialization::TypeRegistry::getEnumByName("MikanAPIResult"), (int64_t)result);
+	const std::string resultNameString= resultName != nullptr ? resultName : std::to_string((int)result);
 
-		std::string errorMsg;
-		if (!Serialization::serializeToJsonString(mikanResponse, response.utf8String, errorMsg))
-		{
-			MIKAN_LOG_ERROR("ServerResponseHelpers::writeSimpleJsonResponse")
-				<< "Failed to serialize MikanResponse to JSON string: " << errorMsg;
-		}
+	JsonRpcError error;
+	error.code= jsonRpcErrorCode(result);
+	error.message= resultNameString;
+	error.data= json{{"resultCode", resultNameString}};
+
+	return error;
+}
+
+void writeJsonResultResponse(const JsonRpcId& requestId, const json& result, ClientResponse& response)
+{
+	if (!requestId.has_value())
+	{
+		response.utf8String.clear();
+		return;
+	}
+
+	// A response struct with no fields serializes to null, and the plain response is {}
+	response.utf8String= JsonRpc::formatResult(*requestId, result.is_null() ? json::object() : result);
+}
+
+void writeSimpleJsonResponse(const JsonRpcId& requestId, MikanAPIResult result, ClientResponse& response)
+{
+	if (!requestId.has_value())
+	{
+		response.utf8String.clear();
+		return;
+	}
+
+	if (result == MikanAPIResult::Success)
+	{
+		response.utf8String= JsonRpc::formatResult(*requestId, json::object());
 	}
 	else
 	{
-		response.utf8String= "";
+		response.utf8String= JsonRpc::formatError(*requestId, makeMikanJsonRpcError(result));
 	}
 }

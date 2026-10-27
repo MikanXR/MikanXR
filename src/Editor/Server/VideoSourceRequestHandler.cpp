@@ -48,21 +48,21 @@ void VideoSourceRequestHandler::publishVideoSourceOpenedEvent()
 {
 	MikanVideoSourceOpenedEvent openedEvent= {};
 
-	m_owner->publishMikanJsonEvent(mikanTypeToJsonString(openedEvent));
+	m_owner->publishMikanJsonEvent(mikanEventToJsonRpc(openedEvent));
 }
 
 void VideoSourceRequestHandler::publishVideoSourceClosedEvent()
 {
 	MikanVideoSourceClosedEvent closedEvent= {};
 
-	m_owner->publishMikanJsonEvent(mikanTypeToJsonString(closedEvent));
+	m_owner->publishMikanJsonEvent(mikanEventToJsonRpc(closedEvent));
 }
 
 void VideoSourceRequestHandler::publishVideoSourceModeChangedEvent()
 {
 	MikanVideoSourceModeChangedEvent modeChangeEvent= {};
 
-	m_owner->publishMikanJsonEvent(mikanTypeToJsonString(modeChangeEvent));
+	m_owner->publishMikanJsonEvent(mikanEventToJsonRpc(modeChangeEvent));
 }
 
 // Video Source Requests

@@ -48,7 +48,7 @@ public:
 protected:
 	ISharedTextureWriteAccessorPtr getSharedTextureWriteAccessor(MikanCameraID camera_id) const;
 	ISharedTextureWriteAccessorPtr addSharedTextureWriteAccessor(MikanCameraID camera_id);
-	void textResponseHandler(const std::string& utf8ResponseString);
+	void textResponseHandler(MikanRequestID requestId, const std::string& utf8ResponseString);
 
 private:
 	std::array<void*, MikanClientGraphicsApi_COUNT> m_graphicsDeviceInterfaces;

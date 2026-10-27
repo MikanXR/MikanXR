@@ -5,6 +5,7 @@
 #include "MikanTypeFwd.h"
 #include "MikanResponseFuture.h"
 #include "JsonSerializer.h"
+#include "ReflectionHandles.h"
 
 #include <future>
 #include <mutex>
@@ -22,19 +23,24 @@ public:
 	MikanContext getContext() const { return m_context; }
 
 	MikanResponseFuture sendRequest(MikanRequest& request);
-	MikanResponseFuture addResponseHandler(MikanRequestID requestId, MikanAPIResult result);
+	// expectedResponseType is the struct a result is read into, the plain MikanResponse when null
+	MikanResponseFuture addResponseHandler(MikanRequestID requestId, MikanAPIResult result,
+										   Serialization::StructTypeHandle expectedResponseType= nullptr);
 	MikanAPIResult cancelRequest(MikanRequestID requestId);
 
 protected:
 	static void textResponseHandlerStatic(MikanRequestID requestId, const char* utf8ResponseString, void* userdata);
 	void textResponseHander(MikanRequestID requestId, const char* utf8ResponseString);
-	MikanResponsePtr parseResponseString(const char* utf8ResponseString);
+	MikanResponsePtr parseResponseString(MikanRequestID requestId, const char* utf8ResponseString,
+										 Serialization::StructTypeHandle expectedResponseType);
 
 private:
 	struct PendingRequest
 	{
 		MikanRequestID id;
 		MikanResponsePromise promise;
+		// A result carries no type name, so the request records what answers it
+		Serialization::StructTypeHandle expectedResponseType= nullptr;
 	};
 	using PendingRequestPtr= std::shared_ptr<PendingRequest>;
 	void insertPendingRequest(MikanRequestManager::PendingRequestPtr pendingRequest);

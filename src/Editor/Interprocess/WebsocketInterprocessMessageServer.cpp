@@ -1,14 +1,9 @@
 #include "WebsocketInterprocessMessageServer.h"
-#include "JsonUtils.h"
-#include "MikanClientRequests.h"
-#include "MikanClientEvents.h"
-#include "MikanScriptEvents.h"
-#include "MikanVideoSourceEvents.h"
+#include "JsonRpc.h"
 #include "Logger.h"
+#include "ServerResponseHelpers.h"
 #include "StringUtils.h"
 #include "ThreadUtils.h"
-#include "JsonSerializer.h"
-#include "JsonDeserializer.h"
 #include "Version.h"
 
 #include "IxWebSocket/IXConnectionState.h"
@@ -187,12 +182,12 @@ WebsocketInterprocessMessageServer::WebsocketInterprocessMessageServer()
 }
 
 WebsocketInterprocessMessageServer::~WebsocketInterprocessMessageServer() { dispose(); }
-	m_bAllowRemote= bAllowRemote;
-
 
 bool WebsocketInterprocessMessageServer::initialize(bool bAllowRemote)
 {
 	bool bSuccess= true;
+
+	m_bAllowRemote= bAllowRemote;
 
 	if (!ix::initNetSystem())
 	{
@@ -224,8 +219,8 @@ bool WebsocketInterprocessMessageServer::initialize(bool bAllowRemote)
 			// Bind the websocket to the connection state
 			clientConnectionState->bindWebSocket(webSocketWeakPtr);
 
-			// TODO: Need to modify ixwebsocket to respond with the same protocol that the client requested
-			// For now we just respond with the latest version of the protocol
+			// The handshake names this sub-protocol back only to a client that offered it, so a
+			// client that offered none, such as a browser tool, still connects
 			{
 				std::stringstream ss;
 				ss << WEBSOCKET_PROTOCOL_PREFIX << MIKAN_SERVER_API_VERSION;
@@ -251,14 +246,14 @@ bool WebsocketInterprocessMessageServer::initialize(bool bAllowRemote)
 		m_server->setConnectionStateFactory(connectionStateFactory);
 		m_server->setOnConnectionCallback(clientConnectCallback);
 
-			MIKAN_LOG_INFO("WebsocketInterprocessMessageServer::initialize()")
-				<< "Listening on " << host << ":" << WEBSOCKET_SERVER_PORT_NUMBER
-				<< (bAllowRemote ? "" : " (loopback only)");
 		// Start listening for connections
 		std::pair<bool, std::string> result= m_server->listen();
 		if (result.first)
 		{
 			m_server->start();
+			MIKAN_LOG_INFO("WebsocketInterprocessMessageServer::initialize()")
+				<< "Listening on " << host << ":" << WEBSOCKET_SERVER_PORT_NUMBER
+				<< (bAllowRemote ? "" : " (loopback only)");
 		}
 		else
 		{
@@ -304,9 +299,20 @@ void WebsocketInterprocessMessageServer::setSocketEventHandler(const std::string
 	m_socketEventHandlers[eventType]= handler;
 }
 
-void WebsocketInterprocessMessageServer::setRequestHandler(const std::string& requestTypeName, RequestHandler handler)
+void WebsocketInterprocessMessageServer::setRequestHandler(const std::string& method, RequestHandler handler)
 {
-	m_requestHandlers[requestTypeName]= handler;
+	m_requestHandlers[method]= handler;
+}
+
+std::vector<std::string> WebsocketInterprocessMessageServer::getRequestHandlerNames() const
+{
+	std::vector<std::string> names;
+	for (const auto& handler_it : m_requestHandlers)
+	{
+		names.push_back(handler_it.first);
+	}
+
+	return names;
 }
 
 void WebsocketInterprocessMessageServer::getConnectionList(std::vector<WebSocketClientConnectionPtr>& outConnections)
@@ -342,7 +348,8 @@ void WebsocketInterprocessMessageServer::sendMessageToClient(const std::string& 
 {
 	WebSocketClientConnectionPtr connection= findConnection(connectionId);
 
-	if (connection)
+	// An event that failed to serialize arrives empty
+	if (connection && !message.empty())
 	{
 		connection->sendText(message);
 	}
@@ -350,6 +357,11 @@ void WebsocketInterprocessMessageServer::sendMessageToClient(const std::string& 
 
 void WebsocketInterprocessMessageServer::sendMessageToAllClients(const std::string& message)
 {
+	if (message.empty())
+	{
+		return;
+	}
+
 	std::vector<WebSocketClientConnectionPtr> connections;
 	getConnectionList(connections);
 
@@ -425,60 +437,81 @@ void WebsocketInterprocessMessageServer::processRequests()
 void WebsocketInterprocessMessageServer::processRequest(const WebSocketClientConnectionPtr& connection,
 														const std::string& requestString)
 {
-	std::string requestTypeName;
-	JsonSaxStringValueSearcher typeNameSearcher;
-	if (!typeNameSearcher.fetchKeyValuePair(requestString, "requestTypeName", requestTypeName))
+	// NOTE: Connection ID here is a unique ID for the websocket connection on the server
+	// and is not the same as the client ID that the client sends to identify itself
+	const std::string reply= dispatchRequestFrame(m_requestHandlers, connection->getId(), requestString);
+
+	if (!reply.empty())
 	{
-		MIKAN_LOG_WARNING("processRequest") << "Request missing/invalid requestTypeName field: " << requestString;
-		return;
+		connection->sendText(reply);
+	}
+}
+
+std::string WebsocketInterprocessMessageServer::dispatchRequestFrame(
+	const std::map<std::string, RequestHandler>& requestHandlers, const std::string& connectionId,
+	const std::string& requestFrame)
+{
+	JsonRpcFrame frame;
+	switch (JsonRpc::parseIncoming(requestFrame, frame))
+	{
+	case eJsonRpcFrameKind::request:
+	case eJsonRpcFrameKind::notification:
+		break;
+	case eJsonRpcFrameKind::response:
+	{
+		// The server sends no requests, so there is nothing a response could answer
+		MIKAN_LOG_WARNING("processRequest") << "Dropped a response frame: " << requestFrame;
+		return std::string();
+	}
+	default:
+	{
+		// An unreadable frame is answered even without an id, since it cannot be known to be a
+		// notification. The data carries a resultCode like every other error.
+		MIKAN_LOG_WARNING("processRequest")
+			<< "Invalid JSON-RPC frame (" << frame.error.message << "): " << requestFrame;
+		frame.error.data= makeMikanJsonRpcError(MikanAPIResult::MalformedParameters).data;
+		return JsonRpc::formatError(frame.errorId, frame.error);
+	}
 	}
 
-	// Request ID is optional if the request doesn't expect a response
-	int requestId;
-	JsonSaxIntegerValueSearcher requestIdSearcher;
-	if (!requestIdSearcher.fetchKeyValuePair(requestString, "requestId", requestId))
+	const JsonRpcRequest& rpcRequest= frame.request;
+
+	ClientRequest request;
+	request.connectionId= connectionId;
+	request.method= rpcRequest.method;
+	request.requestId= rpcRequest.id;
+
+	ClientResponse response;
+	auto handler_it= requestHandlers.find(rpcRequest.method);
+	if (handler_it == requestHandlers.end())
 	{
-		requestId= INVALID_MIKAN_ID;
+		writeSimpleJsonResponse(request.requestId, MikanAPIResult::UnknownFunction, response);
+		return response.utf8String;
 	}
 
-	// Get the response from a registered function handler, if any
-	ClientResponse outResponse;
-	auto handler_it= m_requestHandlers.find(requestTypeName);
-	if (handler_it != m_requestHandlers.end())
+	// Params are by name. An empty array is what a client sends for a method with no params.
+	if (rpcRequest.params.is_object())
 	{
-		// NOTE: Connection ID here is a unique ID for the websocket connection on the server
-		// and is not the same as the client ID that the client sends to identify itself
-		const std::string connectionId= connection->getId();
-		ClientRequest request= {connectionId, requestId, requestString};
-
-		handler_it->second(request, outResponse);
+		request.utf8RequestString= rpcRequest.params.dump();
+	}
+	else if (rpcRequest.params.empty())
+	{
+		request.utf8RequestString= "{}";
 	}
 	else
 	{
-		MikanResponse outResult;
-		outResult.responseTypeName= MikanResponse::staticGetArchetype().getName();
-		outResult.requestId= requestId;
-		outResult.resultCode= MikanAPIResult::UnknownFunction;
-
-		std::string errorMsg;
-		if (!Serialization::serializeToJsonString(outResult, outResponse.utf8String, errorMsg))
-		{
-			MIKAN_LOG_WARNING("processRequest")
-				<< "Failed to serialize response for unknown request type: " << requestTypeName
-				<< ", error: " << errorMsg;
-			return;
-		}
+		MIKAN_LOG_WARNING("processRequest") << rpcRequest.method << " was sent positional params";
+		writeSimpleJsonResponse(request.requestId, MikanAPIResult::MalformedParameters, response);
+		return response.utf8String;
 	}
 
-	// Send the response back to the client
-	if (!outResponse.utf8String.empty())
-	{
-		connection->sendText(outResponse.utf8String);
-	}
+	handler_it->second(request, response);
 
-	if (requestId != INVALID_MIKAN_ID && outResponse.utf8String.empty())
+	if (!rpcRequest.isNotification() && response.utf8String.empty())
 	{
 		MIKAN_LOG_WARNING("processRequest")
-			<< "Request handler for " << requestTypeName << " returned empty response, but response expected!";
+			<< "Request handler for " << rpcRequest.method << " returned empty response, but response expected!";
 	}
+
+	return response.utf8String;
 }

@@ -77,6 +77,6 @@ void MikanClientConnectionState::publishPropertyChangedEvent(const MikanProperty
 		}
 
 		m_ownerServer->getMessageServer()->sendMessageToClient(getConnectionId(),
-															   mikanTypeToJsonString(propertyUpdateEvent));
+															   mikanEventToJsonRpc(propertyUpdateEvent));
 	}
 }

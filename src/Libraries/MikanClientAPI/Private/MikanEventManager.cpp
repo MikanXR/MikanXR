@@ -7,6 +7,7 @@
 #include "StringUtils.h"
 #include "SerializableObjectPtr.h"
 #include "TypeRegistry.h"
+#include "JsonRpc.h"
 
 #include <string>
 
@@ -95,25 +96,28 @@ MikanEventPtr MikanEventManager::parseEventString(const char* szUtf8EventString)
 		}
 		else
 		{
-			json jsonResponse= json::parse(eventString);
-
-			MikanEvent eventHeader= {};
-			std::string parseHeaderError;
-			if (!Serialization::deserializeFromJson(jsonResponse, &eventHeader, &MikanEvent::staticGetArchetype(),
-													parseHeaderError))
+			// An event is a notification from the server whose method is the event struct's name
+			JsonRpcFrame frame;
+			if (JsonRpc::parseIncoming(eventString, frame) != eJsonRpcFrameKind::notification)
 			{
-				MIKAN_MT_LOG_ERROR("MikanClient::parseEventString()")
-					<< "Failed to parse event header: " << parseHeaderError;
+				MIKAN_MT_LOG_ERROR("MikanClient::parseEventString()") << "Not an event notification: " << eventString;
+				return nullptr;
 			}
 
+			const JsonRpcRequest& notification= frame.request;
 			Serialization::StructTypeHandle eventStruct=
-				Serialization::TypeRegistry::getStructByName(eventHeader.eventTypeName.getUtf8Value());
+				Serialization::TypeRegistry::getStructByName(notification.method);
 			if (eventStruct != nullptr)
 			{
 				eventPtr= eventStruct->makeSharedInstance<MikanEvent>();
 
 				std::string parseEventError;
-				if (!Serialization::deserializeFromJson(jsonResponse, eventPtr.get(), eventStruct, parseEventError))
+				if (Serialization::deserializeFromJson(notification.params, eventPtr.get(), eventStruct,
+													   parseEventError))
+				{
+					eventPtr->eventTypeName.setUtf8Value(notification.method.c_str());
+				}
+				else
 				{
 					MIKAN_MT_LOG_ERROR("MikanClient::parseEventString()")
 						<< "Failed to parse event: " << parseEventError;
@@ -123,7 +127,7 @@ MikanEventPtr MikanEventManager::parseEventString(const char* szUtf8EventString)
 			else
 			{
 				MIKAN_MT_LOG_WARNING("MikanClient::parseEventString()")
-					<< "Received response for unknown eventTypeName: " << eventHeader.eventTypeName.getUtf8Value();
+					<< "Received an event of unknown type: " << notification.method;
 			}
 		}
 	}

@@ -20,6 +20,7 @@
 #include "MikanCameraRequests.h"
 #include "MikanScriptRequests.h"
 #include "MikanServer.h"
+#include "OpenRpcDocument.h"
 #include "ProjectConfig.h"
 #include "PropertyRequestHandler.h"
 #include "RemoteControlManager.h"
@@ -53,8 +54,8 @@ MikanServer::MikanServer()
 	, m_httpMessageServer(new HttpInterprocessMessageServer())
 	, m_arkitAlignmentRequestHandler(new ARKitAlignmentRequestHandler(this))
 	, m_assetUploadRequestHandler(new AssetUploadRequestHandler(this))
-	, m_cameraRequestHandler(new CameraRequestHandler(this))
 	, m_compositorStreamRequestHandler(new CompositorStreamRequestHandler(this))
+	, m_cameraRequestHandler(new CameraRequestHandler(this))
 	, m_functionRequestHandler(new FunctionRequestHandler(this))
 	, m_lightRequestHandler(new LightRequestHandler(this))
 	, m_propertyRequestHandler(new PropertyRequestHandler(this))
@@ -82,8 +83,8 @@ MikanServer::~MikanServer()
 	delete m_cameraRequestHandler;
 	delete m_arkitAlignmentRequestHandler;
 	delete m_assetUploadRequestHandler;
-	delete m_httpMessageServer;
 	delete m_compositorStreamRequestHandler;
+	delete m_httpMessageServer;
 	delete m_messageServer;
 	m_instance= nullptr;
 }
@@ -120,13 +121,13 @@ bool MikanServer::startup(MainWindow* mainWindow)
 		return false;
 	}
 
-	if (!m_assetUploadRequestHandler->startup(mainWindow))
 	if (!m_compositorStreamRequestHandler->startup(mainWindow))
 	{
 		MIKAN_LOG_ERROR("MikanServer::startup()") << "Failed to bind compositor stream request handler";
 		return false;
 	}
 
+	if (!m_assetUploadRequestHandler->startup(mainWindow))
 	{
 		MIKAN_LOG_ERROR("MikanServer::startup()") << "Failed to bind asset upload request handler";
 		return false;
@@ -206,6 +207,17 @@ bool MikanServer::startup(MainWindow* mainWindow)
 	m_messageServer->setRequestHandler(DisposeClientRequest::staticGetArchetype().getName(),
 									   std::bind(&MikanServer::disposeClientHandler, this, _1, _2));
 
+	// Discovery describes every method registered above, which is fixed from here on, so the
+	// document is built once for both the rpc.discover method and the HTTP route
+	m_messageServer->setRequestHandler(OpenRpcDocument::k_discoverMethod,
+									   [this](const ClientRequest& request, ClientResponse& response)
+									   { writeJsonResultResponse(request.requestId, m_openRpcDocument, response); });
+	m_openRpcDocument= OpenRpcDocument::buildDocument(m_messageServer->getRequestHandlerNames());
+	if (!OpenRpcDocument::registerRoute(m_httpMessageServer, m_openRpcDocument.dump()))
+	{
+		MIKAN_LOG_WARNING("MikanServer::startup()") << "Failed to register the OpenRPC document route";
+	}
+
 	return true;
 }
 
@@ -231,9 +243,11 @@ void MikanServer::shutdown()
 	m_clientConnections.clear();
 	m_messageServer->dispose();
 	m_httpMessageServer->dispose();
+	m_httpMessageServer->removeBackgroundRouteHandler(OpenRpcDocument::k_routePath);
 
 	m_arkitAlignmentRequestHandler->shutdown();
 	m_assetUploadRequestHandler->shutdown();
+	m_compositorStreamRequestHandler->shutdown();
 	m_cameraRequestHandler->shutdown();
 	m_functionRequestHandler->shutdown();
 	m_lightRequestHandler->shutdown();
@@ -247,11 +261,11 @@ void MikanServer::shutdown()
 
 	m_ownerWindow= nullptr;
 }
-	m_compositorStreamRequestHandler->shutdown();
 
 void MikanServer::restartMessageServers()
 {
 	AppSettingsConfigPtr appSettings= App::getInstance()->getAppSettings();
+	const bool bAllowRemote= appSettings->getHttpServerAllowRemote();
 	const int port= appSettings->getHttpServerPort();
 
 	m_httpMessageServer->dispose();
@@ -276,7 +290,6 @@ ProjectManagerPtr MikanServer::getProjectManager() const { return m_ownerWindow-
 
 // Fetched live rather than cached: loading a project replaces the ProjectConfig instance
 ProjectConfigPtr MikanServer::getProjectConfig() const
-	const bool bAllowRemote= appSettings->getHttpServerAllowRemote();
 {
 	return m_ownerWindow != nullptr ? getProjectManager()->getProjectConfig() : nullptr;
 }
@@ -395,13 +408,17 @@ void MikanServer::onClientConnectedHandler(const ClientSocketEvent& event)
 	MIKAN_LOG_INFO("onClientConnected") << "connectionId: " << event.connectionId
 										<< ", protocol: " << event.eventArgs[0];
 
-	// Determine if the client is compatible with the server
-	// by checking the protocol version
+	// Determine if the client is compatible with the server by checking the protocol
+	// versions it offered, any one of which may be new enough
 	bool bIsClientCompatible= false;
 	std::vector<std::string> protocols= StringUtils::splitString(event.eventArgs[0], ',');
-	int clientProtocol= -1;
-	for (const std::string& protocol : protocols)
+	for (const std::string& offeredProtocol : protocols)
 	{
+		// The offers are a comma separated list, which may space its entries
+		const size_t first= offeredProtocol.find_first_not_of(" \t");
+		const size_t last= offeredProtocol.find_last_not_of(" \t");
+		const std::string protocol= first != std::string::npos ? offeredProtocol.substr(first, last - first + 1) : "";
+
 		std::string prefix= WEBSOCKET_PROTOCOL_PREFIX;
 		if (protocol.rfind(prefix.c_str(), 0) == 0)
 		{
@@ -411,10 +428,18 @@ void MikanServer::onClientConnectedHandler(const ClientSocketEvent& event)
 			{
 				int clientProtocol= std::atoi(versionString.c_str());
 
-				bIsClientCompatible= clientProtocol >= MIKAN_MIN_ALLOWED_CLIENT_API_VERSION;
-				break;
+				bIsClientCompatible|= clientProtocol >= MIKAN_MIN_ALLOWED_CLIENT_API_VERSION;
 			}
 		}
+	}
+
+	// An older client, or one that named no protocol such as a browser tool, is still served.
+	// The connected event tells it whether it is compatible and leaves the choice to it.
+	if (!bIsClientCompatible)
+	{
+		MIKAN_LOG_WARNING("onClientConnected")
+			<< "connectionId: " << event.connectionId << " offered no protocol at or above "
+			<< WEBSOCKET_PROTOCOL_PREFIX << MIKAN_MIN_ALLOWED_CLIENT_API_VERSION;
 	}
 
 	// Create a new client state for the connection
@@ -430,7 +455,7 @@ void MikanServer::onClientConnectedHandler(const ClientSocketEvent& event)
 		connectedEvent.isClientCompatible= bIsClientCompatible;
 		connectedEvent.httpPort= App::getInstance()->getAppSettings()->getHttpServerPort();
 
-		m_messageServer->sendMessageToClient(event.connectionId, mikanTypeToJsonString(connectedEvent));
+		m_messageServer->sendMessageToClient(event.connectionId, mikanEventToJsonRpc(connectedEvent));
 	}
 }
 

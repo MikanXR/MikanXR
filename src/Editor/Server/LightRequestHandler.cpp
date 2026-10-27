@@ -113,7 +113,7 @@ void LightRequestHandler::publishDMXDataToClient(MikanClientConnectionStatePtr c
 	if (dmxChangedEvent.dmx_data.universes.size() > 0)
 	{
 		// TODO: Make this a binary event
-		const std::string eventJson= mikanTypeToJsonString(dmxChangedEvent);
+		const std::string eventJson= mikanEventToJsonRpc(dmxChangedEvent);
 
 		clientState->publishMikanJsonEvent(eventJson);
 	}

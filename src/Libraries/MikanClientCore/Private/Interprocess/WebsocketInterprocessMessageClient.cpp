@@ -1,5 +1,5 @@
 #include "WebsocketInterprocessMessageClient.h"
-#include "JsonUtils.h"
+#include "JsonRpc.h"
 #include "MikanClientLogger.h"
 #include "StringUtils.h"
 
@@ -111,29 +111,7 @@ public:
 		{
 			if (!msg->binary)
 			{
-				JsonSaxStringValueSearcher searcher;
-
-				if (searcher.hasKey(msg->str, "eventTypeName"))
-				{
-					m_eventQueue->enqueue(msg->str);
-				}
-				else if (searcher.hasKey(msg->str, "responseTypeName"))
-				{
-					if (m_textResponseHandler != nullptr)
-					{
-						m_textResponseHandler(msg->str);
-					}
-					else
-					{
-						MIKAN_MT_LOG_ERROR("ClientConnectionState::handleClientMessage")
-							<< "Received response message but no handler set: " << msg->str;
-					}
-				}
-				else
-				{
-					MIKAN_MT_LOG_ERROR("ClientConnectionState::handleClientMessage")
-						<< "Received unsupported message: " << msg->str;
-				}
+				handleTextFrame(msg->str);
 			}
 			else
 			{
@@ -167,6 +145,48 @@ public:
 	}
 
 private:
+	// A notification from the server is an event, and anything carrying an id with a result
+	// or an error is a response. The server sends no requests.
+	void handleTextFrame(const std::string& utf8Frame)
+	{
+		JsonRpcFrame frame;
+		switch (JsonRpc::parseIncoming(utf8Frame, frame))
+		{
+		case eJsonRpcFrameKind::notification:
+		{
+			m_eventQueue->enqueue(utf8Frame);
+		}
+		break;
+		case eJsonRpcFrameKind::response:
+		{
+			// Requests are only ever sent with integer ids, so any other id answers nothing
+			// this client sent, such as the null id of a reply to an unreadable frame
+			const nlohmann::json& id= frame.response.id;
+			if (!id.is_number_integer())
+			{
+				MIKAN_MT_LOG_ERROR("ClientConnectionState::handleTextFrame")
+					<< "Received a response to no request of ours: " << utf8Frame;
+			}
+			else if (m_textResponseHandler != nullptr)
+			{
+				m_textResponseHandler(id.get<MikanRequestID>(), utf8Frame);
+			}
+			else
+			{
+				MIKAN_MT_LOG_ERROR("ClientConnectionState::handleTextFrame")
+					<< "Received response message but no handler set: " << utf8Frame;
+			}
+		}
+		break;
+		default:
+		{
+			MIKAN_MT_LOG_ERROR("ClientConnectionState::handleTextFrame")
+				<< "Received unsupported message: " << utf8Frame;
+		}
+		break;
+		}
+	}
+
 	int m_protocolVersion= 0;
 	WebSocketPtr m_websocket;
 	ix::WebSocketHttpHeaders m_headers;

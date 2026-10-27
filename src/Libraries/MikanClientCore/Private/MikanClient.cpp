@@ -5,7 +5,6 @@
 #include "MikanCoreCAPI.h"
 #include "MikanCoreTypes.h"
 #include "MikanCoreVulkanTypes.h"
-#include "JsonUtils.h"
 #include "JsonSerializer.h"
 #include "SharedTextureWriter.h"
 
@@ -45,8 +44,8 @@ MikanClient::MikanClient()
 		m_graphicsCommandQueueInterfaces[i]= nullptr;
 	};
 
-	m_messageClient->setTextResponseHandler([this](const std::string& utf8ResponseString)
-											{ textResponseHandler(utf8ResponseString); });
+	m_messageClient->setTextResponseHandler([this](MikanRequestID requestId, const std::string& utf8ResponseString)
+											{ textResponseHandler(requestId, utf8ResponseString); });
 }
 
 MikanClient::~MikanClient()
@@ -133,23 +132,12 @@ MikanCoreResult MikanClient::sendRequestJSON(const char* utf8_request_json)
 	return MikanCoreResult_NotConnected;
 }
 
-void MikanClient::textResponseHandler(const std::string& utf8ResponseString)
+// The request id is the response envelope's id, read when the frame was classified
+void MikanClient::textResponseHandler(MikanRequestID requestId, const std::string& utf8ResponseString)
 {
 	if (m_textResponseCallback != nullptr)
 	{
-		JsonSaxIntegerValueSearcher searcher;
-		int requestId= -1;
-
-		if (searcher.fetchKeyValuePair(utf8ResponseString, "requestId", requestId))
-		{
-			m_textResponseCallback((MikanRequestID)requestId, utf8ResponseString.c_str(),
-								   m_textResponseCallbackUserData);
-		}
-		else
-		{
-			MIKAN_MT_LOG_WARNING("MikanClient::responseHandler()")
-				<< "Received response missing a request id: " << utf8ResponseString;
-		}
+		m_textResponseCallback(requestId, utf8ResponseString.c_str(), m_textResponseCallbackUserData);
 	}
 	else
 	{
