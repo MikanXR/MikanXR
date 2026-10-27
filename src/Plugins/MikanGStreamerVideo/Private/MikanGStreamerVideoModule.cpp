@@ -1,4 +1,5 @@
 #include "MikanGStreamerVideoModule.h"
+#include "MikanGStreamerRtpVideoSender.h"
 #include "MikanGStreamerVideoDeviceManager.h"
 #include "INetworkVideoDeviceModule.h"
 
@@ -55,6 +56,16 @@ public:
 		}
 
 		return INetworkVideoDeviceManagerPtr();
+	}
+
+	virtual IRtpVideoSenderPtr createRtpVideoSender() override
+	{
+		if (m_bIsInitialized)
+		{
+			return std::make_shared<MikanGStreamerRtpVideoSender>();
+		}
+
+		return IRtpVideoSenderPtr();
 	}
 
 private:
