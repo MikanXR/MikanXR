@@ -5,6 +5,7 @@
 #include "MikanPropertyTypes.h"
 #include "MikanTypeFwd.h"
 
+#include <set>
 #include <string>
 
 class PropertyNotifyDatabase;
@@ -34,10 +35,19 @@ public:
 							   const std::string& propertyFilter, MikanPropertyNotifyMode notifyMode);
 	void publishPropertyChangedEvent(const MikanPropertyValue& propertyValue);
 
+	// Video sources this connection asked the editor to watch for the origin marker
+	void addAlignmentWatch(MikanVideoSourceID videoSourceId) { m_alignmentWatches.insert(videoSourceId); }
+	void removeAlignmentWatch(MikanVideoSourceID videoSourceId) { m_alignmentWatches.erase(videoSourceId); }
+	bool hasAlignmentWatch(MikanVideoSourceID videoSourceId) const
+	{
+		return m_alignmentWatches.count(videoSourceId) > 0;
+	}
+
 private:
 	class MikanServer* m_ownerServer;
 	std::string m_connectionId;
 	MikanClientInfo m_clientInfo;
 	class RenderTargetClientState* m_renderTargetClientState= nullptr;
 	PropertyNotifyDatabasePtr m_propertyNotifyDatabase;
+	std::set<MikanVideoSourceID> m_alignmentWatches;
 };

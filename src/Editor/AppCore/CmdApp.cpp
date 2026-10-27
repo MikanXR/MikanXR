@@ -10,7 +10,6 @@
 #include "TypeRegistry.h"
 #include "Version.h"
 #include "TrackerPoseCalibratorTests.h"
-#include "ARKitAlignmentRouteTests.h"
 #include "ARKitDebugProtocolTests.h"
 #include "AutomationProtocolTests.h"
 #include "AutomationVariantTextTests.h"
@@ -26,6 +25,7 @@
 #include "DMXSequenceTests.h"
 #include "DMXUniverseRLETests.h"
 #include "FileVideoSourceTests.h"
+#include "FrameCoupledAlignmentTests.h"
 #include "FrameRegistrationTests.h"
 #include "GlbMeshWriterTests.h"
 #include "HttpServerTests.h"
@@ -83,7 +83,6 @@ bool run_all_editor_unit_tests()
 {
 	bool success= true;
 	success&= run_tracker_pose_calibrator_unit_tests();
-	success&= run_arkit_alignment_route_tests();
 	success&= run_arkit_debug_protocol_tests();
 	success&= run_automation_protocol_tests();
 	success&= run_automation_variant_text_tests();
@@ -99,6 +98,7 @@ bool run_all_editor_unit_tests()
 	success&= run_dmx_sequence_tests();
 	success&= run_dmx_universe_rle_tests();
 	success&= run_file_video_source_tests();
+	success&= run_frame_coupled_alignment_tests();
 	success&= run_frame_registration_unit_tests();
 	success&= run_glb_mesh_writer_tests();
 	success&= run_http_server_tests();

@@ -9,7 +9,11 @@
 #include "ObjectSystemConfigFwd.h"
 #include "VideoSourceQueries.h"
 
+#include <map>
+#include <memory>
 #include <string>
+
+class ARKitMarkerAutoAligner;
 
 class ARKitVideoSourceSystemDefinition
 	: public MikanTypedObjectSystemDefinition<ARKitVideoSourceComponent, ARKitVideoSourceDefinition, MikanVideoSourceID>
@@ -58,8 +62,35 @@ public:
 
 	VideoSourceIdList getVideoSourceIdList() const;
 
+	// The stage alignment state of one of this system's sources: whether it holds
+	// a pose offset, the marker watch's last detection, and whether a marker watch
+	// runs on it. False for an id this system does not own.
+	bool getAlignmentState(MikanVideoSourceID videoSourceId, bool& outAligned, bool& outMarkerVisible,
+						   bool& outWatching) const;
+
 private:
+	struct AlignmentState
+	{
+		bool bAligned= false;
+		bool bMarkerVisible= false;
+		bool bWatching= false;
+
+		bool operator==(const AlignmentState& other) const
+		{
+			return bAligned == other.bAligned && bMarkerVisible == other.bMarkerVisible && bWatching == other.bWatching;
+		}
+	};
+
+	// Runs a marker watch on each unaligned source while it streams or a client
+	// watches it, and publishes each source's alignment state when it changes
+	void updateAlignment();
+	AlignmentState computeAlignmentState(MikanVideoSourceID videoSourceId,
+										 const ARKitVideoSourceComponent& source) const;
+
 	ARKitVideoDeviceManagerLoader m_deviceManagerLoader;
+	std::map<MikanVideoSourceID, std::unique_ptr<ARKitMarkerAutoAligner>> m_aligners;
+	// The state last published per source, so a change publishes once
+	std::map<MikanVideoSourceID, AlignmentState> m_publishedAlignment;
 };
 
 using ARKitVideoSourceSystemPtr= std::shared_ptr<ARKitVideoSourceSystem>;

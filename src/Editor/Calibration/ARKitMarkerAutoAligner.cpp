@@ -38,19 +38,14 @@ void ARKitMarkerAutoAligner::releaseStream()
 	}
 }
 
-void ARKitMarkerAutoAligner::notifyPolled(double nowSeconds) { m_lastPollSeconds= nowSeconds; }
-
-bool ARKitMarkerAutoAligner::shouldRetire(double nowSeconds) const
+bool ARKitMarkerAutoAligner::shouldRetire() const
 {
 	VideoSourceComponentPtr videoSource= m_videoSource.lock();
 	if (!videoSource || m_bSolved)
 		return true;
 
 	auto* poseProvider= dynamic_cast<IFrameCoupledPoseProvider*>(videoSource.get());
-	if (poseProvider == nullptr || poseProvider->hasPoseOffset())
-		return true;
-
-	return nowSeconds - m_lastPollSeconds > k_pollKeepAliveSeconds;
+	return poseProvider == nullptr || poseProvider->hasPoseOffset();
 }
 
 // The sampler reads the camera's intrinsics and the stage's origin marker at
@@ -129,7 +124,7 @@ void ARKitMarkerAutoAligner::update(double nowSeconds)
 
 	poseProvider->setPoseOffset(glm::mat4(FrameCoupledAlignment::averageWorldToStage(m_samples)));
 	m_bSolved= true;
-	MIKAN_LOG_INFO("ARKitMarkerAutoAligner") << "Aligned " << videoSource->getDevicePath() << " from "
-											 << m_samples.size() << " marker samples while the phone asked";
+	MIKAN_LOG_INFO("ARKitMarkerAutoAligner")
+		<< "Aligned " << videoSource->getDevicePath() << " from " << m_samples.size() << " marker samples";
 	releaseStream();
 }

@@ -1,7 +1,9 @@
 #include "App.h"
 #include "AppStage.h"
+#include "ARKitVideoSourceSystem.h"
 #include "VideoSourceRequestHandler.h"
 #include "MainWindow.h"
+#include "MikanClientConnectionState.h"
 #include "MikanServer.h"
 #include "MikanVideoSourceEvents.h"
 #include "MikanVideoSourceRequests.h"
@@ -27,6 +29,12 @@ bool VideoSourceRequestHandler::startup(MainWindow* mainWindow)
 		std::bind(&VideoSourceRequestHandler::getVideoSourceIntrinsicsHandler, this, _1, _2));
 	messageServer->setRequestHandler(GetVideoSourceMode::staticGetArchetype().getName(),
 									 std::bind(&VideoSourceRequestHandler::getVideoSourceModeHandler, this, _1, _2));
+	messageServer->setRequestHandler(
+		GetVideoSourceAlignment::staticGetArchetype().getName(),
+		std::bind(&VideoSourceRequestHandler::getVideoSourceAlignmentHandler, this, _1, _2));
+	messageServer->setRequestHandler(
+		SetVideoSourceAlignmentWatch::staticGetArchetype().getName(),
+		std::bind(&VideoSourceRequestHandler::setVideoSourceAlignmentWatchHandler, this, _1, _2));
 	messageServer->setRequestHandler(
 		SetUSBVideoSourceDevice::staticGetArchetype().getName(),
 		std::bind(&VideoSourceRequestHandler::setUSBVideoSourceDeviceHandler, this, _1, _2));
@@ -63,6 +71,11 @@ void VideoSourceRequestHandler::publishVideoSourceModeChangedEvent()
 	MikanVideoSourceModeChangedEvent modeChangeEvent= {};
 
 	m_owner->publishMikanJsonEvent(mikanEventToJsonRpc(modeChangeEvent));
+}
+
+void VideoSourceRequestHandler::publishVideoSourceAlignmentEvent(const MikanVideoSourceAlignmentEvent& alignmentEvent)
+{
+	m_owner->publishMikanJsonEvent(mikanEventToJsonRpc(alignmentEvent));
 }
 
 // Video Source Requests
@@ -135,6 +148,77 @@ void VideoSourceRequestHandler::getVideoSourceModeHandler(const ClientRequest& r
 	{
 		writeSimpleJsonResponse(request.requestId, MikanAPIResult::NoVideoSource, response);
 	}
+}
+
+void VideoSourceRequestHandler::getVideoSourceAlignmentHandler(const ClientRequest& request, ClientResponse& response)
+{
+	GetVideoSourceAlignment alignmentRequest;
+	if (!readTypedRequest(request.utf8RequestString, alignmentRequest))
+	{
+		writeSimpleJsonResponse(request.requestId, MikanAPIResult::MalformedParameters, response);
+		return;
+	}
+
+	VideoSourceComponentPtr videoSourceComponent=
+		VideoSourceQueries::getVideoSourceById(getProjectManager(), alignmentRequest.video_source_id);
+	if (!videoSourceComponent)
+	{
+		writeSimpleJsonResponse(request.requestId, MikanAPIResult::NoVideoSource, response);
+		return;
+	}
+
+	MikanVideoSourceAlignmentResponse alignmentResponse;
+	alignmentResponse.video_source_id= alignmentRequest.video_source_id;
+
+	// Only an ARKit source's poses need a stage alignment. Every other source's
+	// poses are stage space by construction.
+	ARKitVideoSourceSystemPtr arkitSystem= getObjectSystemOfType<ARKitVideoSourceSystem>();
+	if (!arkitSystem
+		|| !arkitSystem->getAlignmentState(alignmentRequest.video_source_id, alignmentResponse.is_aligned,
+										   alignmentResponse.marker_visible, alignmentResponse.is_watching))
+	{
+		alignmentResponse.is_aligned= true;
+		alignmentResponse.marker_visible= false;
+		alignmentResponse.is_watching= false;
+	}
+
+	writeTypedJsonResponse(request.requestId, alignmentResponse, response);
+}
+
+void VideoSourceRequestHandler::setVideoSourceAlignmentWatchHandler(const ClientRequest& request,
+																	ClientResponse& response)
+{
+	SetVideoSourceAlignmentWatch watchRequest;
+	if (!readTypedRequest(request.utf8RequestString, watchRequest))
+	{
+		writeSimpleJsonResponse(request.requestId, MikanAPIResult::MalformedParameters, response);
+		return;
+	}
+
+	MikanClientConnectionStatePtr clientState= m_owner->getConnectedClientState(request.connectionId);
+	if (!clientState)
+	{
+		writeSimpleJsonResponse(request.requestId, MikanAPIResult::UnknownClient, response);
+		return;
+	}
+
+	if (!VideoSourceQueries::getVideoSourceById(getProjectManager(), watchRequest.video_source_id))
+	{
+		writeSimpleJsonResponse(request.requestId, MikanAPIResult::NoVideoSource, response);
+		return;
+	}
+
+	// The watch lives on the connection state, so it ends with the connection
+	if (watchRequest.watch)
+	{
+		clientState->addAlignmentWatch(watchRequest.video_source_id);
+	}
+	else
+	{
+		clientState->removeAlignmentWatch(watchRequest.video_source_id);
+	}
+
+	writeSimpleJsonResponse(request.requestId, MikanAPIResult::Success, response);
 }
 
 void VideoSourceRequestHandler::setUSBVideoSourceDeviceHandler(const ClientRequest& request, ClientResponse& response)

@@ -1,7 +1,6 @@
 //-- includes -----
 #include "App.h"
 #include "AppSettingsConfig.h"
-#include "ARKitAlignmentRequestHandler.h"
 #include "CompositorStreamRequestHandler.h"
 #include "AssetUploadRequestHandler.h"
 #include "CameraRequestHandler.h"
@@ -52,7 +51,6 @@ MikanServer* MikanServer::m_instance= nullptr;
 MikanServer::MikanServer()
 	: m_messageServer(new WebsocketInterprocessMessageServer())
 	, m_httpMessageServer(new HttpInterprocessMessageServer())
-	, m_arkitAlignmentRequestHandler(new ARKitAlignmentRequestHandler(this))
 	, m_assetUploadRequestHandler(new AssetUploadRequestHandler(this))
 	, m_compositorStreamRequestHandler(new CompositorStreamRequestHandler(this))
 	, m_cameraRequestHandler(new CameraRequestHandler(this))
@@ -81,7 +79,6 @@ MikanServer::~MikanServer()
 	delete m_lightRequestHandler;
 	delete m_functionRequestHandler;
 	delete m_cameraRequestHandler;
-	delete m_arkitAlignmentRequestHandler;
 	delete m_assetUploadRequestHandler;
 	delete m_compositorStreamRequestHandler;
 	delete m_httpMessageServer;
@@ -113,12 +110,6 @@ bool MikanServer::startup(MainWindow* mainWindow)
 			MIKAN_LOG_WARNING("MikanServer::startup()")
 				<< "Failed to initialize HTTP interprocess message server on port " << httpPort;
 		}
-	}
-
-	if (!m_arkitAlignmentRequestHandler->startup(mainWindow))
-	{
-		MIKAN_LOG_ERROR("MikanServer::startup()") << "Failed to bind ARKit alignment request handler";
-		return false;
 	}
 
 	if (!m_compositorStreamRequestHandler->startup(mainWindow))
@@ -233,9 +224,6 @@ void MikanServer::update()
 		m_messageServer->processRequests();
 		m_httpMessageServer->processRequests();
 	}
-
-	// The marker watch behind the phone's stream prompt, while a prompt is up
-	m_arkitAlignmentRequestHandler->update();
 }
 
 void MikanServer::shutdown()
@@ -245,7 +233,6 @@ void MikanServer::shutdown()
 	m_httpMessageServer->dispose();
 	m_httpMessageServer->removeBackgroundRouteHandler(OpenRpcDocument::k_routePath);
 
-	m_arkitAlignmentRequestHandler->shutdown();
 	m_assetUploadRequestHandler->shutdown();
 	m_compositorStreamRequestHandler->shutdown();
 	m_cameraRequestHandler->shutdown();
@@ -300,6 +287,17 @@ void MikanServer::publishMikanJsonEvent(const std::string& mikanJsonEvent)
 	{
 		connection_it.second->publishMikanJsonEvent(mikanJsonEvent);
 	}
+}
+
+bool MikanServer::isVideoSourceAlignmentWatched(MikanVideoSourceID videoSourceId) const
+{
+	for (const auto& connection_it : m_clientConnections)
+	{
+		if (connection_it.second->hasAlignmentWatch(videoSourceId))
+			return true;
+	}
+
+	return false;
 }
 
 // RPC Callbacks

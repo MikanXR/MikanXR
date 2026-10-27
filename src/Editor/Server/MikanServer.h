@@ -43,10 +43,6 @@ public:
 	// and the websocket server when its bind scope changed. Registered routes and request
 	// handlers are preserved, since dispose() only stops the listeners.
 	void restartMessageServers();
-	inline class ARKitAlignmentRequestHandler* getARKitAlignmentRequestHandler() const
-	{
-		return m_arkitAlignmentRequestHandler;
-	}
 	inline class AssetUploadRequestHandler* getAssetUploadRequestHandler() const { return m_assetUploadRequestHandler; }
 	inline class CompositorStreamRequestHandler* getCompositorStreamRequestHandler() const
 	{
@@ -78,6 +74,8 @@ public:
 	MikanClientConnectionStatePtr getConnectedClientState(const std::string& connectionId) const;
 	void getConnectedClientStateList(std::vector<MikanClientConnectionStateConstPtr>& outClientList) const;
 	const MikanClientConnectionStateMap& getConnectedClientStateMap() { return m_clientConnections; }
+	// Whether any connected client asked the editor to watch the source for the origin marker
+	bool isVideoSourceAlignmentWatched(MikanVideoSourceID videoSourceId) const;
 
 	MulticastDelegate<void(const std::string& clientId, const MikanClientInfo& clientInfo)> OnClientInitialized;
 	MulticastDelegate<void(const std::string& clientId)> OnClientDisposed;
@@ -105,7 +103,6 @@ private:
 	class IInterprocessMessageServer* m_messageServer;
 	class HttpInterprocessMessageServer* m_httpMessageServer;
 
-	class ARKitAlignmentRequestHandler* m_arkitAlignmentRequestHandler;
 	class AssetUploadRequestHandler* m_assetUploadRequestHandler;
 	class CompositorStreamRequestHandler* m_compositorStreamRequestHandler;
 	class CameraRequestHandler* m_cameraRequestHandler;
