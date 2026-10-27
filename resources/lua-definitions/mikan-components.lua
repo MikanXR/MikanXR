@@ -403,6 +403,7 @@ function MarkerComponent:printMarker() end
 ---@field ownerSceneId integer ID of the owning scene (read-only)
 ---@field ownerStageId integer ID of the owning stage (read-only)
 ---@field isSpoutOutputStreaming boolean Whether Spout output streaming is active (read/write)
+---@field isRtpOutputStreaming boolean Whether RTP output streaming is active (read/write)
 local CompositorComponent = {}
 
 --- Open the compositor graph editor UI.

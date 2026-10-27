@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1145,
+		"stringCount": 1151,
 		"translatedCount": 900,
 		"reviewedCount": 0
 	},
@@ -1008,6 +1008,12 @@
 		"render_model_stencils": "モデルステンシルを表示",
 		"render_origin": "原点を表示",
 		"render_quad_stencils": "クアッドステンシルを表示",
+		"rtp_enable_output": "Enable RTP Output",
+		"rtp_output_bitrate_kbps": "RTP Output Bitrate (kbps)",
+		"rtp_output_height": "RTP Output Height",
+		"rtp_output_host": "RTP Output Host",
+		"rtp_output_port": "RTP Output Port",
+		"rtp_output_status": "RTP Output Status",
 		"script_path": "スクリプトパス",
 		"scroll_direction": "スクロール方向",
 		"scroll_speed": "スクロール速度 (px/s)",

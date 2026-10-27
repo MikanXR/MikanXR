@@ -64,13 +64,41 @@ public:
 	inline const std::string& getSpoutOutputName() const { return m_spoutOutputName; }
 	void setSpoutOutputName(const std::string& spoutOutputName);
 
+	static const std::string k_rtpEnableOutputPropertyId;
+	inline bool getIsRtpOutputStreaming() const { return m_bIsRtpOutputStreaming; }
+	void setIsRtpOutputStreaming(bool bIsStreaming);
+
+	static const std::string k_rtpOutputHostPropertyId;
+	inline const std::string& getRtpOutputHost() const { return m_rtpOutputHost; }
+	void setRtpOutputHost(const std::string& host);
+
+	static const std::string k_rtpOutputPortPropertyId;
+	inline int getRtpOutputPort() const { return m_rtpOutputPort; }
+	void setRtpOutputPort(int port);
+
+	static const std::string k_rtpOutputHeightPropertyId;
+	inline int getRtpOutputHeight() const { return m_rtpOutputHeight; }
+	void setRtpOutputHeight(int height);
+
+	static const std::string k_rtpOutputBitrateKbpsPropertyId;
+	inline int getRtpOutputBitrateKbps() const { return m_rtpOutputBitrateKbps; }
+	void setRtpOutputBitrateKbps(int bitrateKbps);
+
 private:
 	MikanSceneID m_ownerSceneId= INVALID_MIKAN_ID;
 	MikanCameraID m_cameraId= INVALID_MIKAN_ID;
 	AssetReferenceConfigPtr m_nodeGraphAssetRef;
 	bool m_bIsSpoutOutputStreaming= false;
 	std::string m_spoutOutputName;
+	bool m_bIsRtpOutputStreaming= false;
+	std::string m_rtpOutputHost;
+	int m_rtpOutputPort= 0;
+	int m_rtpOutputHeight= 0;
+	int m_rtpOutputBitrateKbps= 0;
 };
+
+class CompositorRtpOutput;
+using CompositorRtpOutputPtr= std::shared_ptr<CompositorRtpOutput>;
 
 class CompositorComponent : public MikanComponent
 {
@@ -129,6 +157,11 @@ public:
 	const std::vector<NodeEvaluationError>& getLastNodeEvalErrors() const { return m_lastNodeEvalErrors; }
 	IMkTextureConstPtr getCompositedFrameTexture() const;
 	IMkTexturePtr getCompositedFrameTextureMutable();
+	// The picture the RTP output sends: the composited frame scaled to the definition's
+	// height, false until a frame has been composited
+	bool getRtpOutputSize(int& outWidth, int& outHeight) const;
+	// The video source's rate, or 30 when the source cannot say
+	float getRtpOutputFrameRate() const;
 	int64_t getPendingCompositedFrameIndex() const;
 	inline int64_t getLastCompositedFrameIndex() const { return m_lastCompositedFrameIndex; }
 
@@ -143,6 +176,8 @@ public:
 	virtual Serialization::StructTypeHandle getClientAPIValuesStructType() const override;
 
 	// -- IPropertyInterface ----
+	// Read-only, editor-side: the RTP output's encoder tier, size, rate and counters
+	static const std::string k_rtpOutputStatusPropertyId;
 	static void getPropertyDescriptors(std::vector<PropertyDescriptorConstPtr>& outDescriptors);
 	virtual bool getPropertyValue(const std::string& propertyName, MikanVariant& outValue) const override;
 	virtual bool setPropertyValue(const std::string& propertyName, const MikanVariant& inValue) override;
@@ -168,6 +203,13 @@ protected:
 	bool startOutputStreaming();
 	bool getIsOutputStreaming() const;
 	void stopOutputStreaming();
+
+	// RTP Output
+	void updateRtpOutputStreaming();
+	bool startRtpOutputStreaming();
+	bool getIsRtpOutputStreaming() const;
+	void stopRtpOutputStreaming();
+	const char* getRtpOutputStatusText() const;
 
 	void handleCompositorNodeGraphChanged(const std::filesystem::path& newAssetRefPath);
 	void stopVideoSourceStreaming();
@@ -205,8 +247,9 @@ private:
 	VideoSourceComponentWeakPtr m_videoDistortionSource;
 	VideoFrameDistortionViewPtr m_videoDistortionView;
 
-	// Output Spout Sender
+	// Output sinks: the Spout sender and the RTP sender
 	ISharedTextureWriteAccessorPtr m_renderTargetWriteAccessor;
+	CompositorRtpOutputPtr m_rtpOutput;
 
 	bool m_bIsRunning= false;
 	bool m_bEditorHeld= false;

@@ -9,6 +9,7 @@
 #include "NetworkVideoSourceComponent.h"
 #include "ProjectConfig.h"
 
+#include <algorithm>
 #include <assert.h>
 #include <chrono>
 #include <thread>
@@ -70,6 +71,7 @@ void NetworkVideoSourceSystem::update(float deltaTime)
 			else
 			{
 				m_networkVideoManagerState= eNetworkVideoManagerState::failed;
+				m_networkVideoManagerFailReason= "GStreamer plugin failed to load";
 				MIKAN_LOG_ERROR("NetworkVideoSourceSystem::update") << "Async network video device manager init failed";
 			}
 		}
@@ -93,6 +95,16 @@ void NetworkVideoSourceSystem::dispose()
 		m_networkVideoDeviceModule= result.module;
 		m_networkVideoDeviceManager= result.manager;
 	}
+
+	// A sender's code lives in the module, so none may keep running past this system
+	for (const auto& weakSender : m_rtpVideoSenders)
+	{
+		if (IRtpVideoSenderPtr sender= weakSender.lock())
+		{
+			sender->close();
+		}
+	}
+	m_rtpVideoSenders.clear();
 
 	Super::dispose();
 }
@@ -144,6 +156,7 @@ bool NetworkVideoSourceSystem::ensureNetworkDeviceManager()
 				<< "GStreamer not installed. Skipping network video manager init.";
 			// Not a failure — just no manager available
 			m_networkVideoManagerState= eNetworkVideoManagerState::failed;
+			m_networkVideoManagerFailReason= "GStreamer not installed";
 			return false;
 		}
 	}
@@ -159,6 +172,42 @@ bool NetworkVideoSourceSystem::ensureNetworkDeviceManager()
 		.detach();
 
 	return false;
+}
+
+IRtpVideoSenderPtr NetworkVideoSourceSystem::createRtpVideoSender()
+{
+	if (m_networkVideoManagerState != eNetworkVideoManagerState::ready || m_networkVideoDeviceModule == nullptr)
+		return IRtpVideoSenderPtr();
+
+	IRtpVideoSenderPtr sender= m_networkVideoDeviceModule->createRtpVideoSender();
+	if (sender)
+	{
+		m_rtpVideoSenders.erase(std::remove_if(m_rtpVideoSenders.begin(), m_rtpVideoSenders.end(),
+											   [](const std::weak_ptr<IRtpVideoSender>& weakSender)
+											   { return weakSender.expired(); }),
+								m_rtpVideoSenders.end());
+		m_rtpVideoSenders.push_back(sender);
+	}
+
+	return sender;
+}
+
+bool NetworkVideoSourceSystem::isRtpVideoSenderAvailable(std::string& outReason)
+{
+	// Kicks the module load for a project that has no network video source
+	ensureNetworkDeviceManager();
+
+	switch (m_networkVideoManagerState)
+	{
+	case eNetworkVideoManagerState::ready:
+		return true;
+	case eNetworkVideoManagerState::failed:
+		outReason= m_networkVideoManagerFailReason;
+		return false;
+	default:
+		outReason= "loading the GStreamer plugin";
+		return false;
+	}
 }
 
 NetworkVideoSourceSystem::NetworkVideoDeviceManagerInitResult NetworkVideoSourceSystem::

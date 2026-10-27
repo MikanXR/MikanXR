@@ -5523,6 +5523,36 @@ msgid "Render Quad Stencils"
 msgstr "クアッドステンシルを表示"
 
 #. Section: properties
+msgctxt "properties.rtp_enable_output"
+msgid "Enable RTP Output"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.rtp_output_bitrate_kbps"
+msgid "RTP Output Bitrate (kbps)"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.rtp_output_height"
+msgid "RTP Output Height"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.rtp_output_host"
+msgid "RTP Output Host"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.rtp_output_port"
+msgid "RTP Output Port"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.rtp_output_status"
+msgid "RTP Output Status"
+msgstr ""
+
+#. Section: properties
 #, fuzzy
 msgctxt "properties.script_path"
 msgid "Script Path"

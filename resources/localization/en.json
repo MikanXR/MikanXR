@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1145,
-		"translatedCount": 1145,
-		"reviewedCount": 1145
+		"stringCount": 1151,
+		"translatedCount": 1151,
+		"reviewedCount": 1151
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -1008,6 +1008,12 @@
 		"render_model_stencils": "Render Model Stencils",
 		"render_origin": "Render Origin",
 		"render_quad_stencils": "Render Quad Stencils",
+		"rtp_enable_output": "Enable RTP Output",
+		"rtp_output_bitrate_kbps": "RTP Output Bitrate (kbps)",
+		"rtp_output_height": "RTP Output Height",
+		"rtp_output_host": "RTP Output Host",
+		"rtp_output_port": "RTP Output Port",
+		"rtp_output_status": "RTP Output Status",
 		"script_path": "Script Path",
 		"scroll_direction": "Scroll Direction",
 		"scroll_speed": "Scroll Speed (px/s)",
