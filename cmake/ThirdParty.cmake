@@ -277,43 +277,72 @@ if(MIKAN_GSTREAMER_ENABLED)
   # actual driver library is loaded dynamically at runtime by gstcuda-1.0.dll
   # itself (gst_cuda_load_library()), so only the Toolkit's headers are needed
   # here, not its import libs.
-  if(WIN32 AND DEFINED ENV{CUDA_PATH})
-    set(CUDA_TOOLKIT_INCLUDE_DIR "$ENV{CUDA_PATH}/include")
 
-    # Track D (JBU depth upsample, ticket D1+) links the real CUDA Driver API
-    # directly (cuda.lib, next to nvcuda.dll) rather than going through
-    # gstcuda's dynamically-loaded Cu*-prefixed wrappers - unlike Track C, this
-    # module is deliberately GStreamer-agnostic (testable standalone, and the
-    # plan calls for Track D to be developable in parallel with Track C). Both
-    # paths ultimately resolve to the one system nvcuda.dll per process, so a
-    # CUDA context established via GStreamer's wrappers is just as usable here
-    # as one created directly - see JBUKernel.h's class comment.
-    find_library(CUDA_DRIVER_LIBRARY NAMES cuda HINTS "$ENV{CUDA_PATH}/lib/x64" "$ENV{CUDA_PATH}/lib")
-
-    # nvcc compiles JBUKernel.cu to PTX at build time (see
-    # MikanARKitVideo/CMakeLists.txt) - loaded via cuModuleLoadData at runtime,
-    # not linked into any host translation unit.
-    find_program(CUDA_NVCC_EXECUTABLE NAMES nvcc HINTS "$ENV{CUDA_PATH}/bin")
-
-    # cuCtxCreate grew a fourth argument in CUDA 13.0 and MikanARKitVideo calls that form,
-    # so an older Toolkit is treated as absent rather than left to fail mid-compile.
-    if(EXISTS "${CUDA_TOOLKIT_INCLUDE_DIR}/cuda.h")
-      file(STRINGS "${CUDA_TOOLKIT_INCLUDE_DIR}/cuda.h" CUDA_VERSION_LINE REGEX "^#define CUDA_VERSION ")
-      string(REGEX MATCH "[0-9]+" CUDA_TOOLKIT_VERSION "${CUDA_VERSION_LINE}")
+  # Reads CUDA_VERSION (e.g. 13010) from a Toolkit's cuda.h, or leaves out_var empty
+  function(mikan_read_cuda_version toolkit_dir out_var)
+    set(version "")
+    if(EXISTS "${toolkit_dir}/include/cuda.h")
+      file(STRINGS "${toolkit_dir}/include/cuda.h" version_line REGEX "^#define CUDA_VERSION ")
+      string(REGEX MATCH "[0-9]+" version "${version_line}")
     endif()
+    set(${out_var} "${version}" PARENT_SCOPE)
+  endfunction()
+
+  # cuCtxCreate grew a fourth argument in CUDA 13.0 and MikanARKitVideo calls that form,
+  # so an older Toolkit is treated as absent rather than left to fail mid-compile.
+  # CUDA_PATH names the most recently installed Toolkit, which can be an older one another
+  # project needs, so the newest 13+ Toolkit in the default install directory is the fallback.
+  set(MIKAN_CUDA_TOOLKIT_ROOT "")
+  set(CUDA_TOOLKIT_VERSION "")
+  set(CUDA_PATH_VERSION "")
+  if(WIN32)
+    if(DEFINED ENV{CUDA_PATH})
+      file(TO_CMAKE_PATH "$ENV{CUDA_PATH}" cuda_path_dir)
+      mikan_read_cuda_version("${cuda_path_dir}" CUDA_PATH_VERSION)
+      if(CUDA_PATH_VERSION AND CUDA_PATH_VERSION GREATER_EQUAL 13000)
+        set(MIKAN_CUDA_TOOLKIT_ROOT "${cuda_path_dir}")
+        set(CUDA_TOOLKIT_VERSION ${CUDA_PATH_VERSION})
+      endif()
+    endif()
+    if(NOT MIKAN_CUDA_TOOLKIT_ROOT)
+      file(TO_CMAKE_PATH "$ENV{ProgramFiles}/NVIDIA GPU Computing Toolkit/CUDA" cuda_install_dir)
+      file(GLOB cuda_toolkit_dirs LIST_DIRECTORIES true "${cuda_install_dir}/v*")
+      foreach(toolkit_dir IN LISTS cuda_toolkit_dirs)
+        mikan_read_cuda_version("${toolkit_dir}" toolkit_version)
+        if(toolkit_version AND toolkit_version GREATER_EQUAL 13000
+           AND (NOT CUDA_TOOLKIT_VERSION OR toolkit_version GREATER CUDA_TOOLKIT_VERSION))
+          set(MIKAN_CUDA_TOOLKIT_ROOT "${toolkit_dir}")
+          set(CUDA_TOOLKIT_VERSION ${toolkit_version})
+        endif()
+      endforeach()
+    endif()
+  endif()
+
+  # MikanARKitVideo links the CUDA Driver API library (cuda.lib) directly for its CUDA-GL
+  # interop. From 13.0 it is a static loader that opens nvcuda.dll at runtime rather than an
+  # import library. A plain variable rather than find_library, whose cached hit would
+  # outlive a change of Toolkit.
+  unset(CUDA_DRIVER_LIBRARY CACHE)
+  set(CUDA_TOOLKIT_INCLUDE_DIR "")
+  set(CUDA_DRIVER_LIBRARY "")
+  if(MIKAN_CUDA_TOOLKIT_ROOT AND EXISTS "${MIKAN_CUDA_TOOLKIT_ROOT}/lib/x64/cuda.lib")
+    set(CUDA_TOOLKIT_INCLUDE_DIR "${MIKAN_CUDA_TOOLKIT_ROOT}/include")
+    set(CUDA_DRIVER_LIBRARY "${MIKAN_CUDA_TOOLKIT_ROOT}/lib/x64/cuda.lib")
   endif()
 
   # MikanARKitVideo needs the CUDA Toolkit on top of GStreamer. The Toolkit is a separate
   # system install, so a machine can have GStreamer and not have it: the plugin and the CUDA
   # half of the unit test suite then drop out and the rest of a GStreamer build is unaffected.
   set(MIKAN_WITH_ARKIT_VIDEO OFF)
-  if(CUDA_TOOLKIT_VERSION AND CUDA_TOOLKIT_VERSION GREATER_EQUAL 13000 AND CUDA_DRIVER_LIBRARY)
+  if(CUDA_DRIVER_LIBRARY)
     set(MIKAN_WITH_ARKIT_VIDEO ON)
-    MESSAGE(STATUS "CUDA Toolkit ${CUDA_TOOLKIT_VERSION} found at $ENV{CUDA_PATH} - building MikanARKitVideo")
-  elseif(CUDA_TOOLKIT_VERSION)
-    MESSAGE(STATUS "CUDA Toolkit ${CUDA_TOOLKIT_VERSION} at $ENV{CUDA_PATH} is older than the 13000 MikanARKitVideo needs - skipping it")
+    MESSAGE(STATUS "CUDA Toolkit ${CUDA_TOOLKIT_VERSION} found at ${MIKAN_CUDA_TOOLKIT_ROOT} - building MikanARKitVideo")
+  elseif(MIKAN_CUDA_TOOLKIT_ROOT)
+    MESSAGE(STATUS "CUDA Toolkit ${CUDA_TOOLKIT_VERSION} at ${MIKAN_CUDA_TOOLKIT_ROOT} has no lib/x64/cuda.lib - skipping MikanARKitVideo")
+  elseif(CUDA_PATH_VERSION)
+    MESSAGE(STATUS "CUDA Toolkit ${CUDA_PATH_VERSION} at $ENV{CUDA_PATH} is older than the 13000 MikanARKitVideo needs and no newer one is installed - skipping it")
   else()
-    MESSAGE(STATUS "No CUDA Toolkit found (set CUDA_PATH) - skipping MikanARKitVideo")
+    MESSAGE(STATUS "No CUDA Toolkit 13 or newer found (set CUDA_PATH) - skipping MikanARKitVideo")
   endif()
   find_package(GLIB2 REQUIRED)
   find_package(GObject REQUIRED)

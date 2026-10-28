@@ -193,8 +193,9 @@ set "CUDA_TOOLKIT_DIR=%ProgramFiles%\NVIDIA GPU Computing Toolkit\CUDA\v%CUDA_SH
 
 :: A Toolkit the build can already use is left alone whatever its version, because
 :: installing over a newer one would point CUDA_PATH back at this older release for every
-:: project on the machine. CUDA_PATH and the CUDA_VERSION in its cuda.h are what
-:: cmake/ThirdParty.cmake decides on, so they are what gets read here too.
+:: project on the machine. cmake/ThirdParty.cmake takes CUDA_PATH when the CUDA_VERSION in
+:: its cuda.h is new enough and otherwise the newest new-enough Toolkit in the default
+:: install directory, so CUDA_PATH here and the CUDA_TOOLKIT_DIR check below cover both.
 set INSTALLED_CUDA_VERSION=0
 if exist "%CUDA_PATH%\include\cuda.h" (
   for /f "tokens=3" %%V in ('findstr /b /c:"#define CUDA_VERSION " "%CUDA_PATH%\include\cuda.h"') do set INSTALLED_CUDA_VERSION=%%V
