@@ -1,4 +1,5 @@
 #include "ARKitVideoDeviceManagerLoader.h"
+#include "GStreamerUtils.h"
 #include "IARKitVideoDeviceManager.h"
 #include "IARKitVideoDeviceModule.h"
 #include "Logger.h"
@@ -104,9 +105,9 @@ bool ARKitVideoDeviceManagerLoader::ensureARKitDeviceManager()
 	// Cheap check on the main thread before launching the async task: the plugin
 	// uses GStreamer internally for its RTP video receive path (see Track C), so
 	// gate on the same precondition NetworkVideoSourceSystem checks for its own
-	// GStreamer-backed module.
-	const char* envVar= std::getenv("GSTREAMER_1_0_ROOT_MINGW_X86_64");
-	if (envVar == nullptr)
+	// GStreamer-backed module, which also makes the GStreamer DLLs loadable.
+	std::filesystem::path runtimeDir;
+	if (!GStreamerUtils::ensureRuntimeLoadable(runtimeDir))
 	{
 		MIKAN_LOG_WARNING("ARKitVideoDeviceManagerLoader::ensureARKitDeviceManager")
 			<< "GStreamer not installed. Skipping ARKit video manager init.";
@@ -114,6 +115,9 @@ bool ARKitVideoDeviceManagerLoader::ensureARKitDeviceManager()
 		m_arkitVideoManagerState= eARKitVideoManagerState::failed;
 		return false;
 	}
+
+	MIKAN_LOG_INFO("ARKitVideoDeviceManagerLoader::ensureARKitDeviceManager")
+		<< "Using GStreamer runtime at " << runtimeDir.string();
 
 	// Launch async init to avoid blocking the main thread
 	MIKAN_LOG_INFO("ARKitVideoDeviceManagerLoader::ensureARKitDeviceManager")
