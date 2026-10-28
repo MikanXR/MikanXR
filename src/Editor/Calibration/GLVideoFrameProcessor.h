@@ -15,7 +15,9 @@ public:
 	void ensureBufferSize(int width, int height);
 
 	void uploadSourceBuffer(const cv::Mat& srcBuffer);
-	void computeUndistortion(IMkTexturePtr writeTexture, IMkTexturePtr distortionTexture,
+	// The texture uploadSourceBuffer writes, for a caller undistorting a CPU frame
+	inline IMkTexturePtr getUploadedSourceTexture() const { return m_bgrSourceTextureMap; }
+	void computeUndistortion(IMkTexturePtr sourceTexture, IMkTexturePtr writeTexture, IMkTexturePtr distortionTexture,
 							 IMkTriangulatedMeshPtr fullscreenQuad, IMkGraphicsContext* graphicsContext);
 
 private:

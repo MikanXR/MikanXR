@@ -55,8 +55,8 @@ void GLVideoFrameProcessor::uploadSourceBuffer(const cv::Mat& srcBuffer)
 	}
 }
 
-void GLVideoFrameProcessor::computeUndistortion(IMkTexturePtr writeTexture, IMkTexturePtr distortionTexture,
-												IMkTriangulatedMeshPtr fullscreenQuad,
+void GLVideoFrameProcessor::computeUndistortion(IMkTexturePtr sourceTexture, IMkTexturePtr writeTexture,
+												IMkTexturePtr distortionTexture, IMkTriangulatedMeshPtr fullscreenQuad,
 												IMkGraphicsContext* graphicsContext)
 {
 	// Point the framebuffer at the target queue slot texture.
@@ -84,7 +84,7 @@ void GLVideoFrameProcessor::computeUndistortion(IMkTexturePtr writeTexture, IMkT
 		{
 			if (auto materialBinding= m_undistortionMaterial->bindMaterial())
 			{
-				m_undistortMaterialInstance->setTextureBySemantic(eUniformSemantic::rgbTexture, m_bgrSourceTextureMap);
+				m_undistortMaterialInstance->setTextureBySemantic(eUniformSemantic::rgbTexture, sourceTexture);
 				m_undistortMaterialInstance->setTextureBySemantic(eUniformSemantic::distortionTexture,
 																  distortionTexture);
 

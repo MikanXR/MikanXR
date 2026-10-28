@@ -550,6 +550,44 @@ int64_t VideoFrameDistortionView::readNextVideoFrameIndex()
 	return m_lastVideoFrameReadIndex;
 }
 
+IMkTexturePtr VideoFrameDistortionView::acquireQueueWriteTexture(int64_t newFrameIndex)
+{
+	if (m_videoFrameQueue == nullptr || m_videoFrameQueueSize == 0)
+	{
+		return IMkTexturePtr();
+	}
+
+	// Get the next video texture in the queue to write to
+	IMkTexturePtr writeTexture= m_videoFrameQueue[m_videoFrameQueuePendingWriteIndex].videoTexture;
+
+	// Record the frame index for this texture in the queue
+	m_videoFrameQueue[m_videoFrameQueuePendingWriteIndex].frameIndex= newFrameIndex;
+
+	// Update the queue index of the most recently written video frame
+	m_videoFrameQueueLastWriteIndex= m_videoFrameQueuePendingWriteIndex;
+
+	// Advance the pending write index
+	m_videoFrameQueuePendingWriteIndex= (m_videoFrameQueuePendingWriteIndex + 1) % m_videoFrameQueueSize;
+
+	return writeTexture;
+}
+
+void VideoFrameDistortionView::undistortDirectVideoFrame(IMkTexturePtr directTexture, int64_t newFrameIndex)
+{
+	EASY_FUNCTION();
+
+	ensureFrameBufferSize(directTexture->getTextureWidth(), directTexture->getTextureHeight());
+
+	IMkTexturePtr writeTexture= acquireQueueWriteTexture(newFrameIndex);
+	if (writeTexture != nullptr)
+	{
+		// The same pass a CPU frame takes after its upload, so the composited texture has one
+		// orientation and one undistortion whichever path the frame arrived by
+		m_glProcessor->computeUndistortion(directTexture, writeTexture, m_distortionTextureMap,
+										   m_fullscreenRGBVideoQuad, getGraphicsContext());
+	}
+}
+
 void VideoFrameDistortionView::processVideoFrame(int64_t newFrameIndex)
 {
 	EASY_FUNCTION();
@@ -561,23 +599,7 @@ void VideoFrameDistortionView::processVideoFrame(int64_t newFrameIndex)
 	// (This can happen on streaming video sources)
 	ensureFrameBufferSize(m_bgrSourceBufferWidth, m_bgrSourceBufferHeight);
 
-	// Get the next video texture in the queue to write to
-	// and record the frame index for that texture
-	IMkTexturePtr writeTexture;
-	if (m_videoFrameQueue != nullptr && m_videoFrameQueueSize > 0)
-	{
-		// Get the next video texture in the queue to write to
-		writeTexture= m_videoFrameQueue[m_videoFrameQueuePendingWriteIndex].videoTexture;
-
-		// Record the frame index for this texture in the queue
-		m_videoFrameQueue[m_videoFrameQueuePendingWriteIndex].frameIndex= newFrameIndex;
-
-		// Update the queue index of the most recently written video frame
-		m_videoFrameQueueLastWriteIndex= m_videoFrameQueuePendingWriteIndex;
-
-		// Advance the pending write index
-		m_videoFrameQueuePendingWriteIndex= (m_videoFrameQueuePendingWriteIndex + 1) % m_videoFrameQueueSize;
-	}
+	IMkTexturePtr writeTexture= acquireQueueWriteTexture(newFrameIndex);
 
 	// Update the video frame display texture
 	if (writeTexture != nullptr)
@@ -596,7 +618,8 @@ void VideoFrameDistortionView::processVideoFrame(int64_t newFrameIndex)
 			{
 				// Upload the source BGR frame to the GL texture, then run the undistortion shader
 				m_glProcessor->uploadSourceBuffer(*m_bgrSourceBuffer);
-				m_glProcessor->computeUndistortion(writeTexture, m_distortionTextureMap, m_fullscreenRGBVideoQuad,
+				m_glProcessor->computeUndistortion(m_glProcessor->getUploadedSourceTexture(), writeTexture,
+												   m_distortionTextureMap, m_fullscreenRGBVideoQuad,
 												   getGraphicsContext());
 			}
 			else if (m_cvProcessor && m_cvProcessor->getBGRUndistortBuffer())
@@ -634,18 +657,17 @@ int64_t VideoFrameDistortionView::readAndProcessVideoFrame()
 	// processing pass before their direct texture is safe to read (e.g. ARKit's
 	// NV12->RGBA shader conversion) - run it unconditionally (cheap no-op for
 	// every other source type) before checking getDirectColorTexture() below, so
-	// callers that read the texture later this same tick (e.g.
-	// CompositorComponent::getVideoSourceTexture) never see a stale/blank target.
+	// the readback or undistortion below never reads a stale/blank target.
 	m_videoSourceComponent->processDirectVideoFrame();
 
-	if (m_videoSourceComponent->getDirectColorTexture() != nullptr)
+	if (IMkTexturePtr directTexture= m_videoSourceComponent->getDirectColorTexture())
 	{
 		// Calibration needs pixels on the CPU, and a GPU-direct source never
 		// delivers any: its frames go decoder to GPU without passing through
 		// writeVideoFrame. Pull the converted texture back so the pattern
 		// finders downstream see frames like they would from any other source.
-		// Only in CALIBRATION mode - the compositor reads the texture directly
-		// and a readback there would stall every frame for nothing.
+		// Only in CALIBRATION mode - the compositor undistorts the texture on the
+		// GPU below and a readback there would stall every frame for nothing.
 		if (m_processorMode == eVideoFrameProcessorMode::CALIBRATION)
 		{
 			if (readbackDirectColorTexture())
@@ -663,15 +685,12 @@ int64_t VideoFrameDistortionView::readAndProcessVideoFrame()
 			}
 		}
 
-		// GPU-direct source (ticket E3/E4) - no CPU frame queue/undistortion
-		// pipeline to drive here; getVideoTexture() below already returns the live
-		// texture directly every call. Track a real frame index when the source
-		// provides one (e.g. ARKit's frameSeq, via getDirectFrameIndex()) so
-		// callers that compare it against a previously-seen value (e.g.
-		// CompositorComponent::tryEnqueueNewFrame) only see it advance on an
-		// actual new frame, not every single call - falls back to a plain
-		// increment-per-call counter for any GPU-direct source that doesn't
-		// provide one.
+		// Track a real frame index when the source provides one (e.g. ARKit's
+		// frameSeq, via getDirectFrameIndex()) so callers that compare it against a
+		// previously-seen value (e.g. CompositorComponent::tryEnqueueNewFrame) only
+		// see it advance on an actual new frame, not every single call - falls back
+		// to a plain increment-per-call counter for any GPU-direct source that
+		// doesn't provide one.
 		const int64_t directFrameIndex= m_videoSourceComponent->getDirectFrameIndex();
 		m_bVideoIsStreaming= true;
 
@@ -681,7 +700,17 @@ int64_t VideoFrameDistortionView::readAndProcessVideoFrame()
 		// reports 0fps against a live stream.
 		const int64_t newReadIndex= (directFrameIndex >= 0) ? directFrameIndex : (m_lastVideoFrameReadIndex + 1);
 		if (newReadIndex != m_lastVideoFrameReadIndex)
+		{
 			updateFrameRateStatistic();
+
+			// The compositor undistorts the converted frame on the GPU into its frame
+			// queue, as it does an uploaded CPU frame, so the composited texture never
+			// depends on the decode path
+			if (m_glProcessor)
+			{
+				undistortDirectVideoFrame(directTexture, newReadIndex);
+			}
+		}
 
 		m_lastVideoFrameReadIndex= newReadIndex;
 		return m_lastVideoFrameReadIndex;
@@ -697,8 +726,13 @@ int64_t VideoFrameDistortionView::readAndProcessVideoFrame()
 
 IMkTexturePtr VideoFrameDistortionView::getVideoTexture(int64_t desiredFrameIndex) const
 {
-	if (IMkTexturePtr directTexture= m_videoSourceComponent->getDirectColorTexture())
-		return directTexture;
+	// Calibration views show a GPU-direct source's converted frame as is. The
+	// compositor reads its own undistorted queue, filled for both kinds of source.
+	if (!m_glProcessor)
+	{
+		if (IMkTexturePtr directTexture= m_videoSourceComponent->getDirectColorTexture())
+			return directTexture;
+	}
 
 	if (m_videoFrameQueue != nullptr)
 	{

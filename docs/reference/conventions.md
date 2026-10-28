@@ -110,7 +110,9 @@ A stage-space view matrix applied to world-space model matrices is the failure t
 
 - GL samples with a bottom-left UV origin, so displaying a cv-ordered texture upright requires a V flip somewhere. Mikan does it in mesh texcoords, chosen per call site: `createFullscreenQuadMesh(ownerContext, vFlipped, ...)` (`src/Libraries/MikanRenderer/Private/GlTriangulatedMesh.cpp`) builds either a flipped or unflipped fullscreen quad, and each app stage picks (calibration stages pass `false`, `AppStage_TextureSourceSettings` passes `true`). There is no single global flip point.
 
-- Every video texture reaches its consumer with image row 0 at v=0, whatever produced it, so no consumer needs to know which source or decode tier a frame came from. A pass that writes a video texture rather than displaying one therefore builds its quad unflipped: `ARKitVideoSourceComponent::processDirectVideoFrame` converts NV12 to RGBA that way, and the V flip stays with the consumer's own display quad. See [videosources.md](./videosources.md).
+- Every source texture reaches its view with image row 0 at v=0, whatever produced it: `copyOpenCVMatIntoGLTexture` for a CPU frame, and `ARKitVideoSourceComponent::processDirectVideoFrame`, which converts NV12 to RGBA through an unflipped quad, for a GPU-direct one. See [videosources.md](./videosources.md).
+
+- The compositor's video texture is not a source texture. `GLVideoFrameProcessor` writes it through the view's v-flipped quad, so it holds image row 0 at v=1, and a video layer draws it with `vertical_flip` on. A GPU-direct frame takes the same pass in compositor mode, so a graph never depends on the source or the decode tier.
 
 - Render-to-texture paths can instead flip in projection: `CameraComponent::getApertureProjectionMatrix(outProj, bVerticalFlip)` pre-multiplies `glm::scale(vec3(1, -1, 1))` "to account for OpenGL's inverted Y-axis"; the compositor's `ColorTextureSourceNode` exposes a `vertical_flip` option.
 
