@@ -373,6 +373,12 @@ void ARKitVideoSourceComponent::processDirectVideoFrame()
 	if (width <= 0 || height <= 0)
 		return;
 
+	// A hardware-decoded bundle carries no CPU pixels and so no frame size, which
+	// leaves this pass as the only place the size is known. Without it the source
+	// reports no dimensions at all on this tier.
+	m_lastVideoWidth= width;
+	m_lastVideoHeight= height;
+
 	IMkGraphicsContext* graphicsContext= getGraphicsContext();
 	if (graphicsContext == nullptr)
 		return;
