@@ -71,8 +71,11 @@ Reach it with `function invoke <VideoSourceSystem> <componentId> show_video_sour
 - `get_state` replies the menu state (`verifyTake`, `building`, `failed`, `verifyMesh`, `buildComplete`)
 - `get_take_info` replies `frames`, `depth_width`, `depth_height`, and `session_id` lines
 - `set_option <voxel_preset|keyframe_stride|frame_to_model|replace_pose_track|path_radius|texture> <value>` sets a build option while in `verifyTake` (`room`/`tabletop`, an integer, `on`/`off`, metres with 0 for no trim, `on`/`off`)
+- `set_option bounds <lo.x> <lo.y> <lo.z> <hi.x> <hi.y> <hi.z>` fuses the next build inside that box in the take's ARKit world, and `set_option bounds auto` returns to the computed bounds, while in `verifyTake`
+- `set_option view <textured|shaded|coverage|observations|directions|angle|contradiction|distance>` switches what the preview shows once a mesh exists, failing for a view the build cannot show
+- `frame_mesh` re-centres the orbit camera on the mesh
 - `build` starts the worker, `get_progress` replies `phase`, `frames`, `total`, and `elapsed` lines while it runs
-- `get_summary` replies the triangle counts, grid, frames fused, registration counts, the final correction, `voxels_clipped`, `texture_views <used> <decoded>`, `triangles_untextured`, and `atlas <width> <height>` once a mesh exists
+- `get_summary` replies the triangle counts, grid, frames fused, registration counts, the final correction, `voxels_clipped`, `texture_views <used> <decoded>`, `triangles_untextured`, `atlas <width> <height>`, the `coverage_good`, `coverage_weak`, and `coverage_unseen` area shares, `bounds <lo> <hi>`, `bounds_overridden` and `voxel_grown` as 0 or 1, and the preview `view` once a mesh exists
 - `apply` creates the stencil, writes the refined pose track, and replies `created` or `failed`
 - `cancel` stops a build in progress or discards a result, `return` pops the stage
 
