@@ -221,7 +221,10 @@ void VideoSourceComponent::setDefinition(MikanComponentDefinitionPtr definition)
 {
 	MikanComponent::setDefinition(definition);
 
-	auto videoSourceDefinitionPtr= std::static_pointer_cast<VideoSourceDefinition>(definition);
+	// The projection is derived from the stored intrinsics, so it has to exist as soon as they
+	// do. A source whose live intrinsics match the stored ones never calls setCameraIntrinsics,
+	// and would otherwise render with an identity projection.
+	recomputeCameraProjectionMatrix();
 }
 
 MikanVideoSourceID VideoSourceComponent::getVideoSourceId() const
