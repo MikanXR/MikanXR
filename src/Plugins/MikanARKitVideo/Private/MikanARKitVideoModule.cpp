@@ -1,6 +1,7 @@
 #include "MikanARKitVideoModule.h"
 #include "MikanARKitVideoDeviceManager.h"
 #include "IARKitVideoDeviceModule.h"
+#include "Cuda/CudaDriverVersion.h"
 
 #include <gst/gst.h>
 #include <gst/gstparse.h>
@@ -20,6 +21,28 @@ public:
 	bool startup() override
 	{
 		MIKAN_LOG_INFO("MikanARKitVideoModule") << "Initializing MikanARKitVideoModule";
+
+		// Every video frame goes through CUDA-GL interop, and an older driver faults in
+		// the CUDA calls rather than failing them, so refuse to start before any are made
+		int driverVersion= 0;
+		if (!isCudaDriverCompatible(driverVersion))
+		{
+			const int compiledVersion= getCompiledCudaVersion();
+			if (driverVersion == 0)
+			{
+				MIKAN_LOG_ERROR("MikanARKitVideoModule")
+					<< "No NVIDIA driver found. ARKit video needs an NVIDIA GPU with a driver supporting CUDA "
+					<< compiledVersion / 1000 << ".0 or newer.";
+			}
+			else
+			{
+				MIKAN_LOG_ERROR("MikanARKitVideoModule")
+					<< "The NVIDIA driver supports CUDA " << driverVersion / 1000 << "." << (driverVersion % 1000) / 10
+					<< ", and ARKit video needs CUDA " << compiledVersion / 1000
+					<< ".0 or newer. Update the NVIDIA driver to use ARKit video.";
+			}
+			return false;
+		}
 
 		// Initialize GStreamer (used for the RTP video receive path - see Track C2).
 		// Intentionally don't pass in the command line arguments.
