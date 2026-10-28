@@ -327,13 +327,27 @@ bool mesh_texturing_test_shared_vertices_split()
 	TriangleMesh textured;
 	cv::Mat atlas;
 	MeshTexturingStats stats;
-	if (!MeshTexturing::textureMesh(mesh, views, settings, textured, atlas, &stats))
+	std::vector<uint32_t> sourceVertex;
+	if (!MeshTexturing::textureMesh(mesh, views, settings, textured, atlas, &stats, &sourceVertex))
 	{
 		fprintf(stdout, "    textureMesh failed\n");
 		success= false;
 	}
 	else
 	{
+		// Every split vertex names the input vertex it came from
+		bool bRemapMatches= sourceVertex.size() == textured.vertices.size();
+		for (size_t vertex= 0; bRemapMatches && vertex < sourceVertex.size(); ++vertex)
+		{
+			bRemapMatches= sourceVertex[vertex] < mesh.vertices.size()
+						   && textured.vertices[vertex] == mesh.vertices[sourceVertex[vertex]];
+		}
+		if (!bRemapMatches)
+		{
+			fprintf(stdout, "    the source vertex remap does not match the split\n");
+			success= false;
+		}
+
 		// The candidate scoring sees the same thing textureMesh does
 		std::vector<uint8_t> seenByA, seenByB;
 		MeshTexturing::markSeenTriangles(mesh, views[0], settings, seenByA);

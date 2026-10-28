@@ -1,11 +1,10 @@
 #include "MeshTexturing.h"
+#include "DepthProjection.h"
 
 #include "Logger.h"
 #include "ParallelFor.h"
 
-#include "glm/ext/matrix_double4x4.hpp"
 #include "glm/geometric.hpp"
-#include "glm/matrix.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -13,27 +12,13 @@
 
 namespace MeshTexturingInternal
 {
-struct ViewFrame
-{
-	glm::mat4 worldToCamera;
-	glm::vec3 cameraPosition;
-};
-
 // A vertex's depth along the view's axis and its pixel in the view's depth
 // image, false when it falls behind the camera or off the image
-bool projectToDepth(const TextureView& view, const ViewFrame& frame, const glm::vec3& worldPoint, float& outDepth,
+bool projectToDepth(const TextureView& view, const DepthViewFrame& frame, const glm::vec3& worldPoint, float& outDepth,
 					int& outU, int& outV)
 {
-	const glm::vec3 cameraPoint= glm::vec3(frame.worldToCamera * glm::vec4(worldPoint, 1.f));
-	if (!(cameraPoint.z > 0.f))
-		return false;
-
-	const double u= view.depthIntrinsics.fx * cameraPoint.x / cameraPoint.z + view.depthIntrinsics.cx;
-	const double v= view.depthIntrinsics.fy * cameraPoint.y / cameraPoint.z + view.depthIntrinsics.cy;
-	outU= (int)std::lround(u);
-	outV= (int)std::lround(v);
-	outDepth= cameraPoint.z;
-	return outU >= 0 && outV >= 0 && outU < view.depth.cols && outV < view.depth.rows;
+	return DepthProjection::projectToPixel(frame, view.depthIntrinsics, view.depth.cols, view.depth.rows, worldPoint,
+										   outDepth, outU, outV);
 }
 
 // Whether the view's depth image saw this vertex: a measured pixel under it
@@ -41,7 +26,8 @@ bool projectToDepth(const TextureView& view, const ViewFrame& frame, const glm::
 // farthest of the pixel's 3x3 neighbourhood stands in for the pixel, since
 // the depth is coarse and a vertex on a concave edge or a silhouette rounds
 // onto the nearer surface beside it.
-bool isVertexSeen(const TextureView& view, const ViewFrame& frame, const glm::vec3& worldPoint, float depthTolerance)
+bool isVertexSeen(const TextureView& view, const DepthViewFrame& frame, const glm::vec3& worldPoint,
+				  float depthTolerance)
 {
 	float depth= 0.f;
 	int u= 0;
@@ -67,7 +53,7 @@ bool isVertexSeen(const TextureView& view, const ViewFrame& frame, const glm::ve
 }
 
 // The vertex's pixel in the view's tile, clamped to the tile
-glm::vec2 projectToTile(const TextureView& view, const ViewFrame& frame, const glm::vec3& worldPoint)
+glm::vec2 projectToTile(const TextureView& view, const DepthViewFrame& frame, const glm::vec3& worldPoint)
 {
 	const glm::vec3 cameraPoint= glm::vec3(frame.worldToCamera * glm::vec4(worldPoint, 1.f));
 	const float z= std::max(cameraPoint.z, 1e-6f);
@@ -76,13 +62,7 @@ glm::vec2 projectToTile(const TextureView& view, const ViewFrame& frame, const g
 	return glm::vec2(std::clamp(u, 0.f, (float)view.tile.cols - 1.f), std::clamp(v, 0.f, (float)view.tile.rows - 1.f));
 }
 
-ViewFrame makeFrame(const TextureView& view)
-{
-	ViewFrame frame;
-	frame.worldToCamera= glm::mat4(glm::inverse(glm::dmat4(view.cameraToWorld)));
-	frame.cameraPosition= glm::vec3(view.cameraToWorld[3]);
-	return frame;
-}
+DepthViewFrame makeFrame(const TextureView& view) { return DepthProjection::makeFrame(view.cameraToWorld); }
 
 // The face normal and centroid of a triangle, false when it is degenerate
 bool triangleFrame(const TriangleMesh& mesh, size_t triangle, glm::vec3& outNormal, glm::vec3& outCentroid)
@@ -103,7 +83,7 @@ bool triangleFrame(const TriangleMesh& mesh, size_t triangle, glm::vec3& outNorm
 // Whether the view sees the triangle under the facing floor given and the
 // visibility rule, with its score (how frontal per metre of distance) when
 // it does
-bool seesTriangle(const TextureView& view, const ViewFrame& frame, const TriangleMesh& mesh, size_t triangle,
+bool seesTriangle(const TextureView& view, const DepthViewFrame& frame, const TriangleMesh& mesh, size_t triangle,
 				  const glm::vec3& normal, const glm::vec3& centroid, float minFacing,
 				  const MeshTexturingSettings& settings, float& outScore)
 {
@@ -136,7 +116,7 @@ void MeshTexturing::markSeenTriangles(const TriangleMesh& mesh, const TextureVie
 	if (view.depth.empty() || view.depth.type() != CV_32FC1)
 		return;
 
-	const ViewFrame frame= makeFrame(view);
+	const DepthViewFrame frame= makeFrame(view);
 	parallelFor((int)triangleCount,
 				[&](int begin, int end)
 				{
@@ -159,7 +139,7 @@ int MeshTexturing::tilesPerRow(int viewCount) { return (int)std::ceil(std::sqrt(
 
 bool MeshTexturing::textureMesh(const TriangleMesh& mesh, const std::vector<TextureView>& views,
 								const MeshTexturingSettings& settings, TriangleMesh& outMesh, cv::Mat& outAtlas,
-								MeshTexturingStats* outStats)
+								MeshTexturingStats* outStats, std::vector<uint32_t>* outSourceVertex)
 {
 	using namespace MeshTexturingInternal;
 
@@ -205,7 +185,7 @@ bool MeshTexturing::textureMesh(const TriangleMesh& mesh, const std::vector<Text
 	const int atlasWidth= columns * tileWidth;
 	const int atlasHeight= rows * tileHeight;
 
-	std::vector<ViewFrame> frames(views.size());
+	std::vector<DepthViewFrame> frames(views.size());
 	for (size_t viewIndex= 0; viewIndex < views.size(); ++viewIndex)
 		frames[viewIndex]= makeFrame(views[viewIndex]);
 
@@ -251,6 +231,7 @@ bool MeshTexturing::textureMesh(const TriangleMesh& mesh, const std::vector<Text
 	const bool bHasNormals= mesh.normals.size() == vertexCount;
 	TriangleMesh result;
 	result.indices.resize(mesh.indices.size());
+	std::vector<uint32_t> sourceVertex;
 	std::unordered_map<uint64_t, uint32_t> splitIndex;
 	splitIndex.reserve(vertexCount + vertexCount / 4);
 	std::vector<int> viewTriangles(views.size() + 1, 0);
@@ -274,6 +255,7 @@ bool MeshTexturing::textureMesh(const TriangleMesh& mesh, const std::vector<Text
 				found= splitIndex.emplace(key, newIndex).first;
 
 				result.vertices.push_back(mesh.vertices[vertex]);
+				sourceVertex.push_back(vertex);
 				if (bHasNormals)
 					result.normals.push_back(mesh.normals[vertex]);
 
@@ -310,6 +292,8 @@ bool MeshTexturing::textureMesh(const TriangleMesh& mesh, const std::vector<Text
 		outStats->atlasHeight= atlasHeight;
 	}
 
+	if (outSourceVertex != nullptr)
+		*outSourceVertex= std::move(sourceVertex);
 	outMesh= std::move(result);
 	return true;
 }
