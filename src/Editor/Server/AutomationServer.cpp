@@ -70,6 +70,47 @@ bool parseComponentId(const std::string& token, int& outComponentId)
 	return true;
 }
 
+// Resolves an optional compositor component id token, defaulting to the project's single
+// compositor when the token is absent
+CompositorComponentPtr resolveCompositor(MainWindow* mainWindow, const std::vector<std::string>& args,
+										 size_t idArgIndex, std::string& outError)
+{
+	int compositorId= -1;
+	if (args.size() > idArgIndex && !parseComponentId(args[idArgIndex], compositorId))
+	{
+		outError= "invalid compositor component id '" + args[idArgIndex] + "'";
+		return CompositorComponentPtr();
+	}
+
+	auto compositorSystem= mainWindow->getProjectManager()->getSystemOfType<CompositorObjectSystem>();
+	if (!compositorSystem)
+	{
+		outError= "no compositor system";
+		return CompositorComponentPtr();
+	}
+
+	if (compositorId == -1)
+	{
+		std::vector<int> compositorIds;
+		compositorSystem->getComponentIdList(CompositorComponent::k_componentClassName, compositorIds);
+		if (compositorIds.size() != 1)
+		{
+			outError=
+				"give a compositor component id (project has " + std::to_string(compositorIds.size()) + " compositors)";
+			return CompositorComponentPtr();
+		}
+		compositorId= compositorIds[0];
+	}
+
+	CompositorComponentPtr compositor= compositorSystem->getCompositorById(compositorId);
+	if (!compositor)
+	{
+		outError= "no compositor with id " + std::to_string(compositorId);
+	}
+
+	return compositor;
+}
+
 // Named keys the automation channel can press. A single printable character is its own key, so
 // this covers only the keys that have no character form and the ones a drive actually reaches for.
 bool parseKeyName(const std::string& name, MkKeySym& outKeySym)
@@ -482,6 +523,7 @@ void AutomationServer::registerCoreNamespaces()
 							 {"nodegraph open [compositorComponentId]",
 							  "nodegraph open material <graphPath>",
 							  "nodegraph open material new [compositor|shape]",
+							  "nodegraph errors [compositorComponentId]",
 							  "nodegraph close",
 							  "nodegraph info",
 							  "nodegraph list nodes|pins|links|properties|pages",
@@ -1014,43 +1056,32 @@ bool AutomationServer::handleNodeGraphCommand(const std::vector<std::string>& ar
 			return openMaterialGraphEditor(args, outError);
 		}
 
-		// Optional compositor component id; default to the project's single compositor
-		int compositorId= -1;
-		if (args.size() >= 2 && !parseComponentId(args[1], compositorId))
-		{
-			outError= "invalid compositor component id '" + args[1] + "'";
-			return false;
-		}
-
-		auto compositorSystem= m_mainWindow->getProjectManager()->getSystemOfType<CompositorObjectSystem>();
-		if (!compositorSystem)
-		{
-			outError= "no compositor system";
-			return false;
-		}
-
-		if (compositorId == -1)
-		{
-			std::vector<int> compositorIds;
-			compositorSystem->getComponentIdList(CompositorComponent::k_componentClassName, compositorIds);
-			if (compositorIds.size() != 1)
-			{
-				outError= "give a compositor component id (project has " + std::to_string(compositorIds.size())
-						  + " compositors)";
-				return false;
-			}
-			compositorId= compositorIds[0];
-		}
-
-		CompositorComponentPtr compositor= compositorSystem->getCompositorById(compositorId);
+		CompositorComponentPtr compositor= resolveCompositor(m_mainWindow, args, 1, outError);
 		if (!compositor)
 		{
-			outError= "no compositor with id " + std::to_string(compositorId);
 			return false;
 		}
 
 		// Opens the compositor node editor window if one is not already open
 		compositor->editCompositorGraph();
+		return true;
+	}
+
+	if (verb == "errors")
+	{
+		// Reads the compositor's own last evaluation, so it needs no editor window open
+		CompositorComponentPtr compositor= resolveCompositor(m_mainWindow, args, 1, outError);
+		if (!compositor)
+		{
+			return false;
+		}
+
+		for (const NodeEvaluationError& evalError : compositor->getLastNodeEvalErrors())
+		{
+			const char* severity= evalError.severity == eNodeEvaluationSeverity::error ? "error" : "warning";
+			outLines.push_back(StringUtils::stringify(severity, " ", evalError.errorNodeId, " ", evalError.errorPinId,
+													  " ", evalError.errorMessage));
+		}
 		return true;
 	}
 
