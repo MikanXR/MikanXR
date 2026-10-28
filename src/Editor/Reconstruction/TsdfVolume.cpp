@@ -10,6 +10,8 @@
 #include "glm/geometric.hpp"
 #include "glm/matrix.hpp"
 
+#include <opencv2/imgproc.hpp>
+
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -74,7 +76,8 @@ glm::vec3 TsdfVolume::voxelCenter(int x, int y, int z) const
 	return m_origin + glm::vec3((float)x, (float)y, (float)z) * m_voxelSize;
 }
 
-void TsdfVolume::cullFlyingPixels(const cv::Mat& depthMeters, float threshold, cv::Mat& outKeep)
+void TsdfVolume::cullFlyingPixels(const cv::Mat& depthMeters, float threshold, cv::Mat& outKeep, bool bKeepNear,
+								  int keepNearRadius)
 {
 	if (depthMeters.empty() || depthMeters.channels() != 1)
 	{
@@ -115,8 +118,11 @@ void TsdfVolume::cullFlyingPixels(const cv::Mat& depthMeters, float threshold, c
 			// Right neighbour
 			if (x + 1 < width && validRow[x + 1] && relativeJump(depthRow[x + 1], depthRow[x]) > threshold)
 			{
-				keepRow[x]= 0;
-				keepRow[x + 1]= 0;
+				const bool bThisFarther= depthRow[x] > depthRow[x + 1];
+				if (!bKeepNear || bThisFarther)
+					keepRow[x]= 0;
+				if (!bKeepNear || !bThisFarther)
+					keepRow[x + 1]= 0;
 			}
 
 			// Lower neighbour
@@ -126,9 +132,33 @@ void TsdfVolume::cullFlyingPixels(const cv::Mat& depthMeters, float threshold, c
 				const uint8_t* nextValidRow= valid.ptr<uint8_t>(y + 1);
 				if (nextValidRow[x] && relativeJump(nextDepthRow[x], depthRow[x]) > threshold)
 				{
-					keepRow[x]= 0;
-					outKeep.ptr<uint8_t>(y + 1)[x]= 0;
+					const bool bThisFarther= depthRow[x] > nextDepthRow[x];
+					if (!bKeepNear || bThisFarther)
+						keepRow[x]= 0;
+					if (!bKeepNear || !bThisFarther)
+						outKeep.ptr<uint8_t>(y + 1)[x]= 0;
 				}
+			}
+		}
+	}
+
+	// A wider far band: a pixel farther than the nearest valid depth within the
+	// radius by more than the threshold is dropped too
+	if (bKeepNear && keepNearRadius > 1)
+	{
+		cv::Mat nearest= depth.clone();
+		nearest.setTo(std::numeric_limits<float>::max(), valid == 0);
+		const int size= 2 * keepNearRadius + 1;
+		cv::erode(nearest, nearest, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(size, size)));
+		for (int y= 0; y < height; ++y)
+		{
+			const float* depthRow= depth.ptr<float>(y);
+			const float* nearestRow= nearest.ptr<float>(y);
+			uint8_t* keepRow= outKeep.ptr<uint8_t>(y);
+			for (int x= 0; x < width; ++x)
+			{
+				if (keepRow[x] && relativeJump(depthRow[x], nearestRow[x]) > threshold)
+					keepRow[x]= 0;
 			}
 		}
 	}
@@ -158,7 +188,7 @@ void TsdfVolume::integrate(const cv::Mat& depthMeters, const cv::Mat& weight, co
 
 	// Depth and weight zeroed wherever the pixel is not kept
 	cv::Mat keep;
-	cullFlyingPixels(depthIn, m_config.gradientCull, keep);
+	cullFlyingPixels(depthIn, m_config.gradientCull, keep, m_config.gradientCullKeepsNear, m_config.gradientCullRadius);
 
 	cv::Mat depth(height, width, CV_32FC1, cv::Scalar(0.f));
 	cv::Mat pixelWeight(height, width, CV_32FC1, cv::Scalar(0.f));

@@ -73,6 +73,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <filesystem>
+#include <limits>
 #include <numeric>
 #include <thread>
 #include <utility>
@@ -252,6 +253,7 @@ void CmdApp::printUsage() const
 			"               [-voxel=<metres>] [-stride=<n>] [-noRegistration]\n"
 			"               [-pathRadius=<metres>] [-noTexture] [-textureViews=<n>]\n"
 			"               [-bounds=<lo.x,lo.y,lo.z,hi.x,hi.y,hi.z>] [-coverage=<dir>]\n"
+			"               [-gradientCull=<relative jump, 0 for off>] [-cullSymmetric] [-cullRadius=<pixels>]\n"
 			"               Fuse a trackcamera capture's LiDAR depth tracks into an occlusion\n"
 			"               mesh in the take's ARKit world space, refining the poses against\n"
 			"               the model, trimmed to the camera path and textured from the video,\n"
@@ -755,6 +757,24 @@ int CmdApp::buildOcclusionMesh() const
 		settings.volume.voxelSize= (float)atof(voxelArg.c_str());
 		settings.volume.truncation= settings.volume.voxelSize * 4.f;
 	}
+	const std::string cullArg= getCommandLineStringArg("gradientCull");
+	if (!cullArg.empty())
+	{
+		// 0 turns the flying pixel cull off
+		const float cull= (float)atof(cullArg.c_str());
+		settings.volume.gradientCull= cull > 0.f ? cull : std::numeric_limits<float>::infinity();
+	}
+	// The cull before keep-near: both pixels of a bad pair, no far band
+	if (hasCommandLineFlag("cullSymmetric"))
+	{
+		settings.volume.gradientCullKeepsNear= false;
+		settings.volume.gradientCullRadius= 1;
+	}
+	const std::string cullRadiusArg= getCommandLineStringArg("cullRadius");
+	if (!cullRadiusArg.empty())
+	{
+		settings.volume.gradientCullRadius= std::max(atoi(cullRadiusArg.c_str()), 1);
+	}
 	settings.keyframeStride= atoi(getCommandLineStringArg("stride", "3").c_str());
 	settings.bFrameToModel= !hasCommandLineFlag("noRegistration");
 	settings.cameraPathRadius= std::max((float)atof(getCommandLineStringArg("pathRadius", "2").c_str()), 0.f);
@@ -777,6 +797,9 @@ int CmdApp::buildOcclusionMesh() const
 	fprintf(stdout, "take   : %zu frames, depth %dx%d, registration %s, trim %.1f m, texture %s\n",
 			track.getFrameCount(), track.getDepthWidth(), track.getDepthHeight(), settings.bFrameToModel ? "on" : "off",
 			settings.cameraPathRadius, settings.bTexture ? "on" : "off");
+	fprintf(stdout, "volume : %.1f cm voxels, cull %.2f%s, radius %d\n", settings.volume.voxelSize * 100.f,
+			settings.volume.gradientCull, settings.volume.gradientCullKeepsNear ? " keeping the near pixel" : "",
+			settings.volume.gradientCullRadius);
 
 	// The movie member plays in place inside the capture; without it the
 	// mesh still comes out, untextured

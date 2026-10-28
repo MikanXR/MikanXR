@@ -343,6 +343,43 @@ bool tsdf_volume_test_cull_flying_pixels()
 	UNIT_TEST_COMPLETE()
 }
 
+// A near block on a far field: keeping the near pixel drops only the far
+// pixels across the block's edge, so the block keeps its outermost ring.
+bool tsdf_volume_test_cull_keeps_near()
+{
+	UNIT_TEST_BEGIN("flying pixel cull keeping the near pixel drops only the far side of an edge")
+
+	const int size= 8;
+	cv::Mat depth(size, size, CV_32FC1, cv::Scalar(2.f));
+	const cv::Rect block(2, 2, 3, 3);
+	depth(block).setTo(cv::Scalar(1.f));
+
+	cv::Mat keep;
+	TsdfVolume::cullFlyingPixels(depth, 0.08f, keep, true);
+	int mismatches= 0;
+	for (int y= 0; y < size; ++y)
+	{
+		for (int x= 0; x < size; ++x)
+		{
+			const bool bInBlock= block.contains(cv::Point(x, y));
+			bool bNextToBlock= false;
+			const int offsets[4][2]= {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+			for (const auto& offset : offsets)
+				bNextToBlock|= block.contains(cv::Point(x + offset[0], y + offset[1]));
+			const bool bExpectDropped= !bInBlock && bNextToBlock;
+			const bool bDropped= keep.at<uint8_t>(y, x) == 0;
+			if (bDropped != bExpectDropped)
+			{
+				fprintf(stdout, "    pixel (%d, %d) %s\n", x, y, bDropped ? "dropped" : "kept");
+				mismatches++;
+			}
+		}
+	}
+	success&= mismatches == 0;
+
+	UNIT_TEST_COMPLETE()
+}
+
 // A plane fused from three poses: the field crosses zero on the plane, and the
 // cleaned mesh lies on it with normals toward the cameras.
 bool tsdf_volume_test_fused_plane()
@@ -876,6 +913,7 @@ bool run_tsdf_volume_unit_tests()
 	UNIT_TEST_MODULE_BEGIN("tsdf_volume")
 	UNIT_TEST_MODULE_CALL_TEST(tsdf_volume_test_marching_cubes_sphere);
 	UNIT_TEST_MODULE_CALL_TEST(tsdf_volume_test_cull_flying_pixels);
+	UNIT_TEST_MODULE_CALL_TEST(tsdf_volume_test_cull_keeps_near);
 	UNIT_TEST_MODULE_CALL_TEST(tsdf_volume_test_fused_plane);
 	UNIT_TEST_MODULE_CALL_TEST(tsdf_volume_test_fused_sphere);
 	UNIT_TEST_MODULE_CALL_TEST(tsdf_volume_test_no_back_shell);
