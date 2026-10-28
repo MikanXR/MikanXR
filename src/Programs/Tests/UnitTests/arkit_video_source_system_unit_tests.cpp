@@ -120,7 +120,7 @@ static bool arkit_video_source_system_test_real_plugin_loads_successfully_no_cra
 	success= success && reachedTerminalState;
 	assert(success);
 
-	// GStreamer is required (checked by both the env-var pre-check and
+	// GStreamer is required (checked by both the GStreamerUtils runtime pre-check and
 	// gst_init_check() inside MikanARKitVideoModule::startup()); if it's genuinely
 	// not installed on whatever machine runs this test, "failed" is the correct,
 	// still-graceful outcome. On this development environment GStreamer is

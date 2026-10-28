@@ -25,6 +25,7 @@
 
 #include <cuda.h>
 
+#include "CudaDriverVersion.h"
 #include "CudaGLInterop.h"
 #include "IMkTexture.h"
 
@@ -137,6 +138,24 @@ void cudaGlInteropTestDestroyHiddenGLContext(HWND window, HDC dc, HGLRC glrc)
 
 bool cudaGlInteropTestCudaAvailable()
 {
+	// An older driver faults in the CUDA calls below rather than failing them
+	int driverVersion= 0;
+	if (!isCudaDriverCompatible(driverVersion))
+	{
+		if (driverVersion == 0)
+		{
+			fprintf(stdout, "      skipped - no NVIDIA driver\n");
+		}
+		else
+		{
+			const int compiledVersion= getCompiledCudaVersion();
+			fprintf(stdout, "      skipped - the NVIDIA driver supports CUDA %d.%d, built against %d.%d\n",
+					driverVersion / 1000, (driverVersion % 1000) / 10, compiledVersion / 1000,
+					(compiledVersion % 1000) / 10);
+		}
+		return false;
+	}
+
 	if (cuInit(0) != CUDA_SUCCESS)
 		return false;
 

@@ -1,4 +1,5 @@
 #include "App.h"
+#include "GStreamerUtils.h"
 #include "INetworkVideoDeviceManager.h"
 #include "INetworkVideoDeviceModule.h"
 #include "Logger.h"
@@ -145,12 +146,12 @@ bool NetworkVideoSourceSystem::ensureNetworkDeviceManager()
 		return false;
 	}
 
-	// Special case: If GStreamer is selected, see if it is installed.
+	// Special case: If GStreamer is selected, see if it is installed and make its DLLs loadable.
 	// Do this cheap check on the main thread before launching the async task.
 	if (moduleName == GSTREAMER_VIDEO_DEVICE_MODULE_NAME)
 	{
-		const char* envVar= std::getenv("GSTREAMER_1_0_ROOT_MINGW_X86_64");
-		if (envVar == nullptr)
+		std::filesystem::path runtimeDir;
+		if (!GStreamerUtils::ensureRuntimeLoadable(runtimeDir))
 		{
 			MIKAN_LOG_WARNING("NetworkVideoSourceSystem::ensureNetworkDeviceManager")
 				<< "GStreamer not installed. Skipping network video manager init.";
@@ -159,6 +160,9 @@ bool NetworkVideoSourceSystem::ensureNetworkDeviceManager()
 			m_networkVideoManagerFailReason= "GStreamer not installed";
 			return false;
 		}
+
+		MIKAN_LOG_INFO("NetworkVideoSourceSystem::ensureNetworkDeviceManager")
+			<< "Using GStreamer runtime at " << runtimeDir.string();
 	}
 
 	// Launch async init to avoid blocking the main thread

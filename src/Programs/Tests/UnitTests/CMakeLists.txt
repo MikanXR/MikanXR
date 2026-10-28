@@ -39,6 +39,8 @@ list(APPEND UNIT_TEST_SRC
 # NV12->RGBA conversion out of CUDA entirely.
 if(MIKAN_WITH_ARKIT_VIDEO)
   list(APPEND UNIT_TEST_SRC
+    ${MIKAN_PLUGINS_DIR}/MikanARKitVideo/Private/Cuda/CudaDriverVersion.h
+    ${MIKAN_PLUGINS_DIR}/MikanARKitVideo/Private/Cuda/CudaDriverVersion.cpp
     ${MIKAN_PLUGINS_DIR}/MikanARKitVideo/Private/Cuda/CudaGLInterop.h
     ${MIKAN_PLUGINS_DIR}/MikanARKitVideo/Private/Cuda/CudaGLInterop.cpp
   )

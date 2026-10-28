@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1151,
-		"translatedCount": 1151,
-		"reviewedCount": 1151
+		"stringCount": 1153,
+		"translatedCount": 1153,
+		"reviewedCount": 1153
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -89,6 +89,10 @@
 		"verifyCameraSetup": "Verify that the camera is positioned correctly and the video stream is running.",
 		"verifyInitialPointCapture": "Verify the captured points from position 1 look correct.",
 		"verifyTriangulatedPoints": "Verify the triangulated anchor points look correct."
+	},
+	"arkitVideoSource": {
+		"cudaDriverTooOldFmt": "ARKit video needs an NVIDIA driver that supports CUDA %d.0 or newer, and the installed driver supports CUDA %d.%d. Update the NVIDIA driver to use ARKit video sources.",
+		"noNvidiaDriverFmt": "ARKit video needs an NVIDIA GPU with a driver that supports CUDA %d.0 or newer, and no NVIDIA driver was found."
 	},
 	"assets": {
 		"addAssetFmt": "Add %s",

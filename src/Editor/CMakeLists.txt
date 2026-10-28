@@ -765,6 +765,10 @@ target_compile_definitions(MikanEditor PUBLIC ENABLE_MIKANCORE_REFLECTION)
 target_compile_definitions(MikanEditor PUBLIC ENABLE_MIKANAPI_REFLECTION)
 target_compile_definitions(MikanEditor PUBLIC ENABLE_GL_PROGRAM_CONFIG)
 target_compile_definitions(MikanEditor PUBLIC JSON_DISABLE_ENUM_SERIALIZATION=1)
+# The CUDA version MikanARKitVideo is built against, which the NVIDIA driver must support
+if(MIKAN_WITH_ARKIT_VIDEO)
+  target_compile_definitions(MikanEditor PRIVATE MIKAN_ARKIT_CUDA_VERSION=${CUDA_TOOLKIT_VERSION})
+endif()
 set_target_properties(MikanEditor PROPERTIES FOLDER MikanLibraries)
 
 # GUI application (WinMain entry point)
