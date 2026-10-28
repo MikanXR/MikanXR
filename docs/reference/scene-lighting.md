@@ -278,7 +278,7 @@ Wire the result into Emissive Color. **The clamp is required**, not cosmetic. Se
 
 **`Dir` must be the per-pixel view direction, not a parameter.** Wiring it to a Vector *parameter* is the easy mistake: the dome then evaluates the SH at one direction for every pixel and renders a flat constant color, the Sky Light captures a uniform environment, and all the directional information is silently thrown away. It still *looks* like it works, since the dome lights the scene, which is what makes it dangerous. Feed `Dir` from a **CameraVector** node multiplied by `-1` (`CameraVector` points from the pixel toward the camera, so negating gives the direction being looked along). `normalize(AbsoluteWorldPosition - ObjectPosition)` is equivalent while the dome is centered on the Sky Light.
 
-`SkydomeMaterial` is intentionally *not* defaulted to a `/Game/` asset. The plugin is shared across projects, so a hard reference to project content would fail to resolve elsewhere. Assign it per level; the actor logs a warning at BeginPlay if it is unset, because an unassigned material produces a black dome that contributes no light and is otherwise indistinguishable from a bad estimate.
+`SkydomeMaterial` defaults to `M_MikanSkydome` in the plugin's own content (`/MikanXR/Materials`), never a `/Game/` asset, since the plugin is shared across projects. A Blueprint subclass or level instance can override it. The actor logs a warning at BeginPlay if it is cleared, because an unassigned material produces a black dome that contributes no light and is otherwise indistinguishable from a bad estimate.
 
 ### The skydome material MUST have "Is Sky" enabled
 
@@ -307,7 +307,7 @@ The Mikan capture components use `PRM_UseShowOnlyList`, so the skydome is not ta
 
 ### Refreshing the vendored SDK
 
-The plugin builds against a snapshot of the Mikan client SDK in `Plugins/MikanXR_UE/ThirdParty/MikanXR`. Adding a client API type means that snapshot must be refreshed or the module fails to link on the new statics (`MikanLightEnvironmentComponentValues::k_componentClassName`). The process is: build the MikanXR `INSTALL` target in **Release** to populate `dist/Win64`, then run `Plugins/MikanXR_UE/FetchMikan.bat`, which reads `MIKAN_DIST_PATH` from `SetMikanVars_x64.bat`.
+The plugin builds against a snapshot of the Mikan client SDK in `Plugins/MikanXR_UE/ThirdParty/MikanXR`. Adding a client API type means that snapshot must be refreshed or the module fails to link on the new statics (`MikanLightEnvironmentComponentValues::k_componentClassName`). The process is: build the MikanXR `INSTALL_CLIENT_SDK` target in **Release** to populate `dist/ClientSDK/Win64`, then run `FetchMikan.bat` at the root of the [MikanXR_UE](https://github.com/MikanXR/MikanXR_UE) repository, which reads `MIKAN_DIST_PATH` from `SetMikanVars_x64.bat` (written by its `BindMikan.bat`). Projects that consume the plugin take the refreshed SDK from the next MikanXR_UE release.
 
 ---
 
