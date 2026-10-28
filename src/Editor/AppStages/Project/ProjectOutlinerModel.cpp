@@ -51,6 +51,8 @@
 #include "ScriptObjectSystem.h"
 #include "SelectionComponent.h"
 #include "ShapeComponent.h"
+#include "SpoutTextureSourceComponent.h"
+#include "SpoutTextureSourceSystem.h"
 #include "StageComponent.h"
 #include "StageObjectSystem.h"
 #include "StencilComponent.h"
