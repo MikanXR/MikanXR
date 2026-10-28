@@ -81,6 +81,10 @@ private:
 		}
 	};
 
+	// Once per process, when the manager failed and the project holds an ARKit source,
+	// shows a modal if the NVIDIA driver is too old for the plugin's CUDA version
+	void updateCudaDriverWarning();
+
 	// Runs a marker watch on each unaligned source while it streams or a client
 	// watches it, and publishes each source's alignment state when it changes
 	void updateAlignment();
@@ -88,6 +92,7 @@ private:
 										 const ARKitVideoSourceComponent& source) const;
 
 	ARKitVideoDeviceManagerLoader m_deviceManagerLoader;
+	bool m_bCudaDriverChecked= false;
 	std::map<MikanVideoSourceID, std::unique_ptr<ARKitMarkerAutoAligner>> m_aligners;
 	// The state last published per source, so a change publishes once
 	std::map<MikanVideoSourceID, AlignmentState> m_publishedAlignment;

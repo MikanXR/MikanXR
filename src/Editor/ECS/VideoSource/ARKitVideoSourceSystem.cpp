@@ -1,12 +1,16 @@
 #include "ARKitVideoSourceSystem.h"
 #include "ARKitMarkerAutoAligner.h"
 #include "ARKitVideoSourceComponent.h"
+#include "CudaDriverUtils.h"
 #include "IEditorWindow.h"
+#include "LocText.h"
 #include "Logger.h"
 #include "MikanServer.h"
 #include "MikanVideoSourceEvents.h"
+#include "ModalMessageBox/ModalDialog_MessageBox.h"
 #include "VideoSourceRequestHandler.h"
 
+#include <algorithm>
 #include <chrono>
 
 namespace
@@ -59,7 +63,49 @@ void ARKitVideoSourceSystem::update(float deltaTime)
 
 	Super::update(deltaTime);
 
+	updateCudaDriverWarning();
 	updateAlignment();
+}
+
+void ARKitVideoSourceSystem::updateCudaDriverWarning()
+{
+#if defined(MIKAN_ARKIT_CUDA_VERSION)
+	if (m_bCudaDriverChecked
+		|| m_deviceManagerLoader.getARKitVideoManagerState()
+			   != ARKitVideoDeviceManagerLoader::eARKitVideoManagerState::failed)
+		return;
+
+	// MikanCmd has no window to show a modal in
+	IEditorWindow* ownerWindow= getOwnerWindow();
+	if (ownerWindow == nullptr)
+		return;
+
+	// Only a project that uses ARKit video hears about it
+	const auto& componentMap= getComponentMap();
+	const bool bHasSource= std::any_of(componentMap.begin(), componentMap.end(),
+									   [](const auto& entry) { return !entry.second.expired(); });
+	if (!bHasSource)
+		return;
+
+	AppStage* appStage= ownerWindow->getCurrentAppStage();
+	if (appStage == nullptr)
+		return;
+
+	// The plugin refuses to start on a driver older than the CUDA major version it was built
+	// against. A new enough driver means the failure had another cause, which the log covers.
+	m_bCudaDriverChecked= true;
+
+	const int requiredMajorVersion= MIKAN_ARKIT_CUDA_VERSION / 1000;
+	const int driverVersion= CudaDriverUtils::getInstalledCudaDriverVersion();
+	if (driverVersion >= requiredMajorVersion * 1000)
+		return;
+
+	const std::string message= (driverVersion == 0)
+								   ? locFormat("arkitVideoSource.noNvidiaDriverFmt", requiredMajorVersion)
+								   : locFormat("arkitVideoSource.cudaDriverTooOldFmt", requiredMajorVersion,
+											   driverVersion / 1000, (driverVersion % 1000) / 10);
+	ModalDialog_MessageBox::showMessageBox(appStage, message);
+#endif
 }
 
 void ARKitVideoSourceSystem::updateAlignment()

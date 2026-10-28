@@ -451,6 +451,18 @@ msgctxt "anchorTriangulation.verifyTriangulatedPoints"
 msgid "Verify the triangulated anchor points look correct."
 msgstr "三角測量されたアンカー点が正しく見えることを確認してください。"
 
+#. Section: arkitVideoSource
+#, c-format
+msgctxt "arkitVideoSource.cudaDriverTooOldFmt"
+msgid "ARKit video needs an NVIDIA driver that supports CUDA %d.0 or newer, and the installed driver supports CUDA %d.%d. Update the NVIDIA driver to use ARKit video sources."
+msgstr ""
+
+#. Section: arkitVideoSource
+#, c-format
+msgctxt "arkitVideoSource.noNvidiaDriverFmt"
+msgid "ARKit video needs an NVIDIA GPU with a driver that supports CUDA %d.0 or newer, and no NVIDIA driver was found."
+msgstr ""
+
 #. Section: assets
 #, fuzzy, c-format
 msgctxt "assets.addAssetFmt"

@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1151,
+		"stringCount": 1153,
 		"translatedCount": 900,
 		"reviewedCount": 0
 	},
@@ -89,6 +89,10 @@
 		"verifyCameraSetup": "カメラが正しい位置にあり、ビデオストリームが実行中であることを確認してください。",
 		"verifyInitialPointCapture": "位置1で取得した点が正しく見えることを確認してください。",
 		"verifyTriangulatedPoints": "三角測量されたアンカー点が正しく見えることを確認してください。"
+	},
+	"arkitVideoSource": {
+		"cudaDriverTooOldFmt": "ARKit video needs an NVIDIA driver that supports CUDA %d.0 or newer, and the installed driver supports CUDA %d.%d. Update the NVIDIA driver to use ARKit video sources.",
+		"noNvidiaDriverFmt": "ARKit video needs an NVIDIA GPU with a driver that supports CUDA %d.0 or newer, and no NVIDIA driver was found."
 	},
 	"assets": {
 		"addAssetFmt": "%sを追加",
