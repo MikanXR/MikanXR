@@ -1,11 +1,14 @@
 #include "OcclusionMeshBuild/GuiPanel_OcclusionMeshBuild.h"
 
+#include "OcclusionMeshBuild/OcclusionMeshPreview.h"
+
 #include "imgui.h"
 #include "LocText.h"
 #include "MkGuiDrawUtils.h"
 
 #include <algorithm>
 #include <cfloat>
+#include <string>
 
 // Fraction of the bar at the start of the steps around integration, which
 // is the only step with a real count to show
@@ -56,6 +59,16 @@ void GuiPanel_OcclusionMeshBuild::onGui()
 		ImGui::Checkbox(locLabel("occlusionMeshBuild.texture"), &m_bTexture);
 		ImGui::TextWrapped("%s", locText("occlusionMeshBuild.textureHelp"));
 
+		if (m_bHasBoundsBox)
+		{
+			const glm::vec3 extent= m_boundsBoxHi - m_boundsBoxLo;
+			ImGui::Spacing();
+			ImGui::TextWrapped("%s",
+							   locFormat("occlusionMeshBuild.boundsBoxFmt", extent.x, extent.y, extent.z).c_str());
+			if (ImGui::Button(locLabel("occlusionMeshBuild.useAutomaticBounds")))
+				m_bHasBoundsBox= false;
+		}
+
 		ImGui::Spacing();
 		if (ImGui::Button(locLabel("occlusionMeshBuild.build")))
 		{
@@ -99,6 +112,10 @@ void GuiPanel_OcclusionMeshBuild::onGui()
 		case eOcclusionMeshBuildPhase::cleaning:
 			phaseLabel= locText("occlusionMeshBuild.phaseCleaning");
 			fraction= 0.92f;
+			break;
+		case eOcclusionMeshBuildPhase::coverage:
+			phaseLabel= locFormat("occlusionMeshBuild.phaseCoverageFmt", m_framesDone, m_frameCount);
+			fraction= 0.93f;
 			break;
 		case eOcclusionMeshBuildPhase::texturing:
 			phaseLabel= locFormat("occlusionMeshBuild.phaseTexturingFmt", m_framesDone, m_frameCount);
@@ -157,6 +174,15 @@ void GuiPanel_OcclusionMeshBuild::onGui()
 		ImGui::TextWrapped("%s", locFormat("occlusionMeshBuild.framesFusedFmt", m_stats.framesIntegrated,
 										   m_stats.keyframes, m_stats.totalSeconds)
 									 .c_str());
+		if (m_stats.bVoxelGrown)
+		{
+			ImGui::TextWrapped("%s", locFormat("occlusionMeshBuild.voxelGrownFmt", m_stats.configuredVoxelSize * 100.f,
+											   m_stats.voxelSize * 100.f)
+										 .c_str());
+		}
+		ImGui::TextWrapped("%s", locFormat("occlusionMeshBuild.coverageSummaryFmt", m_stats.coverageGood * 100.f,
+										   m_stats.coverageWeak * 100.f, m_stats.coverageUnseen * 100.f)
+									 .c_str());
 		if (m_bRegistrationRan)
 		{
 			ImGui::TextWrapped("%s",
@@ -189,6 +215,58 @@ void GuiPanel_OcclusionMeshBuild::onGui()
 
 		ImGui::Spacing();
 		ImGui::TextWrapped("%s", locText("occlusionMeshBuild.previewNote"));
+		ImGui::Spacing();
+
+		// Only the views the built mesh can show are offered
+		const char* viewKeys[(int)eOcclusionMeshPreviewView::COUNT]= {
+			"occlusionMeshBuild.viewTextured",      "occlusionMeshBuild.viewShaded",
+			"occlusionMeshBuild.viewCoverage",      "occlusionMeshBuild.viewObservations",
+			"occlusionMeshBuild.viewDirections",    "occlusionMeshBuild.viewAngle",
+			"occlusionMeshBuild.viewContradiction", "occlusionMeshBuild.viewDistance"};
+		ImGui::SetNextItemWidth(180.f * MkGui::getUiScale());
+		if (ImGui::BeginCombo(locLabel("occlusionMeshBuild.previewView"), locText(viewKeys[(int)m_previewView])))
+		{
+			for (int viewIndex= 0; viewIndex < (int)eOcclusionMeshPreviewView::COUNT; ++viewIndex)
+			{
+				if ((m_availablePreviewViews & (1u << viewIndex)) == 0)
+					continue;
+				const bool bSelected= viewIndex == (int)m_previewView;
+				if (ImGui::Selectable(locText(viewKeys[viewIndex]), bSelected) && !bSelected)
+				{
+					m_previewView= (eOcclusionMeshPreviewView)viewIndex;
+					if (OnPreviewViewChanged)
+						OnPreviewViewChanged();
+				}
+			}
+			ImGui::EndCombo();
+		}
+
+		std::string rampLow, rampHigh;
+		if (m_previewView == eOcclusionMeshPreviewView::coverage)
+		{
+			ImGui::TextWrapped("%s", locText("occlusionMeshBuild.coverageLegend"));
+		}
+		else if (OcclusionMeshPreview::getRampEnds(m_previewView, rampLow, rampHigh))
+		{
+			ImGui::TextWrapped(
+				"%s", locFormat("occlusionMeshBuild.rampLegendFmt", rampLow.c_str(), rampHigh.c_str()).c_str());
+		}
+
+		if (ImGui::Button(locLabel("occlusionMeshBuild.frameMesh")))
+		{
+			if (OnFrameMeshEvent)
+				OnFrameMeshEvent();
+		}
+		ImGui::SameLine();
+		ImGui::Checkbox(locLabel("occlusionMeshBuild.cameraPath"), &m_bShowCameraPath);
+
+		ImGui::Spacing();
+		ImGui::TextWrapped("%s", locText("occlusionMeshBuild.boundsBoxHelp"));
+		if (ImGui::Button(locLabel("occlusionMeshBuild.rebuildWithBox")))
+		{
+			if (OnRebuildInBoxEvent)
+				OnRebuildInBoxEvent();
+		}
 		ImGui::Spacing();
 
 		if (ImGui::Button(locLabel("occlusionMeshBuild.createStencil")))

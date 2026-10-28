@@ -4,6 +4,9 @@
 #include "OcclusionMeshBuilder.h"
 #include "Shared/GuiPanel.h"
 
+#include "glm/ext/vector_float3.hpp"
+
+#include <cstdint>
 #include <functional>
 #include <string>
 
@@ -32,6 +35,28 @@ public:
 	void setPathRadius(float radius) { m_pathRadius= radius; }
 	bool getTexture() const { return m_bTexture; }
 	void setTexture(bool bEnabled) { m_bTexture= bEnabled; }
+
+	// The box the next build fuses inside, in the take's ARKit world, placed
+	// over the previous build's preview. Without one the bounds come from the
+	// take's depth.
+	bool hasBoundsBox() const { return m_bHasBoundsBox; }
+	const glm::vec3& getBoundsBoxLo() const { return m_boundsBoxLo; }
+	const glm::vec3& getBoundsBoxHi() const { return m_boundsBoxHi; }
+	void setBoundsBox(const glm::vec3& lo, const glm::vec3& hi)
+	{
+		m_bHasBoundsBox= true;
+		m_boundsBoxLo= lo;
+		m_boundsBoxHi= hi;
+	}
+	void clearBoundsBox() { m_bHasBoundsBox= false; }
+
+	// -- the preview after a build --
+	eOcclusionMeshPreviewView getPreviewView() const { return m_previewView; }
+	void setPreviewView(eOcclusionMeshPreviewView view) { m_previewView= view; }
+	// One bit per eOcclusionMeshPreviewView the built mesh can show
+	void setAvailablePreviewViews(uint32_t viewMask) { m_availablePreviewViews= viewMask; }
+	bool getShowCameraPath() const { return m_bShowCameraPath; }
+	void setShowCameraPath(bool bShow) { m_bShowCameraPath= bShow; }
 
 	void setTakeSummary(int frameCount, int depthWidth, int depthHeight, float durationSeconds)
 	{
@@ -71,6 +96,9 @@ public:
 	std::function<void()> OnRedoEvent;
 	std::function<void()> OnCancelEvent;
 	std::function<void()> OnOkEvent;
+	std::function<void()> OnPreviewViewChanged;
+	std::function<void()> OnFrameMeshEvent;
+	std::function<void()> OnRebuildInBoxEvent;
 
 private:
 	eOcclusionMeshBuildMenuState m_menuState= eOcclusionMeshBuildMenuState::inactive;
@@ -81,6 +109,13 @@ private:
 	bool m_bReplacePoseTrack= true;
 	float m_pathRadius= 2.f;
 	bool m_bTexture= true;
+	bool m_bHasBoundsBox= false;
+	glm::vec3 m_boundsBoxLo= glm::vec3(0.f);
+	glm::vec3 m_boundsBoxHi= glm::vec3(0.f);
+
+	eOcclusionMeshPreviewView m_previewView= eOcclusionMeshPreviewView::shaded;
+	uint32_t m_availablePreviewViews= 0;
+	bool m_bShowCameraPath= false;
 
 	int m_takeFrameCount= 0;
 	int m_takeDepthWidth= 0;

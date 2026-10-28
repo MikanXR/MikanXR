@@ -12,3 +12,8 @@ static const std::string k_OcclusionMeshVoxelPresetStringTable[(int)eOcclusionMe
 	"tabletop",
 };
 const std::string* k_OcclusionMeshVoxelPresetStrings= k_OcclusionMeshVoxelPresetStringTable;
+
+static const std::string k_OcclusionMeshPreviewViewStringTable[(int)eOcclusionMeshPreviewView::COUNT]= {
+	"textured", "shaded", "coverage", "observations", "directions", "angle", "contradiction", "distance",
+};
+const std::string* k_OcclusionMeshPreviewViewStrings= k_OcclusionMeshPreviewViewStringTable;
