@@ -1,6 +1,106 @@
 # Proposal: Occlusion capture coverage feedback
 
-Editor parts (1 to 4) implemented, phone parts (5 and 6) and tuning (7) pending. This document is the handoff for two pieces of work: a coverage view in the editor's occlusion mesh build stage, and live coverage feedback on the phone while a take records. It carries the evidence that motivates both, the metric they share, what exists today on each side, the pieces in order, and the questions still open. A reader starting from it should not need the conversation that produced it.
+Editor parts (1 to 4) implemented but not yet run on a real take. Phone parts (5 and 6) and tuning (7) not started. This document is the handoff for two pieces of work: a coverage view in the editor's occlusion mesh build stage, and live coverage feedback on the phone while a take records. It carries the evidence that motivates both, the metric they share, the state of each side, the pieces in order, and the questions still open. A reader starting from it should not need the conversation that produced it.
+
+## Handoff status
+
+### What landed
+
+Four commits on branch `occlusion-quality-overlay` (pushed to `origin`), on top of `main` at `610a8fe`:
+
+- `d8ed60f`: `ProjectOutlinerModel.cpp` includes the Spout texture source headers it uses. Adding new `.cpp` files regrouped the unity build and exposed the missing includes. Unrelated to coverage, but needed for the rest to build.
+
+- `4216413`: Parts 2 and 4 in the builder, and the headless export.
+	- `src/Editor/Reconstruction/DepthProjection.h/.cpp`: the shared vertex-to-depth-pixel projection, now used by `MeshTexturing` too.
+	- `src/Editor/Reconstruction/MeshCoverage.h/.cpp`: the metric.
+	- `src/Editor/Reconstruction/NpyWriter.h/.cpp`: the `.npy` writer.
+	- `OcclusionMeshBuilder`: the coverage phase, the bounds box override, and the new stats.
+	- `MeshTexturing::textureMesh`: the source vertex remap.
+	- `CmdApp.cpp`: `-coverage` and `-bounds`.
+	- Tests: the new `mesh_coverage` module, a remap check in `mesh_texturing`, and coverage plus bounds box checks in `occlusion_mesh`.
+
+- `882e756`: Parts 1, 3 and 4 in the build stage.
+	- `src/Editor/AppStages/OcclusionMeshBuild/OcclusionMeshPreview.h/.cpp`: the solid preview and its views.
+	- `AppStage_OcclusionMeshBuild`: framing, the camera path, the bounds box handles, and the automation commands.
+	- `GuiPanel_OcclusionMeshBuild`: the view combo, the legend, the coverage summary, the voxel warning, and the bounds box controls.
+	- `Constants_OcclusionMeshBuild`: `eOcclusionMeshPreviewView`.
+	- The new UI strings in `resources/localization/en.json`, synced into the catalogs.
+
+- `e4efed9`: this proposal and the reference docs. [occlusion-mesh.md](../reference/occlusion-mesh.md) ("Coverage", "The stage", "The headless command", "Tests"), [automation.md](../reference/automation.md) and [commands.md](../reference/commands.md) describe the work as built, and [plan.md](../plan.md) tracks what is left.
+
+### As built, where it differs from the parts below
+
+- The fusion's cull is not the "keep near, 2 px far band" rule an earlier draft of this proposal named. That rule does not exist in the code. The fusion drops a pixel whose depth jumps by more than 8 percent against a 4-neighbour (`TsdfVolume::cullFlyingPixels`, `gradientCull`), and the coverage pass applies exactly that, plus the fusion's depth range.
+
+- A frame whose camera lies on the far side of the vertex's surface (cosine between the normal and the direction to the camera at or below 0) counts as neither support nor carve. The metric section now says so. The parity check needs `tools/surface_coverage.py` to apply the same rule.
+
+- `MeshCoverage` is an accumulator rather than a function taking the reader. The builder's `OcclusionMeshBuilder::measureCoverage` reads each fused keyframe's depth in turn, builds a `CoverageView` (fused pose in OpenCV axes, depth intrinsics, depth, confidence, keep mask, depth range), and folds it in with `accumulateView`. `finish` classifies and computes the area shares.
+	- Counts saturate at 65535.
+	- `bestCos` and `nearest` are 0 where nothing supports the vertex.
+	- Each pixel is read at the vertex's rounded projection, with no neighbourhood.
+
+- The overlays use the one texcoord slot. A view switch rebuilds the vertex buffer with that view's texcoords, rather than keeping a second texcoord set or a second mesh.
+	- Sequential overlays sample a 256 by 1 ramp from red (poor) through yellow to green (good). Texel 0 is grey, for vertices the measure has no value for.
+	- The ramp's full-green ends are constants in `OcclusionMeshPreview.cpp`: 16 supporting frames, 9 directions, and a nearest camera at 0 m against 3 m for full red.
+	- Contradiction and Distance run inverted, so green is always good.
+	- Textures filter linearly. No filter API was added.
+
+- The textured view uploads the atlas converted to RGBA and flipped vertically, since `Internal_PNT_TexturedLitColored` samples V as given while the mesh's texcoords are V-up.
+
+- Framing aims the orbit at the centre of the mesh's vertex bounds, at a distance that fits their diagonal in the narrower field of view. The view looks along the fused cameras' mean forward, with the pitch held at 20 degrees or more so the tops of things read.
+
+- The camera path is drawn through the line renderer, which draws with depth testing off, so the path shows through the mesh.
+
+- The bounds box starts on the bounds the build used. Dragging one of its six face handles with the left mouse button moves that face along its axis, and a face stops 5 cm short of the opposite one. The right button still orbits. Each pushed stage has its own input binding set, so a left click does not reach the paused Project viewport behind the stage. "Rebuild In Box" hands the box to the panel's build settings and returns to the settings page, which shows it with a "Use Automatic Bounds" reset.
+
+- MikanCmd takes the box too, as `-bounds=lo.x,lo.y,lo.z,hi.x,hi.y,hi.z`, and warns when the voxel grew.
+
+- `set_option view` is the one option accepted after a build. `set_option bounds` is accepted only before one, like the other options. `get_summary` also reports `bounds_overridden`, `voxel_grown` and the current `view`.
+
+### Verified
+
+- `Mikan`, `MikanCmd` and `unit_test_suite_cpp` build in Release. `MikanCmd -runTests` and `unit_test_suite_cpp` pass. `FormatCheck` passes on clang-format 19.1.5, and `tools/localization.py check` passes.
+
+- On the synthetic take in `occlusion_mesh`, an orbit over a narrow arc, coverage comes out 23% good, 72% weak and 5% unseen by area. A grid capped at a quarter of what the computed bounds need grows its voxel from 2 to 3.2 cm, and a box an eighth of that volume keeps 2 cm.
+
+### Not verified
+
+The machine this was built on had no `.trackcamera` take, and its experiments clone predates `tools/surface_coverage.py`. So:
+
+- The build stage has never been run in the editor with these changes. Nothing has been seen on screen: not the solid mesh, the framing, any overlay, the camera path, nor the box dragging.
+
+- The parity check against `tools/surface_coverage.py`, the acceptance test for the metric, has not run.
+
+### Next steps on the other machine
+
+1. Check out `occlusion-quality-overlay`, regenerate the project files (the new files are globbed), and build `MikanCmd`. Run `MikanCmd.exe -runTests` and `unit_test_suite_cpp.exe` to confirm the machine reproduces the passing state.
+
+2. Run the headless build on the cup take at the tabletop preset and write the coverage:
+	- `MikanCmd.exe -occlusionMesh -take=<take_20261028_131840.trackcamera> -voxel=0.008 -glb=<out>/cup.glb -coverage=<out>/coverage`
+	- The output prints the class shares and warns if the voxel grew.
+
+3. Parity check in the experiments repo:
+	- Load `class.npy` and the other arrays with `numpy.load`. They are indexed by the vertices of `cup.glb`.
+	- Run `tools/surface_coverage.py` on the same mesh. A small comparison script there may be needed, if the tool does not take an external mesh and arrays.
+	- Before comparing, confirm the tool applies the flying pixel cull, the depth range and the camera-behind rule above.
+	- The bar is at least 95% of the cup's area in the same class.
+	- A mismatch is a bug in one of the two until shown otherwise. The thresholds are not tuned to make it pass.
+
+4. Drive the stage on that take with `tools/automate.py` and look at the screenshots:
+	- Enter the stage with `function invoke FileVideoSourceSystem <componentId> build_occlusion_mesh`.
+	- `stage set_option voxel_preset tabletop`, then `stage build`, then wait for `verifyMesh`.
+	- `stage get_summary` for the coverage shares.
+	- `stage set_option view <name>` for each view, each with `screenshot window`.
+	- `stage frame_mesh`.
+	- What to look for:
+		- The cup's 150 to 270 degree side is weak or red in the Coverage view.
+		- The textured view is the right way up.
+		- The mesh faces the camera on arrival.
+	- Then drag the box by hand, or use `stage cancel` and `stage set_option bounds ...`, rebuild, and confirm `get_summary` reports `voxel_size` 0.008 and `voxel_grown 0`.
+
+5. Fix what those turn up, then start Part 5 in MikanARStreamer.
+
+The checklist in [plan.md](../plan.md) ("Occlusion coverage feedback") mirrors steps 3 to 5.
 
 ## Goal
 
@@ -52,19 +152,13 @@ The thresholds live in one settings struct on each side so tuning is a constant 
 
 ## What exists today
 
-Editor side ([occlusion-mesh.md](../reference/occlusion-mesh.md), [automation.md](../reference/automation.md)):
+Editor side: Parts 1 to 4 as built are described in [occlusion-mesh.md](../reference/occlusion-mesh.md) and [automation.md](../reference/automation.md), with the differences from the parts below listed under "Handoff status". The phone port starts from these pieces:
 
-- `AppStage_OcclusionMeshBuild` (`src/Editor/AppStages/OcclusionMeshBuild`) runs the build on a worker thread and holds the result in `m_result` (`OcclusionMeshBuildResult`: the `TriangleMesh` in the take's ARKit world, the texture atlas as a `cv::Mat`, `fusedKeyframes`, the per-frame refined poses, and `OcclusionMeshBuildStats`).
+- `MeshCoverage::accumulateView` (`src/Editor/Reconstruction/MeshCoverage.cpp`) is the per-frame rule the phone's update step has to match: projection, the usable-pixel test, support, carve, or hidden, the camera-behind rule, and the direction bins.
 
-- The preview, `AppStage_OcclusionMeshBuild::renderMeshPreview`, draws at most 60,000 vertices as normal-shaded points through the line renderer, placed by `stage world * pose offset`. `enter()` switches the viewport's `MikanCamera` to orbit mode but never aims it, so the orbit centres on the stage origin rather than the mesh, which is what makes it hard to navigate.
+- `MeshCoverage::classify` is the class rule, and `MeshCoverageSettings` holds the editor's thresholds that the phone's defaults add their margin to.
 
-- `MikanCamera` already has the orbit controls a centred view needs: `setOrbitTargetPosition`, `setOrbitRadius`, `setOrbitLocation(yaw, pitch, radius)`.
-
-- `Internal_PNT_TexturedLitColored` (`GlShaderCache.cpp`) draws a position, normal, texcoord mesh lit by a directional light, sampling a diffuse texture multiplied by a model colour. Model stencils draw through `Internal_PNT_Textured` from a `MikanRenderModelResource`. `createMkTriangulatedMesh` with an `IMkVertexDefinition` builds a GPU mesh from raw buffers, as `ModelImportUtils::createTriangulatedMeshResource` does.
-
-- `MeshTexturing` (`src/Editor/Reconstruction/MeshTexturing.cpp`) already projects mesh vertices into keyframe depth to decide which view sees a triangle (`isVertexSeen`, through the `TextureView` struct), and `DepthTrackReader::readRecord` reads a keyframe's depth and confidence. The coverage pass needs the same projection.
-
-- `GuiPanel_OcclusionMeshBuild` shows the settings before a build and the summary after it, and the stage answers `set_option`, `get_summary` and friends over automation.
+- The `mesh_coverage` tests (`src/Editor/Reconstruction/Test/MeshCoverageTests.cpp`) are synthetic plane cases that port directly to the phone's test target as a check that the two rules agree.
 
 Phone side (MikanARStreamer, from the project notes, so check each name against the current code before starting):
 
@@ -76,7 +170,7 @@ Phone side (MikanARStreamer, from the project notes, so check each name against 
 
 ## The pieces
 
-### Part 1: a real mesh preview, centred (editor)
+### Part 1: a real mesh preview, centred (editor, implemented)
 
 - Replace the point preview with the fused mesh drawn solid. When the stage consumes a build result (`consumeBuildOutput`, UI thread, GL context current) it builds a GPU mesh from `m_result.mesh` (positions, normals, and texcoords when textured) with an `IMkVertexDefinition` for position, normal, texcoord and `createMkTriangulatedMesh`, bound to `Internal_PNT_TexturedLitColored`. The atlas becomes an `IMkTexture`. A room mesh is about a million triangles and draws without trouble. The mesh is released on redo, cancel and exit.
 
@@ -84,7 +178,7 @@ Phone side (MikanARStreamer, from the project notes, so check each name against 
 
 - An optional "Camera path" checkbox draws the take's fused camera positions as a polyline through the line renderer. It is what ties a weak region to where the operator walked, the single most useful thing in the cup diagnosis.
 
-### Part 2: the coverage pass (editor)
+### Part 2: the coverage pass (editor, implemented)
 
 - New module `MeshCoverage` in `src/Editor/Reconstruction`, pure data in and out like `MeshTexturing`: the `TriangleMesh`, the per-frame poses the fusion used (refined when registration ran), the open `DepthTrackReader`, the fused keyframe list, the `TsdfVolumeConfig` (for the cull and the voxel size), and a `MeshCoverageSettings` holding the band and the class thresholds. Output: per-vertex arrays for the six measures of the shared metric and the class.
 
@@ -100,7 +194,7 @@ Phone side (MikanARStreamer, from the project notes, so check each name against 
 
 - `MikanCmd -occlusionMesh` gains `-coverage=<path>`, a folder receiving one raw `.npy` per measure (`support.npy`, `support_high.npy`, `carve.npy`, `directions.npy`, `best_cos.npy`, `nearest.npy`, `class.npy`), indexed by the vertices of the mesh file the same command writes. `numpy.load` reads each one directly, so the experiments repo can check the editor's numbers against `tools/surface_coverage.py` on the cup take. That parity check is the acceptance test for the metric: it passes when at least 95% of the cup's surface area gets the same class from both.
 
-### Part 3: the view combo and the overlays (editor)
+### Part 3: the view combo and the overlays (editor, implemented)
 
 - A "View" combo box in the panel's result section selects what the mesh shows:
 	- Textured (when the build textured the mesh)
@@ -120,7 +214,7 @@ Phone side (MikanARStreamer, from the project notes, so check each name against 
 
 - Docs: [occlusion-mesh.md](../reference/occlusion-mesh.md) gains a coverage section (the metric, the thresholds, the phase) and its stage section the view combo. [automation.md](../reference/automation.md) gains the commands.
 
-### Part 4: an operator bounds box (editor)
+### Part 4: an operator bounds box (editor, implemented)
 
 The cup take's voxel grew from 8 mm to 1.0 cm because `computeBounds` takes the bounds from every keyframe's confident depth, so a long walk enlarged the volume and the voxel grew to fit `maxVoxels`. The coverage view is where an operator notices that, so the fix lands with this work.
 
@@ -168,7 +262,7 @@ The cup take's voxel grew from 8 mm to 1.0 cm because `computeBounds` takes the 
 
 ## Sequencing
 
-The editor parts (1 to 4) land first and pass the parity check against `tools/surface_coverage.py` before the phone work (Parts 5 and 6) starts, so the phone ports a validated metric. Part 7's tuning comes last, once both sides exist.
+The editor parts (1 to 4) land first and pass the parity check against `tools/surface_coverage.py` before the phone work (Parts 5 and 6) starts, so the phone ports a validated metric. Part 7's tuning comes last, once both sides exist. The editor parts have landed. The parity check is the gate now.
 
 ## Out of scope
 
