@@ -1,6 +1,6 @@
 # Proposal: Occlusion capture coverage feedback
 
-Editor parts (1 to 4) implemented but not yet run on a real take. Phone parts (5 and 6) and tuning (7) not started. This document is the handoff for two pieces of work: a coverage view in the editor's occlusion mesh build stage, and live coverage feedback on the phone while a take records. It carries the evidence that motivates both, the metric they share, the state of each side, the pieces in order, and the questions still open. A reader starting from it should not need the conversation that produced it.
+Editor parts (1 to 4) implemented but not yet run on a real take. Phone parts (5 and 6) were implemented in MikanARStreamer and run on an iPhone 12 Pro, ahead of the parity gate, then measured wrong on a real take and replaced by the live fusion of [phone-live-fusion.md](./phone-live-fusion.md). Their record below stays as the evidence. Tuning (7) not started. This document is the handoff for two pieces of work: a coverage view in the editor's occlusion mesh build stage, and live coverage feedback on the phone while a take records. It carries the evidence that motivates both, the metric they share, the state of each side, the pieces in order, and the questions still open. A reader starting from it should not need the conversation that produced it.
 
 ## Handoff status
 
@@ -98,9 +98,65 @@ The machine this was built on had no `.trackcamera` take, and its experiments cl
 		- The mesh faces the camera on arrival.
 	- Then drag the box by hand, or use `stage cancel` and `stage set_option bounds ...`, rebuild, and confirm `get_summary` reports `voxel_size` 0.008 and `voxel_grown 0`.
 
-5. Fix what those turn up, then start Part 5 in MikanARStreamer.
+5. Fix what those turn up, and carry any change to the per-frame rule or the class to the phone's `CoverageGrid`.
 
 The checklist in [plan.md](../plan.md) ("Occlusion coverage feedback") mirrors steps 3 to 5.
+
+### Phone parts as built
+
+Parts 5 and 6 landed in MikanARStreamer before the parity check, at the user's request, so a fix the parity check makes to the editor's per-frame rule has to be carried to the phone's `CoverageGrid` as well. The work is uncommitted on the Mac clone.
+
+- `CoverageGrid.swift` is the pure-logic grid, compiled by the test target. `CoverageSettings` holds the grid's shape, the editor fusion's depth range and cull, and the class thresholds, with the editor's own as `CoverageSettings.editorThresholds`. `CoverageGridTests` ports the `mesh_coverage` plane cases and adds the cull, the intrinsics scaling, the fine level, eviction, and the hint.
+
+- `CoverageSession.swift` holds `CoverageWorker`, which runs the grid on its own queue and drops an observation that arrives while an update is still running, and `CoverageSession`, which `StreamingSession` owns. `CoverageOverlay.swift` draws the points and `CoverageHUDView.swift` the HUD line. All three are `:app` sources.
+
+- `ARCaptureController.onDepthObserved` hands over a copy of the depth, the pose and the scaled intrinsics at the update rate, ahead of the frame-rate gate. Frames whose tracking is limited are skipped.
+
+- The grid runs while a Track Camera take records, with the "Coverage Feedback" setting on (the default), on a device with the LiDAR, fed from the depth the take records anyway. It starts empty with each take and stops with it. The scan preview before recording that Part 5 asked for was built first and then removed: in use the points before a take did not help plan the walk, and it kept the LiDAR on between takes.
+
+Where it differs from Parts 5 and 6 below:
+
+- A voxel judges support and carve at its surface point, the mean of the depth points that created it, rather than at its cell centre, which can sit up to half a cell diagonal off the surface. Its normal is the mean of those points' normals. A pixel's normal comes from its four neighbours, so a pixel without four usable neighbours inserts nothing.
+
+- The support band is a fixed 1.5 cm. It does not widen with the voxel the way the editor's widens to two voxels of its grid, since the point it is measured from is a surface point.
+
+- A fine voxel is judged only by frames that see it nearer than the fine depth limit (1 m), the frames that may create one.
+
+- Past the cap the grid keeps the nearest nine tenths of it, so eviction runs now and then rather than on every frame at the cap. A voxel costs about 100 bytes with its index entry, so the 500,000 cap is about 50 MB rather than the 16 MB estimated below.
+
+- The points are SceneKit point primitives in the preview's `ARSCNView` scene, sized at 0.7 of their voxel with a floor of 1.5 and a ceiling of 8 screen pixels. Good draws green and weak red. A status bar button hides them while the grid and the HUD keep running.
+
+- Only what the newest depth frame sees is drawn. The update marks a voxel shown when that frame supports or carves it, so a voxel facing away from the camera or behind nearer depth draws nothing, and the display is rebuilt with every update. In use the full grid drew every surface through every other one, and the room's red buried the subject's green.
+
+- A display range (2 m from the camera, a setting) limits the points and the HUD's shares, so the room behind a subject drops out. Changing it keeps the grid.
+
+- The HUD's arrow is the turn about gravity from the camera's heading, so it reads the same in either orientation. Pitched more than about 72 degrees up or down the camera has no heading, and the arrow gives way to an up-and-down mark.
+
+- Settings: Coverage Feedback, Show Coverage Points, the display range, the two voxel sizes, the update rate, and the four class thresholds, with a restore button.
+
+- The debug channel answers `coverage [status|reset]`: active, observations, dropped, voxels, the voxels within range, displayed, the last update's time, the good and weak shares, and the hint.
+
+Verified: the 150 simulator tests pass, 19 of them the grid's. On the iPhone 12 Pro, scanning a desk at 10 Hz took 14 ms an update at about 27,000 voxels with nothing dropped (19 ms at about 20,000 once the display was rebuilt every update), the points sat on the surfaces they describe, a 5 s take wrote its depth at the full frame rate with no dropped frames and emptied the grid at its start and end. With the preview removed, the grid and the LiDAR are off in Track Camera mode until a take starts, on for the take, and off again once it is packed.
+
+Not verified: the update time near the 500,000 cap, and anything of Part 7.
+
+### The phone against the editor on a real take
+
+`take_20261028_211829` walks all the way around a compressed air duster, a metal can about 6.5 cm across and 24 cm tall, on a desk: 72 s, every 30 degree sector around the can visited, the camera at a median 57 degrees above horizontal and 0.6 m away. The operator saw the can stay mostly red. Two measures of the same take:
+
+- The phone's `CoverageGrid`, replayed offline over every third frame (the live rate) by a macOS build of the same source: 35% of the can's side voxels good, 45% at the editor's thresholds. The leading failure is carve, with the median carve share between 0.4 and 0.8 depending on height. There are about twice as many voxels on the can as the editor has vertices, and the desk around it carries many voxels with one or two supporting frames carved nearly every time after, specks a single frame created in empty space.
+
+- `MikanCmd -occlusionMesh -voxel=0.008 -coverage` on the same take, boxed to the can: 94% of the can's vertices good. Every vertex has at least 8 supporting frames, the median carve share is 0.11, and the median best viewing angle is 0.87. Registration's final correction was 7 mm.
+
+So the walk was good and the phone's red was wrong, by far more than the margin. The phone's thresholds cost 10 of the points, and the rest comes from the voxel representation: a voxel's surface point is fixed by the single frame that created it, so one frame's depth noise leaves it off the surface that later frames, and the editor's fusion, average to. Replays isolating the causes:
+
+- Dropping a voxel once it has been carved at least 3 times and more than twice as often as supported (the space was seen through, so the editor's fusion would hold no surface there) lifts the can to 56% good, 72% at the editor's thresholds. The top half of the can reaches 78 to 95%. The bottom 8 cm, where it meets the desk, stays mostly carved.
+
+- Pulling each voxel's point toward the measured surface on every supporting frame adds about 5 points alone and nothing on top of the dropping.
+
+- Replaying with the editor's refined poses instead of ARKit's raw ones does not help, so pose drift is not the cause.
+
+[phone-live-fusion.md](./phone-live-fusion.md) replaces the points with the editor's fusion run live on the phone.
 
 ## Goal
 
@@ -262,7 +318,7 @@ The cup take's voxel grew from 8 mm to 1.0 cm because `computeBounds` takes the 
 
 ## Sequencing
 
-The editor parts (1 to 4) land first and pass the parity check against `tools/surface_coverage.py` before the phone work (Parts 5 and 6) starts, so the phone ports a validated metric. Part 7's tuning comes last, once both sides exist. The editor parts have landed. The parity check is the gate now.
+The editor parts (1 to 4) were to land first and pass the parity check against `tools/surface_coverage.py` before the phone work (Parts 5 and 6) started, so the phone would port a validated metric. Both have landed, the phone ahead of the check, so the parity check now gates Part 7's tuning, which comes last.
 
 ## Out of scope
 
