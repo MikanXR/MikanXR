@@ -890,6 +890,11 @@ msgid "Clamped Size"
 msgstr ""
 
 #. Section: componentPanel
+msgctxt "componentPanel.clearAsset"
+msgid "Clear"
+msgstr ""
+
+#. Section: componentPanel
 #, fuzzy
 msgctxt "componentPanel.columns"
 msgid "Columns"
