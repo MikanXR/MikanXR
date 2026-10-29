@@ -93,6 +93,8 @@ Done: [occlusion-mesh.md](../reference/occlusion-mesh.md) is the reference. Two 
 
 Done: `DepthEdgeRefineNode` ([compositor.md](../reference/compositor.md)), with the filter prototyped and tuned in the experiments repo (`tools/edge_refine_eval.py`, results in its `NOTES.md`). The joint bilateral vote named below could not move an edge more than a few pixels, so the node classifies each band pixel against the mean colour of the near and the far side of the depth edge instead. On the room loop the held-out LiDAR edge distance went from 9.44 to 9.00 px at the default band of 16 px and colour threshold of 0.2, a small number on a metric that is blocky at the LiDAR's resolution; the contact sheets show the mesh's overshoot of a plush's silhouette pulled onto it.
 
+Removed later. The refinement decides occlusion only when the client gives up its holdout against the stencil and Mikan compares depths, and on real shots improving the fused mesh did more for the silhouette than the refinement did, so occlusion is decided by the mesh in the client's holdout and the effort goes into the mesh.
+
 - [x] A compositor node that takes the depth mask (`DepthMaskNode` output), the video texture, and a band width in pixels, and returns a refined mask or depth where edges follow the video within the band: joint bilateral upsampling or a guided filter, computed in the fragment shader. This is where the silhouette is decided and it should be built and judged on real takes with a character behind furniture, not on synthetic data.
 - [x] Measure it: the harness's edge distance on held-out frames gives the prior's error; the refined mask's agreement with hand-marked edges on a handful of frames gives the step's gain. A small set of marked frames is worth making early.
 

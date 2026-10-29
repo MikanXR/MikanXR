@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1173,
-		"translatedCount": 1173,
-		"reviewedCount": 1173
+		"stringCount": 1168,
+		"translatedCount": 1168,
+		"reviewedCount": 1168
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -508,7 +508,6 @@
 		"applyMaterialHeader": "Apply Material Node",
 		"applyMaterialTitle": "Apply Material",
 		"auto": "Auto",
-		"bandRadius": "Band Radius (px)",
 		"blendMode": "Blend Mode",
 		"blendMultiply": "Blend Multiply",
 		"blendNormal": "Blend Normal",
@@ -528,7 +527,6 @@
 		"colorAlphaMode": "Color Alpha",
 		"colorConstantTitle": "Color Constant",
 		"colorParameterTitle": "Color Parameter",
-		"colorSigma": "Color Sigma",
 		"commentColor": "Color",
 		"commentHeader": "Comment",
 		"commentText": "Text",
@@ -544,9 +542,6 @@
 		"depthCurveGamma": "Gamma",
 		"depthCurveLinear": "Linear",
 		"depthCurveLog": "Log",
-		"depthEdgeRefineHeader": "Depth Edge Refine Node",
-		"depthEdgeRefineTitle": "Depth Edge Refine",
-		"depthJump": "Depth Jump",
 		"depthMaskHeader": "Depth Mask Node",
 		"depthMaskTitle": "Depth Mask",
 		"depthOfFieldHeader": "Depth Of Field Node",

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <random>
 
 namespace DepthOfFieldTestsInternal
 {
@@ -66,6 +67,7 @@ bool run_depth_of_field_tests()
 	UNIT_TEST_MODULE_BEGIN("depth_of_field")
 	UNIT_TEST_MODULE_CALL_TEST(depth_of_field_test_config_round_trip);
 	UNIT_TEST_MODULE_CALL_TEST(depth_of_field_test_circle_of_confusion);
+	UNIT_TEST_MODULE_CALL_TEST(depth_of_field_test_minmax_separable);
 	UNIT_TEST_MODULE_CALL_TEST(depth_of_field_test_in_focus_passes_through);
 	UNIT_TEST_MODULE_CALL_TEST(depth_of_field_test_blurry_edge_fades_out);
 	UNIT_TEST_MODULE_CALL_TEST(depth_of_field_test_background_does_not_bleed_forward);
@@ -147,6 +149,72 @@ bool depth_of_field_test_circle_of_confusion()
 	if (!success)
 	{
 		fprintf(stdout, "    radii %f %f %f %f %f %f\n", inFocus, behind, farRadius, nearRadius, empty, clamped);
+	}
+
+	UNIT_TEST_COMPLETE()
+}
+
+bool depth_of_field_test_minmax_separable()
+{
+	UNIT_TEST_BEGIN("the separable min/max passes match a brute force window")
+
+	using Image= DepthOfFieldReference::Image;
+
+	const int width= 24;
+	const int height= 16;
+
+	std::mt19937 generator(1234);
+	std::uniform_real_distribution<float> distribution(0.f, 1.f);
+
+	Image depth(width, height, 1);
+	for (float& value : depth.values)
+	{
+		value= distribution(generator);
+	}
+
+	const int radii[]= {1, 3, 8};
+	for (int radius : radii)
+	{
+		const Image separable=
+			DepthOfFieldReference::minMaxVertical(DepthOfFieldReference::minMaxHorizontal(depth, radius), radius);
+		if (separable.width != width || separable.height != height
+			|| separable.values.size() != (size_t)width * height * 2)
+		{
+			fprintf(stdout, "    radius %d: separable result has the wrong size\n", radius);
+			success= false;
+			continue;
+		}
+
+		bool bRadiusMatches= true;
+		for (int y= 0; y < height && bRadiusMatches; ++y)
+		{
+			for (int x= 0; x < width && bRadiusMatches; ++x)
+			{
+				float mn= depth.values[(size_t)y * width + x];
+				float mx= mn;
+				for (int j= -radius; j <= radius; ++j)
+				{
+					for (int i= -radius; i <= radius; ++i)
+					{
+						const int sampleX= std::clamp(x + i, 0, width - 1);
+						const int sampleY= std::clamp(y + j, 0, height - 1);
+						const float d= depth.values[(size_t)sampleY * width + sampleX];
+						mn= std::min(mn, d);
+						mx= std::max(mx, d);
+					}
+				}
+
+				const size_t index= ((size_t)y * width + x) * 2;
+				if (separable.values[index] != mn || separable.values[index + 1] != mx)
+				{
+					fprintf(stdout, "    radius %d at (%d, %d): separable (%f, %f), brute force (%f, %f)\n", radius, x,
+							y, separable.values[index], separable.values[index + 1], mn, mx);
+					bRadiusMatches= false;
+				}
+			}
+		}
+
+		success&= bRadiusMatches;
 	}
 
 	UNIT_TEST_COMPLETE()

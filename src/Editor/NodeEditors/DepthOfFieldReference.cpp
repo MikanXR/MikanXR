@@ -7,6 +7,18 @@ namespace DepthOfFieldReferenceInternal
 {
 const float k_goldenAngle= 2.39996323f;
 const float k_pi= 3.14159265f;
+// The depth min/max shaders clamp the radius to the same range
+const int k_minMaxMinRadius= 1;
+const int k_minMaxMaxRadius= 32;
+
+bool hasLayout(const DepthOfFieldReference::Image& image, int channels)
+{
+	return image.width > 0 && image.height > 0 && image.values.size() == (size_t)image.width * image.height * channels;
+}
+
+int clampMinMaxRadius(int radius) { return std::clamp(radius, k_minMaxMinRadius, k_minMaxMaxRadius); }
+
+size_t pixelIndex(const DepthOfFieldReference::Image& image, int x, int y) { return (size_t)y * image.width + x; }
 
 struct Premultiplied
 {
@@ -97,10 +109,87 @@ DepthOfFieldReference::Image DepthOfFieldReference::circleOfConfusion(const Imag
 	return coc;
 }
 
+DepthOfFieldReference::Image DepthOfFieldReference::minMaxHorizontal(const Image& image, int radius)
+{
+	namespace Internal= DepthOfFieldReferenceInternal;
+
+	if (!Internal::hasLayout(image, 1))
+	{
+		return Image();
+	}
+
+	const int r= Internal::clampMinMaxRadius(radius);
+	const int lastX= image.width - 1;
+
+	Image result(image.width, image.height, 2);
+	for (int y= 0; y < image.height; ++y)
+	{
+		for (int x= 0; x < image.width; ++x)
+		{
+			const float center= image.values[Internal::pixelIndex(image, x, y)];
+			float mn= center;
+			float mx= center;
+
+			for (int i= -r; i <= r; ++i)
+			{
+				const int sampleX= std::clamp(x + i, 0, lastX);
+				const float d= image.values[Internal::pixelIndex(image, sampleX, y)];
+
+				mn= std::min(mn, d);
+				mx= std::max(mx, d);
+			}
+
+			const size_t outIndex= Internal::pixelIndex(result, x, y) * 2;
+			result.values[outIndex]= mn;
+			result.values[outIndex + 1]= mx;
+		}
+	}
+
+	return result;
+}
+
+DepthOfFieldReference::Image DepthOfFieldReference::minMaxVertical(const Image& horizontalMinMax, int radius)
+{
+	namespace Internal= DepthOfFieldReferenceInternal;
+
+	if (!Internal::hasLayout(horizontalMinMax, 2))
+	{
+		return Image();
+	}
+
+	const int r= Internal::clampMinMaxRadius(radius);
+	const int lastY= horizontalMinMax.height - 1;
+
+	Image result(horizontalMinMax.width, horizontalMinMax.height, 2);
+	for (int y= 0; y < horizontalMinMax.height; ++y)
+	{
+		for (int x= 0; x < horizontalMinMax.width; ++x)
+		{
+			const size_t centerIndex= Internal::pixelIndex(horizontalMinMax, x, y) * 2;
+			float mn= horizontalMinMax.values[centerIndex];
+			float mx= horizontalMinMax.values[centerIndex + 1];
+
+			for (int j= -r; j <= r; ++j)
+			{
+				const int sampleY= std::clamp(y + j, 0, lastY);
+				const size_t sampleIndex= Internal::pixelIndex(horizontalMinMax, x, sampleY) * 2;
+
+				mn= std::min(mn, horizontalMinMax.values[sampleIndex]);
+				mx= std::max(mx, horizontalMinMax.values[sampleIndex + 1]);
+			}
+
+			const size_t outIndex= Internal::pixelIndex(result, x, y) * 2;
+			result.values[outIndex]= mn;
+			result.values[outIndex + 1]= mx;
+		}
+	}
+
+	return result;
+}
+
 DepthOfFieldReference::Image DepthOfFieldReference::dilate(const Image& coc, int maxRadius)
 {
-	return DepthEdgeRefineReference::minMaxVertical(DepthEdgeRefineReference::minMaxHorizontal(coc, maxRadius),
-													maxRadius);
+	return minMaxVertical(minMaxHorizontal(coc, maxRadius), maxRadius);
 }
 
 DepthOfFieldReference::Image DepthOfFieldReference::gather(const Image& color, const Image& depth, const Image& reach,

@@ -17,7 +17,7 @@ Keys:
 - `domain`, `vertexPreset`, `sourceGraphPath`: optional, written by the material graph compiler. A hand-authored material file omits them. `sourceGraphPath` is relative to the material file's folder like the shader paths, and is what lets the editors reopen the material in the graph editor.
 - `uniformDefaults`: optional, one entry per uniform with a default: a number or float array for a float uniform, a texture path in stored project form (forward slashes, relative to the project when the file sits under it) for a sampler. The loader writes them into the `MkMaterial` default tables, so a consumer that binds the material without setting that uniform gets the default. A hand-authored material file may carry them too.
 
-The uniform semantics a hand-written shader can use are the `eUniformSemantic` values. Five generic ones exist for material parameters, `floatParam`, `float2Param`, `float3Param`, `float4Param`, and `textureParam`; they carry no meaning beyond their type, so a parameter of any name can use them. An internal shader may bind one of them too, for an intermediate the node owns: the depth edge refinement passes its window min and max texture through `textureParam`.
+The uniform semantics a hand-written shader can use are the `eUniformSemantic` values. Five generic ones exist for material parameters, `floatParam`, `float2Param`, `float3Param`, `float4Param`, and `textureParam`; they carry no meaning beyond their type, so a parameter of any name can use them. An internal shader may bind one of them too, for an intermediate the node owns: the depth of field passes its window min and max texture through `textureParam`.
 
 ---
 
