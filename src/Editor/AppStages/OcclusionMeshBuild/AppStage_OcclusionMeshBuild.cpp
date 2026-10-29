@@ -1,5 +1,6 @@
 #include "OcclusionMeshBuild/AppStage_OcclusionMeshBuild.h"
 #include "OcclusionMeshBuild/GuiPanel_OcclusionMeshBuild.h"
+#include "OcclusionMeshBuild/OcclusionMeshPreview.h"
 
 #include "imgui.h"
 #include "MkGuiDrawUtils.h"
@@ -17,8 +18,11 @@
 #include "IMkViewport.h"
 #include "LocText.h"
 #include "Logger.h"
+#include "MathGLM.h"
 #include "MikanCamera.h"
+#include "MikanLineRenderer.h"
 #include "MikanViewport.h"
+#include "MkWindowEvent.h"
 #include "ModalMessageBox/ModalDialog_MessageBox.h"
 #include "MovieDecoder.h"
 #include "ModelStencilComponent.h"
@@ -41,6 +45,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
+#include <limits>
 #include <numeric>
 
 const char* AppStage_OcclusionMeshBuild::APP_STAGE_NAME= "OcclusionMeshBuild";
@@ -76,6 +81,11 @@ void applyVoxelPreset(eOcclusionMeshVoxelPreset preset, OcclusionMeshBuildSettin
 	}
 }
 
+// A dragged face stops this far short of the opposite face
+const float k_minBoxExtent= 0.05f;
+// The framed view never looks flatter than this, so the tops of things read
+const float k_minFramePitchDegrees= 20.f;
+
 bool parseBool(const std::string& text, bool& outValue)
 {
 	if (text == "true" || text == "1" || text == "on")
@@ -108,6 +118,7 @@ void AppStage_OcclusionMeshBuild::BuildObserver::onProgress(eOcclusionMeshBuildP
 // -- AppStage_OcclusionMeshBuild -----
 AppStage_OcclusionMeshBuild::AppStage_OcclusionMeshBuild(IEditorWindow* ownerWindow)
 	: AppStage(ownerWindow, APP_STAGE_NAME)
+	, m_preview(std::make_unique<OcclusionMeshPreview>())
 {
 }
 
@@ -224,8 +235,14 @@ void AppStage_OcclusionMeshBuild::enter()
 
 	// The preview is the fused mesh alone, so the viewport camera orbits it
 	// rather than looking through the take's camera
-	m_mkCamera= getFirstViewport()->getCurrentMikanCamera();
+	MikanViewportPtr viewport= getFirstViewport();
+	m_mkCamera= viewport->getCurrentMikanCamera();
 	m_mkCamera->setCameraMovementMode(eCameraMovementMode::orbit);
+
+	// The left button drags the bounds box; the right orbits the view
+	viewport->OnMouseRayChanged+= MakeDelegate(this, &AppStage_OcclusionMeshBuild::onMouseRayChanged);
+	viewport->OnMouseRayButtonDown+= MakeDelegate(this, &AppStage_OcclusionMeshBuild::onMouseRayButtonDown);
+	viewport->OnMouseRayButtonUp+= MakeDelegate(this, &AppStage_OcclusionMeshBuild::onMouseRayButtonUp);
 
 	m_buildPanel= addGuiPanel<GuiPanel_OcclusionMeshBuild>();
 	m_buildPanel->OnBuildEvent= [this]() { onBuildEvent(); };
@@ -234,6 +251,9 @@ void AppStage_OcclusionMeshBuild::enter()
 	m_buildPanel->OnRedoEvent= [this]() { onRedoEvent(); };
 	m_buildPanel->OnCancelEvent= [this]() { onCancelEvent(); };
 	m_buildPanel->OnOkEvent= [this]() { onCancelEvent(); };
+	m_buildPanel->OnPreviewViewChanged= [this]() { setPreviewView(m_buildPanel->getPreviewView()); };
+	m_buildPanel->OnFrameMeshEvent= [this]() { frameMesh(); };
+	m_buildPanel->OnRebuildInBoxEvent= [this]() { onRebuildInBoxEvent(); };
 
 	const size_t frameCount= m_track.getFrameCount();
 	const float durationSeconds=
@@ -251,6 +271,15 @@ void AppStage_OcclusionMeshBuild::exit()
 	setMenuState(eOcclusionMeshBuildMenuState::inactive);
 
 	stopBuildWorker();
+
+	MikanViewportPtr viewport= getFirstViewport();
+	viewport->OnMouseRayChanged-= MakeDelegate(this, &AppStage_OcclusionMeshBuild::onMouseRayChanged);
+	viewport->OnMouseRayButtonDown-= MakeDelegate(this, &AppStage_OcclusionMeshBuild::onMouseRayButtonDown);
+	viewport->OnMouseRayButtonUp-= MakeDelegate(this, &AppStage_OcclusionMeshBuild::onMouseRayButtonUp);
+
+	releasePreview();
+	m_result= OcclusionMeshBuildResult();
+	m_bHasResult= false;
 
 	m_videoSource= nullptr;
 	m_camera= nullptr;
@@ -274,6 +303,12 @@ OcclusionMeshBuildSettings AppStage_OcclusionMeshBuild::gatherSettings() const
 	settings.bFrameToModel= m_buildPanel->getFrameToModel();
 	settings.cameraPathRadius= std::max(m_buildPanel->getPathRadius(), 0.f);
 	settings.bTexture= m_buildPanel->getTexture();
+	if (m_buildPanel->hasBoundsBox())
+	{
+		settings.bBoundsOverride= true;
+		settings.boundsOverrideLo= m_buildPanel->getBoundsBoxLo();
+		settings.boundsOverrideHi= m_buildPanel->getBoundsBoxHi();
+	}
 	return settings;
 }
 
@@ -464,10 +499,12 @@ void AppStage_OcclusionMeshBuild::consumeBuildOutput()
 		return;
 	}
 
+	releasePreview();
 	m_result= std::move(output.result);
 	m_bHasResult= true;
 
 	m_buildPanel->setBuildSummary(m_result.stats, m_result.bHasRefinedPoses);
+	buildPreview();
 	setMenuState(eOcclusionMeshBuildMenuState::verifyMesh);
 }
 
@@ -636,37 +673,160 @@ void AppStage_OcclusionMeshBuild::onApplyEvent()
 
 void AppStage_OcclusionMeshBuild::onRedoEvent()
 {
+	releasePreview();
 	m_bHasResult= false;
+	m_draggedBoxHandle= -1;
+	m_hoveredBoxHandle= -1;
 	setMenuState(eOcclusionMeshBuildMenuState::verifyTake);
 }
 
-void AppStage_OcclusionMeshBuild::onCancelEvent() { getOwnerWindow()->popAppState(); }
-
-// -- render -----
-void AppStage_OcclusionMeshBuild::renderMeshPreview()
+void AppStage_OcclusionMeshBuild::onRebuildInBoxEvent()
 {
 	if (!m_bHasResult)
 		return;
 
-	IMkLineRenderer* lineRenderer= getGraphicsContext()->getLineRenderer();
-	if (lineRenderer == nullptr)
+	m_buildPanel->setBoundsBox(m_boxLo, m_boxHi);
+	onRedoEvent();
+}
+
+void AppStage_OcclusionMeshBuild::onCancelEvent() { getOwnerWindow()->popAppState(); }
+
+// -- preview -----
+glm::mat4 AppStage_OcclusionMeshBuild::getMeshToWorld() const
+{
+	// The same offset that carries a recorded camera pose into the stage
+	// carries the whole mesh, which is where the stencil will land
+	const glm::mat4 poseOffset= m_videoSource->getFileVideoSourceDefinition()->getPoseOffset();
+	return m_stage->getWorldTransform() * poseOffset;
+}
+
+void AppStage_OcclusionMeshBuild::buildPreview()
+{
+	if (!m_bHasResult)
 		return;
 
-	// Drawn where the stencil will land, as a point sample dense enough to
-	// read the room but bounded so the preview stays interactive
-	const glm::mat4 poseOffset= m_videoSource->getFileVideoSourceDefinition()->getPoseOffset();
-	const glm::mat4 meshToWorld= m_stage->getWorldTransform() * poseOffset;
-	constexpr size_t k_maxPreviewPoints= 60000;
-	const size_t vertexCount= m_result.mesh.vertices.size();
-	const size_t stride= std::max<size_t>(1, vertexCount / k_maxPreviewPoints);
-
-	for (size_t vertexIndex= 0; vertexIndex < vertexCount; vertexIndex+= stride)
+	if (!m_preview->build(getGraphicsContext(), m_result, OcclusionMeshPreview::getDefaultView(m_result)))
 	{
-		const glm::vec3& normal=
-			vertexIndex < m_result.mesh.normals.size() ? m_result.mesh.normals[vertexIndex] : glm::vec3(0.f, 1.f, 0.f);
-		// Shaded by the normal so surfaces read as surfaces
-		const glm::vec3 color= glm::abs(normal) * 0.6f + glm::vec3(0.3f);
-		lineRenderer->addPoint3d(meshToWorld, m_result.mesh.vertices[vertexIndex], color, 2.f);
+		MIKAN_LOG_WARNING("AppStage_OcclusionMeshBuild") << "The mesh preview could not be built";
+		return;
+	}
+	m_preview->setModelMatrix(getMeshToWorld());
+
+	uint32_t viewMask= 0;
+	for (int viewIndex= 0; viewIndex < (int)eOcclusionMeshPreviewView::COUNT; ++viewIndex)
+	{
+		if (m_preview->isViewAvailable((eOcclusionMeshPreviewView)viewIndex))
+			viewMask|= 1u << viewIndex;
+	}
+	m_buildPanel->setAvailablePreviewViews(viewMask);
+	m_buildPanel->setPreviewView(m_preview->getView());
+
+	// The box starts on the bounds this build fused inside
+	m_boxLo= m_result.stats.boundsLo;
+	m_boxHi= m_result.stats.boundsHi;
+	m_hoveredBoxHandle= -1;
+	m_draggedBoxHandle= -1;
+
+	frameMesh();
+}
+
+void AppStage_OcclusionMeshBuild::releasePreview() { m_preview->release(); }
+
+bool AppStage_OcclusionMeshBuild::setPreviewView(eOcclusionMeshPreviewView view)
+{
+	// The panel shows whatever the preview ended up on, so a refused view
+	// puts the combo back
+	const bool bChanged= m_preview->setView(view);
+	m_buildPanel->setPreviewView(m_preview->getView());
+	return bChanged;
+}
+
+void AppStage_OcclusionMeshBuild::frameMesh()
+{
+	if (!m_preview->hasMesh() || !m_mkCamera)
+		return;
+
+	const glm::mat4 meshToWorld= getMeshToWorld();
+	const glm::vec3 centre=
+		glm::vec3(meshToWorld * glm::vec4(0.5f * (m_preview->getBoundsLo() + m_preview->getBoundsHi()), 1.f));
+	const glm::vec3 diagonal= glm::mat3(meshToWorld) * (m_preview->getBoundsHi() - m_preview->getBoundsLo());
+	const float radius= std::max(0.5f * glm::length(diagonal), 0.1f);
+
+	// The fused cameras' mean forward, in the world: the orbit eye sits
+	// against it so the mesh first shows from where the operator stood.
+	// Recorded poses look down their -Z.
+	glm::vec3 meanForward(0.f);
+	for (size_t trackIndex : m_result.fusedKeyframes)
+	{
+		const PoseTrackFrame& frame= m_track.getFrame(trackIndex);
+		const glm::mat4& cameraToWorld=
+			m_result.bHasRefinedPoses && frame.fileIndex < m_result.refinedCameraToWorld.size()
+				? m_result.refinedCameraToWorld[frame.fileIndex]
+				: frame.cameraToWorld;
+		meanForward-= glm::vec3(cameraToWorld[2]);
+	}
+	meanForward= glm::mat3(meshToWorld) * meanForward;
+	const glm::vec3 toEye= glm::length(meanForward) > 1e-6f ? -glm::normalize(meanForward) : glm::vec3(0.f, 0.5f, 1.f);
+	const float yawDegrees= glm::degrees(std::atan2(toEye.x, toEye.z));
+	const float pitchDegrees= std::max(glm::degrees(std::asin(std::clamp(toEye.y, -1.f, 1.f))),
+									   OcclusionMeshBuildStage::k_minFramePitchDegrees);
+
+	// Far enough that the bounding sphere fits the narrower field of view
+	const float halfFov=
+		glm::radians(0.5f * std::min(m_mkCamera->getHorizontalFOVDegrees(), m_mkCamera->getVerticalFOVDegrees()));
+	const float distance= radius / std::max(std::sin(halfFov), 0.1f);
+
+	m_mkCamera->setOrbitTargetPosition(centre);
+	m_mkCamera->setOrbitLocation(yawDegrees, pitchDegrees, distance);
+}
+
+void AppStage_OcclusionMeshBuild::renderMeshPreview()
+{
+	if (!m_bHasResult || !m_preview->hasMesh())
+		return;
+
+	// The stage can move while the preview is up
+	m_preview->setModelMatrix(getMeshToWorld());
+	m_preview->render(m_mkCamera, getGraphicsContext());
+}
+
+void AppStage_OcclusionMeshBuild::renderCameraPath()
+{
+	if (!m_bHasResult || !m_buildPanel->getShowCameraPath())
+		return;
+
+	const glm::mat4 meshToWorld= getMeshToWorld();
+	const glm::vec3 pathColor(0.2f, 0.6f, 1.f);
+	bool bHasPrevious= false;
+	glm::vec3 previous(0.f);
+	for (size_t trackIndex : m_result.fusedKeyframes)
+	{
+		const PoseTrackFrame& frame= m_track.getFrame(trackIndex);
+		const glm::mat4& cameraToWorld=
+			m_result.bHasRefinedPoses && frame.fileIndex < m_result.refinedCameraToWorld.size()
+				? m_result.refinedCameraToWorld[frame.fileIndex]
+				: frame.cameraToWorld;
+		const glm::vec3 position(cameraToWorld[3]);
+		if (bHasPrevious)
+			drawSegment(getGraphicsContext(), meshToWorld, previous, position, pathColor);
+		previous= position;
+		bHasPrevious= true;
+	}
+}
+
+void AppStage_OcclusionMeshBuild::renderBoundsBox()
+{
+	if (!m_bHasResult || m_buildPanel->getMenuState() != eOcclusionMeshBuildMenuState::verifyMesh)
+		return;
+
+	IMkGraphicsContext* graphicsContext= getGraphicsContext();
+	const glm::mat4 meshToWorld= getMeshToWorld();
+	drawTransformedBox(graphicsContext, meshToWorld, m_boxLo, m_boxHi, glm::vec3(1.f, 0.6f, 0.1f));
+	for (int handle= 0; handle < 6; ++handle)
+	{
+		const bool bActive= handle == m_draggedBoxHandle || (m_draggedBoxHandle < 0 && handle == m_hoveredBoxHandle);
+		drawPoint(graphicsContext, meshToWorld, getBoxHandleCenter(handle),
+				  bActive ? glm::vec3(1.f, 1.f, 0.2f) : glm::vec3(1.f, 0.6f, 0.1f), bActive ? 14.f : 9.f);
 	}
 }
 
@@ -677,6 +837,8 @@ void AppStage_OcclusionMeshBuild::render(IMkViewportPtr targetViewport)
 	case eOcclusionMeshBuildMenuState::verifyMesh:
 	case eOcclusionMeshBuildMenuState::buildComplete:
 		renderMeshPreview();
+		renderCameraPath();
+		renderBoundsBox();
 		break;
 
 	default:
@@ -684,6 +846,114 @@ void AppStage_OcclusionMeshBuild::render(IMkViewportPtr targetViewport)
 	}
 
 	getGraphicsContext()->getLineRenderer()->render(true);
+}
+
+// -- bounds box -----
+glm::vec3 AppStage_OcclusionMeshBuild::getBoxHandleCenter(int handle) const
+{
+	glm::vec3 centre= 0.5f * (m_boxLo + m_boxHi);
+	const int axis= handle / 2;
+	centre[axis]= (handle % 2) == 1 ? m_boxHi[axis] : m_boxLo[axis];
+	return centre;
+}
+
+float AppStage_OcclusionMeshBuild::getBoxHandleRadius() const
+{
+	return std::max(0.04f * glm::length(m_boxHi - m_boxLo), 0.02f);
+}
+
+int AppStage_OcclusionMeshBuild::pickBoxHandle(const glm::vec3& rayOrigin, const glm::vec3& rayDir) const
+{
+	// Picked in the mesh's own space, where the box is axis aligned
+	const glm::mat4 worldToMesh= glm::inverse(getMeshToWorld());
+	const glm::vec3 origin= glm::vec3(worldToMesh * glm::vec4(rayOrigin, 1.f));
+	const glm::vec3 direction= glm::normalize(glm::mat3(worldToMesh) * rayDir);
+	const float radius= getBoxHandleRadius();
+
+	int bestHandle= -1;
+	float bestTime= std::numeric_limits<float>::max();
+	for (int handle= 0; handle < 6; ++handle)
+	{
+		float time= 0.f;
+		glm::vec3 closest;
+		const glm::vec3 centre= getBoxHandleCenter(handle);
+		if (glm_closest_point_on_ray_to_point(origin, direction, centre, time, closest)
+			&& glm::length(closest - centre) <= radius && time < bestTime)
+		{
+			bestTime= time;
+			bestHandle= handle;
+		}
+	}
+	return bestHandle;
+}
+
+void AppStage_OcclusionMeshBuild::onMouseRayChanged(const glm::vec3& rayOrigin, const glm::vec3& rayDir)
+{
+	if (!m_bHasResult || m_buildPanel->getMenuState() != eOcclusionMeshBuildMenuState::verifyMesh)
+		return;
+
+	if (m_draggedBoxHandle < 0)
+	{
+		m_hoveredBoxHandle= pickBoxHandle(rayOrigin, rayDir);
+		return;
+	}
+
+	// The dragged face follows the point on its axis nearest the ray
+	const glm::mat4 worldToMesh= glm::inverse(getMeshToWorld());
+	const glm::vec3 origin= glm::vec3(worldToMesh * glm::vec4(rayOrigin, 1.f));
+	const glm::vec3 direction= glm::normalize(glm::mat3(worldToMesh) * rayDir);
+	const int axis= m_draggedBoxHandle / 2;
+	glm::vec3 axisDirection(0.f);
+	axisDirection[axis]= 1.f;
+	glm::vec3 axisStart= getBoxHandleCenter(m_draggedBoxHandle);
+	axisStart[axis]= 0.f;
+
+	float axisTime= 0.f;
+	glm::vec3 closest;
+	if (!glm_closest_point_on_ray_to_ray(axisStart, axisDirection, origin, direction, axisTime, closest))
+		return;
+
+	const float face= axisTime - m_dragGrabOffset;
+	if ((m_draggedBoxHandle % 2) == 1)
+		m_boxHi[axis]= std::max(face, m_boxLo[axis] + OcclusionMeshBuildStage::k_minBoxExtent);
+	else
+		m_boxLo[axis]= std::min(face, m_boxHi[axis] - OcclusionMeshBuildStage::k_minBoxExtent);
+}
+
+void AppStage_OcclusionMeshBuild::onMouseRayButtonDown(const glm::vec3& rayOrigin, const glm::vec3& rayDir, int button)
+{
+	if (button != MkMouseButton::LEFT || !m_bHasResult
+		|| m_buildPanel->getMenuState() != eOcclusionMeshBuildMenuState::verifyMesh)
+	{
+		return;
+	}
+
+	const int handle= pickBoxHandle(rayOrigin, rayDir);
+	if (handle < 0)
+		return;
+
+	const glm::mat4 worldToMesh= glm::inverse(getMeshToWorld());
+	const glm::vec3 origin= glm::vec3(worldToMesh * glm::vec4(rayOrigin, 1.f));
+	const glm::vec3 direction= glm::normalize(glm::mat3(worldToMesh) * rayDir);
+	const int axis= handle / 2;
+	glm::vec3 axisDirection(0.f);
+	axisDirection[axis]= 1.f;
+	glm::vec3 axisStart= getBoxHandleCenter(handle);
+	axisStart[axis]= 0.f;
+
+	float axisTime= 0.f;
+	glm::vec3 closest;
+	if (!glm_closest_point_on_ray_to_ray(axisStart, axisDirection, origin, direction, axisTime, closest))
+		return;
+
+	m_draggedBoxHandle= handle;
+	m_dragGrabOffset= axisTime - getBoxHandleCenter(handle)[axis];
+}
+
+void AppStage_OcclusionMeshBuild::onMouseRayButtonUp(const glm::vec3& rayOrigin, const glm::vec3& rayDir, int button)
+{
+	if (button == MkMouseButton::LEFT)
+		m_draggedBoxHandle= -1;
 }
 
 // -- remote control -----
@@ -706,13 +976,74 @@ bool AppStage_OcclusionMeshBuild::handleRemoteControlCommand(const std::string& 
 		outResults.push_back("session_id " + m_track.getSessionId());
 		return true;
 	}
+	else if (command == "set_option" && parameters.size() == 2 && parameters[0] == "view")
+	{
+		// The one option that applies after a build, to the preview
+		if (menuState != eOcclusionMeshBuildMenuState::verifyMesh
+			&& menuState != eOcclusionMeshBuildMenuState::buildComplete)
+		{
+			outResults.push_back("view needs a built mesh");
+			return false;
+		}
+		for (int viewIndex= 0; viewIndex < (int)eOcclusionMeshPreviewView::COUNT; ++viewIndex)
+		{
+			if (k_OcclusionMeshPreviewViewStrings[viewIndex] == parameters[1])
+			{
+				if (setPreviewView((eOcclusionMeshPreviewView)viewIndex))
+					return true;
+				outResults.push_back("the mesh cannot show the view " + parameters[1]);
+				return false;
+			}
+		}
+		outResults.push_back("unknown view " + parameters[1]);
+		return false;
+	}
+	else if (command == "set_option" && !parameters.empty() && parameters[0] == "bounds")
+	{
+		if (menuState != eOcclusionMeshBuildMenuState::verifyTake)
+		{
+			outResults.push_back("options can only change before a build");
+			return false;
+		}
+		if (parameters.size() == 2 && parameters[1] == "auto")
+		{
+			m_buildPanel->clearBoundsBox();
+			return true;
+		}
+		if (parameters.size() != 7)
+		{
+			outResults.push_back("usage: set_option bounds <lo.x> <lo.y> <lo.z> <hi.x> <hi.y> <hi.z> | auto");
+			return false;
+		}
+		float box[6];
+		for (int index= 0; index < 6; ++index)
+		{
+			const std::string& text= parameters[index + 1];
+			char* end= nullptr;
+			box[index]= std::strtof(text.c_str(), &end);
+			if (end == text.c_str())
+			{
+				outResults.push_back("bounds must be six metres");
+				return false;
+			}
+		}
+		const glm::vec3 lo(box[0], box[1], box[2]);
+		const glm::vec3 hi(box[3], box[4], box[5]);
+		if (!(lo.x < hi.x && lo.y < hi.y && lo.z < hi.z))
+		{
+			outResults.push_back("bounds need lo below hi on every axis");
+			return false;
+		}
+		m_buildPanel->setBoundsBox(lo, hi);
+		return true;
+	}
 	else if (command == "set_option")
 	{
 		if (parameters.size() != 2)
 		{
 			outResults.push_back("usage: set_option "
-								 "<voxel_preset|keyframe_stride|frame_to_model|replace_pose_track|path_radius|texture> "
-								 "<value>");
+								 "<voxel_preset|keyframe_stride|frame_to_model|replace_pose_track|path_radius|texture|"
+								 "view|bounds> <value>");
 			return false;
 		}
 		if (menuState != eOcclusionMeshBuildMenuState::verifyTake)
@@ -823,6 +1154,25 @@ bool AppStage_OcclusionMeshBuild::handleRemoteControlCommand(const std::string& 
 		outResults.push_back("triangles_untextured " + std::to_string(stats.trianglesUntextured));
 		outResults.push_back("atlas " + std::to_string(stats.atlasWidth) + " " + std::to_string(stats.atlasHeight));
 		outResults.push_back("seconds " + std::to_string(stats.totalSeconds));
+		outResults.push_back("coverage_good " + std::to_string(stats.coverageGood));
+		outResults.push_back("coverage_weak " + std::to_string(stats.coverageWeak));
+		outResults.push_back("coverage_unseen " + std::to_string(stats.coverageUnseen));
+		outResults.push_back("bounds " + std::to_string(stats.boundsLo.x) + " " + std::to_string(stats.boundsLo.y) + " "
+							 + std::to_string(stats.boundsLo.z) + " " + std::to_string(stats.boundsHi.x) + " "
+							 + std::to_string(stats.boundsHi.y) + " " + std::to_string(stats.boundsHi.z));
+		outResults.push_back(std::string("bounds_overridden ") + (stats.bBoundsOverridden ? "1" : "0"));
+		outResults.push_back(std::string("voxel_grown ") + (stats.bVoxelGrown ? "1" : "0"));
+		outResults.push_back("view " + k_OcclusionMeshPreviewViewStrings[(int)m_preview->getView()]);
+		return true;
+	}
+	else if (command == "frame_mesh")
+	{
+		if (!m_preview->hasMesh())
+		{
+			outResults.push_back("no mesh to frame");
+			return false;
+		}
+		frameMesh();
 		return true;
 	}
 	else if (command == "apply")

@@ -29,11 +29,9 @@
 // range window, a curve and a palette. Never used in a composite.
 #define INTERNAL_MATERIAL_PT_DEPTH_COLORIZE "Internal_PT_DepthColorize"
 #define INTERNAL_MATERIAL_PT_LINEAR_TO_HARDWARE_DEPTH "Internal_PT_LinearToHardwareDepth"
-// The three passes of the depth edge refinement: separable window min/max of a linear depth
-// mask, then a colour-guided vote that moves the mask's edges to the video's within that window
+// The separable window min/max of a one channel image, a horizontal then a vertical pass
 #define INTERNAL_MATERIAL_PT_DEPTH_MINMAX_H "Internal_PT_DepthMinMaxH"
 #define INTERNAL_MATERIAL_PT_DEPTH_MINMAX_V "Internal_PT_DepthMinMaxV"
-#define INTERNAL_MATERIAL_PT_DEPTH_EDGE_REFINE "Internal_PT_DepthEdgeRefine"
 // The two depth of field passes around the depth min/max dilation: the circle of confusion of
 // a client's depth, then a disc gather of its color out to the dilated reach
 #define INTERNAL_MATERIAL_PT_DEPTH_OF_FIELD_COC "Internal_PT_DepthOfFieldCoC"

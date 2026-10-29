@@ -1659,8 +1659,8 @@ IMkShaderCodeConstPtr getPTLinearToSRGBShaderCode()
 	return x_shaderCode;
 }
 
-// Depth edge refinement pass 1: the min and max of the linear depth mask over a
-// horizontal band of floatConstant0 pixels either side, packed as (min, max).
+// Depth min/max pass 1: the min and max of a one channel image over a horizontal
+// band of floatConstant0 pixels either side, packed as (min, max).
 // The window is clamped at the image border, so every pixel sees 2r + 1 taps.
 IMkShaderCodeConstPtr getPTDepthMinMaxHShaderCode()
 {
@@ -1725,7 +1725,7 @@ IMkShaderCodeConstPtr getPTDepthMinMaxHShaderCode()
 	return x_shaderCode;
 }
 
-// Depth edge refinement pass 2: the vertical half of the separable window, the
+// Depth min/max pass 2: the vertical half of the separable window, the
 // min of the pass 1 mins and the max of the pass 1 maxes over the same band
 // along y. The pass 1 target is linearly filtered, so it is read with texelFetch.
 IMkShaderCodeConstPtr getPTDepthMinMaxVShaderCode()
@@ -1788,136 +1788,6 @@ IMkShaderCodeConstPtr getPTDepthMinMaxVShaderCode()
 		x_shaderCode->addUniform("minMaxTexture", eUniformSemantic::textureParam);
 		x_shaderCode->addUniform("screenSize", eUniformSemantic::screenSize);
 		x_shaderCode->addUniform("floatConstant0", eUniformSemantic::floatConstant0);
-	}
-
-	return x_shaderCode;
-}
-
-// Depth edge refinement pass 3: where the window spans a depth discontinuity
-// (max - min above floatConstant2 * max), each window sample votes for the near
-// or far side, weighted by a spatial Gaussian of sigma radius / 2 and a colour
-// Gaussian of sigma floatConstant1 against the video, and the pixel takes the
-// winning side's weighted mean depth. Elsewhere the mask passes through. The
-// result goes to the depth attachment, and to the colour attachment for preview.
-IMkShaderCodeConstPtr getPTDepthEdgeRefineShaderCode()
-{
-	static IMkShaderCodePtr x_shaderCode= nullptr;
-
-	if (x_shaderCode == nullptr)
-	{
-		x_shaderCode= createIMkShaderCode(INTERNAL_MATERIAL_PT_DEPTH_EDGE_REFINE,
-										  // vertex shader
-										  R""""(
-				#version 330 core
-				layout (location = 0) in vec2 aPos;
-				layout (location = 1) in vec2 aTexCoords;
-
-				out vec2 TexCoords;
-
-				void main()
-				{
-					TexCoords = aTexCoords;
-					gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);
-				}
-				)"""",
-										  // fragment shader
-										  R""""(
-				#version 330 core
-				out vec4 FragColor;
-				out float gl_FragDepth;
-
-				in vec2 TexCoords;
-
-				// Linear depth mask, 1 where nothing was drawn
-				uniform sampler2D depthTexture;
-				// Linear video colour
-				uniform sampler2D rgbaTexture;
-				// Pass 2 result: window min in r, window max in g
-				uniform sampler2D minMaxTexture;
-				// Mask size in pixels
-				uniform vec2 screenSize;
-				// Band radius in pixels
-				uniform float floatConstant0;
-				// Colour distance below which the two sides of an edge are not told apart
-				uniform float floatConstant1;
-				// Relative depth jump that marks a discontinuity
-				uniform float floatConstant2;
-
-				void main()
-				{
-					ivec2 p = ivec2(gl_FragCoord.xy);
-					ivec2 last = ivec2(screenSize) - 1;
-					int r = clamp(int(floatConstant0 + 0.5), 1, 32);
-
-					float dp = texelFetch(depthTexture, p, 0).r;
-					vec2 window = texelFetch(minMaxTexture, p, 0).rg;
-					float mn = window.r;
-					float mx = window.g;
-
-					float result = dp;
-					if (mx - mn > floatConstant2 * mx)
-					{
-						float mid = 0.5 * (mn + mx);
-						vec3 colorP = texture(rgbaTexture, (vec2(p) + 0.5) / screenSize).rgb;
-
-						// Split the window at the mid depth and build each side's colour prototype
-						float nNear = 0.0;
-						float nFar = 0.0;
-						vec3 sumColorNear = vec3(0.0);
-						vec3 sumColorFar = vec3(0.0);
-						float sumDepthNear = 0.0;
-						float sumDepthFar = 0.0;
-						for (int dy = -r; dy <= r; ++dy)
-						{
-							for (int dx = -r; dx <= r; ++dx)
-							{
-								ivec2 q = clamp(p + ivec2(dx, dy), ivec2(0), last);
-								float dq = texelFetch(depthTexture, q, 0).r;
-								vec3 colorQ = texture(rgbaTexture, (vec2(q) + 0.5) / screenSize).rgb;
-								if (dq < mid)
-								{
-									nNear += 1.0;
-									sumColorNear += colorQ;
-									sumDepthNear += dq;
-								}
-								else
-								{
-									nFar += 1.0;
-									sumColorFar += colorQ;
-									sumDepthFar += dq;
-								}
-							}
-						}
-
-						// Two prototypes closer than the colour sigma are no evidence, so the pixel
-						// keeps its depth; otherwise it joins the side its own colour is nearer to
-						if (nNear > 0.0 && nFar > 0.0)
-						{
-							vec3 muNear = sumColorNear / nNear;
-							vec3 muFar = sumColorFar / nFar;
-							vec3 separation = muNear - muFar;
-							if (dot(separation, separation) >= floatConstant1 * floatConstant1)
-							{
-								vec3 toNear = colorP - muNear;
-								vec3 toFar = colorP - muFar;
-								result = dot(toNear, toNear) <= dot(toFar, toFar) ? sumDepthNear / nNear : sumDepthFar / nFar;
-							}
-						}
-					}
-
-					FragColor = vec4(result, result, result, 1.0);
-					gl_FragDepth = result;
-				}
-				)"""");
-		x_shaderCode->addVertexAttribute("aPos", eVertexDataType::datatype_vec2, eVertexSemantic::position);
-		x_shaderCode->addVertexAttribute("aTexCoords", eVertexDataType::datatype_vec2, eVertexSemantic::texCoord);
-		x_shaderCode->addUniform("depthTexture", eUniformSemantic::depthTexture);
-		x_shaderCode->addUniform("rgbaTexture", eUniformSemantic::rgbaTexture);
-		x_shaderCode->addUniform("minMaxTexture", eUniformSemantic::textureParam);
-		x_shaderCode->addUniform("screenSize", eUniformSemantic::screenSize);
-		x_shaderCode->addUniform("floatConstant0", eUniformSemantic::floatConstant0);
-		x_shaderCode->addUniform("floatConstant1", eUniformSemantic::floatConstant1);
-		x_shaderCode->addUniform("floatConstant2", eUniformSemantic::floatConstant2);
 	}
 
 	return x_shaderCode;
@@ -2313,7 +2183,6 @@ bool registerInternalShaders(GlShaderCache* shaderCache)
 		getPTLinearToSRGBShaderCode(),
 		getPTDepthMinMaxHShaderCode(),
 		getPTDepthMinMaxVShaderCode(),
-		getPTDepthEdgeRefineShaderCode(),
 		getPTDepthOfFieldCoCShaderCode(),
 		getPTDepthOfFieldGatherShaderCode(),
 		getPSelectionMaskShaderCode(),

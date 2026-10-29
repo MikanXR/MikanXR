@@ -175,9 +175,13 @@ bool DepthMaskNode::evaluateNode(NodeEvaluator& evaluator)
 	int frameHeight= 0;
 	auto compositorGraph= std::static_pointer_cast<CompositorNodeGraph>(getOwnerGraph());
 	CameraComponentPtr cameraComponent= compositorGraph->getBoundCameraComponent();
-	if (bSuccess)
+	if (bSuccess && !(cameraComponent && cameraComponent->getAperturePixelDimensions(frameWidth, frameHeight)))
 	{
-		bSuccess= cameraComponent && cameraComponent->getAperturePixelDimensions(frameWidth, frameHeight);
+		// A false return from an input node quietly skips whatever pulled it, so the
+		// reason has to be reported here or the consumer just never draws
+		evaluator.addError(NodeEvaluationError(eNodeEvaluationErrorCode::evaluationError,
+											   "Camera video source has no frame size", this));
+		bSuccess= false;
 	}
 
 	// The flags have to be read after the rebuild, or the frame a stencil first arrives

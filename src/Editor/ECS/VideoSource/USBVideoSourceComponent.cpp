@@ -228,7 +228,7 @@ void USBVideoSourceComponent::dispose()
 
 void USBVideoSourceComponent::setDefinition(MikanComponentDefinitionPtr definition)
 {
-	MikanComponent::setDefinition(definition);
+	VideoSourceComponent::setDefinition(definition);
 
 	// Close any open video source that was open
 	closeVideoSource();

@@ -17,7 +17,6 @@
 #include "ClientApiPropertySchemaTests.h"
 #include "ComponentNamingTests.h"
 #include "CompositorStreamRouteTests.h"
-#include "DepthEdgeRefineTests.h"
 #include "DepthOfFieldTests.h"
 #include "DepthMeshGeneratorTests.h"
 #include "DirectoryWatcherTests.h"
@@ -35,6 +34,7 @@
 #include "LightEnvironmentPersistenceTests.h"
 #include "LocalizationTests.h"
 #include "MaterialCompilerTests.h"
+#include "MeshCoverageTests.h"
 #include "MeshTexturingTests.h"
 
 #include "ModelRepositoryTests.h"
@@ -59,6 +59,7 @@
 #include "DepthTrackReader.h"
 #include "GlbMeshWriter.h"
 #include "MovieDecoder.h"
+#include "NpyWriter.h"
 #include "OcclusionMeshBuilder.h"
 #include "PoseTrack.h"
 #include "Capture.h"
@@ -72,6 +73,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <filesystem>
+#include <limits>
 #include <numeric>
 #include <thread>
 #include <utility>
@@ -90,7 +92,6 @@ bool run_all_editor_unit_tests()
 	success&= run_client_api_property_schema_tests();
 	success&= run_component_naming_tests();
 	success&= run_compositor_stream_route_tests();
-	success&= run_depth_edge_refine_tests();
 	success&= run_depth_of_field_tests();
 	success&= run_depth_mesh_generator_unit_tests();
 	success&= run_directory_watcher_tests();
@@ -108,6 +109,7 @@ bool run_all_editor_unit_tests()
 	success&= run_light_environment_persistence_tests();
 	success&= run_localization_unit_tests();
 	success&= run_material_compiler_tests();
+	success&= run_mesh_coverage_unit_tests();
 	success&= run_mesh_texturing_unit_tests();
 	success&= run_model_geometry_route_tests();
 
@@ -250,10 +252,14 @@ void CmdApp::printUsage() const
 			"  -occlusionMesh -take=<path to take.trackcamera> [-glb=<path>] [-refinedTrack=<path>]\n"
 			"               [-voxel=<metres>] [-stride=<n>] [-noRegistration]\n"
 			"               [-pathRadius=<metres>] [-noTexture] [-textureViews=<n>]\n"
+			"               [-bounds=<lo.x,lo.y,lo.z,hi.x,hi.y,hi.z>] [-coverage=<dir>]\n"
+			"               [-gradientCull=<relative jump, 0 for off>] [-cullSymmetric] [-cullRadius=<pixels>]\n"
 			"               Fuse a trackcamera capture's LiDAR depth tracks into an occlusion\n"
 			"               mesh in the take's ARKit world space, refining the poses against\n"
 			"               the model, trimmed to the camera path and textured from the video,\n"
 			"               and write it as a glTF binary with its atlas plus a refined pose track.\n"
+			"               -bounds fuses inside that box instead of the computed bounds, and\n"
+			"               -coverage writes the per-vertex coverage measures as .npy files.\n"
 			"  -fetchModels [-model=<name>]\n"
 			"               Download the ML capture models into the per-user model\n"
 			"               directory. Without -model every model is fetched. Passing\n"
@@ -680,6 +686,9 @@ public:
 			case eOcclusionMeshBuildPhase::cleaning:
 				fprintf(stdout, "clean  : islands and normals\n");
 				break;
+			case eOcclusionMeshBuildPhase::coverage:
+				fprintf(stdout, "cover  : %d keyframes\n", total);
+				break;
 			case eOcclusionMeshBuildPhase::texturing:
 				fprintf(stdout, "texture: %d video frames\n", total);
 				break;
@@ -748,15 +757,49 @@ int CmdApp::buildOcclusionMesh() const
 		settings.volume.voxelSize= (float)atof(voxelArg.c_str());
 		settings.volume.truncation= settings.volume.voxelSize * 4.f;
 	}
+	const std::string cullArg= getCommandLineStringArg("gradientCull");
+	if (!cullArg.empty())
+	{
+		// 0 turns the flying pixel cull off
+		const float cull= (float)atof(cullArg.c_str());
+		settings.volume.gradientCull= cull > 0.f ? cull : std::numeric_limits<float>::infinity();
+	}
+	// The cull before keep-near: both pixels of a bad pair, no far band
+	if (hasCommandLineFlag("cullSymmetric"))
+	{
+		settings.volume.gradientCullKeepsNear= false;
+		settings.volume.gradientCullRadius= 1;
+	}
+	const std::string cullRadiusArg= getCommandLineStringArg("cullRadius");
+	if (!cullRadiusArg.empty())
+	{
+		settings.volume.gradientCullRadius= std::max(atoi(cullRadiusArg.c_str()), 1);
+	}
 	settings.keyframeStride= atoi(getCommandLineStringArg("stride", "3").c_str());
 	settings.bFrameToModel= !hasCommandLineFlag("noRegistration");
 	settings.cameraPathRadius= std::max((float)atof(getCommandLineStringArg("pathRadius", "2").c_str()), 0.f);
 	settings.bTexture= !hasCommandLineFlag("noTexture");
 	settings.textureViews= std::max(atoi(getCommandLineStringArg("textureViews", "16").c_str()), 1);
+	const std::string boundsArg= getCommandLineStringArg("bounds");
+	if (!boundsArg.empty())
+	{
+		float box[6];
+		if (sscanf(boundsArg.c_str(), "%f,%f,%f,%f,%f,%f", &box[0], &box[1], &box[2], &box[3], &box[4], &box[5]) != 6)
+		{
+			fprintf(stdout, "error: -bounds needs six comma separated metres: lo.x,lo.y,lo.z,hi.x,hi.y,hi.z\n");
+			return EXIT_FAILURE;
+		}
+		settings.bBoundsOverride= true;
+		settings.boundsOverrideLo= glm::vec3(box[0], box[1], box[2]);
+		settings.boundsOverrideHi= glm::vec3(box[3], box[4], box[5]);
+	}
 
 	fprintf(stdout, "take   : %zu frames, depth %dx%d, registration %s, trim %.1f m, texture %s\n",
 			track.getFrameCount(), track.getDepthWidth(), track.getDepthHeight(), settings.bFrameToModel ? "on" : "off",
 			settings.cameraPathRadius, settings.bTexture ? "on" : "off");
+	fprintf(stdout, "volume : %.1f cm voxels, cull %.2f%s, radius %d\n", settings.volume.voxelSize * 100.f,
+			settings.volume.gradientCull, settings.volume.gradientCullKeepsNear ? " keeping the near pixel" : "",
+			settings.volume.gradientCullRadius);
 
 	// The movie member plays in place inside the capture; without it the
 	// mesh still comes out, untextured
@@ -782,6 +825,13 @@ int CmdApp::buildOcclusionMesh() const
 			stats.gridDims.y, stats.gridDims.z, stats.voxelSize * 100.f);
 	fprintf(stdout, "frames : %d of %d keyframes fused in %.0f s, %zu voxels trimmed\n", stats.framesIntegrated,
 			stats.keyframes, stats.totalSeconds, stats.voxelsClipped);
+	if (stats.bVoxelGrown)
+	{
+		fprintf(stdout, "warning: the voxel grew from %.1f to %.1f cm to fit the bounds, -bounds keeps it\n",
+				stats.configuredVoxelSize * 100.f, stats.voxelSize * 100.f);
+	}
+	fprintf(stdout, "cover  : %.0f%% good, %.0f%% weak, %.0f%% unseen by area\n", stats.coverageGood * 100.f,
+			stats.coverageWeak * 100.f, stats.coverageUnseen * 100.f);
 	if (stats.textureViews > 0)
 	{
 		fprintf(stdout, "texture: %d of %d video frames used, %dx%d atlas, %d triangles unseen\n",
@@ -826,6 +876,30 @@ int CmdApp::buildOcclusionMesh() const
 		return EXIT_FAILURE;
 	}
 	fprintf(stdout, "wrote  : %s\n", glbPath.string().c_str());
+
+	// One array per measure, indexed by the glb's vertices
+	const std::string coverageArg= getCommandLineStringArg("coverage");
+	if (!coverageArg.empty())
+	{
+		const std::filesystem::path coverageDir(coverageArg);
+		std::error_code directoryError;
+		std::filesystem::create_directories(coverageDir, directoryError);
+		const MeshCoverageResult& coverage= result.coverage;
+		const bool bWritten= NpyWriter::write(coverageDir / "support.npy", coverage.support)
+							 && NpyWriter::write(coverageDir / "support_high.npy", coverage.supportHigh)
+							 && NpyWriter::write(coverageDir / "carve.npy", coverage.carve)
+							 && NpyWriter::write(coverageDir / "directions.npy", coverage.directions)
+							 && NpyWriter::write(coverageDir / "best_cos.npy", coverage.bestCos)
+							 && NpyWriter::write(coverageDir / "nearest.npy", coverage.nearest)
+							 && NpyWriter::write(coverageDir / "class.npy", coverage.coverageClass);
+		if (!bWritten)
+		{
+			fprintf(stdout, "error: failed to write the coverage arrays into '%s'\n", coverageDir.string().c_str());
+			return EXIT_FAILURE;
+		}
+		fprintf(stdout, "wrote  : %s (coverage, %zu vertices)\n", coverageDir.string().c_str(),
+				coverage.getVertexCount());
+	}
 
 	if (result.bHasRefinedPoses)
 	{

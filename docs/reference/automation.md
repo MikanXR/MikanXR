@@ -71,8 +71,11 @@ Reach it with `function invoke <VideoSourceSystem> <componentId> show_video_sour
 - `get_state` replies the menu state (`verifyTake`, `building`, `failed`, `verifyMesh`, `buildComplete`)
 - `get_take_info` replies `frames`, `depth_width`, `depth_height`, and `session_id` lines
 - `set_option <voxel_preset|keyframe_stride|frame_to_model|replace_pose_track|path_radius|texture> <value>` sets a build option while in `verifyTake` (`room`/`tabletop`, an integer, `on`/`off`, metres with 0 for no trim, `on`/`off`)
+- `set_option bounds <lo.x> <lo.y> <lo.z> <hi.x> <hi.y> <hi.z>` fuses the next build inside that box in the take's ARKit world, and `set_option bounds auto` returns to the computed bounds, while in `verifyTake`
+- `set_option view <textured|shaded|coverage|observations|directions|angle|contradiction|distance>` switches what the preview shows once a mesh exists, failing for a view the build cannot show
+- `frame_mesh` re-centres the orbit camera on the mesh
 - `build` starts the worker, `get_progress` replies `phase`, `frames`, `total`, and `elapsed` lines while it runs
-- `get_summary` replies the triangle counts, grid, frames fused, registration counts, the final correction, `voxels_clipped`, `texture_views <used> <decoded>`, `triangles_untextured`, and `atlas <width> <height>` once a mesh exists
+- `get_summary` replies the triangle counts, grid, frames fused, registration counts, the final correction, `voxels_clipped`, `texture_views <used> <decoded>`, `triangles_untextured`, `atlas <width> <height>`, the `coverage_good`, `coverage_weak`, and `coverage_unseen` area shares, `bounds <lo> <hi>`, `bounds_overridden` and `voxel_grown` as 0 or 1, and the preview `view` once a mesh exists
 - `apply` creates the stencil, writes the refined pose track, and replies `created` or `failed`
 - `cancel` stops a build in progress or discards a result, `return` pops the stage
 
@@ -175,6 +178,7 @@ Drives the node editor window and its snapshot undo history ([transactions.md](.
 - `nodegraph open [compositorComponentId]` opens the compositor graph editor window (the id may be omitted when the project has exactly one compositor)
 - `nodegraph open material <graphPath>` opens the material graph editor window on a `.matgraph` file, reusing and raising the window when one is already open. A relative path resolves against the project (then the app resources) and otherwise against the working directory. The command answers an error when the file does not load or is not a material graph.
 - `nodegraph open material new [compositor|shape]` opens the material editor with a fresh graph of that domain (default `compositor`)
+- `nodegraph errors [compositorComponentId]` replies the compositor's last evaluation diagnostics, one `<error|warning> <nodeId> <pinId> <message>` line each, empty for a clean frame. Like `open` it needs no editor window, and it is the way to see why a layer draws nothing without opening one.
 - `nodegraph close` asks the app to tear the window down at the end of the frame
 - `nodegraph info` replies the graph class and path, node/pin/link/property counts, a `page` line with the current page id, a `pages` line with the page count (the implicit root is not counted), `can_undo`/`can_redo`, the history depth and cursor, the session log path ([transactions.md](./transactions.md)), for the compositor editor a `running` line, and for the material editor `domain`, `vertex_preset`, and `compile_errors` (the error count of the last compile) lines
 - `nodegraph list nodes|pins|links|properties|pages` replies one object per line: nodes as `<id> <class> <editorTitle> <pageId>` (the title may hold spaces, so the page id is the last token), pins adding owner node id, direction, and name, links as `<id> <startPinId> <endPinId>`, pages as the root first (`0 root Main`) then `<id> <className> <name>` in id order

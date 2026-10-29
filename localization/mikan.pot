@@ -2328,11 +2328,6 @@ msgid "Auto"
 msgstr ""
 
 #. Section: nodes
-msgctxt "nodes.bandRadius"
-msgid "Band Radius (px)"
-msgstr ""
-
-#. Section: nodes
 msgctxt "nodes.blendMode"
 msgid "Blend Mode"
 msgstr ""
@@ -2428,11 +2423,6 @@ msgid "Color Parameter"
 msgstr ""
 
 #. Section: nodes
-msgctxt "nodes.colorSigma"
-msgid "Color Sigma"
-msgstr ""
-
-#. Section: nodes
 msgctxt "nodes.commentColor"
 msgid "Color"
 msgstr ""
@@ -2505,21 +2495,6 @@ msgstr ""
 #. Section: nodes
 msgctxt "nodes.depthCurveLog"
 msgid "Log"
-msgstr ""
-
-#. Section: nodes
-msgctxt "nodes.depthEdgeRefineHeader"
-msgid "Depth Edge Refine Node"
-msgstr ""
-
-#. Section: nodes
-msgctxt "nodes.depthEdgeRefineTitle"
-msgid "Depth Edge Refine"
-msgstr ""
-
-#. Section: nodes
-msgctxt "nodes.depthJump"
-msgid "Depth Jump"
 msgstr ""
 
 #. Section: nodes
@@ -3289,6 +3264,17 @@ msgid "Transmit Rate (Hz)"
 msgstr ""
 
 #. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.boundsBoxFmt"
+msgid "Bounds: the placed box, %.2f x %.2f x %.2f m"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.boundsBoxHelp"
+msgid "Drag a face handle of the box with the left mouse button to fit it around the subject, then rebuild inside it."
+msgstr ""
+
+#. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.build"
 msgid "Build"
 msgstr ""
@@ -3299,6 +3285,11 @@ msgid "Occlusion mesh build failed."
 msgstr ""
 
 #. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.cameraPath"
+msgid "Show the camera path"
+msgstr ""
+
+#. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.cancelBuild"
 msgid "Cancel Build"
 msgstr ""
@@ -3306,6 +3297,17 @@ msgstr ""
 #. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.cancelling"
 msgid "Cancelling..."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.coverageLegend"
+msgid "Green is well covered, yellow is seen but weak, red was never seen. Recapture the red and yellow sides."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.coverageSummaryFmt"
+msgid "Coverage by area: %.0f%% good, %.0f%% weak, %.0f%% unseen."
 msgstr ""
 
 #. Section: occlusionMeshBuild
@@ -3322,6 +3324,11 @@ msgstr ""
 #, c-format
 msgctxt "occlusionMeshBuild.elapsedSecondsFmt"
 msgid "Elapsed: %.0f s"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.frameMesh"
+msgid "Frame Mesh"
 msgstr ""
 
 #. Section: occlusionMeshBuild
@@ -3413,6 +3420,12 @@ msgid "Measuring the sweep..."
 msgstr ""
 
 #. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.phaseCoverageFmt"
+msgid "Measuring coverage, frame %d of %d"
+msgstr ""
+
+#. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.phaseExtracting"
 msgid "Extracting the surface..."
 msgstr ""
@@ -3457,6 +3470,22 @@ msgstr ""
 #. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.previewNote"
 msgid "The mesh is drawn where the stencil will be placed. Orbit the view to check it against the room."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.previewView"
+msgid "View"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.rampLegendFmt"
+msgid "Red at %s to green at %s. Grey where the measure has no value."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.rebuildWithBox"
+msgid "Rebuild In Box"
 msgstr ""
 
 #. Section: occlusionMeshBuild
@@ -3544,6 +3573,57 @@ msgstr ""
 #, c-format
 msgctxt "occlusionMeshBuild.trimSummaryFmt"
 msgid "%.1f million voxels trimmed beyond the camera path."
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.useAutomaticBounds"
+msgid "Use Automatic Bounds"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.viewAngle"
+msgid "Viewing angle"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.viewContradiction"
+msgid "Contradiction"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.viewCoverage"
+msgid "Coverage"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.viewDirections"
+msgid "Directions"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.viewDistance"
+msgid "Distance"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.viewObservations"
+msgid "Observations"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.viewShaded"
+msgid "Shaded"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.viewTextured"
+msgid "Textured"
+msgstr ""
+
+#. Section: occlusionMeshBuild
+#, c-format
+msgctxt "occlusionMeshBuild.voxelGrownFmt"
+msgid "The voxel grew from %.1f to %.1f cm to fit the bounds. Fit the box around the subject and rebuild to keep it."
 msgstr ""
 
 #. Section: occlusionMeshBuild

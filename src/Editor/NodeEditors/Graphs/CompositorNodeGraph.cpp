@@ -42,7 +42,6 @@
 #include "Nodes/ArrayNode.h"
 #include "Nodes/ColorTextureSourceNode.h"
 #include "Nodes/DepthTextureSourceNode.h"
-#include "Nodes/DepthEdgeRefineNode.h"
 #include "Nodes/DepthOfFieldNode.h"
 #include "Nodes/DepthMaskNode.h"
 #include "Nodes/DrawLayerNode.h"
@@ -90,7 +89,6 @@ CompositorNodeGraph::CompositorNodeGraph()
 	addNodeFactory<DepthTextureSourceNodeFactory>();
 	addNodeFactory<DrawLayerNodeFactory>();
 	addNodeFactory<DrawShapesNodeFactory>();
-	addNodeFactory<DepthEdgeRefineNodeFactory>();
 	addNodeFactory<DepthOfFieldNodeFactory>();
 	addNodeFactory<DepthMaskNodeFactory>();
 	addNodeFactory<EventNodeFactory>();

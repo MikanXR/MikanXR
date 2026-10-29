@@ -1,11 +1,13 @@
 #pragma once
 
 #include "FrameToModelRegistration.h"
+#include "MeshCoverage.h"
 #include "MeshTexturing.h"
 #include "ReconstructionTypes.h"
 #include "TsdfVolume.h"
 
 #include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/vector_float3.hpp"
 #include "glm/ext/vector_int3.hpp"
 
 #include <opencv2/core.hpp>
@@ -25,6 +27,7 @@ enum class eOcclusionMeshBuildPhase : int
 	integrating,
 	extracting,
 	cleaning,
+	coverage,
 	texturing,
 	complete,
 };
@@ -35,8 +38,8 @@ class IOcclusionMeshBuildObserver
 public:
 	virtual ~IOcclusionMeshBuildObserver() {}
 	virtual bool isCancelRequested() const= 0;
-	// done and total are frames during integration and views during
-	// texturing, 0 elsewhere
+	// done and total are frames during integration and coverage and views
+	// during texturing, 0 elsewhere
 	virtual void onProgress(eOcclusionMeshBuildPhase phase, int done, int total)= 0;
 };
 
@@ -45,6 +48,12 @@ struct OcclusionMeshBuildSettings
 	TsdfVolumeConfig volume;
 	int keyframeStride= 3;    // every nth frame of the take is fused
 	float boundsMargin= 0.3f; // metres added around the confident depth cloud
+	// A box the operator placed, in the take's ARKit world, that replaces the
+	// bounds computed from the depth cloud. A long walk otherwise widens the
+	// cloud and grows the voxel to fit maxVoxels.
+	bool bBoundsOverride= false;
+	glm::vec3 boundsOverrideLo= glm::vec3(0.f);
+	glm::vec3 boundsOverrideHi= glm::vec3(0.f);
 	int minComponentTriangles= 500;
 	bool bFrameToModel= true; // register each frame against the model before fusing it
 	int warmupFrames= 3;      // frames fused at their recorded pose before registration starts
@@ -60,20 +69,28 @@ struct OcclusionMeshBuildSettings
 	int textureViews= 16;      // fused keyframes spread over the sweep that become atlas tiles
 	int textureTileWidth= 640; // pixels, the tile height follows the frame's aspect
 	MeshTexturingSettings texturing;
+	MeshCoverageSettings coverage;
 };
 
 struct OcclusionMeshBuildStats
 {
 	float voxelSize= 0.f;
+	float configuredVoxelSize= 0.f; // the voxel asked for, before any growth to fit maxVoxels
 	glm::ivec3 gridDims= glm::ivec3(0);
 	glm::vec3 boundsLo= glm::vec3(0.f);
 	glm::vec3 boundsHi= glm::vec3(0.f);
+	bool bBoundsOverridden= false; // the bounds are the operator's box
+	bool bVoxelGrown= false;       // the voxel grew past the configured size to fit maxVoxels
 	int keyframes= 0;
 	int framesIntegrated= 0;
 	size_t voxelsClipped= 0; // dropped by the camera-path trim, 0 when it is off
 	int trianglesRaw= 0;
 	int trianglesClean= 0;
 	int trianglesRemovedAsIslands= 0;
+	// Shares of the clean mesh's surface area in each coverage class
+	float coverageGood= 0.f;
+	float coverageWeak= 0.f;
+	float coverageUnseen= 0.f;
 	// Texturing, zero when it did not run
 	int textureViews= 0;        // views decoded from the take
 	int textureViewsUsed= 0;    // views at least one triangle took
@@ -111,6 +128,8 @@ struct OcclusionMeshBuildResult
 	// unless registration ran.
 	bool bHasRefinedPoses= false;
 	std::vector<glm::mat4> refinedCameraToWorld;
+	// One record per vertex of mesh, following the texturing's vertex split
+	MeshCoverageResult coverage;
 	OcclusionMeshBuildStats stats;
 };
 
@@ -134,6 +153,13 @@ public:
 	static bool build(const PoseTrack& track, DepthTrackReader& reader, const OcclusionMeshBuildSettings& settings,
 					  IOcclusionMeshBuildObserver* observer, OcclusionMeshBuildResult& outResult,
 					  MovieDecoder* colourDecoder= nullptr);
+
+	// Measure how well the fused keyframes observed each vertex of the
+	// result's mesh, each frame at the pose it was fused at and through the
+	// fusion's own cull and depth range. Returns false when cancelled.
+	static bool measureCoverage(const PoseTrack& track, DepthTrackReader& reader,
+								const OcclusionMeshBuildSettings& settings, float voxelSize,
+								IOcclusionMeshBuildObserver* observer, OcclusionMeshBuildResult& result);
 
 	// The views the texturing projects from: up to maxViews of the fused
 	// keyframes, chosen greedily by how many of the result's triangles each

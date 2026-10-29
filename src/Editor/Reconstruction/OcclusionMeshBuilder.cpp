@@ -11,8 +11,10 @@
 #include "SmallMotion.h"
 #include "TsdfVolume.h"
 
+#include "glm/common.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/gtc/matrix_inverse.hpp"
+#include "glm/vector_relational.hpp"
 
 #include <opencv2/imgproc.hpp>
 
@@ -183,7 +185,17 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 
 	reportProgress(observer, eOcclusionMeshBuildPhase::computingBounds, 0, 0);
 	glm::vec3 boundsLo, boundsHi;
-	if (!computeBounds(track, reader, keyframes, settings, boundsLo, boundsHi))
+	if (settings.bBoundsOverride)
+	{
+		boundsLo= glm::min(settings.boundsOverrideLo, settings.boundsOverrideHi);
+		boundsHi= glm::max(settings.boundsOverrideLo, settings.boundsOverrideHi);
+		if (!(glm::all(glm::lessThan(boundsLo, boundsHi))))
+		{
+			outResult.failureReason= "The bounds box is empty";
+			return false;
+		}
+	}
+	else if (!computeBounds(track, reader, keyframes, settings, boundsLo, boundsHi))
 	{
 		outResult.failureReason= "No confident depth in the take";
 		return false;
@@ -197,9 +209,12 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 	TsdfVolume volume(boundsLo, boundsHi, settings.volume);
 	OcclusionMeshBuildStats& stats= outResult.stats;
 	stats.voxelSize= volume.getVoxelSize();
+	stats.configuredVoxelSize= settings.volume.voxelSize;
 	stats.gridDims= volume.getDims();
 	stats.boundsLo= boundsLo;
 	stats.boundsHi= boundsHi;
+	stats.bBoundsOverridden= settings.bBoundsOverride;
+	stats.bVoxelGrown= stats.voxelSize > settings.volume.voxelSize * 1.001f;
 	stats.keyframes= (int)keyframes.size();
 
 	MIKAN_LOG_INFO("OcclusionMeshBuilder::build")
@@ -380,6 +395,17 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 		return false;
 	}
 
+	// Coverage runs on the cleaned mesh too, before texturing splits its
+	// vertices, and the split carries the record along
+	if (!measureCoverage(track, reader, settings, stats.voxelSize, observer, outResult))
+	{
+		outResult.bCancelled= true;
+		return false;
+	}
+	stats.coverageGood= outResult.coverage.areaGood;
+	stats.coverageWeak= outResult.coverage.areaWeak;
+	stats.coverageUnseen= outResult.coverage.areaUnseen;
+
 	// Texturing runs on the cleaned mesh, after the island pass has settled
 	// which triangles there are to colour. A take whose video cannot be read
 	// still yields the mesh.
@@ -401,10 +427,12 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 		}
 
 		MeshTexturingStats texturingStats;
+		std::vector<uint32_t> sourceVertex;
 		if (stats.textureViews > 0
 			&& MeshTexturing::textureMesh(outResult.mesh, views, settings.texturing, outResult.mesh, outResult.atlas,
-										  &texturingStats))
+										  &texturingStats, &sourceVertex))
 		{
+			outResult.coverage.remap(sourceVertex);
 			stats.textureViewsUsed= texturingStats.viewsUsed;
 			stats.trianglesUntextured= texturingStats.trianglesUntextured;
 			stats.atlasWidth= texturingStats.atlasWidth;
@@ -435,6 +463,46 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 								   : std::string());
 
 	outResult.bSucceeded= true;
+	return true;
+}
+
+bool OcclusionMeshBuilder::measureCoverage(const PoseTrack& track, DepthTrackReader& reader,
+										   const OcclusionMeshBuildSettings& settings, float voxelSize,
+										   IOcclusionMeshBuildObserver* observer, OcclusionMeshBuildResult& result)
+{
+	using namespace OcclusionMeshBuilderInternal;
+
+	MeshCoverage coverage(result.mesh, voxelSize, settings.coverage);
+	const int fusedCount= (int)result.fusedKeyframes.size();
+	CoverageView view;
+	view.depthMin= settings.volume.depthMin;
+	view.depthMax= settings.volume.depthMax;
+
+	// The reader is one stream, so the frames are read in turn and each
+	// frame's vertices spread over the threads
+	for (int fusedIndex= 0; fusedIndex < fusedCount; ++fusedIndex)
+	{
+		if (isCancelled(observer))
+			return false;
+		reportProgress(observer, eOcclusionMeshBuildPhase::coverage, fusedIndex, fusedCount);
+
+		const PoseTrackFrame& frame= track.getFrame(result.fusedKeyframes[fusedIndex]);
+		if (!reader.readRecord(frame.fileIndex, view.depth, view.confidence))
+			continue;
+
+		const glm::mat4& recordedCameraToWorld=
+			result.bHasRefinedPoses && frame.fileIndex < result.refinedCameraToWorld.size()
+				? result.refinedCameraToWorld[frame.fileIndex]
+				: frame.cameraToWorld;
+		view.cameraToWorld= toOpenCvCameraToWorld(recordedCameraToWorld);
+		view.depthIntrinsics= frameDepthIntrinsics(track, frame);
+		TsdfVolume::cullFlyingPixels(view.depth, settings.volume.gradientCull, view.keep,
+									 settings.volume.gradientCullKeepsNear, settings.volume.gradientCullRadius);
+		coverage.accumulateView(view);
+	}
+	reportProgress(observer, eOcclusionMeshBuildPhase::coverage, fusedCount, fusedCount);
+
+	coverage.finish(result.coverage);
 	return true;
 }
 

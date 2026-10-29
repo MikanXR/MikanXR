@@ -69,6 +69,10 @@ public:
 protected:
 	int64_t readNextVideoFrameIndex();
 	void processVideoFrame(int64_t newFrameIndex);
+	// Claim the next frame queue texture for a frame and record its index
+	IMkTexturePtr acquireQueueWriteTexture(int64_t newFrameIndex);
+	// Compositor path for a GPU-direct source: undistort its converted frame into the queue
+	void undistortDirectVideoFrame(IMkTexturePtr directTexture, int64_t newFrameIndex);
 	// Pull a GPU-direct source's converted frame back to the CPU and push it
 	// through writeVideoFrame, so calibration has pixels to work on. Returns
 	// false when there is no direct texture, no new frame, or the read failed.

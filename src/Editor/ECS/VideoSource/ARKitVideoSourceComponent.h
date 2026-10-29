@@ -120,10 +120,11 @@ private:
 	IARKitVideoDevicePtr m_arkitVideoDevice= nullptr;
 	bool m_bPendingOpen= false;
 
-	// Cached from the most recently received frame bundle - IARKitVideoDevice has no
-	// getStreamProperties()-style query the way INetworkVideoDevice does (see
-	// NetworkVideoSourceComponent), since ARKit's video dimensions are only known
-	// once a bundle actually arrives.
+	// Cached from the most recently decoded frame: a software bundle's CPU pixels, or
+	// the luma plane in processDirectVideoFrame() for a hardware frame, which carries
+	// no CPU pixels. IARKitVideoDevice has no getStreamProperties()-style query the
+	// way INetworkVideoDevice does (see NetworkVideoSourceComponent), since ARKit's
+	// video dimensions are only known once a frame actually arrives.
 	int m_lastVideoWidth= 0;
 	int m_lastVideoHeight= 0;
 

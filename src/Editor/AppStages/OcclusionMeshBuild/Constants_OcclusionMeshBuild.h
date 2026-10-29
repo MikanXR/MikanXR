@@ -34,3 +34,22 @@ enum class eOcclusionMeshVoxelPreset : int
 	COUNT
 };
 extern const std::string* k_OcclusionMeshVoxelPresetStrings;
+
+// What the built mesh shows in the preview: its colour, plain shading, or
+// one of the coverage measures as an overlay
+enum class eOcclusionMeshPreviewView : int
+{
+	INVALID= -1,
+
+	textured,
+	shaded,
+	coverage,
+	observations,
+	directions,
+	angle,
+	contradiction,
+	distance,
+
+	COUNT
+};
+extern const std::string* k_OcclusionMeshPreviewViewStrings;

@@ -13,13 +13,15 @@
 
 struct TsdfVolumeConfig
 {
-	float voxelSize= 0.015f;    // metres
-	float truncation= 0.06f;    // metres, the signed distance band around a surface
-	float depthMin= 0.1f;       // metres, nearer samples are ignored
-	float depthMax= 5.f;        // metres, farther samples are ignored
-	float gradientCull= 0.08f;  // relative depth jump to a 4-neighbour that drops a pixel
-	float minWeight= 0.001f;    // per-pixel weight below which a pixel is skipped
-	size_t maxVoxels= 60000000; // the voxel grows until the grid fits
+	float voxelSize= 0.015f;          // metres
+	float truncation= 0.06f;          // metres, the signed distance band around a surface
+	float depthMin= 0.1f;             // metres, nearer samples are ignored
+	float depthMax= 5.f;              // metres, farther samples are ignored
+	float gradientCull= 0.08f;        // relative depth jump to a 4-neighbour that drops a pixel
+	bool gradientCullKeepsNear= true; // a bad pair drops only its farther pixel
+	int gradientCullRadius= 2;        // with gradientCullKeepsNear, pixels this far from a near edge are dropped too
+	float minWeight= 0.001f;          // per-pixel weight below which a pixel is skipped
+	size_t maxVoxels= 60000000;       // the voxel grows until the grid fits
 };
 
 // A dense truncated signed distance volume over an axis-aligned box, with
@@ -83,8 +85,13 @@ public:
 
 	// Mark pixels whose depth jumps by more than threshold (relative to the
 	// smaller of the two) against any 4-neighbour. Both pixels of a bad pair
-	// are dropped. outKeep is CV_8UC1, 1 where the pixel survives.
-	static void cullFlyingPixels(const cv::Mat& depthMeters, float threshold, cv::Mat& outKeep);
+	// are dropped, or with bKeepNear only the farther one, which keeps a near
+	// object's outermost silhouette pixels. A keepNearRadius past 1 also drops
+	// every pixel farther than the nearest within that radius by the threshold,
+	// a wider band on the far side of an edge. outKeep is CV_8UC1, 1 where the
+	// pixel survives.
+	static void cullFlyingPixels(const cv::Mat& depthMeters, float threshold, cv::Mat& outKeep, bool bKeepNear= false,
+								 int keepNearRadius= 1);
 
 private:
 	TsdfVolumeConfig m_config;

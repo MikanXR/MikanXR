@@ -240,7 +240,7 @@ void FileVideoSourceComponent::dispose()
 
 void FileVideoSourceComponent::setDefinition(MikanComponentDefinitionPtr definition)
 {
-	MikanComponent::setDefinition(definition);
+	VideoSourceComponent::setDefinition(definition);
 
 	closeVideoSource();
 }

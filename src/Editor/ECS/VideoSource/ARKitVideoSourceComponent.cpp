@@ -167,7 +167,7 @@ void ARKitVideoSourceComponent::dispose()
 
 void ARKitVideoSourceComponent::setDefinition(MikanComponentDefinitionPtr definition)
 {
-	MikanComponent::setDefinition(definition);
+	VideoSourceComponent::setDefinition(definition);
 
 	// Close any open video source that was open
 	closeVideoSource();
@@ -372,6 +372,12 @@ void ARKitVideoSourceComponent::processDirectVideoFrame()
 	const int height= m_lumaTextureWrapper->getTextureHeight();
 	if (width <= 0 || height <= 0)
 		return;
+
+	// A hardware-decoded bundle carries no CPU pixels and so no frame size, which
+	// leaves this pass as the only place the size is known. Without it the source
+	// reports no dimensions at all on this tier.
+	m_lastVideoWidth= width;
+	m_lastVideoHeight= height;
 
 	IMkGraphicsContext* graphicsContext= getGraphicsContext();
 	if (graphicsContext == nullptr)

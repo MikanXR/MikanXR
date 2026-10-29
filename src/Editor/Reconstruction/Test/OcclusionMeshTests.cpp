@@ -354,6 +354,53 @@ bool occlusion_mesh_test_synthetic_take_end_to_end()
 					driftedError * 1000.f, refinedError * 1000.f, result.stats.registrationsAccepted,
 					result.stats.registrationsRejected);
 		}
+
+		// Coverage is one record per output vertex, and an orbit of the box
+		// sees most of what it fused
+		const MeshCoverageResult& coverage= result.coverage;
+		const float areaTotal= coverage.areaGood + coverage.areaWeak + coverage.areaUnseen;
+		const bool bCoverageMatches= coverage.getVertexCount() == result.mesh.vertices.size()
+									 && coverage.support.size() == result.mesh.vertices.size()
+									 && std::fabs(areaTotal - 1.f) < 1e-4f && coverage.areaUnseen < 0.5f
+									 && result.stats.coverageGood == coverage.areaGood;
+		success&= bCoverageMatches;
+		fprintf(stdout, "    coverage by area: %.0f%% good, %.0f%% weak, %.0f%% unseen\n", coverage.areaGood * 100.f,
+				coverage.areaWeak * 100.f, coverage.areaUnseen * 100.f);
+	}
+
+	// A grid capped below what the computed bounds need grows its voxel, and
+	// a box an eighth of that volume keeps the configured voxel
+	if (success)
+	{
+		const glm::ivec3 dims= result.stats.gridDims;
+		const glm::vec3 boundsLo= result.stats.boundsLo;
+		const glm::vec3 boundsHi= result.stats.boundsHi;
+
+		OcclusionMeshBuildSettings cappedSettings= settings;
+		cappedSettings.bFrameToModel= false;
+		cappedSettings.volume.maxVoxels= (size_t)dims.x * dims.y * dims.z / 4;
+		OcclusionMeshBuildResult grown;
+		success&= OcclusionMeshBuilder::build(track, reader, cappedSettings, nullptr, grown);
+		success&= grown.stats.bVoxelGrown && !grown.stats.bBoundsOverridden
+				  && grown.stats.voxelSize > settings.volume.voxelSize;
+
+		OcclusionMeshBuildSettings boxSettings= cappedSettings;
+		const glm::vec3 centre= 0.5f * (boundsLo + boundsHi);
+		const glm::vec3 quarterExtent= 0.25f * (boundsHi - boundsLo);
+		boxSettings.bBoundsOverride= true;
+		boxSettings.boundsOverrideLo= centre - quarterExtent;
+		boxSettings.boundsOverrideHi= centre + quarterExtent;
+		OcclusionMeshBuildResult boxed;
+		OcclusionMeshBuilder::build(track, reader, boxSettings, nullptr, boxed);
+		success&= boxed.stats.bBoundsOverridden && !boxed.stats.bVoxelGrown
+				  && glm::length(boxed.stats.boundsLo - boxSettings.boundsOverrideLo) < 1e-6f
+				  && glm::length(boxed.stats.boundsHi - boxSettings.boundsOverrideHi) < 1e-6f;
+		if (!success)
+		{
+			fprintf(stdout, "    capped grid %.1f cm (grown %d), boxed grid %.1f cm (grown %d, overridden %d)\n",
+					grown.stats.voxelSize * 100.f, grown.stats.bVoxelGrown, boxed.stats.voxelSize * 100.f,
+					boxed.stats.bVoxelGrown, boxed.stats.bBoundsOverridden);
+		}
 	}
 
 	reader.close();

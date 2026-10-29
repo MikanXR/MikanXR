@@ -8,15 +8,20 @@
 #include "OcclusionMeshBuilder.h"
 #include "PoseTrack.h"
 
+#include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/vector_float3.hpp"
+
 #include <atomic>
 #include <condition_variable>
 #include <filesystem>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
 
 class GuiPanel_OcclusionMeshBuild;
+class OcclusionMeshPreview;
 
 /// Fuses a recorded take's LiDAR depth into an occlusion mesh and registers
 /// it as a model stencil placed through the take's solved world-to-stage
@@ -94,13 +99,34 @@ protected:
 
 	bool createStencilFromMesh();
 	bool writeRefinedPoseTrack(std::string& outStoredPath, bool& outReplacedSourceTrack);
+
+	// -- preview --
+	/// Where the mesh's own space, the take's ARKit world, lands in the world:
+	/// the stage's transform after the take's solved pose offset
+	glm::mat4 getMeshToWorld() const;
+	void buildPreview();
+	void releasePreview();
+	bool setPreviewView(eOcclusionMeshPreviewView view);
+	/// Orbit the viewport camera around the mesh, looking the way the take did
+	void frameMesh();
 	void renderMeshPreview();
+	void renderCameraPath();
+	void renderBoundsBox();
+
+	// -- bounds box handles, one per face: axis = handle / 2, high face when odd --
+	glm::vec3 getBoxHandleCenter(int handle) const;
+	float getBoxHandleRadius() const;
+	int pickBoxHandle(const glm::vec3& rayOrigin, const glm::vec3& rayDir) const;
+	void onMouseRayChanged(const glm::vec3& rayOrigin, const glm::vec3& rayDir);
+	void onMouseRayButtonDown(const glm::vec3& rayOrigin, const glm::vec3& rayDir, int button);
+	void onMouseRayButtonUp(const glm::vec3& rayOrigin, const glm::vec3& rayDir, int button);
 
 	// GUI button events
 	void onBuildEvent();
 	void onCancelBuildEvent();
 	void onApplyEvent();
 	void onRedoEvent();
+	void onRebuildInBoxEvent();
 	void onCancelEvent();
 
 private:
@@ -136,4 +162,12 @@ private:
 	bool m_bLastBuildRegistered= false;
 
 	MikanCameraPtr m_mkCamera;
+	std::unique_ptr<OcclusionMeshPreview> m_preview;
+
+	// The box being fitted over the preview, in the take's ARKit world
+	glm::vec3 m_boxLo= glm::vec3(0.f);
+	glm::vec3 m_boxHi= glm::vec3(0.f);
+	int m_hoveredBoxHandle= -1;
+	int m_draggedBoxHandle= -1;
+	float m_dragGrabOffset= 0.f; ///< metres from the dragged face to where the ray grabbed it
 };

@@ -57,11 +57,13 @@ public:
 	// minFacing. Among the views that see it, the one most frontal per metre
 	// of distance wins. A triangle no view sees is tried again under
 	// fallbackMinFacing, and takes the atlas's last tile, flat mid-grey, when
-	// that fails too. outMesh may alias mesh. Returns false when the mesh is
-	// empty or the tiles disagree in size.
+	// that fails too. outMesh may alias mesh. outSourceVertex, when given,
+	// receives for each output vertex the input vertex it was split from, so
+	// per-vertex data of the input can follow the split. Returns false when
+	// the mesh is empty or the tiles disagree in size.
 	static bool textureMesh(const TriangleMesh& mesh, const std::vector<TextureView>& views,
 							const MeshTexturingSettings& settings, TriangleMesh& outMesh, cv::Mat& outAtlas,
-							MeshTexturingStats* outStats= nullptr);
+							MeshTexturingStats* outStats= nullptr, std::vector<uint32_t>* outSourceVertex= nullptr);
 
 	// The triangles one view sees under the rule above, 1 per triangle in
 	// outSeen. Reads only the view's pose, depth intrinsics, and depth, so a
