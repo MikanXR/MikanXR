@@ -354,29 +354,14 @@ public:
 				// Make sure buffer size matches the PBO size
 				assert(bufferSize == m_PBOByteSize);
 
-				int nextPBOIndex= 0;
-
-				if (m_pboMode == PixelBufferObjectMode::SinglePBOWrite)
-				{
-					// In single PBO mode, the index and nextIndex are set to 0
-					m_pboWriteIndex= nextPBOIndex= 0;
-				}
-				else if (m_pboMode == PixelBufferObjectMode::DoublePBOWrite)
-				{
-					// In double PBO mode, increment current index first then get the next index
-					m_pboWriteIndex= (m_pboWriteIndex + 1) % 2;
-					nextPBOIndex= (m_pboWriteIndex + 1) % 2;
-				}
-
-				// Bind the the current PBO to write to the texture
-				glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_glPixelBufferObjectIDs[m_pboWriteIndex]);
-
-				// Copy pixels from PBO to texture object
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_width, m_height, m_bufferFormat, m_pixelType,
-								0); // Treated as offset instead of pointer to pixel data
+				// The texture takes this call's pixels, never the previous call's: callers
+				// stamp a frame index on the texture as they upload, so an upload that lands
+				// a call late puts one frame's pixels under the next frame's index. Two PBOs
+				// alternate so filling one never waits on the transfer still reading the other.
+				m_pboWriteIndex= (m_pboMode == PixelBufferObjectMode::DoublePBOWrite) ? (m_pboWriteIndex + 1) % 2 : 0;
 
 				// Bind PBO to fill in from main memory
-				glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_glPixelBufferObjectIDs[nextPBOIndex]);
+				glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_glPixelBufferObjectIDs[m_pboWriteIndex]);
 
 				// Map the buffer object into system memory
 				// Note that glMapBuffer() causes sync issue.
@@ -393,6 +378,10 @@ public:
 					// update data directly on the mapped buffer
 					std::memcpy(writePointer, buffer, bufferSize);
 					glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+
+					// Copy pixels from PBO to texture object
+					glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_width, m_height, m_bufferFormat, m_pixelType,
+									0); // Treated as offset instead of pointer to pixel data
 				}
 
 				// it is good idea to release PBOs with ID 0 after use.
