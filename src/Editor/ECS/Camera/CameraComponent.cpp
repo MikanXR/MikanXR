@@ -800,6 +800,12 @@ bool CameraComponent::getApertureOffsetXform(glm::mat4& outTrackingMountToApertu
 
 bool CameraComponent::getStageSpaceAperturePose(glm::mat4& outCameraPose) const
 {
+	if (m_bCompositedFramePosePinned)
+	{
+		outCameraPose= m_compositedFramePose_StageSpace;
+		return true;
+	}
+
 	// Compute the aperture pose in stage space
 	glm::mat4 trackingMountPose_StageSpace;
 	glm::mat4 trackingMountToApertureXform;
@@ -832,6 +838,14 @@ bool CameraComponent::getStageSpaceAperturePose(glm::dmat4& outCameraPose) const
 
 	return false;
 }
+
+void CameraComponent::pinCompositedFramePose(const glm::mat4& aperturePose_StageSpace)
+{
+	m_compositedFramePose_StageSpace= aperturePose_StageSpace;
+	m_bCompositedFramePosePinned= true;
+}
+
+void CameraComponent::unpinCompositedFramePose() { m_bCompositedFramePosePinned= false; }
 
 glm::mat4 CameraComponent::getStageToWorldTransform() const
 {

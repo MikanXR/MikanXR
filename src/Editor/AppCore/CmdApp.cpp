@@ -13,6 +13,7 @@
 #include "ARKitDebugProtocolTests.h"
 #include "AutomationProtocolTests.h"
 #include "AutomationVariantTextTests.h"
+#include "CameraFramePoseTests.h"
 #include "CaptureArchiveTests.h"
 #include "ClientApiPropertySchemaTests.h"
 #include "ComponentNamingTests.h"
@@ -88,6 +89,7 @@ bool run_all_editor_unit_tests()
 	success&= run_arkit_debug_protocol_tests();
 	success&= run_automation_protocol_tests();
 	success&= run_automation_variant_text_tests();
+	success&= run_camera_frame_pose_tests();
 	success&= run_capture_archive_tests();
 	success&= run_client_api_property_schema_tests();
 	success&= run_component_naming_tests();

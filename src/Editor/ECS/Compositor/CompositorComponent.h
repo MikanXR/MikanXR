@@ -166,6 +166,9 @@ public:
 	float getRtpOutputFrameRate() const;
 	int64_t getPendingCompositedFrameIndex() const;
 	inline int64_t getLastCompositedFrameIndex() const { return m_lastCompositedFrameIndex; }
+	// The world space aperture pose the last composited frame was drawn from, for a
+	// view drawn over it, false until a frame has been composited
+	bool getCompositedFrameWorldAperturePose(glm::mat4& outCameraPose) const;
 
 	bool hasValidCompositorGraph() const;
 	void addNewCompositorGraph();
@@ -233,8 +236,20 @@ private:
 	// Compositor Rendering
 	IMkTriangulatedMeshPtr m_viewportQuadMesh;
 
-	// Pending queue of camera poses awaiting client render
-	std::queue<MikanCameraNewFrameEvent> m_frameEventQueue;
+	// A frame queued for the clients to render, with the stage space aperture pose
+	// its event was made from, so the compositor's own passes draw it from that pose
+	struct QueuedFrame
+	{
+		MikanCameraNewFrameEvent frameEvent;
+		glm::mat4 aperturePose_StageSpace= glm::mat4(1.f);
+		bool bHasAperturePose= false;
+	};
+
+	// Pending queue of frames awaiting client render
+	std::queue<QueuedFrame> m_frameEventQueue;
+	// The pose the last composited frame was drawn from
+	glm::mat4 m_lastCompositedAperturePose_StageSpace= glm::mat4(1.f);
+	bool m_bHasLastCompositedAperturePose= false;
 
 	// Compositor Node Graph
 	CompositorGraphAssetReferencePtr m_nodeGraphAssetRef;
