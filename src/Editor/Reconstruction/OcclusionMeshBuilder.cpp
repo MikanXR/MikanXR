@@ -496,7 +496,8 @@ bool OcclusionMeshBuilder::measureCoverage(const PoseTrack& track, DepthTrackRea
 				: frame.cameraToWorld;
 		view.cameraToWorld= toOpenCvCameraToWorld(recordedCameraToWorld);
 		view.depthIntrinsics= frameDepthIntrinsics(track, frame);
-		TsdfVolume::cullFlyingPixels(view.depth, settings.volume.gradientCull, view.keep);
+		TsdfVolume::cullFlyingPixels(view.depth, settings.volume.gradientCull, view.keep,
+									 settings.volume.gradientCullKeepsNear, settings.volume.gradientCullRadius);
 		coverage.accumulateView(view);
 	}
 	reportProgress(observer, eOcclusionMeshBuildPhase::coverage, fusedCount, fusedCount);

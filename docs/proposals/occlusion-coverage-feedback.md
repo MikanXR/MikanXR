@@ -30,7 +30,7 @@ Four commits on branch `occlusion-quality-overlay` (pushed to `origin`), on top 
 
 ### As built, where it differs from the parts below
 
-- The fusion's cull is not the "keep near, 2 px far band" rule an earlier draft of this proposal named. That rule does not exist in the code. The fusion drops a pixel whose depth jumps by more than 8 percent against a 4-neighbour (`TsdfVolume::cullFlyingPixels`, `gradientCull`), and the coverage pass applies exactly that, plus the fusion's depth range.
+- The fusion's cull is the silhouette cull (`TsdfVolume::cullFlyingPixels` with `gradientCull`, `gradientCullKeepsNear`, `gradientCullRadius`): at a depth jump of more than 8 percent against a 4-neighbour the near pixel is kept, and every pixel farther than the nearest depth within 2 pixels is dropped. The coverage pass applies exactly that, plus the fusion's depth range. The rule arrived from `occlusion-upsample` after the coverage pass was built, which had applied the older cull that dropped both pixels of a pair.
 
 - A frame whose camera lies on the far side of the vertex's surface (cosine between the normal and the direction to the camera at or below 0) counts as neither support nor carve. The metric section now says so. The parity check needs `tools/surface_coverage.py` to apply the same rule.
 
