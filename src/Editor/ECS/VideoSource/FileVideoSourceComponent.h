@@ -132,6 +132,9 @@ public:
 	void stop();
 	// Clamp into the movie and show the frame at that time, in any state
 	void seekTo(double timeSeconds);
+	// Show the frame frameDelta frame periods after (or before, when negative) the
+	// one on screen, and hold it there paused
+	void stepFrame(int frameDelta);
 
 	// -- IFrameCoupledPoseProvider ----
 	virtual void setPoseOffset(const glm::mat4& worldToStageXform) override;
@@ -161,6 +164,8 @@ public:
 	static const std::string k_playFunctionId;
 	static const std::string k_pauseFunctionId;
 	static const std::string k_stopFunctionId;
+	static const std::string k_stepBackFunctionId;
+	static const std::string k_stepForwardFunctionId;
 	static const std::string k_buildOcclusionMeshFunctionId;
 	static void getFunctionDescriptors(std::vector<FunctionDescriptorConstPtr>& outDescriptors);
 	virtual bool invokeFunction(const std::string& functionName) override;

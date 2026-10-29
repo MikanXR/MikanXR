@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1166,
-		"translatedCount": 1166,
-		"reviewedCount": 1166
+		"stringCount": 1168,
+		"translatedCount": 1168,
+		"reviewedCount": 1168
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -317,6 +317,8 @@
 		"show_compositor_output": "Show Compositor Output",
 		"show_texture_source_settings": "Show Texture Source Settings",
 		"show_video_source_settings": "Show Video Source Settings",
+		"step_back": "Step Back",
+		"step_forward": "Step Forward",
 		"stop": "Stop",
 		"stop_sequence": "Stop",
 		"test_intrinsics": "Test Intrinsics",

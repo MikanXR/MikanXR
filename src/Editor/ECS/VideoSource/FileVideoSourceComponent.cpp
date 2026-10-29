@@ -209,6 +209,8 @@ const std::string FileVideoSourceComponent::k_durationSecondsPropertyId= "durati
 const std::string FileVideoSourceComponent::k_playFunctionId= "play";
 const std::string FileVideoSourceComponent::k_pauseFunctionId= "pause";
 const std::string FileVideoSourceComponent::k_stopFunctionId= "stop";
+const std::string FileVideoSourceComponent::k_stepBackFunctionId= "step_back";
+const std::string FileVideoSourceComponent::k_stepForwardFunctionId= "step_forward";
 const std::string FileVideoSourceComponent::k_buildOcclusionMeshFunctionId= "build_occlusion_mesh";
 
 FileVideoSourceComponent::FileVideoSourceComponent(MikanObjectWeakPtr owner)
@@ -969,6 +971,20 @@ void FileVideoSourceComponent::seekTo(double timeSeconds)
 		requestSeek(m_playbackTime);
 }
 
+void FileVideoSourceComponent::stepFrame(int frameDelta)
+{
+	// A step holds the frame it lands on, so stopped or playing it becomes paused
+	m_playbackState= eFilePlaybackState::paused;
+	if (!m_bIsOpen || m_bIsStill || !(m_fps > 0.0) || frameDelta == 0)
+		return;
+
+	// From the frame on screen rather than the clock, which runs ahead of it while
+	// the next frame decodes. The seek rounds to the nearest frame, so a whole
+	// frame period lands on the neighbouring frame, and the frame arrives with
+	// its own pose.
+	seekTo((double)m_currentPtsUs / 1000000.0 + (double)frameDelta / m_fps);
+}
+
 // -- Pose tracks ----
 // A trackcamera publishes the poses of its movie track, or of the override, and
 // the poses of its marker track while the reference is active. A still kind is
@@ -1291,6 +1307,8 @@ void FileVideoSourceComponent::getFunctionDescriptors(std::vector<FunctionDescri
 	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_playFunctionId, "Play"));
 	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_pauseFunctionId, "Pause"));
 	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_stopFunctionId, "Stop"));
+	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_stepBackFunctionId, "Step Back"));
+	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_stepForwardFunctionId, "Step Forward"));
 	outDescriptors.push_back(
 		std::make_shared<FunctionDescriptor>(k_buildOcclusionMeshFunctionId, "Build Occlusion Mesh"));
 }
@@ -1310,6 +1328,16 @@ bool FileVideoSourceComponent::invokeFunction(const std::string& functionName)
 	else if (functionName == k_stopFunctionId)
 	{
 		stop();
+		return true;
+	}
+	else if (functionName == k_stepBackFunctionId)
+	{
+		stepFrame(-1);
+		return true;
+	}
+	else if (functionName == k_stepForwardFunctionId)
+	{
+		stepFrame(1);
 		return true;
 	}
 	else if (functionName == k_buildOcclusionMeshFunctionId)

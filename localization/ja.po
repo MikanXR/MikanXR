@@ -1693,6 +1693,16 @@ msgid "Show Video Source Settings"
 msgstr "映像ソース設定を表示"
 
 #. Section: functions
+msgctxt "functions.step_back"
+msgid "Step Back"
+msgstr ""
+
+#. Section: functions
+msgctxt "functions.step_forward"
+msgid "Step Forward"
+msgstr ""
+
+#. Section: functions
 msgctxt "functions.stop"
 msgid "Stop"
 msgstr ""

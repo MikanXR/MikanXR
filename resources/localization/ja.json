@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1166,
+		"stringCount": 1168,
 		"translatedCount": 900,
 		"reviewedCount": 0
 	},
@@ -317,6 +317,8 @@
 		"show_compositor_output": "コンポジター出力を表示",
 		"show_texture_source_settings": "テクスチャソース設定を表示",
 		"show_video_source_settings": "映像ソース設定を表示",
+		"step_back": "Step Back",
+		"step_forward": "Step Forward",
 		"stop": "Stop",
 		"stop_sequence": "停止",
 		"test_intrinsics": "内部パラメーターをテスト",

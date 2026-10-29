@@ -85,6 +85,8 @@ void GuiPanel_FileVideoSourceComponent::drawCompactGui()
 		FileVideoSourceComponent::k_playFunctionId,
 		FileVideoSourceComponent::k_pauseFunctionId,
 		FileVideoSourceComponent::k_stopFunctionId,
+		FileVideoSourceComponent::k_stepBackFunctionId,
+		FileVideoSourceComponent::k_stepForwardFunctionId,
 		FileVideoSourceComponent::k_showVideoSourceSettingsFunctionId,
 		FileVideoSourceComponent::k_buildOcclusionMeshFunctionId,
 	};

@@ -177,7 +177,7 @@ bool file_video_source_test_definition_round_trip()
 
 bool file_video_source_test_playback_controls()
 {
-	UNIT_TEST_BEGIN("play, pause, stop, and seek move the playback state without media")
+	UNIT_TEST_BEGIN("play, pause, stop, seek, and step move the playback state without media")
 
 	auto component= std::make_shared<FileVideoSourceComponent>(MikanObjectWeakPtr());
 	component->setDefinition(std::make_shared<FileVideoSourceDefinition>());
@@ -215,6 +215,19 @@ bool file_video_source_test_playback_controls()
 	component->seekTo(5.0);
 	success&= (component->getPlaybackTime() == 0.f);
 	assert(success);
+
+	// A step holds the frame it lands on, from stopped as from playing, and with no
+	// media it moves nothing
+	component->stepFrame(1);
+	success&= (component->getPlaybackState() == eFilePlaybackState::paused);
+	assert(success);
+	component->play();
+	component->stepFrame(-1);
+	success&= (component->getPlaybackState() == eFilePlaybackState::paused);
+	assert(success);
+	success&= (component->getPlaybackTime() == 0.f);
+	assert(success);
+	component->stop();
 
 	// The stream reports stopped until a consumer asks for it
 	success&= (component->getVideoStreamingStatus() == eVideoStreamingStatus::stopped);
