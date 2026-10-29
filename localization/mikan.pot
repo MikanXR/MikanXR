@@ -3347,16 +3347,6 @@ msgid "Frame Mesh"
 msgstr ""
 
 #. Section: occlusionMeshBuild
-msgctxt "occlusionMeshBuild.frameToModel"
-msgid "Refine poses against the model"
-msgstr ""
-
-#. Section: occlusionMeshBuild
-msgctxt "occlusionMeshBuild.frameToModelHelp"
-msgid "Registers each frame to the mesh built so far before fusing it, which removes the drift that accumulates along a sweep."
-msgstr ""
-
-#. Section: occlusionMeshBuild
 #, c-format
 msgctxt "occlusionMeshBuild.framesFusedFmt"
 msgid "%d of %d keyframes fused in %.0f s"
@@ -3501,29 +3491,6 @@ msgstr ""
 #. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.redo"
 msgid "Rebuild"
-msgstr ""
-
-#. Section: occlusionMeshBuild
-#, c-format
-msgctxt "occlusionMeshBuild.refinedTrackWriteFailedFmt"
-msgid "Failed to write the refined pose track to %s."
-msgstr ""
-
-#. Section: occlusionMeshBuild
-#, c-format
-msgctxt "occlusionMeshBuild.refinedTrackWrittenFmt"
-msgid "Refined pose track written to %s. The video source keeps playing the recorded track."
-msgstr ""
-
-#. Section: occlusionMeshBuild
-msgctxt "occlusionMeshBuild.registrationOff"
-msgid "Poses were used as recorded."
-msgstr ""
-
-#. Section: occlusionMeshBuild
-#, c-format
-msgctxt "occlusionMeshBuild.registrationSummaryFmt"
-msgid "Registration: %d accepted, %d rejected. Step %.1f mm, %.2f deg. Residual %.1f to %.1f mm. Final correction %.0f mm, %.2f deg."
 msgstr ""
 
 #. Section: occlusionMeshBuild

@@ -27,7 +27,6 @@
 #include "DMXUniverseRLETests.h"
 #include "FileVideoSourceTests.h"
 #include "FrameCoupledAlignmentTests.h"
-#include "FrameRegistrationTests.h"
 #include "GlbMeshWriterTests.h"
 #include "HttpServerTests.h"
 #include "JsonRpcServerTests.h"
@@ -104,7 +103,6 @@ bool run_all_editor_unit_tests()
 	success&= run_dmx_universe_rle_tests();
 	success&= run_file_video_source_tests();
 	success&= run_frame_coupled_alignment_tests();
-	success&= run_frame_registration_unit_tests();
 	success&= run_glb_mesh_writer_tests();
 	success&= run_http_server_tests();
 	success&= run_jsonrpc_server_tests();
@@ -253,15 +251,15 @@ void CmdApp::printUsage() const
 			"               [-stride=<n>] [-maxDepth=<metres>] [-cpu]\n"
 			"               Generate a camera-space depth proxy mesh from a single frame\n"
 			"               and write it as an OBJ.\n"
-			"  -occlusionMesh -take=<path to take.trackcamera> [-glb=<path>] [-refinedTrack=<path>]\n"
-			"               [-voxel=<metres>] [-stride=<n>] [-noRegistration]\n"
+			"  -occlusionMesh -take=<path to take.trackcamera> [-glb=<path>]\n"
+			"               [-voxel=<metres>] [-stride=<n>]\n"
 			"               [-pathRadius=<metres>] [-noTexture] [-textureViews=<n>]\n"
 			"               [-bounds=<lo.x,lo.y,lo.z,hi.x,hi.y,hi.z>] [-coverage=<dir>]\n"
 			"               [-gradientCull=<relative jump, 0 for off>] [-cullSymmetric] [-cullRadius=<pixels>]\n"
 			"               Fuse a trackcamera capture's LiDAR depth tracks into an occlusion\n"
-			"               mesh in the take's ARKit world space, refining the poses against\n"
-			"               the model, trimmed to the camera path and textured from the video,\n"
-			"               and write it as a glTF binary with its atlas plus a refined pose track.\n"
+			"               mesh in the take's ARKit world space at its recorded poses, trimmed\n"
+			"               to the camera path and textured from the video, and write it as a\n"
+			"               glTF binary with its atlas.\n"
 			"               -bounds fuses inside that box instead of the computed bounds, and\n"
 			"               -coverage writes the per-vertex coverage measures as .npy files.\n"
 			"  -fetchModels [-model=<name>]\n"
@@ -780,7 +778,6 @@ int CmdApp::buildOcclusionMesh() const
 		settings.volume.gradientCullRadius= std::max(atoi(cullRadiusArg.c_str()), 1);
 	}
 	settings.keyframeStride= atoi(getCommandLineStringArg("stride", "3").c_str());
-	settings.bFrameToModel= !hasCommandLineFlag("noRegistration");
 	settings.cameraPathRadius= std::max((float)atof(getCommandLineStringArg("pathRadius", "2").c_str()), 0.f);
 	settings.bTexture= !hasCommandLineFlag("noTexture");
 	settings.textureViews= std::max(atoi(getCommandLineStringArg("textureViews", "16").c_str()), 1);
@@ -798,9 +795,8 @@ int CmdApp::buildOcclusionMesh() const
 		settings.boundsOverrideHi= glm::vec3(box[3], box[4], box[5]);
 	}
 
-	fprintf(stdout, "take   : %zu frames, depth %dx%d, registration %s, trim %.1f m, texture %s\n",
-			track.getFrameCount(), track.getDepthWidth(), track.getDepthHeight(), settings.bFrameToModel ? "on" : "off",
-			settings.cameraPathRadius, settings.bTexture ? "on" : "off");
+	fprintf(stdout, "take   : %zu frames, depth %dx%d, trim %.1f m, texture %s\n", track.getFrameCount(),
+			track.getDepthWidth(), track.getDepthHeight(), settings.cameraPathRadius, settings.bTexture ? "on" : "off");
 	fprintf(stdout, "volume : %.1f cm voxels, cull %.2f%s, radius %d\n", settings.volume.voxelSize * 100.f,
 			settings.volume.gradientCull, settings.volume.gradientCullKeepsNear ? " keeping the near pixel" : "",
 			settings.volume.gradientCullRadius);
@@ -841,15 +837,6 @@ int CmdApp::buildOcclusionMesh() const
 		fprintf(stdout, "texture: %d of %d video frames used, %dx%d atlas, %d triangles unseen\n",
 				stats.textureViewsUsed, stats.textureViews, stats.atlasWidth, stats.atlasHeight,
 				stats.trianglesUntextured);
-	}
-	if (result.bHasRefinedPoses)
-	{
-		fprintf(stdout,
-				"poses  : %d accepted, %d rejected, step %.1f mm %.2f deg, rms %.1f -> %.1f mm, "
-				"final correction %.0f mm %.2f deg\n",
-				stats.registrationsAccepted, stats.registrationsRejected, stats.meanStepTranslationMm,
-				stats.meanStepRotationDeg, stats.meanRmsBeforeMm, stats.meanRmsAfterMm, stats.finalCorrectionMm,
-				stats.finalCorrectionDeg);
 	}
 
 	const std::filesystem::path glbPath= getCommandLineStringArg("glb", "occlusion_mesh.glb");
@@ -903,35 +890,6 @@ int CmdApp::buildOcclusionMesh() const
 		}
 		fprintf(stdout, "wrote  : %s (coverage, %zu vertices)\n", coverageDir.string().c_str(),
 				coverage.getVertexCount());
-	}
-
-	if (result.bHasRefinedPoses)
-	{
-		const std::string refinedArg= getCommandLineStringArg("refinedTrack");
-		const std::filesystem::path refinedPath=
-			refinedArg.empty() ? mediaPath.parent_path() / (mediaPath.stem().string() + ".refined.pose.json")
-							   : std::filesystem::path(refinedArg);
-
-		// File order, so record i of the depth tracks still describes frame i
-		std::vector<size_t> trackOrder(track.getFrameCount());
-		std::iota(trackOrder.begin(), trackOrder.end(), (size_t)0);
-		std::sort(trackOrder.begin(), trackOrder.end(),
-				  [&](size_t a, size_t b) { return track.getFrame(a).fileIndex < track.getFrame(b).fileIndex; });
-
-		PoseTrackWriter writer(track.getSessionId(), track.getImageWidth(), track.getImageHeight());
-		writer.setDepthTrack(track.getDepthWidth(), track.getDepthHeight(), track.getDepthUnitMm());
-		for (size_t trackIndex : trackOrder)
-		{
-			const PoseTrackFrame& frame= track.getFrame(trackIndex);
-			writer.append(frame.timeUs, frame.captureTimestampUs, result.refinedCameraToWorld[frame.fileIndex],
-						  frame.fx, frame.fy, frame.cx, frame.cy);
-		}
-		if (!writer.writeToFile(refinedPath))
-		{
-			fprintf(stdout, "error: failed to write '%s'\n", refinedPath.string().c_str());
-			return EXIT_FAILURE;
-		}
-		fprintf(stdout, "wrote  : %s\n", refinedPath.string().c_str());
 	}
 
 	return EXIT_SUCCESS;

@@ -17,7 +17,7 @@
 #include <filesystem>
 #include <fstream>
 #include <limits>
-#include <random>
+#include <system_error>
 #include <vector>
 
 namespace OcclusionMeshTestsInternal
@@ -136,8 +136,48 @@ void appendLittleEndianRecord(std::vector<uint8_t>& depthBytes, std::vector<uint
 		confidenceBytes.push_back(meters > 0.f ? 2 : 0);
 	}
 }
+// Packs the two depth tracks into a trackcamera capture with a placeholder
+// movie and a one-frame track, and returns the two members' table entries
+bool writeDepthCapture(const std::filesystem::path& capturePath, const std::vector<uint8_t>& depthBytes,
+					   const std::vector<uint8_t>& confidenceBytes, CaptureArchiveMember& outDepthMember,
+					   CaptureArchiveMember& outConfidenceMember)
+{
+	CaptureManifest manifest;
+	manifest.kind= eCaptureKind::trackcamera;
+	manifest.sessionId= "session-depth";
+	manifest.poseSpace= eCapturePoseSpace::arkit_world;
+	manifest.members[eCaptureMemberRole::movie]= "movie.mp4";
+	manifest.members[eCaptureMemberRole::movie_pose]= "movie.pose.json";
+	manifest.members[eCaptureMemberRole::depth]= "movie.depth.bin";
+	manifest.members[eCaptureMemberRole::confidence]= "movie.conf.bin";
 
-float translationError(const glm::mat4& a, const glm::mat4& b) { return glm::length(glm::vec3(a[3] - b[3])); }
+	PoseTrackWriter trackWriter("session-depth", 8, 6);
+	trackWriter.append(0, 0, glm::mat4(1.f), 4.0, 4.0, 4.0, 3.0);
+	const std::string trackJson= configuru::dump_string(trackWriter.toConfig(), configuru::JSON);
+	const std::string moviePlaceholder= "not a movie";
+
+	std::string error;
+	CaptureArchiveWriter archive;
+	bool bOk= archive.open(capturePath, manifest, error);
+	bOk&= archive.addMemberFromMemory("movie.mp4", moviePlaceholder.data(), moviePlaceholder.size(), error);
+	bOk&= archive.addMemberFromMemory("movie.pose.json", trackJson.data(), trackJson.size(), error);
+	bOk&= archive.addMemberFromMemory("movie.depth.bin", depthBytes.data(), depthBytes.size(), error);
+	bOk&= archive.addMemberFromMemory("movie.conf.bin", confidenceBytes.data(), confidenceBytes.size(), error);
+	bOk&= archive.finish(error);
+	if (!bOk)
+		return false;
+
+	CaptureArchiveReader reader;
+	if (!reader.open(capturePath, error))
+		return false;
+	const CaptureArchiveMember* depthMember= reader.findMember("movie.depth.bin");
+	const CaptureArchiveMember* confidenceMember= reader.findMember("movie.conf.bin");
+	if (depthMember == nullptr || confidenceMember == nullptr)
+		return false;
+	outDepthMember= *depthMember;
+	outConfidenceMember= *confidenceMember;
+	return true;
+}
 } // namespace OcclusionMeshTestsInternal
 
 bool run_occlusion_mesh_unit_tests()
@@ -146,6 +186,7 @@ bool run_occlusion_mesh_unit_tests()
 	UNIT_TEST_MODULE_CALL_TEST(occlusion_mesh_test_pose_track_keeps_file_index);
 	UNIT_TEST_MODULE_CALL_TEST(occlusion_mesh_test_camera_axis_conversion);
 	UNIT_TEST_MODULE_CALL_TEST(occlusion_mesh_test_synthetic_take_end_to_end);
+	UNIT_TEST_MODULE_CALL_TEST(occlusion_mesh_test_depth_track_reader);
 	UNIT_TEST_MODULE_END()
 }
 
@@ -205,31 +246,22 @@ bool occlusion_mesh_test_camera_axis_conversion()
 
 bool occlusion_mesh_test_synthetic_take_end_to_end()
 {
-	UNIT_TEST_BEGIN("a synthetic take fuses to its surfaces and the refined poses beat the drifted track")
+	UNIT_TEST_BEGIN("a synthetic take fuses to its surfaces through a scrambled file order")
 	using namespace OcclusionMeshTestsInternal;
 
 	const std::filesystem::path directory= std::filesystem::temp_directory_path() / "MikanOcclusionMeshTests";
 	std::filesystem::create_directories(directory);
 	const std::filesystem::path capturePath= directory / "take.trackcamera";
 
-	// Truth: an orbit around the box at about 2 m. Each frame's recorded
-	// pose drifts from the truth by a random walk of a couple of
-	// millimetres per frame, which is what the registration has to undo.
+	// An orbit around the box at about 2 m
 	constexpr int k_frameCount= 24;
 	std::vector<glm::mat4> truthCv(k_frameCount);
-	std::vector<glm::mat4> driftedCv(k_frameCount);
-	std::mt19937 rng(7);
-	std::normal_distribution<float> step(0.f, 0.002f);
-	glm::vec3 drift(0.f);
 	const glm::vec3 target(0.f, -0.6f, 1.55f);
 	for (int frame= 0; frame < k_frameCount; ++frame)
 	{
 		const float angle= -0.6f + 1.2f * (float)frame / (float)(k_frameCount - 1);
 		const glm::vec3 eye= target + glm::vec3(2.f * std::sin(angle), 1.1f, -2.f * std::cos(angle));
 		truthCv[frame]= cvLookAt(eye, target);
-		drift+= glm::vec3(step(rng), step(rng), step(rng));
-		driftedCv[frame]= truthCv[frame];
-		driftedCv[frame][3]+= glm::vec4(drift, 0.f);
 	}
 
 	// The track is written in a scrambled file order so the file index has
@@ -248,7 +280,7 @@ bool occlusion_mesh_test_synthetic_take_end_to_end()
 	{
 		const int frame= fileOrder[fileIndex];
 		// The recorded pose is in the track's own camera convention
-		const glm::mat4 recorded= OcclusionMeshBuilder::toOpenCvCameraToWorld(driftedCv[frame]);
+		const glm::mat4 recorded= OcclusionMeshBuilder::toOpenCvCameraToWorld(truthCv[frame]);
 		writer.append((int64_t)frame * 33333, 1000000000 + (int64_t)frame * 33333, recorded, colour.fx, colour.fy,
 					  colour.cx, colour.cy);
 		renderScene(truthCv[frame], depth);
@@ -307,8 +339,6 @@ bool occlusion_mesh_test_synthetic_take_end_to_end()
 	settings.volume.truncation= 0.08f;
 	settings.keyframeStride= 1;
 	settings.minComponentTriangles= 50;
-	settings.warmupFrames= 2;
-	settings.registration.minCorrespondences= 300;
 	OcclusionMeshBuildResult result;
 	if (success)
 	{
@@ -333,28 +363,6 @@ bool occlusion_mesh_test_synthetic_take_end_to_end()
 			fprintf(stdout, "    %zu triangles, %.1f%% of vertices off the surfaces\n", result.mesh.getTriangleCount(),
 					farFraction * 100.f);
 
-		// The refined poses are indexed by file index and closer to the truth
-		success&= result.bHasRefinedPoses && result.refinedCameraToWorld.size() == k_frameCount;
-		if (success)
-		{
-			float driftedError= 0.f;
-			float refinedError= 0.f;
-			for (int fileIndex= 0; fileIndex < k_frameCount; ++fileIndex)
-			{
-				const int frame= fileOrder[fileIndex];
-				const glm::mat4 truthRecorded= OcclusionMeshBuilder::toOpenCvCameraToWorld(truthCv[frame]);
-				const glm::mat4 driftedRecorded= OcclusionMeshBuilder::toOpenCvCameraToWorld(driftedCv[frame]);
-				driftedError+= translationError(driftedRecorded, truthRecorded);
-				refinedError+= translationError(result.refinedCameraToWorld[fileIndex], truthRecorded);
-			}
-			driftedError/= k_frameCount;
-			refinedError/= k_frameCount;
-			success&= refinedError < driftedError * 0.6f;
-			fprintf(stdout, "    mean position error: drifted %.1f mm, refined %.1f mm (%d accepted, %d rejected)\n",
-					driftedError * 1000.f, refinedError * 1000.f, result.stats.registrationsAccepted,
-					result.stats.registrationsRejected);
-		}
-
 		// Coverage is one record per output vertex, and an orbit of the box
 		// sees most of what it fused
 		const MeshCoverageResult& coverage= result.coverage;
@@ -377,7 +385,6 @@ bool occlusion_mesh_test_synthetic_take_end_to_end()
 		const glm::vec3 boundsHi= result.stats.boundsHi;
 
 		OcclusionMeshBuildSettings cappedSettings= settings;
-		cappedSettings.bFrameToModel= false;
 		cappedSettings.volume.maxVoxels= (size_t)dims.x * dims.y * dims.z / 4;
 		OcclusionMeshBuildResult grown;
 		success&= OcclusionMeshBuilder::build(track, reader, cappedSettings, nullptr, grown);
@@ -407,6 +414,134 @@ bool occlusion_mesh_test_synthetic_take_end_to_end()
 	capture.close();
 	std::error_code ec;
 	std::filesystem::remove_all(directory, ec);
+
+	UNIT_TEST_COMPLETE()
+}
+
+bool occlusion_mesh_test_depth_track_reader()
+{
+	UNIT_TEST_BEGIN("depth track reader round trip")
+
+	const std::filesystem::path folder= std::filesystem::temp_directory_path() / "MikanDepthTrackReaderTests";
+	std::error_code error;
+	std::filesystem::remove_all(folder, error);
+	std::filesystem::create_directories(folder, error);
+
+	const int width= 4;
+	const int height= 3;
+	const int pixelCount= width * height;
+	const int recordCount= 2;
+
+	// Values above 255 exercise the byte order, and a zero must stay zero
+	auto depthValue= [](int record, int pixel) -> uint16_t
+	{ return pixel == 5 ? (uint16_t)0 : (uint16_t)(1000 * record + 300 * pixel + 7); };
+	auto confidenceValue= [](int record, int pixel) -> uint8_t { return (uint8_t)((record + pixel) % 3); };
+
+	std::vector<uint8_t> depthBytes;
+	std::vector<uint8_t> confidenceBytes;
+	for (int record= 0; record < recordCount; ++record)
+	{
+		for (int pixel= 0; pixel < pixelCount; ++pixel)
+		{
+			const uint16_t value= depthValue(record, pixel);
+			depthBytes.push_back((uint8_t)(value & 0xFF));
+			depthBytes.push_back((uint8_t)(value >> 8));
+			confidenceBytes.push_back(confidenceValue(record, pixel));
+		}
+	}
+
+	const std::filesystem::path capturePath= folder / "take.trackcamera";
+	CaptureArchiveMember depthMember;
+	CaptureArchiveMember confidenceMember;
+	if (!OcclusionMeshTestsInternal::writeDepthCapture(capturePath, depthBytes, confidenceBytes, depthMember,
+													   confidenceMember))
+	{
+		fprintf(stdout, "    packing the depth capture failed\n");
+		success= false;
+	}
+
+	{
+		DepthTrackReader reader;
+		if (!reader.open(capturePath, depthMember, confidenceMember, width, height, 2.0, recordCount))
+		{
+			fprintf(stdout, "    open failed on well-formed depth members\n");
+			success= false;
+		}
+		else
+		{
+			cv::Mat depth;
+			cv::Mat confidence;
+			if (!reader.readRecord(1, depth, confidence))
+			{
+				fprintf(stdout, "    reading record 1 failed\n");
+				success= false;
+			}
+			else if (depth.type() != CV_32FC1 || confidence.type() != CV_8UC1 || depth.rows != height
+					 || depth.cols != width || confidence.rows != height || confidence.cols != width)
+			{
+				fprintf(stdout, "    record 1 came back with the wrong type or size\n");
+				success= false;
+			}
+			else
+			{
+				cv::Mat weight;
+				DepthTrackReader::confidenceToWeight(confidence, weight);
+
+				for (int pixel= 0; pixel < pixelCount; ++pixel)
+				{
+					const int y= pixel / width;
+					const int x= pixel % width;
+					const float expectedDepth= (float)(depthValue(1, pixel) * 0.002);
+					const uint8_t expectedConfidence= confidenceValue(1, pixel);
+					const float expectedWeight= 0.5f * (float)expectedConfidence;
+					if (std::fabs(depth.at<float>(y, x) - expectedDepth) > 1e-6f
+						|| confidence.at<uint8_t>(y, x) != expectedConfidence
+						|| std::fabs(weight.at<float>(y, x) - expectedWeight) > 1e-6f)
+					{
+						fprintf(stdout, "    pixel %d: depth %.6f (expected %.6f), confidence %d (expected %d)\n",
+								pixel, depth.at<float>(y, x), expectedDepth, (int)confidence.at<uint8_t>(y, x),
+								(int)expectedConfidence);
+						success= false;
+					}
+				}
+			}
+
+			if (reader.readRecord(2, depth, confidence))
+			{
+				fprintf(stdout, "    reading past the last record succeeded\n");
+				success= false;
+			}
+			reader.close();
+		}
+
+		// More records than the members hold
+		if (reader.open(capturePath, depthMember, confidenceMember, width, height, 2.0, recordCount + 1))
+		{
+			fprintf(stdout, "    open accepted a record count larger than the members\n");
+			success= false;
+			reader.close();
+		}
+
+		// A confidence member one byte short
+		std::vector<uint8_t> shortConfidence(confidenceBytes.begin(), confidenceBytes.end() - 1);
+		const std::filesystem::path shortPath= folder / "short.trackcamera";
+		CaptureArchiveMember shortDepthMember;
+		CaptureArchiveMember shortConfidenceMember;
+		if (!OcclusionMeshTestsInternal::writeDepthCapture(shortPath, depthBytes, shortConfidence, shortDepthMember,
+														   shortConfidenceMember))
+		{
+			fprintf(stdout, "    packing the truncated depth capture failed\n");
+			success= false;
+		}
+		else if (reader.open(shortPath, shortDepthMember, shortConfidenceMember, width, height, 2.0, recordCount))
+		{
+			fprintf(stdout, "    open accepted a truncated confidence member\n");
+			success= false;
+			reader.close();
+		}
+	}
+
+	std::filesystem::remove_all(folder, error);
 
 	UNIT_TEST_COMPLETE()
 }

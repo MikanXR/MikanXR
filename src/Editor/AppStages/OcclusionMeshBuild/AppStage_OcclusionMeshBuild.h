@@ -25,8 +25,8 @@ class OcclusionMeshPreview;
 
 /// Fuses a recorded take's LiDAR depth into an occlusion mesh and registers
 /// it as a model stencil placed through the take's solved world-to-stage
-/// offset. The take's recorded poses are refined against the model as it is
-/// fused and written back as a second pose track beside the take.
+/// offset. The take is fused at its recorded poses, so the mesh stays in
+/// register with the camera that plays it.
 class AppStage_OcclusionMeshBuild : public AppStage
 {
 public:
@@ -98,7 +98,6 @@ protected:
 	void consumeBuildOutput();
 
 	bool createStencilFromMesh();
-	bool writeRefinedPoseTrack(std::string& outStoredPath);
 
 	// -- preview --
 	/// Where the mesh's own space, the take's ARKit world, lands in the world:
@@ -159,7 +158,6 @@ private:
 
 	OcclusionMeshBuildResult m_result;
 	bool m_bHasResult= false;
-	bool m_bLastBuildRegistered= false;
 
 	MikanCameraPtr m_mkCamera;
 	std::unique_ptr<OcclusionMeshPreview> m_preview;

@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1168,
-		"translatedCount": 1168,
-		"reviewedCount": 1168
+		"stringCount": 1162,
+		"translatedCount": 1162,
+		"reviewedCount": 1162
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -715,8 +715,6 @@
 		"depthTracksUnreadable": "The capture's depth tracks do not match the pose track (see the log).",
 		"elapsedSecondsFmt": "Elapsed: %.0f s",
 		"frameMesh": "Frame Mesh",
-		"frameToModel": "Refine poses against the model",
-		"frameToModelHelp": "Registers each frame to the mesh built so far before fusing it, which removes the drift that accumulates along a sweep.",
 		"framesFusedFmt": "%d of %d keyframes fused in %.0f s",
 		"keyframeStride": "Fuse every nth frame",
 		"meshSummaryFmt": "%d triangles (%d island triangles removed), grid %dx%dx%d at %.1f cm",
@@ -745,10 +743,6 @@
 		"rampLegendFmt": "Red at %s to green at %s. Grey where the measure has no value.",
 		"rebuildWithBox": "Rebuild In Box",
 		"redo": "Rebuild",
-		"refinedTrackWriteFailedFmt": "Failed to write the refined pose track to %s.",
-		"refinedTrackWrittenFmt": "Refined pose track written to %s. The video source keeps playing the recorded track.",
-		"registrationOff": "Poses were used as recorded.",
-		"registrationSummaryFmt": "Registration: %d accepted, %d rejected. Step %.1f mm, %.2f deg. Residual %.1f to %.1f mm. Final correction %.0f mm, %.2f deg.",
 		"retry": "Retry",
 		"stencilCreateFailed": "Failed to create the stencil.",
 		"stencilCreatedFmt": "Created occlusion mesh stencil '%s' under the active scene.",

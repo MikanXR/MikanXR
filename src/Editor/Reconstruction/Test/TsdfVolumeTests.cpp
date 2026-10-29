@@ -667,105 +667,6 @@ bool tsdf_volume_test_sample_rim_is_unobserved()
 	UNIT_TEST_COMPLETE()
 }
 
-// Ray casting the fused plane from a new pose: hits on the plane with the
-// plane's normal well inside the grid, no hits where the rays leave it.
-bool tsdf_volume_test_raycast_plane()
-{
-	UNIT_TEST_BEGIN("raycast of a fused plane matches the plane")
-
-	using namespace TsdfVolumeTestsInternal;
-
-	const TsdfVolume volume= buildFusedPlaneVolume();
-	const PinholeIntrinsics intrinsics= makeIntrinsics();
-	const glm::mat4 pose=
-		lookAtOpenCV(glm::vec3(0.05f, 0.02f, 0.1f), glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 1.f, 0.f));
-	const glm::vec3 eye(pose[3]);
-	const glm::vec3 forward(pose[2]);
-
-	ModelMap modelMap;
-	volume.raycast(intrinsics, pose, k_imageWidth, k_imageHeight, 0.5f, 2.f, modelMap);
-	if (modelMap.points.type() != CV_32FC3 || modelMap.normals.type() != CV_32FC3 || modelMap.hit.type() != CV_8UC1
-		|| modelMap.hit.rows != k_imageHeight || modelMap.hit.cols != k_imageWidth)
-	{
-		fprintf(stdout, "    model map images have the wrong type or size\n");
-		success= false;
-	}
-	else
-	{
-		// Inner pixels see the plane at least three voxels inside the grid's
-		// sides, outer pixels see it more than a voxel outside them
-		const float innerX= k_planeBoundsHi.x - 3.f * k_voxelSize;
-		const float innerY= k_planeBoundsHi.y - 3.f * k_voxelSize;
-		const float outerX= k_planeBoundsHi.x + k_voxelSize;
-		const float outerY= k_planeBoundsHi.y + k_voxelSize;
-		const float cosMaxNormalError= std::cos(2.f * k_pi / 180.f);
-
-		int innerPixels= 0;
-		int innerMisses= 0;
-		int depthErrors= 0;
-		int normalErrors= 0;
-		int outerPixels= 0;
-		int outerHits= 0;
-		float maxDepthError= 0.f;
-		for (int v= 0; v < k_imageHeight; ++v)
-		{
-			for (int u= 0; u < k_imageWidth; ++u)
-			{
-				const glm::vec3 direction= pixelRay(intrinsics, pose, u, v);
-				const float trueDepth= (k_planeZ - eye.z) / direction.z;
-				const glm::vec3 truePoint= eye + direction * trueDepth;
-				const bool bHit= modelMap.hit.at<uint8_t>(v, u) != 0;
-
-				if (std::fabs(truePoint.x) <= innerX && std::fabs(truePoint.y) <= innerY)
-				{
-					innerPixels++;
-					if (!bHit)
-					{
-						innerMisses++;
-						continue;
-					}
-
-					const cv::Vec3f& point= modelMap.points.at<cv::Vec3f>(v, u);
-					const cv::Vec3f& normal= modelMap.normals.at<cv::Vec3f>(v, u);
-					const float hitDepth= glm::dot(glm::vec3(point[0], point[1], point[2]) - eye, forward);
-					const float depthError= std::fabs(hitDepth - trueDepth);
-					maxDepthError= std::max(maxDepthError, depthError);
-					if (depthError > 0.003f)
-						depthErrors++;
-					if (-normal[2] < cosMaxNormalError)
-						normalErrors++;
-				}
-				else if (std::fabs(truePoint.x) > outerX || std::fabs(truePoint.y) > outerY)
-				{
-					outerPixels++;
-					if (bHit)
-						outerHits++;
-				}
-			}
-		}
-
-		if (innerPixels < 100 || outerPixels < 100)
-		{
-			fprintf(stdout, "    only %d inner and %d outer pixels, the pose does not exercise both\n", innerPixels,
-					outerPixels);
-			success= false;
-		}
-		if (innerMisses > 0 || depthErrors > 0 || normalErrors > 0)
-		{
-			fprintf(stdout, "    of %d inner pixels: %d missed, %d depth errors (max %.5f m), %d normal errors\n",
-					innerPixels, innerMisses, depthErrors, maxDepthError, normalErrors);
-			success= false;
-		}
-		if (outerHits > 0)
-		{
-			fprintf(stdout, "    %d of %d pixels leaving the observed region reported a hit\n", outerHits, outerPixels);
-			success= false;
-		}
-	}
-
-	UNIT_TEST_COMPLETE()
-}
-
 // A 1000-triangle grid survives the island pass while a separate 20-triangle
 // strip is dropped, and compaction keeps positions and normals together.
 bool tsdf_volume_test_mesh_cleanup_components()
@@ -918,7 +819,6 @@ bool run_tsdf_volume_unit_tests()
 	UNIT_TEST_MODULE_CALL_TEST(tsdf_volume_test_fused_sphere);
 	UNIT_TEST_MODULE_CALL_TEST(tsdf_volume_test_no_back_shell);
 	UNIT_TEST_MODULE_CALL_TEST(tsdf_volume_test_sample_rim_is_unobserved);
-	UNIT_TEST_MODULE_CALL_TEST(tsdf_volume_test_raycast_plane);
 	UNIT_TEST_MODULE_CALL_TEST(tsdf_volume_test_mesh_cleanup_components);
 	UNIT_TEST_MODULE_CALL_TEST(tsdf_volume_test_camera_path_trim);
 	UNIT_TEST_MODULE_END()

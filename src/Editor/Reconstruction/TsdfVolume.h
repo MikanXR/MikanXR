@@ -66,14 +66,6 @@ public:
 	// so the rim of an observed patch never reads as a surface.
 	float sample(const glm::vec3& worldPoint) const;
 
-	// Render the volume from a camera into hit points and normals at
-	// width x height. Rays step by stepFraction * truncation from depthMin
-	// to depthMax and stop at the first observed positive-to-negative zero
-	// crossing, refined by linear interpolation. Normals are the gradient by
-	// central differences normalStencilVoxels voxels either side of the hit.
-	void raycast(const PinholeIntrinsics& intrinsics, const glm::mat4& cameraToWorld, int width, int height,
-				 float stepFraction, float normalStencilVoxels, ModelMap& outMap) const;
-
 	// Extract the zero crossing as a mesh in world space. Unobserved voxels
 	// first take the sign of the nearest observed voxel so no back shell forms
 	// behind a surface; marching cubes then runs over the observed region

@@ -45,12 +45,3 @@ struct TriangleMesh
 		indices.clear();
 	}
 };
-
-// The model as seen from one camera: a ray cast of the fused volume.
-// All three images share the camera's depth resolution.
-struct ModelMap
-{
-	cv::Mat points;  // CV_32FC3 world-space hit points, undefined where hit is 0
-	cv::Mat normals; // CV_32FC3 unit normals out of the surface, undefined where hit is 0
-	cv::Mat hit;     // CV_8UC1, 1 where the ray met an observed surface
-};
