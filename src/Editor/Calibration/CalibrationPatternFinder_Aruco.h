@@ -23,6 +23,14 @@ public:
 												  cv::Point2f outBoundingQuad[4]) override;
 	virtual void renderCalibrationPattern2D() const override;
 
+	// Finds the marker in a grayscale image that needs no undistortion, a recorded
+	// marker shot, and solves its aperture-relative pose with the detector, corner
+	// geometry, and solve the finder uses on a live view, so both land on the same
+	// pose for the same pixels
+	static bool estimateMarkerPoseInImage(const cv::Mat& grayscaleImage, const MikanMonoIntrinsics& intrinsics,
+										  MarkerDefinitionConstPtr markerDefinition,
+										  eCharucoDictionaryType dictionaryType, glm::dmat4& outApertureToMarkerXform);
+
 protected:
 	class ArucoBoardData* m_markerData;
 };

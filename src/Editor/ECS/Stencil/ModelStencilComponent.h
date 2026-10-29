@@ -5,6 +5,7 @@
 #include "ComponentFwd.h"
 #include "ISelectionOutlineSource.h"
 #include "MikanStencilTypes.h"
+#include "MikanVideoSourceTypes.h"
 #include "MikanRendererFwd.h"
 #include "StencilComponent.h"
 #include "Transform.h"
@@ -35,8 +36,21 @@ public:
 	const std::filesystem::path getModelPath() const;
 	void setModelPath(const std::filesystem::path& path, bool bForceDirty= false);
 
+	// The recorded take a stencil was fused from, by its video source and the
+	// session whose world the mesh lives in. While that source stays aligned for
+	// that session, a new alignment re-places the stencil. Definition only, not a
+	// reflected property: placement is an editor concern and a descriptor would be
+	// a wire change.
+	static const std::string k_alignedVideoSourceIdPropertyId;
+	static const std::string k_alignedSessionIdPropertyId;
+	inline MikanVideoSourceID getAlignedVideoSourceId() const { return m_alignedVideoSourceId; }
+	inline const std::string& getAlignedSessionId() const { return m_alignedSessionId; }
+	void setAlignedTake(MikanVideoSourceID videoSourceId, const std::string& sessionId);
+
 private:
 	AssetReferenceConfigPtr m_modelAssetRefConfig;
+	MikanVideoSourceID m_alignedVideoSourceId= INVALID_MIKAN_ID;
+	std::string m_alignedSessionId;
 };
 
 class ModelStencilComponent : public StencilComponent, public ISelectionOutlineSource

@@ -49,6 +49,8 @@
 // -- ModelStencilConfig -----
 const std::string ModelStencilDefinition::k_modelStencilObjPathPropertyId= "model_path";
 const std::string ModelStencilDefinition::k_geometryUrlPropertyId= "geometry_url";
+const std::string ModelStencilDefinition::k_alignedVideoSourceIdPropertyId= "aligned_video_source_id";
+const std::string ModelStencilDefinition::k_alignedSessionIdPropertyId= "aligned_session_id";
 
 ModelStencilDefinition::ModelStencilDefinition()
 	: StencilComponentDefinition()
@@ -71,6 +73,12 @@ configuru::Config ModelStencilDefinition::writeToJSON()
 		pt[k_modelStencilObjPathPropertyId]= m_modelAssetRefConfig->writeToJSON();
 	}
 
+	if (m_alignedVideoSourceId != INVALID_MIKAN_ID)
+	{
+		pt[k_alignedVideoSourceIdPropertyId]= m_alignedVideoSourceId;
+		pt[k_alignedSessionIdPropertyId]= m_alignedSessionId;
+	}
+
 	return pt;
 }
 
@@ -82,6 +90,9 @@ void ModelStencilDefinition::readFromJSON(const configuru::Config& pt)
 	{
 		m_modelAssetRefConfig->readFromJSON(pt[k_modelStencilObjPathPropertyId]);
 	}
+
+	m_alignedVideoSourceId= pt.get_or<int>(k_alignedVideoSourceIdPropertyId, INVALID_MIKAN_ID);
+	m_alignedSessionId= pt.get_or<std::string>(k_alignedSessionIdPropertyId, std::string());
 }
 
 bool ModelStencilDefinition::readFromInitParams(MikanObjectSystem* ownerObjectSystem,
@@ -113,6 +124,16 @@ void ModelStencilDefinition::setModelPath(const std::filesystem::path& path, boo
 	{
 		m_modelAssetRefConfig->assetPath= stored;
 		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_modelStencilObjPathPropertyId));
+	}
+}
+
+void ModelStencilDefinition::setAlignedTake(MikanVideoSourceID videoSourceId, const std::string& sessionId)
+{
+	if (videoSourceId != m_alignedVideoSourceId || sessionId != m_alignedSessionId)
+	{
+		m_alignedVideoSourceId= videoSourceId;
+		m_alignedSessionId= sessionId;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_alignedVideoSourceIdPropertyId));
 	}
 }
 

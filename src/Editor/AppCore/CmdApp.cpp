@@ -15,6 +15,7 @@
 #include "AutomationVariantTextTests.h"
 #include "CameraFramePoseTests.h"
 #include "CaptureArchiveTests.h"
+#include "CaptureMarkerAlignmentTests.h"
 #include "ClientApiPropertySchemaTests.h"
 #include "ComponentNamingTests.h"
 #include "CompositorStreamRouteTests.h"
@@ -91,6 +92,7 @@ bool run_all_editor_unit_tests()
 	success&= run_automation_variant_text_tests();
 	success&= run_camera_frame_pose_tests();
 	success&= run_capture_archive_tests();
+	success&= run_capture_marker_alignment_tests();
 	success&= run_client_api_property_schema_tests();
 	success&= run_component_naming_tests();
 	success&= run_compositor_stream_route_tests();

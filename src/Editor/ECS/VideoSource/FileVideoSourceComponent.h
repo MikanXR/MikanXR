@@ -2,10 +2,12 @@
 
 #include "AssetFwd.h"
 #include "Capture.h"
+#include "ComponentFwd.h"
 #include "IAlignmentReferenceSource.h"
 #include "IFrameCoupledPoseProvider.h"
 #include "MikanVideoSourceTypes.h"
 #include "PoseTrack.h"
+#include "ProjectConfigConstants.h"
 #include "VideoSourceComponent.h"
 
 #include "opencv2/core.hpp"
@@ -57,11 +59,15 @@ public:
 	// Source-world-to-stage offset solved by marker alignment, persisted so an
 	// alignment survives closing the project. Not a reflected property, for the
 	// same reason as ARKitVideoSourceDefinition: no client has a use for it and
-	// a descriptor would be a wire change.
+	// a descriptor would be a wire change. The offset carries the session id of
+	// the recording it was solved from, since each ARKit session has its own
+	// world origin and an offset says nothing about any other session.
 	static const std::string k_poseOffsetPropertyId;
+	static const std::string k_poseOffsetSessionIdPropertyId;
 	inline const glm::mat4& getPoseOffset() const { return m_poseOffset; }
 	inline bool hasPoseOffset() const { return m_bHasPoseOffset; }
-	void setPoseOffset(const glm::mat4& poseOffset);
+	inline const std::string& getPoseOffsetSessionId() const { return m_poseOffsetSessionId; }
+	void setPoseOffset(const glm::mat4& poseOffset, const std::string& sessionId);
 	void clearPoseOffset();
 
 private:
@@ -73,6 +79,7 @@ private:
 	bool m_bLoop= true;
 	glm::mat4 m_poseOffset;
 	bool m_bHasPoseOffset= false;
+	std::string m_poseOffsetSessionId;
 };
 
 // -- FileVideoSourceComponent -----
@@ -143,6 +150,19 @@ public:
 	virtual bool getLatestFrameCoupledPose(glm::mat4& outTransform, MikanVideoSourceIntrinsics& outIntrinsics,
 										   uint32_t& outFrameSeq) const override;
 	virtual bool getLatestSourceWorldPose(glm::mat4& outTransform, uint32_t& outFrameSeq) const override;
+	// The ARKit session the media's poses were recorded in: the capture's, else
+	// the override track's for a raw movie, empty when neither names one
+	std::string getPoseSessionId() const;
+
+	// -- Alignment from the marker shot ----
+	// A trackcamera capture carries the image of the origin marker and the pose it
+	// was taken from, which is everything an alignment needs. True once per media
+	// open while the source has no alignment for its session.
+	bool wantsMarkerShotAlignment() const;
+	// Solves the offset from the marker shot and stores it, logging the outcome.
+	// Tried once per media open, whatever the outcome, so a shot without a
+	// readable marker is not decoded again every frame.
+	bool alignFromMarkerShot(MarkerDefinitionConstPtr originMarker, eCharucoDictionaryType dictionaryType);
 
 	// -- IAlignmentReferenceSource ----
 	virtual bool hasAlignmentReference() const override;
@@ -295,11 +315,11 @@ private:
 	PoseTrack m_overridePoseTrack;
 	bool m_bHasAlignmentReference= false;
 	bool m_bDropStaleOverride= false; // loadMedia found the override belongs to another take
+	bool m_bMarkerShotAlignmentTried= false;
 
 	mutable std::mutex m_latestPoseMutex;
 	struct LatestPose
 	{
-		glm::mat4 transform= glm::mat4(1.f);
 		glm::mat4 sourceWorldTransform= glm::mat4(1.f);
 		MikanVideoSourceIntrinsics intrinsics;
 		uint32_t frameSeq= 0;

@@ -11,6 +11,7 @@
 #include "Capture.h"
 #include "DepthTrackReader.h"
 #include "FileVideoSourceComponent.h"
+#include "FileVideoSourceSystem.h"
 #include "GlbMeshWriter.h"
 #include "IEditorWindow.h"
 #include "IMkGraphicsContext.h"
@@ -190,7 +191,7 @@ bool AppStage_OcclusionMeshBuild::tryEnterBuild(AppStage* fromAppStage, FileVide
 		return false;
 	}
 
-	if (!definition->hasPoseOffset())
+	if (!videoSource->hasPoseOffset())
 	{
 		ModalDialog_MessageBox::showMessageBox(fromAppStage, locText("occlusionMeshBuild.notAligned"));
 		return false;
@@ -588,11 +589,11 @@ bool AppStage_OcclusionMeshBuild::createStencilFromMesh()
 		return false;
 	}
 
-	// The vertices are in the take's ARKit world space. The same offset that
-	// carries a recorded camera pose into the stage carries the whole mesh,
-	// and the stage's own transform takes it on into the world.
-	const glm::mat4 poseOffset= m_videoSource->getFileVideoSourceDefinition()->getPoseOffset();
-	stencilComponent->setWorldTransform(m_stage->getWorldTransform() * poseOffset);
+	// The vertices are in the take's ARKit world space. The stencil remembers
+	// the take, so a later alignment of it moves the stencil along.
+	stencilComponent->setWorldTransform(getMeshToWorld());
+	stencilComponent->getModelStencilDefinition()->setAlignedTake(m_videoSource->getVideoSourceId(),
+																  m_videoSource->getPoseSessionId());
 
 	std::string refinedTrackStoredPath;
 	if (m_result.bHasRefinedPoses)
@@ -686,10 +687,8 @@ void AppStage_OcclusionMeshBuild::onCancelEvent() { getOwnerWindow()->popAppStat
 // -- preview -----
 glm::mat4 AppStage_OcclusionMeshBuild::getMeshToWorld() const
 {
-	// The same offset that carries a recorded camera pose into the stage
-	// carries the whole mesh, which is where the stencil will land
-	const glm::mat4 poseOffset= m_videoSource->getFileVideoSourceDefinition()->getPoseOffset();
-	return m_stage->getWorldTransform() * poseOffset;
+	// Where the stencil will land
+	return FileVideoSourceSystem::computeTakeToWorldTransform(*m_stage, *m_videoSource);
 }
 
 void AppStage_OcclusionMeshBuild::buildPreview()

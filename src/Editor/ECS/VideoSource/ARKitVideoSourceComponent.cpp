@@ -536,13 +536,6 @@ void ARKitVideoSourceComponent::notifyFrameBundleReceived(const ARKitVideoFrameB
 		}
 		m_lastPoseFrameSeq= bundle.frameSeq;
 
-		// Single point where an ARKit pose leaves its own world space. The offset
-		// is solved once by marker alignment (AppStage_AlignCameraByOriginMarker)
-		// and is identity until then, so an unaligned source streams raw ARKit
-		// world poses exactly as before.
-		const glm::mat4 cameraToStage=
-			definition->hasPoseOffset() ? definition->getPoseOffset() * cameraToWorld : cameraToWorld;
-
 		MikanVideoSourceIntrinsics intrinsics;
 		MikanMonoIntrinsics monoIntrinsics;
 		createDefautMonoIntrinsics(static_cast<int>(bundle.pose.imageWidth), static_cast<int>(bundle.pose.imageHeight),
@@ -566,7 +559,6 @@ void ARKitVideoSourceComponent::notifyFrameBundleReceived(const ARKitVideoFrameB
 		intrinsics.makeMonoIntrinsics()= monoIntrinsics;
 
 		std::lock_guard<std::mutex> lock(m_latestPoseMutex);
-		m_latestPose.transform= cameraToStage;
 		m_latestPose.sourceWorldTransform= cameraToWorld;
 		m_latestPose.intrinsics= intrinsics;
 		m_latestPose.frameSeq= bundle.frameSeq;
@@ -593,7 +585,14 @@ bool ARKitVideoSourceComponent::getLatestFrameCoupledPose(glm::mat4& outTransfor
 	if (!m_latestPose.bValid)
 		return false;
 
-	outTransform= m_latestPose.transform;
+	// Single point where an ARKit pose leaves its own world space, applied as the
+	// pose is read so a new alignment takes effect without waiting for a frame.
+	// The offset is solved by marker alignment (AppStage_AlignCameraByOriginMarker)
+	// and is identity until then, so an unaligned source streams raw ARKit world
+	// poses.
+	ARKitVideoSourceDefinitionPtr definition= getARKitVideoSourceDefinition();
+	outTransform= definition->hasPoseOffset() ? definition->getPoseOffset() * m_latestPose.sourceWorldTransform
+											  : m_latestPose.sourceWorldTransform;
 	outIntrinsics= m_latestPose.intrinsics;
 	outFrameSeq= m_latestPose.frameSeq;
 	return true;

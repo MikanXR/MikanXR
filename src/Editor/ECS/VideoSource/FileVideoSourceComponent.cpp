@@ -2,6 +2,7 @@
 #include "AssetReference.h"
 #include "AssetReferencePropertyMetaData.h"
 #include "CameraMath.h"
+#include "CaptureMarkerAlignment.h"
 #include "EnumPropertyMetaData.h"
 #include "Logger.h"
 #include "MikanObject.h"
@@ -47,6 +48,7 @@ const std::string FileVideoSourceDefinition::k_mediaPathPropertyId= "media_path"
 const std::string FileVideoSourceDefinition::k_poseTrackPathPropertyId= "pose_track_path";
 const std::string FileVideoSourceDefinition::k_loopPropertyId= "loop";
 const std::string FileVideoSourceDefinition::k_poseOffsetPropertyId= "pose_offset";
+const std::string FileVideoSourceDefinition::k_poseOffsetSessionIdPropertyId= "pose_offset_session_id";
 
 FileVideoSourceDefinition::FileVideoSourceDefinition()
 	: VideoSourceDefinition()
@@ -79,6 +81,8 @@ configuru::Config FileVideoSourceDefinition::writeToJSON()
 	if (m_bHasPoseOffset)
 	{
 		writePoseOffset(pt, m_poseOffset);
+		if (!m_poseOffsetSessionId.empty())
+			pt[k_poseOffsetSessionIdPropertyId]= m_poseOffsetSessionId;
 	}
 
 	return pt;
@@ -114,6 +118,7 @@ void FileVideoSourceDefinition::readFromJSON(const configuru::Config& pt)
 
 	m_bHasPoseOffset= false;
 	m_poseOffset= glm::mat4(1.f);
+	m_poseOffsetSessionId= pt.get_or<std::string>(k_poseOffsetSessionIdPropertyId, std::string());
 	if (pt.has_key(k_poseOffsetPropertyId))
 	{
 		const configuru::Config& offsetValues= pt[k_poseOffsetPropertyId];
@@ -188,10 +193,11 @@ void FileVideoSourceDefinition::setLoop(bool bLoop)
 	}
 }
 
-void FileVideoSourceDefinition::setPoseOffset(const glm::mat4& poseOffset)
+void FileVideoSourceDefinition::setPoseOffset(const glm::mat4& poseOffset, const std::string& sessionId)
 {
 	m_poseOffset= poseOffset;
 	m_bHasPoseOffset= true;
+	m_poseOffsetSessionId= sessionId;
 	notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_poseOffsetPropertyId));
 }
 
@@ -199,6 +205,7 @@ void FileVideoSourceDefinition::clearPoseOffset()
 {
 	m_poseOffset= glm::mat4(1.f);
 	m_bHasPoseOffset= false;
+	m_poseOffsetSessionId.clear();
 	notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_poseOffsetPropertyId));
 }
 
@@ -431,6 +438,7 @@ void FileVideoSourceComponent::clearRuntimeState()
 	m_capture.close();
 	m_overridePoseTrack.clear();
 	m_bHasAlignmentReference= false;
+	m_bMarkerShotAlignmentTried= false;
 
 	std::lock_guard<std::mutex> lock(m_latestPoseMutex);
 	m_latestPose= LatestPose();
@@ -1030,6 +1038,7 @@ bool FileVideoSourceComponent::loadMedia()
 	m_capture.close();
 	m_overridePoseTrack.clear();
 	m_bHasAlignmentReference= false;
+	m_bMarkerShotAlignmentTried= false;
 
 	const std::filesystem::path mediaPath= resolveMediaPath();
 	if (CaptureKindUtils::isCaptureExtension(mediaPath))
@@ -1094,11 +1103,6 @@ void FileVideoSourceComponent::publishPoseForFrame(int64_t ptsUs)
 
 	const PoseTrackFrame& poseFrame= track.getFrame(frameIndex);
 
-	// The single point where a recorded pose leaves its own world space. A
-	// stage-space capture's poses are already there.
-	const glm::mat4& cameraToWorld= poseFrame.cameraToWorld;
-	const glm::mat4 cameraToStage= hasPoseOffset() ? getPoseOffset() * cameraToWorld : cameraToWorld;
-
 	MikanVideoSourceIntrinsics intrinsics;
 	MikanMonoIntrinsics monoIntrinsics;
 	createMonoIntrinsicsFromPinhole(track.getImageWidth(), track.getImageHeight(), poseFrame.fx, poseFrame.fy,
@@ -1106,8 +1110,7 @@ void FileVideoSourceComponent::publishPoseForFrame(int64_t ptsUs)
 	intrinsics.makeMonoIntrinsics()= monoIntrinsics;
 
 	std::lock_guard<std::mutex> lock(m_latestPoseMutex);
-	m_latestPose.transform= cameraToStage;
-	m_latestPose.sourceWorldTransform= cameraToWorld;
+	m_latestPose.sourceWorldTransform= poseFrame.cameraToWorld;
 	m_latestPose.intrinsics= intrinsics;
 	m_latestPose.frameSeq= m_frameSeq;
 	m_latestPose.bValid= true;
@@ -1125,15 +1128,17 @@ void FileVideoSourceComponent::setPoseOffset(const glm::mat4& worldToStageXform)
 		return;
 	}
 
-	getFileVideoSourceDefinition()->setPoseOffset(worldToStageXform);
+	getFileVideoSourceDefinition()->setPoseOffset(worldToStageXform, getPoseSessionId());
 }
 
+// An offset solved from another recording describes another session's world
+// origin, so it reads as no alignment at all until this media is aligned
 glm::mat4 FileVideoSourceComponent::getPoseOffset() const
 {
 	if (m_capture.isOpen() && m_capture.isStageSpace())
 		return glm::mat4(1.f);
 
-	return getFileVideoSourceDefinition()->getPoseOffset();
+	return hasPoseOffset() ? getFileVideoSourceDefinition()->getPoseOffset() : glm::mat4(1.f);
 }
 
 bool FileVideoSourceComponent::hasPoseOffset() const
@@ -1141,7 +1146,46 @@ bool FileVideoSourceComponent::hasPoseOffset() const
 	if (m_capture.isOpen() && m_capture.isStageSpace())
 		return true;
 
-	return getFileVideoSourceDefinition()->hasPoseOffset();
+	FileVideoSourceDefinitionPtr definition= getFileVideoSourceDefinition();
+	return definition->hasPoseOffset() && definition->getPoseOffsetSessionId() == getPoseSessionId();
+}
+
+bool FileVideoSourceComponent::wantsMarkerShotAlignment() const
+{
+	if (m_bMarkerShotAlignmentTried || !m_capture.isOpen() || m_capture.getKind() != eCaptureKind::trackcamera)
+		return false;
+
+	return m_bHasAlignmentReference && m_capture.getPoseTrack(eCaptureMemberRole::marker_pose).isLoaded()
+		   && !hasPoseOffset();
+}
+
+bool FileVideoSourceComponent::alignFromMarkerShot(MarkerDefinitionConstPtr originMarker,
+												   eCharucoDictionaryType dictionaryType)
+{
+	m_bMarkerShotAlignmentTried= true;
+
+	glm::mat4 worldToStage;
+	std::string error;
+	if (!CaptureMarkerAlignment::solveWorldToStage(m_capture, originMarker, dictionaryType, worldToStage, error))
+	{
+		MIKAN_LOG_WARNING("FileVideoSourceComponent::alignFromMarkerShot")
+			<< "Could not align " << resolveMediaPath() << " from its marker shot: " << error
+			<< ". Align Camera on its camera aligns it by hand.";
+		return false;
+	}
+
+	setPoseOffset(worldToStage);
+	MIKAN_LOG_INFO("FileVideoSourceComponent::alignFromMarkerShot")
+		<< "Aligned " << resolveMediaPath() << " from its marker shot (session " << getPoseSessionId() << ")";
+	return true;
+}
+
+std::string FileVideoSourceComponent::getPoseSessionId() const
+{
+	if (m_capture.isOpen())
+		return m_capture.getManifest().sessionId;
+
+	return m_overridePoseTrack.isLoaded() ? m_overridePoseTrack.getSessionId() : std::string();
 }
 
 bool FileVideoSourceComponent::getLatestFrameCoupledPose(glm::mat4& outTransform,
@@ -1152,7 +1196,10 @@ bool FileVideoSourceComponent::getLatestFrameCoupledPose(glm::mat4& outTransform
 	if (!m_latestPose.bValid)
 		return false;
 
-	outTransform= m_latestPose.transform;
+	// The single point where a recorded pose leaves its own world space, applied
+	// as the pose is read so a new alignment takes effect without a new frame.
+	// A stage-space capture's poses are already there.
+	outTransform= getPoseOffset() * m_latestPose.sourceWorldTransform;
 	outIntrinsics= m_latestPose.intrinsics;
 	outFrameSeq= m_latestPose.frameSeq;
 	return true;

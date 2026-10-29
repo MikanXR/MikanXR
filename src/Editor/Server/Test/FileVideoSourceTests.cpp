@@ -157,10 +157,13 @@ bool file_video_source_test_definition_round_trip()
 	// A solved offset survives, column-major
 	glm::mat4 offset(1.f);
 	offset[3]= glm::vec4(1.f, 2.f, 3.f, 1.f);
-	source.setPoseOffset(offset);
+	source.setPoseOffset(offset, "7c1d1a2e-1111-4a4a-9b9b-0123456789ab");
 	FileVideoSourceDefinition aligned;
 	aligned.readFromJSON(source.writeToJSON());
 	success&= aligned.hasPoseOffset();
+	assert(success);
+	// With the session it was solved in
+	success&= (aligned.getPoseOffsetSessionId() == "7c1d1a2e-1111-4a4a-9b9b-0123456789ab");
 	assert(success);
 	success&= (aligned.getPoseOffset()[3] == glm::vec4(1.f, 2.f, 3.f, 1.f));
 	assert(success);
