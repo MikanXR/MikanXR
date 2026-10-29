@@ -29,8 +29,6 @@ public:
 	void setKeyframeStride(int stride) { m_keyframeStride= stride; }
 	bool getFrameToModel() const { return m_bFrameToModel; }
 	void setFrameToModel(bool bEnabled) { m_bFrameToModel= bEnabled; }
-	bool getReplacePoseTrack() const { return m_bReplacePoseTrack; }
-	void setReplacePoseTrack(bool bEnabled) { m_bReplacePoseTrack= bEnabled; }
 	float getPathRadius() const { return m_pathRadius; }
 	void setPathRadius(float radius) { m_pathRadius= radius; }
 	bool getTexture() const { return m_bTexture; }
@@ -84,11 +82,7 @@ public:
 	}
 	void setFailureReason(const std::string& reason) { m_failureReason= reason; }
 	void setCreatedStencilName(const std::string& name) { m_createdStencilName= name; }
-	void setRefinedTrackPath(const std::string& storedPath, bool bReplacedSourceTrack)
-	{
-		m_refinedTrackPath= storedPath;
-		m_bReplacedSourceTrack= bReplacedSourceTrack;
-	}
+	void setRefinedTrackPath(const std::string& storedPath) { m_refinedTrackPath= storedPath; }
 
 	std::function<void()> OnBuildEvent;
 	std::function<void()> OnCancelBuildEvent;
@@ -106,7 +100,6 @@ private:
 	eOcclusionMeshVoxelPreset m_voxelPreset= eOcclusionMeshVoxelPreset::room;
 	int m_keyframeStride= 3;
 	bool m_bFrameToModel= true;
-	bool m_bReplacePoseTrack= true;
 	float m_pathRadius= 2.f;
 	bool m_bTexture= true;
 	bool m_bHasBoundsBox= false;
@@ -133,5 +126,4 @@ private:
 	std::string m_failureReason;
 	std::string m_createdStencilName;
 	std::string m_refinedTrackPath;
-	bool m_bReplacedSourceTrack= false;
 };

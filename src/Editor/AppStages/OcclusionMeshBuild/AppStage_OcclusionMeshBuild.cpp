@@ -155,8 +155,8 @@ bool AppStage_OcclusionMeshBuild::tryEnterBuild(AppStage* fromAppStage, FileVide
 		return false;
 	}
 
-	// The override, when set, is a refined track from an earlier build on
-	// this capture; the capture's own track otherwise. An override from
+	// The build fuses from the track the source plays: the override, when one
+	// was set by hand, or the capture's own track. An override from
 	// another session is a leftover of a different take and is skipped the
 	// way playback skips it, since its frames index nothing in this capture.
 	PoseTrack track;
@@ -595,10 +595,9 @@ bool AppStage_OcclusionMeshBuild::createStencilFromMesh()
 	stencilComponent->setWorldTransform(m_stage->getWorldTransform() * poseOffset);
 
 	std::string refinedTrackStoredPath;
-	bool bReplacedSourceTrack= false;
 	if (m_result.bHasRefinedPoses)
 	{
-		if (!writeRefinedPoseTrack(refinedTrackStoredPath, bReplacedSourceTrack))
+		if (!writeRefinedPoseTrack(refinedTrackStoredPath))
 		{
 			// The stencil stands; only the track is missing
 			MIKAN_LOG_WARNING("AppStage_OcclusionMeshBuild") << "The refined pose track was not written";
@@ -609,7 +608,7 @@ bool AppStage_OcclusionMeshBuild::createStencilFromMesh()
 		catalog->refresh();
 
 	m_buildPanel->setCreatedStencilName(stencilName);
-	m_buildPanel->setRefinedTrackPath(refinedTrackStoredPath, bReplacedSourceTrack);
+	m_buildPanel->setRefinedTrackPath(refinedTrackStoredPath);
 
 	MIKAN_LOG_INFO("AppStage_OcclusionMeshBuild")
 		<< "Created occlusion mesh stencil '" << stencilName << "' (" << m_result.mesh.getTriangleCount()
@@ -618,12 +617,12 @@ bool AppStage_OcclusionMeshBuild::createStencilFromMesh()
 	return true;
 }
 
-bool AppStage_OcclusionMeshBuild::writeRefinedPoseTrack(std::string& outStoredPath, bool& outReplacedSourceTrack)
+// The refined track is a build output for inspection and headless comparison.
+// The video source keeps playing the capture's recorded track, so what the
+// camera does on screen is the phone's tracking and never the refinement.
+bool AppStage_OcclusionMeshBuild::writeRefinedPoseTrack(std::string& outStoredPath)
 {
 	outStoredPath.clear();
-	outReplacedSourceTrack= false;
-
-	FileVideoSourceDefinitionPtr definition= m_videoSource->getFileVideoSourceDefinition();
 	if (m_capturePath.empty())
 		return false;
 
@@ -654,14 +653,7 @@ bool AppStage_OcclusionMeshBuild::writeRefinedPoseTrack(std::string& outStoredPa
 	}
 
 	outStoredPath= PathUtils::makeStoredProjectPath(refinedPath);
-	if (m_buildPanel->getReplacePoseTrack())
-	{
-		definition->setPoseTrackPath(refinedPath);
-		outReplacedSourceTrack= true;
-	}
-
-	MIKAN_LOG_INFO("AppStage_OcclusionMeshBuild") << "Wrote refined pose track " << refinedPath.string()
-												  << (outReplacedSourceTrack ? " (now the source's track)" : "");
+	MIKAN_LOG_INFO("AppStage_OcclusionMeshBuild") << "Wrote refined pose track " << refinedPath.string();
 	return true;
 }
 
@@ -1042,7 +1034,7 @@ bool AppStage_OcclusionMeshBuild::handleRemoteControlCommand(const std::string& 
 		if (parameters.size() != 2)
 		{
 			outResults.push_back("usage: set_option "
-								 "<voxel_preset|keyframe_stride|frame_to_model|replace_pose_track|path_radius|texture|"
+								 "<voxel_preset|keyframe_stride|frame_to_model|path_radius|texture|"
 								 "view|bounds> <value>");
 			return false;
 		}
@@ -1082,11 +1074,6 @@ bool AppStage_OcclusionMeshBuild::handleRemoteControlCommand(const std::string& 
 		else if (option == "frame_to_model" && OcclusionMeshBuildStage::parseBool(value, bFlag))
 		{
 			m_buildPanel->setFrameToModel(bFlag);
-			return true;
-		}
-		else if (option == "replace_pose_track" && OcclusionMeshBuildStage::parseBool(value, bFlag))
-		{
-			m_buildPanel->setReplacePoseTrack(bFlag);
 			return true;
 		}
 		else if (option == "path_radius")

@@ -51,10 +51,6 @@ void GuiPanel_OcclusionMeshBuild::onGui()
 
 		ImGui::Checkbox(locLabel("occlusionMeshBuild.frameToModel"), &m_bFrameToModel);
 		ImGui::TextWrapped("%s", locText("occlusionMeshBuild.frameToModelHelp"));
-		ImGui::BeginDisabled(!m_bFrameToModel);
-		ImGui::Checkbox(locLabel("occlusionMeshBuild.replacePoseTrack"), &m_bReplacePoseTrack);
-		ImGui::EndDisabled();
-		ImGui::TextWrapped("%s", locText("occlusionMeshBuild.replacePoseTrackHelp"));
 
 		ImGui::Checkbox(locLabel("occlusionMeshBuild.texture"), &m_bTexture);
 		ImGui::TextWrapped("%s", locText("occlusionMeshBuild.textureHelp"));
@@ -297,8 +293,6 @@ void GuiPanel_OcclusionMeshBuild::onGui()
 		{
 			ImGui::TextWrapped(
 				"%s", locFormat("occlusionMeshBuild.refinedTrackWrittenFmt", m_refinedTrackPath.c_str()).c_str());
-			if (m_bReplacedSourceTrack)
-				ImGui::TextWrapped("%s", locText("occlusionMeshBuild.poseTrackReplacedNote"));
 		}
 		ImGui::Spacing();
 		if (ImGui::Button(locLabel("common.ok")))

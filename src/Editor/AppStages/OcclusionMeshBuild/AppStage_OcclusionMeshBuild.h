@@ -98,7 +98,7 @@ protected:
 	void consumeBuildOutput();
 
 	bool createStencilFromMesh();
-	bool writeRefinedPoseTrack(std::string& outStoredPath, bool& outReplacedSourceTrack);
+	bool writeRefinedPoseTrack(std::string& outStoredPath);
 
 	// -- preview --
 	/// Where the mesh's own space, the take's ARKit world, lands in the world:

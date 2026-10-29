@@ -3947,11 +3947,6 @@ msgid "The capture's pose track override could not be loaded."
 msgstr ""
 
 #. Section: occlusionMeshBuild
-msgctxt "occlusionMeshBuild.poseTrackReplacedNote"
-msgid "The video source now plays the take with the refined poses."
-msgstr ""
-
-#. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.presetRoom"
 msgid "Room (1.5 cm voxels)"
 msgstr ""
@@ -3996,7 +3991,7 @@ msgstr ""
 #. Section: occlusionMeshBuild
 #, c-format
 msgctxt "occlusionMeshBuild.refinedTrackWrittenFmt"
-msgid "Refined pose track written to %s."
+msgid "Refined pose track written to %s. The video source keeps playing the recorded track."
 msgstr ""
 
 #. Section: occlusionMeshBuild
@@ -4008,16 +4003,6 @@ msgstr ""
 #, c-format
 msgctxt "occlusionMeshBuild.registrationSummaryFmt"
 msgid "Registration: %d accepted, %d rejected. Step %.1f mm, %.2f deg. Residual %.1f to %.1f mm. Final correction %.0f mm, %.2f deg."
-msgstr ""
-
-#. Section: occlusionMeshBuild
-msgctxt "occlusionMeshBuild.replacePoseTrack"
-msgid "Play the take with the refined poses"
-msgstr ""
-
-#. Section: occlusionMeshBuild
-msgctxt "occlusionMeshBuild.replacePoseTrackHelp"
-msgid "The refined poses are written beside the take as a second pose track. With this on, the video source switches to it."
 msgstr ""
 
 #. Section: occlusionMeshBuild

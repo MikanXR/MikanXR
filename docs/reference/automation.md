@@ -70,7 +70,7 @@ Reach it with `function invoke <VideoSourceSystem> <componentId> show_video_sour
 
 - `get_state` replies the menu state (`verifyTake`, `building`, `failed`, `verifyMesh`, `buildComplete`)
 - `get_take_info` replies `frames`, `depth_width`, `depth_height`, and `session_id` lines
-- `set_option <voxel_preset|keyframe_stride|frame_to_model|replace_pose_track|path_radius|texture> <value>` sets a build option while in `verifyTake` (`room`/`tabletop`, an integer, `on`/`off`, metres with 0 for no trim, `on`/`off`)
+- `set_option <voxel_preset|keyframe_stride|frame_to_model|path_radius|texture> <value>` sets a build option while in `verifyTake` (`room`/`tabletop`, an integer, `on`/`off`, metres with 0 for no trim, `on`/`off`)
 - `set_option bounds <lo.x> <lo.y> <lo.z> <hi.x> <hi.y> <hi.z>` fuses the next build inside that box in the take's ARKit world, and `set_option bounds auto` returns to the computed bounds, while in `verifyTake`
 - `set_option view <textured|shaded|coverage|observations|directions|angle|contradiction|distance>` switches what the preview shows once a mesh exists, failing for a view the build cannot show
 - `frame_mesh` re-centres the orbit camera on the mesh
