@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Constants_OcclusionMatteBuild.h"
-#include "MikanRendererFwd.h"
 #include "OcclusionMatteBuilder.h"
 #include "Shared/GuiPanel.h"
 
@@ -29,6 +28,8 @@ public:
 	void setMatteScale(int scale) { m_matteScale= scale; }
 	int getFrameStep() const { return m_frameStep; }
 	void setFrameStep(int step) { m_frameStep= step; }
+	bool getCropSmallRuns() const { return m_bCropSmallRuns; }
+	void setCropSmallRuns(bool bCrop) { m_bCropSmallRuns= bCrop; }
 
 	void setTakeSummary(int frameCount, int imageWidth, int imageHeight, float durationSeconds, int stencilCount)
 	{
@@ -59,8 +60,9 @@ public:
 	void setFailureReason(const std::string& reason) { m_failureReason= reason; }
 	const std::string& getFailureReason() const { return m_failureReason; }
 
-	// The last segmented frame's overlay, drawn while a build runs and after it
-	void setPreviewTexture(IMkTexturePtr texture) { m_previewTexture= texture; }
+	// True while the stage draws a segmented frame's overlay in the viewport,
+	// which is when the panel explains its colours
+	void setHasPreview(bool bHasPreview) { m_bHasPreview= bHasPreview; }
 
 	std::function<void()> OnBuildEvent;
 	std::function<void()> OnCancelBuildEvent;
@@ -69,14 +71,13 @@ public:
 	std::function<void()> OnOkEvent;
 
 private:
-	void drawPreview();
-
 	eOcclusionMatteBuildMenuState m_menuState= eOcclusionMatteBuildMenuState::inactive;
 
 	eOcclusionMatteModel m_model= eOcclusionMatteModel::small;
 	int m_bandPx= 64;
 	int m_matteScale= 1;
 	int m_frameStep= 1;
+	bool m_bCropSmallRuns= true;
 
 	int m_takeFrameCount= 0;
 	int m_takeImageWidth= 0;
@@ -95,5 +96,5 @@ private:
 	std::string m_sidecarPath;
 	std::string m_failureReason;
 
-	IMkTexturePtr m_previewTexture;
+	bool m_bHasPreview= false;
 };

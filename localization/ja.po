@@ -3853,6 +3853,16 @@ msgid "The take plays with its matte from now on. A compositor graph with a Matt
 msgstr ""
 
 #. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.cropSmallRuns"
+msgid "Prompt small objects on a crop"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.cropSmallRunsHelp"
+msgid "Re-encodes a crop around each small contour for a sharper edge on thin objects, at about three times the time per frame. Off prompts every contour on the whole frame."
+msgstr ""
+
+#. Section: occlusionMatteBuild
 #, c-format
 msgctxt "occlusionMatteBuild.elapsedSecondsFmt"
 msgid "Elapsed: %.0f s"

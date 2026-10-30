@@ -49,6 +49,7 @@ public:
 	virtual void enter() override;
 	virtual void exit() override;
 	virtual void update(float deltaSeconds) override;
+	virtual void render(IMkViewportPtr targetViewport) override;
 	virtual void onGui() override;
 
 	// -- IRemoteControllable --
@@ -127,6 +128,8 @@ protected:
 	void composePreviewOverlay(const OcclusionMatteFrame& frame);
 	/// Uploads a changed overlay into the preview texture, on the UI thread
 	void updatePreviewTexture();
+	/// Draws the last segmented frame's overlay over the viewport
+	void renderPreview();
 	void releasePreview();
 
 	// GUI button events
@@ -174,4 +177,5 @@ private:
 	bool m_bOverlayChanged= false; ///< guarded by m_previewMutex
 	cv::Mat m_overlay;             ///< UI thread only
 	IMkTexturePtr m_previewTexture;
+	IMkTriangulatedMeshPtr m_previewQuad;
 };

@@ -13,9 +13,12 @@
 #include "GlbMeshReader.h"
 #include "IEditorWindow.h"
 #include "IMkTexture.h"
+#include "IMkTriangulatedMesh.h"
 #include "LocText.h"
 #include "Logger.h"
 #include "MatteTrack.h"
+#include "MkMaterial.h"
+#include "MkMaterialInstance.h"
 #include "ModalMessageBox/ModalDialog_MessageBox.h"
 #include "ModalModelDownload/ModalDialog_ModelDownload.h"
 #include "ModelRepository.h"
@@ -42,8 +45,9 @@ const char* AppStage_OcclusionMatteBuild::APP_STAGE_NAME= "OcclusionMatteBuild";
 
 namespace OcclusionMatteBuildStage
 {
-// The preview overlay is shrunk to this width before it crosses to the UI thread
-const int k_previewMaxWidth= 640;
+// The preview overlay is shrunk to this width before it crosses to the UI
+// thread. The viewport shows it at its own size, so a video frame goes whole.
+const int k_previewMaxWidth= 1920;
 // How far a labelled pixel is pulled toward its tint
 const float k_previewTintBlend= 0.6f;
 
@@ -245,6 +249,9 @@ void AppStage_OcclusionMatteBuild::enter()
 	m_bHasResult= false;
 	startBuildWorker();
 
+	// Drawn with the video's own flip so the overlay reads the way the take plays
+	m_previewQuad= createFullscreenQuadMesh(getGraphicsContext(), true);
+
 	setMenuState(eOcclusionMatteBuildMenuState::verifyTake);
 }
 
@@ -257,6 +264,7 @@ void AppStage_OcclusionMatteBuild::exit()
 	stopBuildWorker();
 
 	releasePreview();
+	m_previewQuad= nullptr;
 	m_result= OcclusionMatteBuildResult();
 	m_bHasResult= false;
 
@@ -283,6 +291,7 @@ OcclusionMatteSettings AppStage_OcclusionMatteBuild::gatherSettings() const
 	settings.bandPx= std::max(m_buildPanel->getBandPx(), 1);
 	settings.matteScale= m_buildPanel->getMatteScale() == 2 ? 2 : 1;
 	settings.frameStep= std::max(m_buildPanel->getFrameStep(), 1);
+	settings.bCropSmallRuns= m_buildPanel->getCropSmallRuns();
 	if (const ModelCatalogEntry* entry= ModelCatalog::findEntry(getChosenModelId()))
 		settings.modelName= entry->name;
 	return settings;
@@ -731,7 +740,38 @@ void AppStage_OcclusionMatteBuild::updatePreviewTexture()
 	}
 
 	m_previewTexture->copyBufferIntoTexture(m_overlay.data, m_overlay.step[0] * m_overlay.rows);
-	m_buildPanel->setPreviewTexture(m_previewTexture);
+	m_buildPanel->setHasPreview(true);
+}
+
+void AppStage_OcclusionMatteBuild::renderPreview()
+{
+	if (m_previewQuad == nullptr || m_previewTexture == nullptr)
+		return;
+
+	MkMaterialInstancePtr materialInstance= m_previewQuad->getMaterialInstance();
+	MkMaterialConstPtr material= materialInstance->getMaterial();
+	if (auto materialBinding= material->bindMaterial())
+	{
+		materialInstance->setTextureBySemantic(eUniformSemantic::rgbTexture, m_previewTexture);
+		if (auto materialInstanceBinding= materialInstance->bindMaterialInstance(materialBinding))
+		{
+			m_previewQuad->drawElements();
+		}
+	}
+}
+
+void AppStage_OcclusionMatteBuild::render(IMkViewportPtr targetViewport)
+{
+	switch (m_buildPanel->getMenuState())
+	{
+	case eOcclusionMatteBuildMenuState::building:
+	case eOcclusionMatteBuildMenuState::buildComplete:
+		renderPreview();
+		break;
+
+	default:
+		break;
+	}
 }
 
 void AppStage_OcclusionMatteBuild::releasePreview()
@@ -744,7 +784,7 @@ void AppStage_OcclusionMatteBuild::releasePreview()
 	m_overlay= cv::Mat();
 
 	if (m_buildPanel != nullptr)
-		m_buildPanel->setPreviewTexture(nullptr);
+		m_buildPanel->setHasPreview(false);
 	if (m_previewTexture)
 	{
 		m_previewTexture->disposeTexture();
@@ -768,7 +808,7 @@ bool AppStage_OcclusionMatteBuild::handleRemoteControlCommand(const std::string&
 	{
 		if (parameters.size() != 2)
 		{
-			outResults.push_back("usage: set_option <model|band|scale|step> <value>");
+			outResults.push_back("usage: set_option <model|band|scale|step|crop> <value>");
 			return false;
 		}
 		if (menuState != eOcclusionMatteBuildMenuState::verifyTake)
@@ -823,6 +863,16 @@ bool AppStage_OcclusionMatteBuild::handleRemoteControlCommand(const std::string&
 				return false;
 			}
 			m_buildPanel->setFrameStep(step);
+			return true;
+		}
+		else if (option == "crop")
+		{
+			if (value != "0" && value != "1")
+			{
+				outResults.push_back("crop must be 0 or 1");
+				return false;
+			}
+			m_buildPanel->setCropSmallRuns(value == "1");
 			return true;
 		}
 

@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1215,
-		"translatedCount": 1215,
-		"reviewedCount": 1215
+		"stringCount": 1217,
+		"translatedCount": 1217,
+		"reviewedCount": 1217
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -719,6 +719,8 @@
 		"cancelBuild": "Cancel Build",
 		"cancelling": "Cancelling...",
 		"completeNote": "The take plays with its matte from now on. A compositor graph with a Matte Depth Refine node uses it.",
+		"cropSmallRuns": "Prompt small objects on a crop",
+		"cropSmallRunsHelp": "Re-encodes a crop around each small contour for a sharper edge on thin objects, at about three times the time per frame. Off prompts every contour on the whole frame.",
 		"elapsedSecondsFmt": "Elapsed: %.0f s",
 		"frameStep": "Segment every nth frame",
 		"frameStepHelp": "The frames between segmented ones take the previous labels. 1 segments every frame.",

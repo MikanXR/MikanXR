@@ -1,31 +1,12 @@
 #include "OcclusionMatteBuild/GuiPanel_OcclusionMatteBuild.h"
 
 #include "imgui.h"
-#include "IMkTexture.h"
 #include "LocText.h"
 #include "MkGuiDrawUtils.h"
 
 #include <algorithm>
 #include <cfloat>
-#include <cstdint>
 #include <string>
-
-void GuiPanel_OcclusionMatteBuild::drawPreview()
-{
-	if (!m_previewTexture || m_previewTexture->getGlTextureId() == 0)
-		return;
-
-	// Fit the overlay to the panel's width at the frame's aspect
-	const float textureWidth= (float)m_previewTexture->getTextureWidth();
-	const float textureHeight= (float)m_previewTexture->getTextureHeight();
-	if (textureWidth <= 0.f || textureHeight <= 0.f)
-		return;
-
-	const float drawWidth= std::max(ImGui::GetContentRegionAvail().x, 1.f);
-	const float drawHeight= drawWidth * textureHeight / textureWidth;
-	ImGui::Image((ImTextureID)(intptr_t)m_previewTexture->getGlTextureId(), ImVec2(drawWidth, drawHeight));
-	ImGui::TextWrapped("%s", locText("occlusionMatteBuild.previewLegend"));
-}
 
 void GuiPanel_OcclusionMatteBuild::onGui()
 {
@@ -70,6 +51,9 @@ void GuiPanel_OcclusionMatteBuild::onGui()
 			m_frameStep= std::max(m_frameStep, 1);
 		}
 		ImGui::TextWrapped("%s", locText("occlusionMatteBuild.frameStepHelp"));
+
+		ImGui::Checkbox(locLabel("occlusionMatteBuild.cropSmallRuns"), &m_bCropSmallRuns);
+		ImGui::TextWrapped("%s", locText("occlusionMatteBuild.cropSmallRunsHelp"));
 
 		ImGui::Spacing();
 		if (ImGui::Button(locLabel("occlusionMatteBuild.build")))
@@ -118,8 +102,11 @@ void GuiPanel_OcclusionMatteBuild::onGui()
 		}
 		ImGui::EndDisabled();
 
-		ImGui::Spacing();
-		drawPreview();
+		if (m_bHasPreview)
+		{
+			ImGui::Spacing();
+			ImGui::TextWrapped("%s", locText("occlusionMatteBuild.previewLegend"));
+		}
 	}
 	break;
 
@@ -168,9 +155,8 @@ void GuiPanel_OcclusionMatteBuild::onGui()
 		ImGui::TextWrapped("%s", locFormat("occlusionMatteBuild.sidecarFmt", m_sidecarPath.c_str()).c_str());
 		ImGui::Spacing();
 		ImGui::TextWrapped("%s", locText("occlusionMatteBuild.completeNote"));
-		ImGui::Spacing();
-
-		drawPreview();
+		if (m_bHasPreview)
+			ImGui::TextWrapped("%s", locText("occlusionMatteBuild.previewLegend"));
 		ImGui::Spacing();
 
 		if (ImGui::Button(locLabel("common.ok")))
