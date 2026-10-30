@@ -24,6 +24,20 @@ float secondsSince(const Clock::time_point& start)
 
 bool isCancelled(IOcclusionMatteBuildObserver* observer) { return observer && observer->isCancelRequested(); }
 
+// How many of the points lie inside the mask
+size_t countInside(const cv::Mat& mask, const std::vector<cv::Point2f>& points)
+{
+	size_t count= 0;
+	for (const cv::Point2f& p : points)
+	{
+		const int x= (int)std::lround(p.x);
+		const int y= (int)std::lround(p.y);
+		if (x >= 0 && y >= 0 && x < mask.cols && y < mask.rows && mask.at<uint8_t>(y, x) != 0)
+			++count;
+	}
+	return count;
+}
+
 float maskIoU(const cv::Mat& a, const cv::Mat& b)
 {
 	cv::Mat both, either;
@@ -42,6 +56,7 @@ OcclusionPromptSettings OcclusionMatteBuilder::promptSettingsAtScale(const Occlu
 	prompts.runGapPx= std::max(settings.prompts.runGapPx / scale, 1);
 	prompts.runMinPoints= std::max(settings.prompts.runMinPoints / scale, 2);
 	prompts.pointSpacingPx= std::max(settings.prompts.pointSpacingPx / scale, 1);
+	prompts.runMaxSpanPx= std::max(settings.prompts.runMaxSpanPx / scale, 1);
 	return prompts;
 }
 
@@ -145,6 +160,16 @@ bool OcclusionMatteBuilder::build(const PoseTrack& track, MovieDecoder& decoder,
 		}
 		const PoseTrackFrame& frame= track.getFrame(trackIndex);
 
+		// The frames outside the requested range keep their initial keep record
+		if (settings.lastFrame >= 0 && frame.fileIndex > settings.lastFrame)
+			break;
+		if (frame.fileIndex < settings.firstFrame)
+		{
+			if (observer)
+				observer->onProgress(eOcclusionMatteBuildPhase::decoding, (int)trackIndex + 1, total);
+			continue;
+		}
+
 		// The frames between segmented ones hold the last labels
 		if (decodedSinceSegment < header.frameStep)
 		{
@@ -178,6 +203,9 @@ bool OcclusionMatteBuilder::build(const PoseTrack& track, MovieDecoder& decoder,
 		const OcclusionMatteBuilderInternal::Clock::time_point segmentStart=
 			OcclusionMatteBuilderInternal::Clock::now();
 		runMasks.assign(processed.runs.size(), cv::Mat());
+		processed.runIoU.assign(processed.runs.size(), -1.f);
+		processed.runCoverage.assign(processed.runs.size(), -1.f);
+		processed.runExcess.assign(processed.runs.size(), -1.f);
 		if (!processed.runs.empty())
 		{
 			// A run whose box is small is prompted on a crop around it encoded on its own, since the
@@ -234,7 +262,9 @@ bool OcclusionMatteBuilder::build(const PoseTrack& track, MovieDecoder& decoder,
 					if (!segmenter.predict(prompt, crop.size(), crop.size(), candidates, scores))
 						continue;
 
-					// The candidate that agrees most with the mesh's near side around the run
+					// The candidate that agrees most with the mesh's near side around the run, among
+					// those holding at least half of the run's own points: a mask that leaves out the
+					// points it was asked for is some other object
 					int best= -1;
 					float bestIoU= -1.f;
 					for (size_t c= 0; c < candidates.size(); ++c)
@@ -242,6 +272,9 @@ bool OcclusionMatteBuilder::build(const PoseTrack& track, MovieDecoder& decoder,
 						cv::Mat full= cv::Mat::zeros(depth.size(), CV_8UC1);
 						candidates[c].copyTo(full(crop));
 						candidates[c]= full;
+						if (OcclusionMatteBuilderInternal::countInside(candidates[c], run.positives) * 2
+							< run.positives.size())
+							continue;
 						const float iou= OcclusionMatteBuilderInternal::maskIoU(candidates[c], run.nearMask);
 						if (iou > bestIoU)
 						{
@@ -251,7 +284,28 @@ bool OcclusionMatteBuilder::build(const PoseTrack& track, MovieDecoder& decoder,
 					}
 					if (best >= 0)
 					{
-						runMasks[runIndex]= candidates[best];
+						processed.runIoU[runIndex]= bestIoU;
+						const double nearArea= cv::countNonZero(run.nearMask);
+						const double maskArea= cv::countNonZero(candidates[best]);
+						const double overlap= cv::countNonZero(candidates[best] & run.nearMask);
+						const float coverage= nearArea > 0.0 ? (float)(overlap / nearArea) : 0.f;
+						processed.runCoverage[runIndex]= coverage;
+						processed.runExcess[runIndex]= maskArea > 0.0 ? (float)((maskArea - overlap) / maskArea) : 0.f;
+
+						// A mask that misses most of the object the contour belongs to is not an edge
+						// of it, and the band stays with the mesh rather than carved by the mask
+						if (coverage >= settings.minRunCoverage)
+						{
+							runMasks[runIndex]= candidates[best];
+						}
+						else
+						{
+							++stats.runsDropped;
+						}
+					}
+					else if (!candidates.empty())
+					{
+						++stats.runsDropped;
 					}
 				}
 			}

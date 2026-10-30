@@ -52,6 +52,42 @@ float farDepthAt(const cv::Mat& depth, int x, int y, float depthJump)
 	return bFound ? nearestFar : 0.f;
 }
 
+// Clears every 8-connected component of region that has no pixel 4-adjacent to a nonzero anchor
+// pixel. Both CV_8UC1 of the same size.
+void keepComponentsTouching(cv::Mat& region, const cv::Mat& anchor)
+{
+	if (cv::countNonZero(region) == 0)
+		return;
+
+	cv::Mat anchorGrown;
+	cv::dilate(anchor, anchorGrown, cv::getStructuringElement(cv::MORPH_CROSS, cv::Size(3, 3)));
+
+	cv::Mat componentIds;
+	const int componentCount= cv::connectedComponents(region, componentIds, 8, CV_32S);
+	std::vector<uint8_t> touches((size_t)componentCount, 0);
+	for (int y= 0; y < region.rows; ++y)
+	{
+		const uint8_t* regionRow= region.ptr<uint8_t>(y);
+		const uint8_t* anchorRow= anchorGrown.ptr<uint8_t>(y);
+		const int32_t* idRow= componentIds.ptr<int32_t>(y);
+		for (int x= 0; x < region.cols; ++x)
+		{
+			if (regionRow[x] && anchorRow[x])
+				touches[(size_t)idRow[x]]= 1;
+		}
+	}
+	for (int y= 0; y < region.rows; ++y)
+	{
+		uint8_t* regionRow= region.ptr<uint8_t>(y);
+		const int32_t* idRow= componentIds.ptr<int32_t>(y);
+		for (int x= 0; x < region.cols; ++x)
+		{
+			if (regionRow[x] && !touches[(size_t)idRow[x]])
+				regionRow[x]= 0;
+		}
+	}
+}
+
 cv::Mat distanceToSet(const cv::Mat& set)
 {
 	cv::Mat notSet;
@@ -59,6 +95,28 @@ cv::Mat distanceToSet(const cv::Mat& set)
 	cv::Mat dist;
 	cv::distanceTransform(notSet, dist, cv::DIST_L2, 5);
 	return dist;
+}
+
+// Splits a run's contour points at the median of the box's longer side until no part spans more
+// than maxSpan on either axis, appending the parts
+void splitBySpan(std::vector<cv::Point> points, int maxSpan, std::vector<std::vector<cv::Point>>& outParts)
+{
+	const cv::Rect box= cv::boundingRect(points);
+	const bool bSplitX= box.width >= box.height;
+	const int span= bSplitX ? box.width : box.height;
+	if (span <= maxSpan || points.size() < 2)
+	{
+		outParts.push_back(std::move(points));
+		return;
+	}
+
+	const size_t middle= points.size() / 2;
+	std::nth_element(points.begin(), points.begin() + middle, points.end(),
+					 [bSplitX](const cv::Point& a, const cv::Point& b) { return bSplitX ? a.x < b.x : a.y < b.y; });
+	std::vector<cv::Point> upper(points.begin() + middle, points.end());
+	points.resize(middle);
+	splitBySpan(std::move(points), maxSpan, outParts);
+	splitBySpan(std::move(upper), maxSpan, outParts);
 }
 
 std::vector<int> farthestPoints(const std::vector<cv::Point>& points, int count)
@@ -131,14 +189,19 @@ void OcclusionPrompts::findRuns(const cv::Mat& depth, const OcclusionPromptSetti
 		}
 	}
 
-	const cv::Rect imageRect(0, 0, depth.cols, depth.rows);
-	const int band= std::max(settings.bandPx, 1);
+	// A merged contour is split into parts of bounded span, each prompted on its own
+	std::vector<std::vector<cv::Point>> parts;
 	for (int label= 1; label < labelCount; ++label)
 	{
-		const std::vector<cv::Point>& points= runPoints[label];
-		if ((int)points.size() < settings.runMinPoints)
+		if ((int)runPoints[label].size() < settings.runMinPoints)
 			continue;
+		OcclusionPromptsInternal::splitBySpan(std::move(runPoints[label]), std::max(settings.runMaxSpanPx, 1), parts);
+	}
 
+	const cv::Rect imageRect(0, 0, depth.cols, depth.rows);
+	const int band= std::max(settings.bandPx, 1);
+	for (const std::vector<cv::Point>& points : parts)
+	{
 		OcclusionPromptRun run;
 		run.contour= points;
 
@@ -244,6 +307,38 @@ void OcclusionPrompts::computeLabels(const cv::Mat& depth, const std::vector<Occ
 {
 	outLabels= cv::Mat(depth.size(), CV_8UC1, cv::Scalar(k_labelKeep));
 	const int band= std::max(settings.bandPx, 1);
+	if (runs.empty())
+		return;
+
+	// Only the run of a pixel's nearest contour may remove it. A run's band reaches across another
+	// object standing beside it, and that run's mask saying background there would carve the
+	// other object: its own contour decides what it loses. Adding stays open to every run whose
+	// band covers the pixel, since an object's mask reaching past the mesh is its own edge
+	// wherever the mesh's nearest contour happens to belong to a neighbour (the cap the mesh
+	// never had, right under the desk's edge).
+	cv::Mat notContour(depth.size(), CV_8UC1, cv::Scalar(255));
+	for (const OcclusionPromptRun& run : runs)
+	{
+		for (const cv::Point& p : run.contour)
+		{
+			notContour.at<uint8_t>(p.y, p.x)= 0;
+		}
+	}
+	cv::Mat distToContour;
+	cv::Mat nearestContour;
+	cv::distanceTransform(notContour, distToContour, nearestContour, cv::DIST_L2, cv::DIST_MASK_5,
+						  cv::DIST_LABEL_PIXEL);
+	double maxLabel= 0.0;
+	cv::minMaxLoc(nearestContour, nullptr, &maxLabel);
+	std::vector<int> labelOwner((size_t)maxLabel + 1, -1);
+	for (size_t runIndex= 0; runIndex < runs.size(); ++runIndex)
+	{
+		for (const cv::Point& p : runs[runIndex].contour)
+		{
+			labelOwner[(size_t)nearestContour.at<int>(p.y, p.x)]= (int)runIndex;
+		}
+	}
+
 	for (size_t runIndex= 0; runIndex < runs.size() && runIndex < runMasks.size(); ++runIndex)
 	{
 		const OcclusionPromptRun& run= runs[runIndex];
@@ -251,32 +346,36 @@ void OcclusionPrompts::computeLabels(const cv::Mat& depth, const std::vector<Occ
 		if (objectMask.empty() || objectMask.size() != depth.size() || objectMask.type() != CV_8UC1)
 			continue;
 
-		cv::Mat runContour= cv::Mat::zeros(depth.size(), CV_8UC1);
-		for (const cv::Point& p : run.contour)
-		{
-			runContour.at<uint8_t>(p.y, p.x)= 255;
-		}
-		const cv::Mat distToContour= OcclusionPromptsInternal::distanceToSet(runContour);
-
+		// The mesh's near side as this run sees it, and the two disagreements inside the band
+		cv::Mat meshNear= cv::Mat::zeros(depth.size(), CV_8UC1);
+		cv::Mat removed= cv::Mat::zeros(depth.size(), CV_8UC1);
+		cv::Mat added= cv::Mat::zeros(depth.size(), CV_8UC1);
 		for (int y= 0; y < depth.rows; ++y)
 		{
 			for (int x= 0; x < depth.cols; ++x)
 			{
+				const float d= depth.at<float>(y, x);
+				const bool bMeshOccluder= OcclusionPromptsInternal::isCovered(d) && d < run.splitDepth;
+				if (bMeshOccluder)
+					meshNear.at<uint8_t>(y, x)= 255;
 				if (distToContour.at<float>(y, x) > (float)band)
 					continue;
 
-				const float d= depth.at<float>(y, x);
-				const bool bMeshOccluder= OcclusionPromptsInternal::isCovered(d) && d < run.splitDepth;
 				const bool bMaskOccluder= objectMask.at<uint8_t>(y, x) != 0;
+				const bool bOwner= labelOwner[(size_t)nearestContour.at<int>(y, x)] == (int)runIndex;
 				if (bMaskOccluder && !bMeshOccluder)
-				{
-					outLabels.at<uint8_t>(y, x)= k_labelAdded;
-				}
-				else if (!bMaskOccluder && bMeshOccluder)
-				{
-					outLabels.at<uint8_t>(y, x)= k_labelRemoved;
-				}
+					added.at<uint8_t>(y, x)= 255;
+				else if (!bMaskOccluder && bMeshOccluder && bOwner)
+					removed.at<uint8_t>(y, x)= 255;
 			}
 		}
+
+		// A change only moves the silhouette. A removed region that never reaches the far side
+		// is a hole the mask left inside the object, and an added region that never reaches the
+		// mesh is a blob beside it: neither is an edge the segmenter found, so both stay keep.
+		OcclusionPromptsInternal::keepComponentsTouching(removed, ~meshNear);
+		OcclusionPromptsInternal::keepComponentsTouching(added, meshNear);
+		outLabels.setTo(k_labelRemoved, removed);
+		outLabels.setTo(k_labelAdded, added);
 	}
 }

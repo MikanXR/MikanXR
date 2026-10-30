@@ -15,6 +15,10 @@ struct OcclusionPromptSettings
 	int runGapPx= 9;
 	// A shorter run is mesh noise: its two or three points prompt whatever surface they land on
 	int runMinPoints= 40;
+	// A run whose contour spans more than this is split at the median of its longer side until each
+	// part fits, so one prompt never spreads its points over the several objects a merged contour
+	// runs along: a can, a laptop and a stack of paper on a desk make one contour against the room
+	int runMaxSpanPx= 640;
 	// One prompt point per this many contour pixels, at most maxPointsPerRun
 	int pointSpacingPx= 40;
 	int maxPointsPerRun= 12;
@@ -52,7 +56,10 @@ public:
 	// (CV_8UC1 at the depth map's size, nonzero where it says occluder; an empty mask skips the run).
 	// Everything is keep except inside a run's band where its own mask and the mesh's near side
 	// disagree. Each run judges its band by its own mask: another run's mask may well cover this
-	// run's band with the surface it was prompted on.
+	// run's band with the surface it was prompted on. A disagreement only ever moves the
+	// silhouette: a removed region has to reach the far side of the mesh and an added region has
+	// to reach the mesh, so a hole the mask leaves inside an object, or a blob it adds beside one,
+	// stays keep.
 	static void computeLabels(const cv::Mat& depth, const std::vector<OcclusionPromptRun>& runs,
 							  const std::vector<cv::Mat>& runMasks, const OcclusionPromptSettings& settings,
 							  cv::Mat& outLabels);

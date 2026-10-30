@@ -3,7 +3,9 @@
 #include "unit_test.h"
 
 #include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <limits>
@@ -261,6 +263,125 @@ bool occlusion_prompts_test_labels()
 	UNIT_TEST_COMPLETE()
 }
 
+bool occlusion_prompts_test_long_run_splits()
+{
+	UNIT_TEST_BEGIN("a run longer than the span splits into parts that cover it")
+	using namespace OcclusionPromptsTestsInternal;
+
+	// The step edge runs the whole map's height; a span of a third of it gives at least three parts
+	OcclusionPromptSettings settings= makeSettings();
+	settings.runMaxSpanPx= k_height / 3;
+	const cv::Mat depth= makeStepMap();
+	std::vector<OcclusionPromptRun> runs;
+	OcclusionPrompts::findRuns(depth, settings, runs);
+
+	size_t contourPoints= 0;
+	int widestSpan= 0;
+	for (const OcclusionPromptRun& run : runs)
+	{
+		contourPoints+= run.contour.size();
+		const cv::Rect box= cv::boundingRect(run.contour);
+		widestSpan= std::max(widestSpan, std::max(box.width, box.height));
+		if (run.positives.empty())
+		{
+			fprintf(stdout, "    a part has no prompt point\n");
+			success= false;
+		}
+	}
+	if (runs.size() < 3 || widestSpan > settings.runMaxSpanPx || contourPoints != (size_t)k_height)
+	{
+		fprintf(stdout, "    %zu runs, widest span %d, %zu contour points\n", runs.size(), widestSpan, contourPoints);
+		success= false;
+	}
+
+	UNIT_TEST_COMPLETE()
+}
+
+bool occlusion_prompts_test_labels_only_move_the_silhouette()
+{
+	UNIT_TEST_BEGIN("a hole inside the object and a blob beside it stay keep")
+	using namespace OcclusionPromptsTestsInternal;
+
+	const OcclusionPromptSettings settings= makeSettings();
+	const cv::Point centre(32, 24);
+	const int radius= 14;
+	const cv::Mat depth= makeDiscMap(centre, radius);
+	std::vector<OcclusionPromptRun> runs;
+	OcclusionPrompts::findRuns(depth, settings, runs);
+
+	// The mask is the disc with a hole 5 px inside its left edge, inside the band, and a blob 2 px
+	// clear of its right edge, also inside the band. Neither touches an edge of the mesh.
+	cv::Mat mask= makeDiscMask(centre, radius);
+	const cv::Point hole(centre.x - radius + 5, centre.y);
+	const cv::Point blob(centre.x + radius + 4, centre.y);
+	mask.setTo(0, makeDiscMask(hole, 2));
+	mask|= makeDiscMask(blob, 2);
+	const std::vector<cv::Mat> runMasks(runs.size(), mask);
+
+	cv::Mat labels;
+	OcclusionPrompts::computeLabels(depth, runs, runMasks, settings, labels);
+	if (labels.type() != CV_8UC1 || labels.size() != depth.size())
+	{
+		fprintf(stdout, "    labels are not a CV_8UC1 image of the depth's size\n");
+		success= false;
+		UNIT_TEST_COMPLETE()
+	}
+
+	const uint8_t holeLabel= labels.at<uint8_t>(hole.y, hole.x);
+	const uint8_t blobLabel= labels.at<uint8_t>(blob.y, blob.x);
+	const int changed= cv::countNonZero(labels != OcclusionPrompts::k_labelKeep);
+	if (holeLabel != OcclusionPrompts::k_labelKeep || blobLabel != OcclusionPrompts::k_labelKeep || changed != 0)
+	{
+		fprintf(stdout, "    hole %d, blob %d, %d pixels changed\n", holeLabel, blobLabel, changed);
+		success= false;
+	}
+
+	UNIT_TEST_COMPLETE()
+}
+
+bool occlusion_prompts_test_band_pixels_belong_to_their_nearest_contour()
+{
+	UNIT_TEST_BEGIN("an object standing in another run's band is only removed by its own contour")
+	using namespace OcclusionPromptsTestsInternal;
+
+	// Two discs 7 px apart on an uncovered background, each nearer than the other's split depth,
+	// with a band wide enough to reach across the gap into the other disc
+	OcclusionPromptSettings settings= makeSettings();
+	settings.bandPx= 10;
+	const cv::Point centreA(18, 24);
+	const cv::Point centreB(45, 24);
+	const int radius= 10;
+	cv::Mat depth= makeDiscMap(centreA, radius);
+	depth.setTo(1.3f, makeDiscMask(centreB, radius));
+	std::vector<OcclusionPromptRun> runs;
+	OcclusionPrompts::findRuns(depth, settings, runs);
+	if (runs.size() != 2)
+	{
+		fprintf(stdout, "    expected 2 runs, got %zu\n", runs.size());
+		success= false;
+		UNIT_TEST_COMPLETE()
+	}
+
+	// Each run's mask is its own disc, which says background over the other disc
+	std::vector<cv::Mat> runMasks;
+	for (const OcclusionPromptRun& run : runs)
+	{
+		const bool bRunA= run.contour.front().x < (centreA.x + centreB.x) / 2;
+		runMasks.push_back(makeDiscMask(bRunA ? centreA : centreB, radius));
+	}
+
+	cv::Mat labels;
+	OcclusionPrompts::computeLabels(depth, runs, runMasks, settings, labels);
+	const int changed= cv::countNonZero(labels != OcclusionPrompts::k_labelKeep);
+	if (changed != 0)
+	{
+		fprintf(stdout, "    %d pixels changed, expected none\n", changed);
+		success= false;
+	}
+
+	UNIT_TEST_COMPLETE()
+}
+
 bool run_occlusion_prompts_unit_tests()
 {
 	UNIT_TEST_MODULE_BEGIN("occlusion_prompts")
@@ -269,5 +390,8 @@ bool run_occlusion_prompts_unit_tests()
 	UNIT_TEST_MODULE_CALL_TEST(occlusion_prompts_test_step_run_points);
 	UNIT_TEST_MODULE_CALL_TEST(occlusion_prompts_test_disc_run);
 	UNIT_TEST_MODULE_CALL_TEST(occlusion_prompts_test_labels);
+	UNIT_TEST_MODULE_CALL_TEST(occlusion_prompts_test_labels_only_move_the_silhouette);
+	UNIT_TEST_MODULE_CALL_TEST(occlusion_prompts_test_long_run_splits);
+	UNIT_TEST_MODULE_CALL_TEST(occlusion_prompts_test_band_pixels_belong_to_their_nearest_contour);
 	UNIT_TEST_MODULE_END()
 }

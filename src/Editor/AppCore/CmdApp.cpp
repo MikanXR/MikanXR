@@ -289,7 +289,8 @@ void CmdApp::printUsage() const
 			"               -coverage writes the per-vertex coverage measures as .npy files.\n"
 			"  -occlusionMatte -take=<path to take.trackcamera> -glb=<mesh.glb> [-glb2=<mesh.glb>]\n"
 			"               [-poses=<track.pose.json>] [-model=sam2_small|sam2_tiny] [-sam2Models=<dir>]\n"
-			"               [-band=<pixels>] [-scale=<1|2>] [-step=<n>] [-noCrop] [-out=<path.matte.json>] "
+			"               [-band=<pixels>] [-scale=<1|2>] [-step=<n>] [-first=<n>] [-last=<n>] [-noCrop] "
+			"[-span=<pixels>] [-minCoverage=<share>] [-out=<path.matte.json>] "
 			"[-dump=<dir>] [-cpu]\n"
 			"               Build a take's occlusion matte: per frame the meshes (in the take's\n"
 			"               ARKit world, as -occlusionMesh writes them) are rendered to depth at the\n"
@@ -810,10 +811,14 @@ public:
 		for (size_t r= 0; r < frame.runs.size(); ++r)
 		{
 			const OcclusionPromptRun& run= frame.runs[r];
+			const float iou= r < frame.runIoU.size() ? frame.runIoU[r] : -1.f;
+			const float coverage= r < frame.runCoverage.size() ? frame.runCoverage[r] : -1.f;
+			const float excess= r < frame.runExcess.size() ? frame.runExcess[r] : -1.f;
 			fprintf(file,
-					"%s{\"split_depth\": %.4f, \"contour_points\": %zu, \"box\": [%d, %d, %d, %d], \"positives\": [",
+					"%s{\"split_depth\": %.4f, \"contour_points\": %zu, \"box\": [%d, %d, %d, %d], "
+					"\"iou\": %.4f, \"coverage\": %.4f, \"excess\": %.4f, \"positives\": [",
 					r > 0 ? ", " : "", run.splitDepth, run.contour.size(), run.box.x, run.box.y, run.box.width,
-					run.box.height);
+					run.box.height, iou, coverage, excess);
 			for (size_t p= 0; p < run.positives.size(); ++p)
 			{
 				fprintf(file, "%s[%.1f, %.1f]", p > 0 ? ", " : "", run.positives[p].x, run.positives[p].y);
@@ -937,8 +942,12 @@ int CmdApp::buildOcclusionMatte() const
 	OcclusionMatteSettings settings;
 	settings.bandPx= std::max(atoi(getCommandLineStringArg("band", "64").c_str()), 1);
 	settings.bCropSmallRuns= !hasCommandLineFlag("noCrop");
+	settings.minRunCoverage= std::clamp((float)atof(getCommandLineStringArg("minCoverage", "0.5").c_str()), 0.f, 1.f);
+	settings.prompts.runMaxSpanPx= std::max(atoi(getCommandLineStringArg("span", "640").c_str()), 1);
 	settings.matteScale= std::clamp(atoi(getCommandLineStringArg("scale", "1").c_str()), 1, 4);
 	settings.frameStep= std::max(atoi(getCommandLineStringArg("step", "1").c_str()), 1);
+	settings.firstFrame= std::max(atoi(getCommandLineStringArg("first", "0").c_str()), 0);
+	settings.lastFrame= atoi(getCommandLineStringArg("last", "-1").c_str());
 	settings.modelName= modelEntry->name;
 
 	const std::string outArg= getCommandLineStringArg("out");
@@ -956,9 +965,11 @@ int CmdApp::buildOcclusionMatte() const
 	}
 
 	const OcclusionMatteBuildStats& stats= result.stats;
-	fprintf(stdout, "matte  : %dx%d, %d frames segmented, %d held, %d unmatched, %d runs (%.1f per frame)\n",
+	fprintf(stdout,
+			"matte  : %dx%d, %d frames segmented, %d held, %d unmatched, %d runs (%.1f per frame), %d dropped\n",
 			stats.matteWidth, stats.matteHeight, stats.framesSegmented, stats.framesHeld, stats.framesUnmatched,
-			stats.runsTotal, stats.framesSegmented > 0 ? (float)stats.runsTotal / stats.framesSegmented : 0.f);
+			stats.runsTotal, stats.framesSegmented > 0 ? (float)stats.runsTotal / stats.framesSegmented : 0.f,
+			stats.runsDropped);
 	fprintf(stdout, "time   : %.0f s, %.0f s in the segmenter (%.0f ms per segmented frame)\n", stats.totalSeconds,
 			stats.segmentSeconds,
 			stats.framesSegmented > 0 ? 1000.f * stats.segmentSeconds / stats.framesSegmented : 0.f);

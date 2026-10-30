@@ -33,9 +33,17 @@ struct OcclusionMatteSettings
 	int matteScale= 1;
 	// Every nth frame is segmented; the frames between take the last segmented labels
 	int frameStep= 1;
+	// Only frames whose fileIndex lies in [firstFrame, lastFrame] are segmented (lastFrame -1 for the
+	// whole take); the others are written as keep. A stretch of a take dumped for inspection.
+	int firstFrame= 0;
+	int lastFrame= -1;
 	// A run whose box is small is prompted on a crop around it, encoded on its own, which resolves a thin
 	// part of a small object at the cost of an encoder pass per such run
 	bool bCropSmallRuns= true;
+	// A run whose chosen mask covers less than this share of the mesh's near side inside its box
+	// is dropped, and its band stays with the mesh: the segmenter did not find the object the
+	// contour belongs to, and whatever it did find would carve that object
+	float minRunCoverage= 0.5f;
 	OcclusionPromptSettings prompts;
 	// Named in the sidecar header
 	std::string modelName;
@@ -59,6 +67,12 @@ struct OcclusionMatteFrame
 	cv::Mat depth;  // CV_32FC1 metres at the matte size, +inf where no mesh
 	cv::Mat labels; // CV_8UC1 at the matte size
 	std::vector<OcclusionPromptRun> runs;
+	// Per run, how the chosen mask agrees with the mesh's near side inside the run's box: the IoU the
+	// choice was made on, the share of the near side the mask covers, and the share of the mask that
+	// lies outside the near side. -1 for a run that got no mask.
+	std::vector<float> runIoU;
+	std::vector<float> runCoverage;
+	std::vector<float> runExcess;
 };
 
 // What the builder reports to while it runs, from the worker thread
@@ -80,6 +94,7 @@ struct OcclusionMatteBuildStats
 	int framesHeld= 0;      // took the previous frame's labels (the frame step)
 	int framesUnmatched= 0; // decoded frames the track has no pose for
 	int runsTotal= 0;
+	int runsDropped= 0; // runs whose mask covered too little of the mesh to be trusted
 	int matteWidth= 0;
 	int matteHeight= 0;
 	float segmentSeconds= 0.f; // encoder and decoder time

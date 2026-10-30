@@ -932,6 +932,7 @@ bool AppStage_OcclusionMatteBuild::handleRemoteControlCommand(const std::string&
 			outResults.push_back("held " + std::to_string(stats.framesHeld));
 			outResults.push_back("unmatched " + std::to_string(stats.framesUnmatched));
 			outResults.push_back("runs " + std::to_string(stats.runsTotal));
+			outResults.push_back("dropped " + std::to_string(stats.runsDropped));
 			outResults.push_back("segment_seconds " + std::to_string(stats.segmentSeconds));
 			outResults.push_back("seconds " + std::to_string(stats.totalSeconds));
 			outResults.push_back("sidecar " + m_result.jsonPath.string());
