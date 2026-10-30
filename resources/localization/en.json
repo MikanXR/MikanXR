@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1168,
-		"translatedCount": 1168,
-		"reviewedCount": 1168
+		"stringCount": 1173,
+		"translatedCount": 1173,
+		"reviewedCount": 1173
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -515,6 +515,7 @@
 		"applyMaterialHeader": "Apply Material Node",
 		"applyMaterialTitle": "Apply Material",
 		"auto": "Auto",
+		"bandRadius": "Band Radius",
 		"blendMode": "Blend Mode",
 		"blendMultiply": "Blend Multiply",
 		"blendNormal": "Blend Normal",
@@ -622,6 +623,10 @@
 		"mathSqrtTitle": "Sqrt",
 		"mathStepTitle": "Step",
 		"mathSubtractTitle": "Subtract",
+		"matteDepthRefineHasMatte": "The frame being composited has an occlusion matte",
+		"matteDepthRefineHeader": "Matte Depth Refine Node",
+		"matteDepthRefineNoMatte": "No occlusion matte for the frame being composited, so the mask passes through",
+		"matteDepthRefineTitle": "Matte Depth Refine",
 		"maxBlurRadius": "Max Blur Radius (px)",
 		"mousePositionTitle": "MousePosition",
 		"name": "Name",

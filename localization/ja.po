@@ -2695,6 +2695,11 @@ msgid "Auto"
 msgstr "自動"
 
 #. Section: nodes
+msgctxt "nodes.bandRadius"
+msgid "Band Radius"
+msgstr ""
+
+#. Section: nodes
 #, fuzzy
 msgctxt "nodes.blendMode"
 msgid "Blend Mode"
@@ -3319,6 +3324,26 @@ msgstr "ステップ"
 msgctxt "nodes.mathSubtractTitle"
 msgid "Subtract"
 msgstr "減算"
+
+#. Section: nodes
+msgctxt "nodes.matteDepthRefineHasMatte"
+msgid "The frame being composited has an occlusion matte"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.matteDepthRefineHeader"
+msgid "Matte Depth Refine Node"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.matteDepthRefineNoMatte"
+msgid "No occlusion matte for the frame being composited, so the mask passes through"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.matteDepthRefineTitle"
+msgid "Matte Depth Refine"
+msgstr ""
 
 #. Section: nodes
 msgctxt "nodes.maxBlurRadius"

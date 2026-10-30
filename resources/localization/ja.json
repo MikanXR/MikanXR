@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1168,
+		"stringCount": 1173,
 		"translatedCount": 900,
 		"reviewedCount": 0
 	},
@@ -515,6 +515,7 @@
 		"applyMaterialHeader": "マテリアル適用ノード",
 		"applyMaterialTitle": "マテリアル適用",
 		"auto": "自動",
+		"bandRadius": "Band Radius",
 		"blendMode": "ブレンドモード",
 		"blendMultiply": "乗算ブレンド",
 		"blendNormal": "通常ブレンド",
@@ -622,6 +623,10 @@
 		"mathSqrtTitle": "平方根",
 		"mathStepTitle": "ステップ",
 		"mathSubtractTitle": "減算",
+		"matteDepthRefineHasMatte": "The frame being composited has an occlusion matte",
+		"matteDepthRefineHeader": "Matte Depth Refine Node",
+		"matteDepthRefineNoMatte": "No occlusion matte for the frame being composited, so the mask passes through",
+		"matteDepthRefineTitle": "Matte Depth Refine",
 		"maxBlurRadius": "Max Blur Radius (px)",
 		"mousePositionTitle": "マウス位置",
 		"name": "名前",
