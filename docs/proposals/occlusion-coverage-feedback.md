@@ -1,6 +1,6 @@
 # Proposal: Occlusion capture coverage feedback
 
-Editor parts (1 to 4) are in `main`, and the duster take has run through the headless build. Phone parts (5 and 6) were built in MikanARStreamer, measured wrong on a real take, and replaced by the live fusion of [phone-live-fusion.md](./phone-live-fusion.md); what remains of them here is the measurement that retired them. The parity check and the tuning (7) remain, tracked in [plan.md](../plan.md). This document is the record of the editor's coverage view: the evidence that motivates it, the metric, the pieces as built, and the questions still open. A reader starting from it should not need the conversation that produced it.
+Editor parts (1 to 4) are in `main`, and a tabletop recording has run through the headless build. Phone parts (5 and 6) were built in MikanARStreamer, measured wrong on a real take, and replaced by the live fusion of [phone-live-fusion.md](./phone-live-fusion.md); what remains of them here is the measurement that retired them. The parity check and the tuning (7) remain, tracked in [plan.md](../plan.md). This document is the record of the editor's coverage view: the evidence that motivates it, the metric, the pieces as built, and the questions still open. A reader starting from it should not need the conversation that produced it.
 
 ## As built
 
@@ -46,17 +46,17 @@ The editor parts are in `main`:
 
 ### Remaining
 
-The headless build has run on the duster take. The parity check against `tools/surface_coverage.py`, the acceptance test for the metric, and a drive of the stage's views have not run:
+The headless build has run on a tabletop recording. The parity check against `tools/surface_coverage.py`, the acceptance test for the metric, and a drive of the stage's views have not run:
 
-1. Run the headless build on the cup take at the tabletop preset and write the coverage:
-	- `MikanCmd.exe -occlusionMesh -take=<take_20261028_131840.trackcamera> -voxel=0.008 -glb=<out>/cup.glb -coverage=<out>/coverage`
+1. Run the headless build on a tabletop recording at the tabletop preset and write the coverage:
+	- `MikanCmd.exe -occlusionMesh -take=<take.trackcamera> -voxel=0.008 -glb=<out>/mesh.glb -coverage=<out>/coverage`
 	- The output prints the class shares and warns if the voxel grew.
 
 2. Parity check in the experiments repo:
-	- Load `class.npy` and the other arrays with `numpy.load`. They are indexed by the vertices of `cup.glb`.
+	- Load `class.npy` and the other arrays with `numpy.load`. They are indexed by the vertices of `mesh.glb`.
 	- Run `tools/surface_coverage.py` on the same mesh. A small comparison script there may be needed, if the tool does not take an external mesh and arrays.
 	- Before comparing, confirm the tool applies the silhouette cull, the depth range and the camera-behind rule above.
-	- The bar is at least 95% of the cup's area in the same class.
+	- The bar is at least 95% of the subject's area in the same class.
 	- A mismatch is a bug in one of the two until shown otherwise. The thresholds are not tuned to make it pass.
 
 3. Drive the stage on that take with `tools/automate.py` and look at the screenshots:
@@ -66,7 +66,7 @@ The headless build has run on the duster take. The parity check against `tools/s
 	- `stage set_option view <name>` for each view, each with `screenshot window`.
 	- `stage frame_mesh`.
 	- What to look for:
-		- The cup's 150 to 270 degree side is weak or red in the Coverage view.
+		- The side the walk covered least is weak or red in the Coverage view.
 		- The textured view is the right way up.
 		- The mesh faces the camera on arrival.
 	- Then drag the box by hand, or use `stage cancel` and `stage set_option bounds ...`, rebuild, and confirm `get_summary` reports `voxel_size` 0.008 and `voxel_grown 0`.
@@ -77,23 +77,25 @@ The checklist in [plan.md](../plan.md) ("Occlusion coverage feedback") mirrors s
 
 ### The phone's coverage grid, retired
 
-Parts 5 and 6 landed in MikanARStreamer ahead of the parity check: `CoverageGrid`, a sparse two-level voxel grid in ARKit world judging support and carve at each voxel's surface point with the shared metric, `CoverageOverlay`, SceneKit points over the camera view (good green, weak red, only what the newest depth frame sees), and a HUD line with the shares and an arrow toward the nearest weak cluster. On the iPhone 12 Pro an update took 14 ms at 10 Hz at about 27,000 voxels and the recorder dropped no frames. The measurement below retired it, and the live fusion removed the grid, its settings, its tests and the `coverage` debug command.
+Parts 5 and 6 landed in MikanARStreamer ahead of the parity check: `CoverageGrid`, a sparse two-level voxel grid in ARKit world judging support and carve at each voxel's surface point with the shared metric, `CoverageOverlay`, SceneKit points over the camera view (good green, weak red, only what the newest depth frame sees), and a HUD line with the shares and an arrow toward the nearest weak cluster. On the iPhone 12 Pro it kept up at 10 Hz without disturbing the recorder. The measurement below retired it, and the live fusion removed the grid, its settings, its tests and the `coverage` debug command.
 
 ### The phone against the editor on a real take
 
-`take_20261028_211829` walks all the way around a compressed air duster, a metal can about 6.5 cm across and 24 cm tall, on a desk: 72 s, every 30 degree sector around the can visited, the camera at a median 57 degrees above horizontal and 0.6 m away. The operator saw the can stay mostly red. Two measures of the same take:
+A tabletop recording walks all the way around a compressed air duster, a metal can, on a desk, visiting every side of it. The operator saw the can stay mostly red. Two measures of the same recording:
 
-- The phone's `CoverageGrid`, replayed offline over every third frame (the live rate) by a macOS build of the same source: 35% of the can's side voxels good, 45% at the editor's thresholds. The leading failure is carve, with the median carve share between 0.4 and 0.8 depending on height. There are about twice as many voxels on the can as the editor has vertices, and the desk around it carries many voxels with one or two supporting frames carved nearly every time after, specks a single frame created in empty space.
+- The phone's `CoverageGrid`, replayed offline over every third frame (the live rate) by a macOS build of the same source: only a minority of the can's side voxels good, even at the editor's thresholds. The leading failure is carve. There are more voxels on the can than the editor has vertices, and the desk around it carries many voxels with one or two supporting frames carved nearly every time after, specks a single frame created in empty space.
 
-- `MikanCmd -occlusionMesh -voxel=0.008 -coverage` on the same take, boxed to the can: 94% of the can's vertices good. Every vertex has at least 8 supporting frames, the median carve share is 0.11, and the median best viewing angle is 0.87. Registration's final correction was 7 mm.
+- `MikanCmd -occlusionMesh -voxel=0.008 -coverage` on the same recording, boxed to the can: nearly all of the can's vertices good, every vertex well supported, with a low carve share and a good best viewing angle.
 
-So the walk was good and the phone's red was wrong, by far more than the margin. The phone's thresholds cost 10 of the points, and the rest comes from the voxel representation: a voxel's surface point is fixed by the single frame that created it, so one frame's depth noise leaves it off the surface that later frames, and the editor's fusion, average to. Replays isolating the causes:
+So the walk was good and the phone's red was wrong, by far more than the margin. The phone's thresholds cost a small part of the gap, and the rest comes from the voxel representation: a voxel's surface point is fixed by the single frame that created it, so one frame's depth noise leaves it off the surface that later frames, and the editor's fusion, average to. Replays isolating the causes:
 
-- Dropping a voxel once it has been carved at least 3 times and more than twice as often as supported (the space was seen through, so the editor's fusion would hold no surface there) lifts the can to 56% good, 72% at the editor's thresholds. The top half of the can reaches 78 to 95%. The bottom 8 cm, where it meets the desk, stays mostly carved.
+- Dropping a voxel once it has been carved at least 3 times and more than twice as often as supported (the space was seen through, so the editor's fusion would hold no surface there) closes part of the gap, most of it on the top half of the can. The base of the can, where it meets the desk, stays mostly carved.
 
-- Pulling each voxel's point toward the measured surface on every supporting frame adds about 5 points alone and nothing on top of the dropping.
+- Pulling each voxel's point toward the measured surface on every supporting frame adds a little alone and nothing on top of the dropping.
 
 - Replaying with the editor's refined poses instead of ARKit's raw ones does not help, so pose drift is not the cause.
+
+The measurements behind this are in the experiments repo's notes, against recordings that are not checked in.
 
 [phone-live-fusion.md](./phone-live-fusion.md) replaces the points with the editor's fusion run live on the phone.
 
@@ -107,15 +109,17 @@ An occlusion mesh is only as good as the take it is fused from, and today nothin
 
 ## Evidence
 
-Measured in the ReconstructionExperiments repo (`D:\Github\git-MikanXR\ReconstructionExperiments`, `NOTES.md` and `tools/surface_coverage.py`) on `take_20261028_131840`, a 41 s walk around a table with a coffee cup on it, fused by `MikanCmd -occlusionMesh` at the tabletop preset. Every cup vertex was projected into each of the 398 fused keyframes at its refined pose and compared with that frame's own LiDAR depth:
+Measured in the ReconstructionExperiments repo (`D:\Github\git-MikanXR\ReconstructionExperiments`, `NOTES.md` and `tools/surface_coverage.py`) on a tabletop recording, a walk around a table with a coffee cup on it, fused by `MikanCmd -occlusionMesh` at the tabletop preset. Every cup vertex was projected into each fused keyframe at its refined pose and compared with that frame's own LiDAR depth:
 
 - A frame supports a vertex when the measured depth at its pixel agrees with it within 1.5 cm, carves it when the measured depth lies farther (the frame says the space is empty), and is hidden from it when the measured depth lies nearer.
 
-- The cup's lumpy side (vertices facing 150 to 270 degrees around its axis) had 17 to 24 supporting frames against 70 to 96 on the good side, a best viewing angle of 0.58 to 0.70 (cosine between normal and view) against 0.85 to 0.91, and more carving frames than supporting ones.
+- The cup's lumpy side had far fewer supporting frames than the good side, a worse best viewing angle (cosine between normal and view), and more carving frames than supporting ones.
 
-- The cause was the walk, not the sensor. Of the 49 keyframes taken from the 150 to 240 degree side only 4 had the cup in view, and nobody stood at 240 to 270 degrees, so that side was only ever seen at a glancing angle from the neighbouring sides, where rays that skim past the cup to the table carve it.
+- The cause was the walk, not the sensor. Few of the keyframes taken from the lumpy side had the cup in view, and part of that side was never stood at, so it was only ever seen at a glancing angle from the neighbouring sides, where rays that skim past the cup to the table carve it.
 
-- A secondary cause: the walk made the reconstruction volume large, so the grid's voxel grew from 8 mm to 1.0 cm to fit `maxVoxels`, which faceted the cup visibly.
+- A secondary cause: the walk made the reconstruction volume large, so the grid's voxel grew past the preset's 8 mm to fit `maxVoxels`, which faceted the cup visibly.
+
+The measurements behind this are in the experiments repo's notes, against recordings that are not checked in.
 
 So the signal that separates a well-captured surface from a poorly captured one is a handful of per-surface numbers that both the editor and the phone can compute: how many frames saw it head-on, from how many directions, and how many frames contradicted it.
 
@@ -141,7 +145,7 @@ From those, one coverage class per point:
 - `weak`: seen (`support >= 1`) but failing any of the above
 - `unseen`: `support == 0`
 
-The thresholds are first guesses fitted to the cup take (its good side clears all four, its lumpy side fails `bestCos` and the carve share). The class uses these four measures only. `supportHigh` and `nearest` are shown as overlays but do not enter the class, and Part 7's tuning revisits that if either turns out to predict surface error.
+The thresholds are first guesses fitted to the tabletop recording above (the cup's good side clears all four, its lumpy side fails `bestCos` and the carve share). The class uses these four measures only. `supportHigh` and `nearest` are shown as overlays but do not enter the class, and Part 7's tuning revisits that if either turns out to predict surface error.
 
 The thresholds live in `MeshCoverageSettings` so tuning is a constant change.
 
@@ -163,7 +167,7 @@ The editor's pieces, which coverage colouring on the live mesh would start from:
 
 - Centre the view on the mesh as soon as the result arrives: orbit target at the centre of the mesh's world bounds (through the same `stage world * pose offset`), radius from the bounds' diagonal so the whole mesh fits, and the initial yaw and pitch looking along the take's average viewing direction, which is how the operator saw the scene. A "Frame mesh" button in the panel re-applies it.
 
-- An optional "Camera path" checkbox draws the take's fused camera positions as a polyline through the line renderer. It is what ties a weak region to where the operator walked, the single most useful thing in the cup diagnosis.
+- An optional "Camera path" checkbox draws the take's fused camera positions as a polyline through the line renderer. It is what ties a weak region to where the operator walked, the single most useful thing in the diagnosis under "Evidence".
 
 ### Part 2: the coverage pass (editor, implemented)
 
@@ -179,7 +183,7 @@ The editor's pieces, which coverage colouring on the live mesh would start from:
 
 - `OcclusionMeshBuildResult` gains the coverage arrays, and `OcclusionMeshBuildStats` gains the area share of each class.
 
-- `MikanCmd -occlusionMesh` gains `-coverage=<path>`, a folder receiving one raw `.npy` per measure (`support.npy`, `support_high.npy`, `carve.npy`, `directions.npy`, `best_cos.npy`, `nearest.npy`, `class.npy`), indexed by the vertices of the mesh file the same command writes. `numpy.load` reads each one directly, so the experiments repo can check the editor's numbers against `tools/surface_coverage.py` on the cup take. That parity check is the acceptance test for the metric: it passes when at least 95% of the cup's surface area gets the same class from both.
+- `MikanCmd -occlusionMesh` gains `-coverage=<path>`, a folder receiving one raw `.npy` per measure (`support.npy`, `support_high.npy`, `carve.npy`, `directions.npy`, `best_cos.npy`, `nearest.npy`, `class.npy`), indexed by the vertices of the mesh file the same command writes. `numpy.load` reads each one directly, so the experiments repo can check the editor's numbers against `tools/surface_coverage.py` on a tabletop recording. That parity check is the acceptance test for the metric: it passes when at least 95% of the subject's surface area gets the same class from both.
 
 ### Part 3: the view combo and the overlays (editor, implemented)
 
@@ -203,7 +207,7 @@ The editor's pieces, which coverage colouring on the live mesh would start from:
 
 ### Part 4: an operator bounds box (editor, implemented)
 
-The cup take's voxel grew from 8 mm to 1.0 cm because `computeBounds` takes the bounds from every keyframe's confident depth, so a long walk enlarged the volume and the voxel grew to fit `maxVoxels`. The coverage view is where an operator notices that, so the fix lands with this work.
+The tabletop recording's voxel grew past the preset's 8 mm because `computeBounds` takes the bounds from every keyframe's confident depth, so a long walk enlarged the volume and the voxel grew to fit `maxVoxels`. The coverage view is where an operator notices that, so the fix lands with this work.
 
 - An optional bounds box in the build settings. When set, it replaces the computed bounds for the volume. When unset, the automatic bounds stay the default.
 
@@ -219,7 +223,7 @@ A sparse two-level voxel grid in ARKit world, updated at 10 Hz from the take's d
 
 ### Part 7: tuning and verification
 
-- Once the parity check passes, tune the editor's thresholds on the cup and duster takes so that the coverage class predicts the surface error the experiments repo measures against hand-marked silhouettes (`tools/occlusion_edge_eval.py`, `tools/score_mesh_variants.py`). Record the result in the experiments repo's `NOTES.md` and the chosen values in [occlusion-mesh.md](../reference/occlusion-mesh.md).
+- Once the parity check passes, tune the editor's thresholds on tabletop recordings so that the coverage class predicts the surface error the experiments repo measures against hand-marked silhouettes (`tools/occlusion_edge_eval.py`, `tools/score_mesh_variants.py`). Record the result in the experiments repo's `NOTES.md` and the chosen values in [occlusion-mesh.md](../reference/occlusion-mesh.md).
 
 - A take recorded with the live mesh on, walking until the subject reads whole, must build good all round in the editor, and a take that skips a side must come out weak or red there.
 
@@ -229,7 +233,7 @@ The editor parts (1 to 4) have landed. The parity check against `tools/surface_c
 
 ## Out of scope
 
-- The cup take's table top fused as two surfaces about 2 cm apart, which points at pose drift between passes. A "disagreement" overlay (surfaces whose supporting frames disagree on depth by more than the band) would make drift visible, but drift is a registration problem and that overlay is tracked separately in [plan.md](../plan.md).
+- The tabletop recording's table top fused as two separate surfaces, which points at pose drift between passes. A "disagreement" overlay (surfaces whose supporting frames disagree on depth by more than the band) would make drift visible, but drift is a registration problem and that overlay is tracked separately in [plan.md](../plan.md).
 
 ## Open questions
 
