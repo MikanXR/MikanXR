@@ -1134,6 +1134,8 @@ void FileVideoSourceComponent::openOcclusionMatte(const std::filesystem::path& m
 
 void FileVideoSourceComponent::reloadOcclusionMatte() { openOcclusionMatte(resolveMediaPath()); }
 
+void FileVideoSourceComponent::closeOcclusionMatte() { m_matteReader.close(); }
+
 void FileVideoSourceComponent::publishPoseForFrame(int64_t ptsUs)
 {
 	const PoseTrack& track= getActivePoseTrack();

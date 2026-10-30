@@ -170,6 +170,7 @@ private:
 
 	OcclusionMatteBuildResult m_result;
 	bool m_bHasResult= false;
+	bool m_bSourceMatteReleased= false; ///< the source let go of its sidecar for a build in flight
 
 	// -- preview handover --
 	std::mutex m_previewMutex;
