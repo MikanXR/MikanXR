@@ -1,14 +1,14 @@
 # Proposal: Occlusion mesh from MikanARStreamer LiDAR recordings
 
-Design decided, Part 1 implemented. This document is the handoff: it carries the decision, the evidence behind it, what already exists on both sides, the pieces in order, and the open questions. A reader starting from it should not need the conversation that produced it.
+Design decided and built: Parts 1 to 4 are in, and Part 5's band refinement was built and then removed in favour of the occlusion matte ([occlusion-matte.md](../reference/occlusion-matte.md)). This document is the record of the decision: it carries the evidence behind it, what existed on both sides when it was made, the pieces in order, and the questions still open. A reader starting from it should not need the conversation that produced it.
 
 ## Goal
 
-A character composited into the video must be occluded by real furniture it walks behind, with silhouette edges clean enough to pass as in-shot. Today's depth proxy mesh ([depth-proxy-mesh.md](../reference/depth-proxy-mesh.md)) is a shadow catcher from one MoGe-2 frame: single viewpoint, holes behind everything, metric scale from appearance. It cannot do this job, and `plan.md` carries the gap as "Depth proxy mesh: occlusion-grade silhouette edges".
+A character composited into the video must be occluded by real furniture it walks behind, with silhouette edges clean enough to pass as in-shot. Today's depth proxy mesh ([depth-proxy-mesh.md](../reference/depth-proxy-mesh.md)) is a shadow catcher from one MoGe-2 frame: single viewpoint, holes behind everything, metric scale from appearance. It cannot do this job.
 
 ## Decision
 
-The occlusion mesh is built from the iPhone's LiDAR, recorded by MikanARStreamer alongside the video it already records: ARKit `sceneDepth` (256x192, metres), its confidence map, and the per-frame pose and intrinsics the pose track already carries. A TSDF fuses the sweep into one mesh. No learned depth model is involved. The mesh is a coarse depth prior: at composite time it is rendered from the tracked camera into a depth map, and an image-space refinement step snaps the resulting mask to the video frame's edges within a band of a few pixels. Silhouette quality is decided in that last step and by pose accuracy, not by mesh detail.
+The occlusion mesh is built from the iPhone's LiDAR, recorded by MikanARStreamer alongside the video it already records: ARKit `sceneDepth` (256x192, metres), its confidence map, and the per-frame pose and intrinsics the pose track already carries. A TSDF fuses the sweep into one mesh. No learned depth model is involved. The mesh is a coarse depth prior: at composite time it is rendered from the tracked camera into a depth map, and a per-frame correction moves its silhouette onto the video's edges within a band. The band-local filter this proposal named for that step was built and removed, and the occlusion matte, a segmenter prompted from the mesh's occluding contours, took its place ([occlusion-matte.md](../reference/occlusion-matte.md)). Silhouette quality is decided in that step and by pose accuracy, not by mesh detail.
 
 The decision rests on a comparison run in the ReconstructionExperiments repo (`D:\Github\git-MikanXR\ReconstructionExperiments`, see its README "Decision" and `NOTES.md`), on ten Stray Scanner captures (one hotel room, nine cluttered tabletops) with four candidate depth models (Prompt Depth Anything, Depth Anything 3, MapAnything, MILo) against a LiDAR-only baseline, all fused by the same TSDF and scored against held-out LiDAR frames:
 
@@ -20,7 +20,7 @@ The decision rests on a comparison run in the ReconstructionExperiments repo (`D
 
 PromptDA stays in the experiments repo as an optional offline refinement for close-range hero objects. It is a Python preprocessing step, not a candidate for an in-editor port.
 
-## What exists today
+## What existed at the decision
 
 On the MikanXR side ([videosources.md](../reference/videosources.md), [automation.md](../reference/automation.md), [compositor.md](../reference/compositor.md)):
 
@@ -108,13 +108,11 @@ Removed later. The refinement decides occlusion only when the client gives up it
 ## Open questions
 
 - Whether a loop constraint on top of the frame-to-model refinement is worth building for the remaining end-to-end seam, about 3 cm and 1 degree on the room loop after ARKit's own relocalisation.
-- Whether fusion should run on the phone instead, using ARKit's own `sceneReconstruction` mesh as a free alternative. It costs nothing to export `ARMeshAnchor`s in the same take and compare them in the harness, and it would short-circuit Part 4 if the quality is enough. Worth adding to Part 1 as an optional export.
-- Voxel size per take: 1.5 cm for a room, 8 mm for a tabletop. A heuristic from the sweep's extent, or an operator setting. On the tabletop take 8 mm changed nothing but the fusion time (five times longer) and the unsupported-surface fraction, so the measured case for 8 mm is still only the Stray Scanner small-object outlines.
 - Whether the fusion should weight free-space carving below surface votes, so a thin plate seen frontally many times survives the views that look past its edge. Untested; it would be an experiment in `recon/fusion.py` before it is a Part 4 decision.
 - Whether the editor keeps the fused volume for incremental updates (a second sweep extends the mesh) or always rebuilds from a take.
 
 ## References
 
-- Experiments repo: `C:\GitHub\BrendanWalker\ReconstructionExperiments`, `README.md` (decision and results), `NOTES.md` (observations, the back-shell bug, the Windows build notes), `recon/fusion.py`, `recon/evaluate.py`, `recon/capture.py`.
+- Experiments repo: `D:\Github\git-MikanXR\ReconstructionExperiments`, `README.md` (decision and results), `NOTES.md` (observations, the back-shell bug, the Windows build notes), `recon/fusion.py`, `recon/evaluate.py`, `recon/capture.py`.
 - MikanXR docs: [depth-proxy-mesh.md](../reference/depth-proxy-mesh.md), [videosources.md](../reference/videosources.md) (pose tracks, uploads, the offset), [automation.md](../reference/automation.md) (the `arkit` channel), [compositor.md](../reference/compositor.md) (depth nodes and stencils), [conventions.md](../reference/conventions.md), [calibration.md](../reference/calibration.md) (the marker alignment that produces the offset).
 - Stray Scanner data format, the model the sidecars follow: `https://github.com/strayrobots/scanner/blob/main/docs/format.md`.

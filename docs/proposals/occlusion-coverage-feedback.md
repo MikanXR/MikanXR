@@ -1,34 +1,21 @@
 # Proposal: Occlusion capture coverage feedback
 
-Editor parts (1 to 4) implemented but not yet run on a real take. Phone parts (5 and 6) were implemented in MikanARStreamer and run on an iPhone 12 Pro, ahead of the parity gate, then measured wrong on a real take and replaced by the live fusion of [phone-live-fusion.md](./phone-live-fusion.md). Their record below stays as the evidence. Tuning (7) not started. This document is the handoff for two pieces of work: a coverage view in the editor's occlusion mesh build stage, and live coverage feedback on the phone while a take records. It carries the evidence that motivates both, the metric they share, the state of each side, the pieces in order, and the questions still open. A reader starting from it should not need the conversation that produced it.
+Editor parts (1 to 4) are in `main`, and the duster take has run through the headless build. Phone parts (5 and 6) were built in MikanARStreamer, measured wrong on a real take, and replaced by the live fusion of [phone-live-fusion.md](./phone-live-fusion.md); what remains of them here is the measurement that retired them. The parity check and the tuning (7) remain, tracked in [plan.md](../plan.md). This document is the record of the editor's coverage view: the evidence that motivates it, the metric, the pieces as built, and the questions still open. A reader starting from it should not need the conversation that produced it.
 
-## Handoff status
+## As built
 
-### What landed
+The editor parts are in `main`:
 
-Four commits on branch `occlusion-quality-overlay` (pushed to `origin`), on top of `main` at `610a8fe`:
+- `src/Editor/Reconstruction/DepthProjection.h/.cpp`: the shared vertex-to-depth-pixel projection, used by `MeshTexturing` too.
+- `src/Editor/Reconstruction/MeshCoverage.h/.cpp`: the metric.
+- `src/Editor/Reconstruction/NpyWriter.h/.cpp`: the `.npy` writer.
+- `OcclusionMeshBuilder`: the coverage phase, the bounds box override, and the new stats. `MeshTexturing::textureMesh`: the source vertex remap. `CmdApp.cpp`: `-coverage` and `-bounds`.
+- `src/Editor/AppStages/OcclusionMeshBuild/OcclusionMeshPreview.h/.cpp`: the solid preview and its views. `AppStage_OcclusionMeshBuild`: framing, the camera path, the bounds box handles, and the automation commands. `GuiPanel_OcclusionMeshBuild`: the view combo, the legend, the coverage summary, the voxel warning, and the bounds box controls.
+- Tests: the `mesh_coverage` module, a remap check in `mesh_texturing`, and coverage plus bounds box checks in `occlusion_mesh`.
 
-- `d8ed60f`: `ProjectOutlinerModel.cpp` includes the Spout texture source headers it uses. Adding new `.cpp` files regrouped the unity build and exposed the missing includes. Unrelated to coverage, but needed for the rest to build.
+[occlusion-mesh.md](../reference/occlusion-mesh.md) ("Coverage", "The stage", "The headless command", "Tests"), [automation.md](../reference/automation.md) and [commands.md](../reference/commands.md) describe the work as built.
 
-- `4216413`: Parts 2 and 4 in the builder, and the headless export.
-	- `src/Editor/Reconstruction/DepthProjection.h/.cpp`: the shared vertex-to-depth-pixel projection, now used by `MeshTexturing` too.
-	- `src/Editor/Reconstruction/MeshCoverage.h/.cpp`: the metric.
-	- `src/Editor/Reconstruction/NpyWriter.h/.cpp`: the `.npy` writer.
-	- `OcclusionMeshBuilder`: the coverage phase, the bounds box override, and the new stats.
-	- `MeshTexturing::textureMesh`: the source vertex remap.
-	- `CmdApp.cpp`: `-coverage` and `-bounds`.
-	- Tests: the new `mesh_coverage` module, a remap check in `mesh_texturing`, and coverage plus bounds box checks in `occlusion_mesh`.
-
-- `882e756`: Parts 1, 3 and 4 in the build stage.
-	- `src/Editor/AppStages/OcclusionMeshBuild/OcclusionMeshPreview.h/.cpp`: the solid preview and its views.
-	- `AppStage_OcclusionMeshBuild`: framing, the camera path, the bounds box handles, and the automation commands.
-	- `GuiPanel_OcclusionMeshBuild`: the view combo, the legend, the coverage summary, the voxel warning, and the bounds box controls.
-	- `Constants_OcclusionMeshBuild`: `eOcclusionMeshPreviewView`.
-	- The new UI strings in `resources/localization/en.json`, synced into the catalogs.
-
-- `e4efed9`: this proposal and the reference docs. [occlusion-mesh.md](../reference/occlusion-mesh.md) ("Coverage", "The stage", "The headless command", "Tests"), [automation.md](../reference/automation.md) and [commands.md](../reference/commands.md) describe the work as built, and [plan.md](../plan.md) tracks what is left.
-
-### As built, where it differs from the parts below
+### Where it differs from the parts below
 
 - The fusion's cull is the silhouette cull (`TsdfVolume::cullFlyingPixels` with `gradientCull`, `gradientCullKeepsNear`, `gradientCullRadius`): at a depth jump of more than 8 percent against a 4-neighbour the near pixel is kept, and every pixel farther than the nearest depth within 2 pixels is dropped. The coverage pass applies exactly that, plus the fusion's depth range. The rule arrived from `occlusion-upsample` after the coverage pass was built, which had applied the older cull that dropped both pixels of a pair.
 
@@ -57,36 +44,22 @@ Four commits on branch `occlusion-quality-overlay` (pushed to `origin`), on top 
 
 - `set_option view` is the one option accepted after a build. `set_option bounds` is accepted only before one, like the other options. `get_summary` also reports `bounds_overridden`, `voxel_grown` and the current `view`.
 
-### Verified
+### Remaining
 
-- `Mikan`, `MikanCmd` and `unit_test_suite_cpp` build in Release. `MikanCmd -runTests` and `unit_test_suite_cpp` pass. `FormatCheck` passes on clang-format 19.1.5, and `tools/localization.py check` passes.
+The headless build has run on the duster take. The parity check against `tools/surface_coverage.py`, the acceptance test for the metric, and a drive of the stage's views have not run:
 
-- On the synthetic take in `occlusion_mesh`, an orbit over a narrow arc, coverage comes out 23% good, 72% weak and 5% unseen by area. A grid capped at a quarter of what the computed bounds need grows its voxel from 2 to 3.2 cm, and a box an eighth of that volume keeps 2 cm.
-
-### Not verified
-
-The machine this was built on had no `.trackcamera` take, and its experiments clone predates `tools/surface_coverage.py`. So:
-
-- The build stage has never been run in the editor with these changes. Nothing has been seen on screen: not the solid mesh, the framing, any overlay, the camera path, nor the box dragging.
-
-- The parity check against `tools/surface_coverage.py`, the acceptance test for the metric, has not run.
-
-### Next steps on the other machine
-
-1. Check out `occlusion-quality-overlay`, regenerate the project files (the new files are globbed), and build `MikanCmd`. Run `MikanCmd.exe -runTests` and `unit_test_suite_cpp.exe` to confirm the machine reproduces the passing state.
-
-2. Run the headless build on the cup take at the tabletop preset and write the coverage:
+1. Run the headless build on the cup take at the tabletop preset and write the coverage:
 	- `MikanCmd.exe -occlusionMesh -take=<take_20261028_131840.trackcamera> -voxel=0.008 -glb=<out>/cup.glb -coverage=<out>/coverage`
 	- The output prints the class shares and warns if the voxel grew.
 
-3. Parity check in the experiments repo:
+2. Parity check in the experiments repo:
 	- Load `class.npy` and the other arrays with `numpy.load`. They are indexed by the vertices of `cup.glb`.
 	- Run `tools/surface_coverage.py` on the same mesh. A small comparison script there may be needed, if the tool does not take an external mesh and arrays.
-	- Before comparing, confirm the tool applies the flying pixel cull, the depth range and the camera-behind rule above.
+	- Before comparing, confirm the tool applies the silhouette cull, the depth range and the camera-behind rule above.
 	- The bar is at least 95% of the cup's area in the same class.
 	- A mismatch is a bug in one of the two until shown otherwise. The thresholds are not tuned to make it pass.
 
-4. Drive the stage on that take with `tools/automate.py` and look at the screenshots:
+3. Drive the stage on that take with `tools/automate.py` and look at the screenshots:
 	- Enter the stage with `function invoke FileVideoSourceSystem <componentId> build_occlusion_mesh`.
 	- `stage set_option voxel_preset tabletop`, then `stage build`, then wait for `verifyMesh`.
 	- `stage get_summary` for the coverage shares.
@@ -98,47 +71,13 @@ The machine this was built on had no `.trackcamera` take, and its experiments cl
 		- The mesh faces the camera on arrival.
 	- Then drag the box by hand, or use `stage cancel` and `stage set_option bounds ...`, rebuild, and confirm `get_summary` reports `voxel_size` 0.008 and `voxel_grown 0`.
 
-5. Fix what those turn up, and carry any change to the per-frame rule or the class to the phone's `CoverageGrid`.
+4. Fix what those turn up.
 
-The checklist in [plan.md](../plan.md) ("Occlusion coverage feedback") mirrors steps 3 to 5.
+The checklist in [plan.md](../plan.md) ("Occlusion coverage feedback") mirrors steps 2 to 4.
 
-### Phone parts as built
+### The phone's coverage grid, retired
 
-Parts 5 and 6 landed in MikanARStreamer before the parity check, at the user's request, so a fix the parity check makes to the editor's per-frame rule has to be carried to the phone's `CoverageGrid` as well. The work is uncommitted on the Mac clone.
-
-- `CoverageGrid.swift` is the pure-logic grid, compiled by the test target. `CoverageSettings` holds the grid's shape, the editor fusion's depth range and cull, and the class thresholds, with the editor's own as `CoverageSettings.editorThresholds`. `CoverageGridTests` ports the `mesh_coverage` plane cases and adds the cull, the intrinsics scaling, the fine level, eviction, and the hint.
-
-- `CoverageSession.swift` holds `CoverageWorker`, which runs the grid on its own queue and drops an observation that arrives while an update is still running, and `CoverageSession`, which `StreamingSession` owns. `CoverageOverlay.swift` draws the points and `CoverageHUDView.swift` the HUD line. All three are `:app` sources.
-
-- `ARCaptureController.onDepthObserved` hands over a copy of the depth, the pose and the scaled intrinsics at the update rate, ahead of the frame-rate gate. Frames whose tracking is limited are skipped.
-
-- The grid runs while a Track Camera take records, with the "Coverage Feedback" setting on (the default), on a device with the LiDAR, fed from the depth the take records anyway. It starts empty with each take and stops with it. The scan preview before recording that Part 5 asked for was built first and then removed: in use the points before a take did not help plan the walk, and it kept the LiDAR on between takes.
-
-Where it differs from Parts 5 and 6 below:
-
-- A voxel judges support and carve at its surface point, the mean of the depth points that created it, rather than at its cell centre, which can sit up to half a cell diagonal off the surface. Its normal is the mean of those points' normals. A pixel's normal comes from its four neighbours, so a pixel without four usable neighbours inserts nothing.
-
-- The support band is a fixed 1.5 cm. It does not widen with the voxel the way the editor's widens to two voxels of its grid, since the point it is measured from is a surface point.
-
-- A fine voxel is judged only by frames that see it nearer than the fine depth limit (1 m), the frames that may create one.
-
-- Past the cap the grid keeps the nearest nine tenths of it, so eviction runs now and then rather than on every frame at the cap. A voxel costs about 100 bytes with its index entry, so the 500,000 cap is about 50 MB rather than the 16 MB estimated below.
-
-- The points are SceneKit point primitives in the preview's `ARSCNView` scene, sized at 0.7 of their voxel with a floor of 1.5 and a ceiling of 8 screen pixels. Good draws green and weak red. A status bar button hides them while the grid and the HUD keep running.
-
-- Only what the newest depth frame sees is drawn. The update marks a voxel shown when that frame supports or carves it, so a voxel facing away from the camera or behind nearer depth draws nothing, and the display is rebuilt with every update. In use the full grid drew every surface through every other one, and the room's red buried the subject's green.
-
-- A display range (2 m from the camera, a setting) limits the points and the HUD's shares, so the room behind a subject drops out. Changing it keeps the grid.
-
-- The HUD's arrow is the turn about gravity from the camera's heading, so it reads the same in either orientation. Pitched more than about 72 degrees up or down the camera has no heading, and the arrow gives way to an up-and-down mark.
-
-- Settings: Coverage Feedback, Show Coverage Points, the display range, the two voxel sizes, the update rate, and the four class thresholds, with a restore button.
-
-- The debug channel answers `coverage [status|reset]`: active, observations, dropped, voxels, the voxels within range, displayed, the last update's time, the good and weak shares, and the hint.
-
-Verified: the 150 simulator tests pass, 19 of them the grid's. On the iPhone 12 Pro, scanning a desk at 10 Hz took 14 ms an update at about 27,000 voxels with nothing dropped (19 ms at about 20,000 once the display was rebuilt every update), the points sat on the surfaces they describe, a 5 s take wrote its depth at the full frame rate with no dropped frames and emptied the grid at its start and end. With the preview removed, the grid and the LiDAR are off in Track Camera mode until a take starts, on for the take, and off again once it is packed.
-
-Not verified: the update time near the 500,000 cap, and anything of Part 7.
+Parts 5 and 6 landed in MikanARStreamer ahead of the parity check: `CoverageGrid`, a sparse two-level voxel grid in ARKit world judging support and carve at each voxel's surface point with the shared metric, `CoverageOverlay`, SceneKit points over the camera view (good green, weak red, only what the newest depth frame sees), and a HUD line with the shares and an arrow toward the nearest weak cluster. On the iPhone 12 Pro an update took 14 ms at 10 Hz at about 27,000 voxels and the recorder dropped no frames. The measurement below retired it, and the live fusion removed the grid, its settings, its tests and the `coverage` debug command.
 
 ### The phone against the editor on a real take
 
@@ -164,7 +103,7 @@ An occlusion mesh is only as good as the take it is fused from, and today nothin
 
 - After a build, the editor shows the mesh properly (centred, solid, textured) and lets the operator switch to overlays that colour every surface by how well the take observed it, so a bad side is obvious and the operator knows what to recapture.
 
-- While recording, the phone colours the surfaces it has seen by the same measure, so the operator walks to the weak side before stopping the take.
+- While recording, the phone shows what the take has captured so far, so the operator walks to the weak side before stopping the take. This half is now the live fusion mesh of [phone-live-fusion.md](./phone-live-fusion.md).
 
 ## Evidence
 
@@ -182,7 +121,7 @@ So the signal that separates a well-captured surface from a poorly captured one 
 
 ## The shared metric
 
-Both sides compute the same per-surface record. The editor computes it per mesh vertex after the fusion, at the refined poses. The phone computes it per voxel of a coarse grid while recording, at ARKit's raw poses. Those inputs differ, so the two cannot agree exactly near the thresholds. The promise is one-way instead: the phone is stricter by design, so a surface the phone shows green is one the editor's build will show green. A phone surface shown weak that the editor calls good costs the operator a little extra walking, which is the safe direction.
+The editor computes one per-surface record per mesh vertex after the fusion, at the refined poses. The phone computed the same record per voxel of a coarse grid while recording, at ARKit's raw poses, until the live fusion replaced the grid. It would compute it again only to colour the live mesh (that proposal's Part 4), with the one-way promise that the phone is the stricter side, so a surface shown green there is green in the editor's build.
 
 - `support`: frames whose depth at the surface point's pixel agrees with it within the support band (1.5 cm, or two voxels when the voxel is larger), confidence at least 1, inside the fusion's depth range, and kept by the fusion's flying pixel cull (a pixel whose depth jumps by more than 8 percent against a 4-neighbour is dropped, [occlusion-mesh.md](../reference/occlusion-mesh.md)). A frame whose camera lies behind the surface counts nothing.
 
@@ -204,25 +143,17 @@ From those, one coverage class per point:
 
 The thresholds are first guesses fitted to the cup take (its good side clears all four, its lumpy side fails `bestCos` and the carve share). The class uses these four measures only. `supportHigh` and `nearest` are shown as overlays but do not enter the class, and Part 7's tuning revisits that if either turns out to predict surface error.
 
-The thresholds live in one settings struct on each side so tuning is a constant change. The phone's defaults are the editor's thresholds with a safety margin (for example `support >= 12`, `bestCos >= 0.75`, carve share at most a quarter), which is what makes it the stricter side. Part 7 sets the margin from the disagreement measured between the two.
+The thresholds live in `MeshCoverageSettings` so tuning is a constant change.
 
 ## What exists today
 
-Editor side: Parts 1 to 4 as built are described in [occlusion-mesh.md](../reference/occlusion-mesh.md) and [automation.md](../reference/automation.md), with the differences from the parts below listed under "Handoff status". The phone port starts from these pieces:
+The editor's pieces, which coverage colouring on the live mesh would start from:
 
-- `MeshCoverage::accumulateView` (`src/Editor/Reconstruction/MeshCoverage.cpp`) is the per-frame rule the phone's update step has to match: projection, the usable-pixel test, support, carve, or hidden, the camera-behind rule, and the direction bins.
+- `MeshCoverage::accumulateView` (`src/Editor/Reconstruction/MeshCoverage.cpp`) is the per-frame rule: projection, the usable-pixel test, support, carve, or hidden, the camera-behind rule, and the direction bins.
 
-- `MeshCoverage::classify` is the class rule, and `MeshCoverageSettings` holds the editor's thresholds that the phone's defaults add their margin to.
+- `MeshCoverage::classify` is the class rule, and `MeshCoverageSettings` holds the thresholds.
 
-- The `mesh_coverage` tests (`src/Editor/Reconstruction/Test/MeshCoverageTests.cpp`) are synthetic plane cases that port directly to the phone's test target as a check that the two rules agree.
-
-Phone side (MikanARStreamer, from the project notes, so check each name against the current code before starting):
-
-- `ARCaptureController` delivers every ARKit frame, `onPoseObserved` fires on each frame ahead of the fps gate, and `trackcamera` takes record `sceneDepth` and its confidence through `DepthTrack.swift` (`DepthTrackWriter`) beside the movie.
-
-- `CaptureFlowSession` drives the guided capture flows, `StatsOverlayView` is the stats overlay, `AppSettings` and `SettingsView` hold the settings.
-
-- The project builds in Swift 6 language mode. The test target compiles only pure-logic sources, so anything that imports ARKit, Metal or SwiftUI is registered as `:app` with `tools/register_sources.py`, and logic that should be tested has to stay in files free of those imports.
+- The `mesh_coverage` tests (`src/Editor/Reconstruction/Test/MeshCoverageTests.cpp`) are synthetic plane cases, the check that a port of the rule agrees with it.
 
 ## The pieces
 
@@ -282,43 +213,19 @@ The cup take's voxel grew from 8 mm to 1.0 cm because `computeBounds` takes the 
 
 - The summary flags a build whose `voxelSize` came out larger than the preset's, so the operator knows when to place a box.
 
-### Part 5: the coverage grid on the phone (MikanARStreamer)
+### Parts 5 and 6: the coverage grid and overlay on the phone (retired)
 
-- A pure-logic `CoverageGrid` (no ARKit or Metal imports, so the test target can compile it): a sparse hash of voxels in ARKit world, keyed by integer voxel coordinates, each holding the shared metric's measures with the normal estimated from the depth that created it. Capped at a voxel count (500,000 at about 32 bytes each is 16 MB) with the farthest from the current camera evicted first.
-
-- The grid has two levels. Every observation updates a coarse voxel (2 cm to start, a setting), and observations at depth under about 1 m also update a fine voxel (a finer size, a setting) so a cup's sides are more than one voxel thick. The display prefers the fine voxel where one exists. The voxel cap covers both levels.
-
-- Voxels exist only where the phone has observed depth, so the phone has no `unseen` class: space it never saw draws no voxel at all. The phone shows good and weak, and weak plays the part of red. That covers the failure the cup showed, a side seen only at glancing angles and carved, which comes out weak.
-
-- Per update, from one `ARFrame`'s `sceneDepth`, its confidence, the camera transform and the intrinsics scaled to the depth size, as the take recorder already has them:
-	1. Insert: back-project confident depth pixels that the flying pixel cull keeps (the same rule as the editor) and create any voxel that does not exist yet, with a normal from the depth image's neighbours.
-	2. Update: project every existing voxel inside the frustum into the depth image and record support, carve or hidden, the direction bin and the viewing angle, exactly as the editor's pass does per vertex.
-
-- Updates run on a background queue at a fixed rate below the frame rate (10 Hz to start), each on the most recent frame only, so the grid never falls behind and the recorder's own work is untouched. The update is a few hundred thousand projections at most, which is a Metal compute dispatch if the CPU cannot keep 10 Hz on the oldest supported phone. Keep the CPU version as the tested reference either way.
-
-- The grid runs in a scan preview before recording, so the operator can plan the walk, and while a `trackcamera` take records. It resets when recording starts, so the take's grid reflects only what the take itself saw, and it is discarded when the take ends. Nothing about it is written into the capture: the editor computes its own coverage from the take after the build.
-
-### Part 6: the live overlay on the phone (MikanARStreamer)
-
-- Draw the grid's voxels over the camera view as screen-facing points (or small quads), coloured by the same class colours as the editor's coverage view, with a toggle in the recording UI. Points are the first version: they need no mesh and read clearly at room scale.
-
-- A later version colours ARKit's own scene reconstruction mesh (`ARMeshAnchor`, available on LiDAR phones) by looking up each mesh vertex's voxel. It reads better than points, but ARKit keeps re-meshing those anchors, which is why the statistics live in the grid and not on the mesh.
-
-- A small HUD line beside the existing stats: the share of grid surface that is good and weak, and an arrow toward the nearest large cluster of weak voxels within a few metres, so the operator knows which way to walk. The nearest cluster rather than an azimuth sector around the subject keeps the hint working in a room as well as around a tabletop.
-
-- Settings: overlay on or off, the two voxel sizes, update rate, and the class thresholds, defaulting to the editor's values plus the safety margin.
+A sparse two-level voxel grid in ARKit world, updated at 10 Hz from the take's depth with the shared metric per voxel, drawn as class-coloured points over the camera view with a HUD line and an arrow toward the nearest weak cluster. Built as described under "The phone's coverage grid, retired", measured wrong on a real take, and replaced by [phone-live-fusion.md](./phone-live-fusion.md).
 
 ### Part 7: tuning and verification
 
-- Record one take with the overlay on, walking until the cup is green all round, and one deliberately skipping a side. Build both in the editor: everything the phone showed green must be green in the editor, and the skipped side must come out lumpy, weak on the phone and weak or red in the editor. Measure where the editor calls good what the phone called weak, and set the phone's margin from it.
+- Once the parity check passes, tune the editor's thresholds on the cup and duster takes so that the coverage class predicts the surface error the experiments repo measures against hand-marked silhouettes (`tools/occlusion_edge_eval.py`, `tools/score_mesh_variants.py`). Record the result in the experiments repo's `NOTES.md` and the chosen values in [occlusion-mesh.md](../reference/occlusion-mesh.md).
 
-- Tune the thresholds on those takes so that the coverage class predicts the surface error the experiments repo measures against hand-marked silhouettes (`tools/occlusion_edge_eval.py`, `tools/score_mesh_variants.py`). Record the result in the experiments repo's `NOTES.md` and the chosen values in [occlusion-mesh.md](../reference/occlusion-mesh.md).
-
-- Phone performance on the oldest supported LiDAR phone: the overlay must not drop the recorded frame rate.
+- A take recorded with the live mesh on, walking until the subject reads whole, must build good all round in the editor, and a take that skips a side must come out weak or red there.
 
 ## Sequencing
 
-The editor parts (1 to 4) were to land first and pass the parity check against `tools/surface_coverage.py` before the phone work (Parts 5 and 6) started, so the phone would port a validated metric. Both have landed, the phone ahead of the check, so the parity check now gates Part 7's tuning, which comes last.
+The editor parts (1 to 4) have landed. The parity check against `tools/surface_coverage.py` gates Part 7's tuning, which comes last. The phone's feedback is the live fusion's own.
 
 ## Out of scope
 
