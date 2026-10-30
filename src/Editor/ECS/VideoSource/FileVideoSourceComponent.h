@@ -5,6 +5,8 @@
 #include "ComponentFwd.h"
 #include "IAlignmentReferenceSource.h"
 #include "IFrameCoupledPoseProvider.h"
+#include "IOcclusionMatteSource.h"
+#include "MatteTrack.h"
 #include "MikanVideoSourceTypes.h"
 #include "PoseTrack.h"
 #include "ProjectConfigConstants.h"
@@ -98,7 +100,8 @@ private:
 // marker image is the alignment reference for all three.
 class FileVideoSourceComponent : public VideoSourceComponent,
 								 public IFrameCoupledPoseProvider,
-								 public IAlignmentReferenceSource
+								 public IAlignmentReferenceSource,
+								 public IOcclusionMatteSource
 {
 public:
 	FileVideoSourceComponent(MikanObjectWeakPtr owner);
@@ -181,6 +184,11 @@ public:
 	// The offset may still move by a few millimetres: a snap is wanted or running
 	bool isAlignmentSettling() const;
 
+	// -- Occlusion matte ----
+	// Reopens the matte sidecar beside the capture, so one written while the
+	// media is open shows up without reopening the media
+	void reloadOcclusionMatte();
+
 	// -- IAlignmentReferenceSource ----
 	virtual bool hasAlignmentReference() const override;
 	virtual void beginAlignmentReference() override;
@@ -204,6 +212,7 @@ public:
 	static const std::string k_stepBackFunctionId;
 	static const std::string k_stepForwardFunctionId;
 	static const std::string k_buildOcclusionMeshFunctionId;
+	static const std::string k_buildOcclusionMatteFunctionId;
 	static void getFunctionDescriptors(std::vector<FunctionDescriptorConstPtr>& outDescriptors);
 	virtual bool invokeFunction(const std::string& functionName) override;
 
@@ -267,6 +276,10 @@ private:
 		bool bQuit= false;
 	};
 
+	// -- IOcclusionMatteSource ----
+	virtual bool tryGetLatestFrameMatte(const std::array<uint8_t, 3>& labelValues, cv::Mat& outLabels,
+										int64_t& outFrameKey) const override;
+
 	void reopenMedia();
 	void startWorker();
 	void stopWorker();
@@ -296,6 +309,9 @@ private:
 	// Opens the capture when the media names one and loads the override track.
 	// Returns false when the capture cannot be opened.
 	bool loadMedia();
+	// Opens the matte sidecar beside a trackcamera capture when one is there
+	// and matches the capture's own track; the reader stays closed otherwise
+	void openOcclusionMatte(const std::filesystem::path& mediaPath);
 	bool dropStaleOverride();
 	void clearRuntimeState();
 
@@ -347,9 +363,14 @@ private:
 		glm::mat4 sourceWorldTransform= glm::mat4(1.f);
 		MikanVideoSourceIntrinsics intrinsics;
 		uint32_t frameSeq= 0;
+		size_t fileIndex= 0; // the track frame's record index, which keys the matte track
 		bool bValid= false;
 	};
 	LatestPose m_latestPose;
+
+	// The take's occlusion matte, found beside the capture by its stem and open
+	// while its session and record count match the track's
+	MatteTrackReader m_matteReader;
 
 	// -- worker thread --
 	std::thread m_workerThread;

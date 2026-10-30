@@ -11,6 +11,7 @@
 #include "MovieDecoder.h"
 #include "PathUtils.h"
 #include "PlaybackTime.h"
+#include "OcclusionMatteBuild/AppStage_OcclusionMatteBuild.h"
 #include "OcclusionMeshBuild/AppStage_OcclusionMeshBuild.h"
 #include "PoseTrackAssetReference.h"
 #include "ThreadUtils.h"
@@ -226,6 +227,7 @@ const std::string FileVideoSourceComponent::k_stopFunctionId= "stop";
 const std::string FileVideoSourceComponent::k_stepBackFunctionId= "step_back";
 const std::string FileVideoSourceComponent::k_stepForwardFunctionId= "step_forward";
 const std::string FileVideoSourceComponent::k_buildOcclusionMeshFunctionId= "build_occlusion_mesh";
+const std::string FileVideoSourceComponent::k_buildOcclusionMatteFunctionId= "build_occlusion_matte";
 
 FileVideoSourceComponent::FileVideoSourceComponent(MikanObjectWeakPtr owner)
 	: VideoSourceComponent(owner)
@@ -1051,6 +1053,7 @@ bool FileVideoSourceComponent::loadMedia()
 
 	m_capture.close();
 	m_overridePoseTrack.clear();
+	m_matteReader.close();
 	m_bHasAlignmentReference= false;
 	m_bMarkerShotAlignmentTried= false;
 	cancelHeightSnap();
@@ -1065,6 +1068,8 @@ bool FileVideoSourceComponent::loadMedia()
 			MIKAN_LOG_ERROR("FileVideoSourceComponent::loadMedia") << "Failed to open capture " << mediaPath;
 			return false;
 		}
+
+		openOcclusionMatte(mediaPath);
 	}
 
 	// An override belongs to the take it was refined from. One left behind when
@@ -1102,6 +1107,33 @@ bool FileVideoSourceComponent::loadMedia()
 	return true;
 }
 
+void FileVideoSourceComponent::openOcclusionMatte(const std::filesystem::path& mediaPath)
+{
+	m_matteReader.close();
+
+	// A matte built for this take sits beside it. It keys records by the capture's
+	// own track, so an override track of the same session indexes it as well.
+	const std::filesystem::path mattePath= MatteTrack::sidecarPathForCapture(mediaPath);
+	if (!m_capture.isOpen() || m_capture.getKind() != eCaptureKind::trackcamera || !std::filesystem::exists(mattePath))
+		return;
+
+	const PoseTrack& track= m_capture.getPoseTrack(eCaptureMemberRole::movie_pose);
+	std::string matteError;
+	if (m_matteReader.open(mattePath, track.getSessionId(), track.getFrameCount(), matteError))
+	{
+		MIKAN_LOG_INFO("FileVideoSourceComponent::openOcclusionMatte")
+			<< "Occlusion matte " << mattePath << " (" << m_matteReader.getHeader().matteWidth << "x"
+			<< m_matteReader.getHeader().matteHeight << ", " << m_matteReader.getHeader().model << ")";
+	}
+	else
+	{
+		MIKAN_LOG_WARNING("FileVideoSourceComponent::openOcclusionMatte")
+			<< "Occlusion matte " << mattePath << " is not used: " << matteError;
+	}
+}
+
+void FileVideoSourceComponent::reloadOcclusionMatte() { openOcclusionMatte(resolveMediaPath()); }
+
 void FileVideoSourceComponent::publishPoseForFrame(int64_t ptsUs)
 {
 	const PoseTrack& track= getActivePoseTrack();
@@ -1129,7 +1161,27 @@ void FileVideoSourceComponent::publishPoseForFrame(int64_t ptsUs)
 	m_latestPose.sourceWorldTransform= poseFrame.cameraToWorld;
 	m_latestPose.intrinsics= intrinsics;
 	m_latestPose.frameSeq= m_frameSeq;
+	m_latestPose.fileIndex= poseFrame.fileIndex;
 	m_latestPose.bValid= true;
+}
+
+// -- IOcclusionMatteSource ----
+bool FileVideoSourceComponent::tryGetLatestFrameMatte(const std::array<uint8_t, 3>& labelValues, cv::Mat& outLabels,
+													  int64_t& outFrameKey) const
+{
+	if (!m_matteReader.isOpen())
+		return false;
+
+	size_t fileIndex= 0;
+	{
+		std::lock_guard<std::mutex> lock(m_latestPoseMutex);
+		if (!m_latestPose.bValid)
+			return false;
+		fileIndex= m_latestPose.fileIndex;
+		outFrameKey= (int64_t)m_latestPose.frameSeq;
+	}
+
+	return m_matteReader.readRecord(fileIndex, outLabels, labelValues);
 }
 
 // -- IFrameCoupledPoseProvider ----
@@ -1481,6 +1533,8 @@ void FileVideoSourceComponent::getFunctionDescriptors(std::vector<FunctionDescri
 	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_stepForwardFunctionId, "Step Forward"));
 	outDescriptors.push_back(
 		std::make_shared<FunctionDescriptor>(k_buildOcclusionMeshFunctionId, "Build Occlusion Mesh"));
+	outDescriptors.push_back(
+		std::make_shared<FunctionDescriptor>(k_buildOcclusionMatteFunctionId, "Build Occlusion Matte"));
 }
 
 bool FileVideoSourceComponent::invokeFunction(const std::string& functionName)
@@ -1515,6 +1569,12 @@ bool FileVideoSourceComponent::invokeFunction(const std::string& functionName)
 		// The stage checks the take and explains a refusal itself
 		AppStage_OcclusionMeshBuild::tryEnterBuild(getOwnerEditorWindow()->getCurrentAppStage(),
 												   getSelfPtr<FileVideoSourceComponent>());
+		return true;
+	}
+	else if (functionName == k_buildOcclusionMatteFunctionId)
+	{
+		AppStage_OcclusionMatteBuild::tryEnterBuild(getOwnerEditorWindow()->getCurrentAppStage(),
+													getSelfPtr<FileVideoSourceComponent>());
 		return true;
 	}
 

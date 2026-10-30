@@ -12,7 +12,10 @@
 #include "IMkTexture.h"
 #include "IMkTriangulatedMesh.h"
 #include "IMkGraphicsContext.h"
+#include "IOcclusionMatteSource.h"
 #include "Logger.h"
+
+#include <opencv2/core.hpp>
 #include "MainWindow.h"
 #include "MathGLM.h"
 #include "MathTypeConversion.h"
@@ -422,6 +425,7 @@ void CompositorComponent::tryEnqueueNewFrame(CameraComponentPtr cameraComponent)
 			queuedFrame.bHasAperturePose=
 				cameraComponent->getStageSpaceAperturePose(queuedFrame.aperturePose_StageSpace);
 			m_frameEventQueue.push(queuedFrame);
+			enqueueOcclusionMatte(newFrameEvent.frame);
 
 			// Tell clients what to render, in the form the camera's sync mode wants
 			publishClientFrameNotification(cameraComponent, newFrameEvent);
@@ -468,6 +472,60 @@ void CompositorComponent::update(float deltaSeconds)
 		// Try to add new frames from the video source if we have room in the queue
 		tryEnqueueNewFrame(cameraComponent);
 	}
+}
+
+void CompositorComponent::enqueueOcclusionMatte(int64_t frameIndex)
+{
+	auto matteSource= std::dynamic_pointer_cast<IOcclusionMatteSource>(getVideoSourceComponent());
+	if (!matteSource || !m_videoDistortionView)
+		return;
+
+	// The labels 0, 1, 2 spread over the byte so the shader reads them as 0, 0.5 and 1
+	static const std::array<uint8_t, 3> k_matteTextureValues= {0, 128, 255};
+	cv::Mat labels;
+	int64_t sourceKey= -1;
+	if (!matteSource->tryGetLatestFrameMatte(k_matteTextureValues, labels, sourceKey) || labels.empty()
+		|| labels.type() != CV_8UC1 || !labels.isContinuous())
+	{
+		return;
+	}
+
+	// One slot more than the queue holds, so the frame being composited keeps its matte
+	// while the newest frame's is written
+	const size_t ringSize= (size_t)m_videoDistortionView->getMaxFrameQueueSize() + 1;
+	if (m_matteRing.size() != ringSize)
+	{
+		m_matteRing.assign(ringSize, MatteSlot());
+		m_matteWriteIndex= 0;
+	}
+
+	MatteSlot& slot= m_matteRing[m_matteWriteIndex];
+	m_matteWriteIndex= (m_matteWriteIndex + 1) % ringSize;
+	if (!slot.texture || slot.texture->getTextureWidth() != labels.cols
+		|| slot.texture->getTextureHeight() != labels.rows)
+	{
+		slot.texture= CreateMkTexture();
+		slot.texture->setSize((uint16_t)labels.cols, (uint16_t)labels.rows);
+		slot.texture->setTextureFormat(MK_RED);
+		slot.texture->setBufferFormat(MK_RED);
+		slot.texture->setPixelBufferObjectMode(IMkTexture::PixelBufferObjectMode::NoPBO);
+		slot.texture->createTexture();
+	}
+
+	slot.texture->copyBufferIntoTexture(labels.data, labels.total());
+	slot.frameIndex= frameIndex;
+	slot.sourceKey= sourceKey;
+}
+
+IMkTexturePtr CompositorComponent::getOcclusionMatteTexture(int64_t frameIndex) const
+{
+	for (const MatteSlot& slot : m_matteRing)
+	{
+		if (slot.texture && slot.frameIndex == frameIndex)
+			return slot.texture;
+	}
+
+	return IMkTexturePtr();
 }
 
 IMkTexturePtr CompositorComponent::getVideoSourceTexture(eVideoTextureSource textureSource) const
@@ -670,6 +728,8 @@ void CompositorComponent::stopVideoSourceStreaming()
 		m_videoDistortionSource.reset();
 		m_videoDistortionView= nullptr;
 	}
+	m_matteRing.clear();
+	m_matteWriteIndex= 0;
 }
 
 void CompositorComponent::startVideoSourceStreaming(VideoSourceComponentPtr videoSource)

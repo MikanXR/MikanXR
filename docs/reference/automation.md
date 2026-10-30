@@ -81,6 +81,16 @@ Reach it with `function invoke <VideoSourceSystem> <componentId> show_video_sour
 
 Reach it with `function invoke FileVideoSourceSystem <componentId> build_occlusion_mesh`, which refuses a source not playing a `trackcamera` capture with depth, or one without a solved alignment, through a message box rather than entering the stage.
 
+`OcclusionMatteBuild` segments a file video source's take against the project's model stencils and writes the matte sidecar beside the capture ([occlusion-matte.md](./occlusion-matte.md)):
+
+- `get_state` replies the menu state (`verifyTake`, `building`, `failed`, `buildComplete`)
+- `set_option <model|band|scale|step|crop> <value>` sets a build option while in `verifyTake` (`small`/`tiny`, the band half width in video pixels, `1` or `2` for the matte's fraction of the video size, the frame step, `1` or `0` for whether a small contour is prompted on a crop of its own)
+- `build` starts the worker and replies the state it left the stage in: `building`, or `verifyTake` while the model download dialog waits for the operator
+- `status` replies `state`, `phase` (`idle`, `decoding`, `complete`), `frames`, `total`, and `elapsed` lines, then after a build `records`, `matte <width> <height>`, `segmented`, `held`, `unmatched`, `runs`, `dropped`, `segment_seconds`, `seconds`, and `sidecar <path>`, or `failure <reason>` after a failed one
+- `cancel` stops a build in progress or discards a result, `return` pops the stage
+
+Reach it with `function invoke FileVideoSourceSystem <componentId> build_occlusion_matte`, which refuses a source not playing a `trackcamera` capture with a movie, one without a solved alignment, or a project with no enabled model stencil, through a message box rather than entering the stage. The segmenter's model is fetched through the model download dialog on the first build, so a scripted run installs it beforehand with `MikanCmd.exe -fetchModels -model=sam2_small`. A finished build reopens the source's matte reader, so playback uses it at once.
+
 ### Scene introspection (system, component, property, function)
 
 These reach every object system and component through the property and function databases ([objects.md](./objects.md)).

@@ -14,6 +14,31 @@ constexpr uint64_t k_moge2ModelBytes= 1324265014ull;
 constexpr uint64_t k_marigoldDownloadBytes= 3800000000ull;
 constexpr uint64_t k_marigoldDiskBytes= 7300000000ull;
 
+// SAM 2.1 arrives as two graphs per checkpoint whose exact sizes live in the
+// release manifest. These are the totals for the prompt.
+constexpr uint64_t k_sam2SmallBytes= 160000000ull;
+constexpr uint64_t k_sam2TinyBytes= 130000000ull;
+
+// The two SAM 2.1 exports share everything but the checkpoint
+ModelCatalogEntry makeSam2Entry(eModelId id, const char* name, const char* locKeyStem, const char* releaseTag,
+								uint64_t bytes)
+{
+	ModelCatalogEntry entry;
+	entry.id= id;
+	entry.name= name;
+	entry.displayNameLocKey= std::string("modelDownload.") + locKeyStem + "Name";
+	entry.descriptionLocKey= std::string("modelDownload.") + locKeyStem + "Description";
+	entry.approxDownloadBytes= bytes;
+	entry.requiredDiskBytes= bytes;
+	entry.licenseName= "Apache 2.0";
+	entry.bRequiresLicenseAcceptance= false;
+	entry.licenseUrl= "https://github.com/MikanXR/MikanSam2Onnx/blob/main/LICENSE";
+	// What Sam2Segmenter::startup opens
+	entry.requiredFiles= {"encoder.onnx", "decoder.onnx"};
+	entry.releaseBaseUrl= std::string("https://github.com/MikanXR/MikanSam2Onnx/releases/download/") + releaseTag;
+	return entry;
+}
+
 std::vector<ModelCatalogEntry> buildEntries()
 {
 	std::vector<ModelCatalogEntry> entries;
@@ -59,6 +84,11 @@ std::vector<ModelCatalogEntry> buildEntries()
 		entry.releaseBaseUrl= "https://github.com/MikanXR/MikanMarigoldOnnx/releases/download/iid-lighting-v1-1-onnx-1";
 		entries.push_back(entry);
 	}
+
+	entries.push_back(
+		makeSam2Entry(eModelId::sam2_small, "sam2_small", "sam2Small", "sam2.1-small-onnx-1", k_sam2SmallBytes));
+	entries.push_back(
+		makeSam2Entry(eModelId::sam2_tiny, "sam2_tiny", "sam2Tiny", "sam2.1-tiny-onnx-1", k_sam2TinyBytes));
 
 	return entries;
 }

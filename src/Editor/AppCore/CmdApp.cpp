@@ -21,6 +21,7 @@
 #include "CompositorStreamRouteTests.h"
 #include "DepthOfFieldTests.h"
 #include "DepthMeshGeneratorTests.h"
+#include "DepthRasterizerTests.h"
 #include "DirectoryWatcherTests.h"
 #include "DMXPresetPersistenceTests.h"
 #include "DMXSequenceTests.h"
@@ -35,6 +36,7 @@
 #include "LightEnvironmentPersistenceTests.h"
 #include "LocalizationTests.h"
 #include "MaterialCompilerTests.h"
+#include "MatteTrackTests.h"
 #include "MeshCoverageTests.h"
 #include "MeshTexturingTests.h"
 
@@ -45,6 +47,7 @@
 #include "NodeGraphPropertyNameTests.h"
 #include "NodeLinkDirectionTests.h"
 #include "OcclusionMeshTests.h"
+#include "OcclusionPromptsTests.h"
 #include "PixelGridLayoutTests.h"
 #include "ProjectAssetCatalogTests.h"
 #include "PropertyNotificationGuardTests.h"
@@ -58,10 +61,14 @@
 
 #include "Graphs/MaterialNodeGraph.h"
 #include "DepthTrackReader.h"
+#include "GlbMeshReader.h"
 #include "GlbMeshWriter.h"
+#include "MatteTrack.h"
 #include "MovieDecoder.h"
 #include "NpyWriter.h"
+#include "OcclusionMatteBuilder.h"
 #include "OcclusionMeshBuilder.h"
+#include "Sam2Segmenter.h"
 #include "PoseTrack.h"
 #include "Capture.h"
 #include "CaptureMarkerAlignment.h"
@@ -99,6 +106,7 @@ bool run_all_editor_unit_tests()
 	success&= run_compositor_stream_route_tests();
 	success&= run_depth_of_field_tests();
 	success&= run_depth_mesh_generator_unit_tests();
+	success&= run_depth_rasterizer_unit_tests();
 	success&= run_directory_watcher_tests();
 	success&= run_dmx_preset_persistence_tests();
 	success&= run_dmx_sequence_tests();
@@ -113,6 +121,7 @@ bool run_all_editor_unit_tests()
 	success&= run_light_environment_persistence_tests();
 	success&= run_localization_unit_tests();
 	success&= run_material_compiler_tests();
+	success&= run_matte_track_unit_tests();
 	success&= run_mesh_coverage_unit_tests();
 	success&= run_mesh_texturing_unit_tests();
 	success&= run_model_geometry_route_tests();
@@ -123,6 +132,7 @@ bool run_all_editor_unit_tests()
 	success&= run_node_graph_property_name_tests();
 	success&= run_node_link_direction_tests();
 	success&= run_occlusion_mesh_unit_tests();
+	success&= run_occlusion_prompts_unit_tests();
 	success&= run_pixel_grid_layout_tests();
 	success&= run_project_asset_catalog_tests();
 	success&= run_property_notification_guard_tests();
@@ -186,6 +196,10 @@ int CmdApp::exec(int argc, char** argv)
 	else if (hasCommandLineFlag("occlusionMesh"))
 	{
 		result= buildOcclusionMesh();
+	}
+	else if (hasCommandLineFlag("occlusionMatte"))
+	{
+		result= buildOcclusionMatte();
 	}
 	else if (hasCommandLineFlag("alignTake"))
 	{
@@ -273,6 +287,16 @@ void CmdApp::printUsage() const
 			"               glTF binary with its atlas.\n"
 			"               -bounds fuses inside that box instead of the computed bounds, and\n"
 			"               -coverage writes the per-vertex coverage measures as .npy files.\n"
+			"  -occlusionMatte -take=<path to take.trackcamera> -glb=<mesh.glb> [-glb2=<mesh.glb>]\n"
+			"               [-poses=<track.pose.json>] [-model=sam2_small|sam2_tiny] [-sam2Models=<dir>]\n"
+			"               [-band=<pixels>] [-scale=<1|2>] [-step=<n>] [-first=<n>] [-last=<n>] [-noCrop] "
+			"[-span=<pixels>] [-minCoverage=<share>] [-out=<path.matte.json>] "
+			"[-dump=<dir>] [-cpu]\n"
+			"               Build a take's occlusion matte: per frame the meshes (in the take's\n"
+			"               ARKit world, as -occlusionMesh writes them) are rendered to depth at the\n"
+			"               recorded pose, SAM2 is prompted along each occluding contour, and the\n"
+			"               labels are written as the sidecar beside the take. -dump writes each\n"
+			"               segmented frame's labels, depth and prompts into the folder.\n"
 			"  -fetchModels [-model=<name>]\n"
 			"               Download the ML capture models into the per-user model\n"
 			"               directory. Without -model every model is fetched. Passing\n"
@@ -733,6 +757,238 @@ void printOffset(const char* label, const glm::mat4& worldToStage)
 	fprintf(stdout, "\n");
 }
 } // namespace CmdAppAlignTake
+
+namespace CmdAppOcclusionMatte
+{
+class ConsoleObserver : public IOcclusionMatteBuildObserver
+{
+public:
+	ConsoleObserver(const std::filesystem::path& dumpDirectory)
+		: m_dumpDirectory(dumpDirectory)
+	{
+	}
+
+	virtual bool isCancelRequested() const override { return false; }
+	virtual void onProgress(eOcclusionMatteBuildPhase phase, int done, int total) override
+	{
+		if (phase == eOcclusionMatteBuildPhase::decoding && (done % 100 == 0 || done == total))
+		{
+			fprintf(stdout, "matte  : frame %d of %d\n", done, total);
+		}
+	}
+	// Each segmented frame's labels (0, 128, 255), depth (a flat float32 .npy of matte height x
+	// width rows), prompts with their run's contour, and each run's chosen mask, for the parity
+	// check and for tracing a label back to the run that set it
+	virtual void onFrameProcessed(const OcclusionMatteFrame& frame) override
+	{
+		if (m_dumpDirectory.empty())
+			return;
+		std::filesystem::create_directories(m_dumpDirectory);
+		char stem[32];
+		snprintf(stem, sizeof(stem), "%06zu", frame.fileIndex);
+		const std::string prefix= (m_dumpDirectory / stem).string();
+
+		cv::Mat lut(1, 256, CV_8UC1, cv::Scalar(0));
+		lut.at<uint8_t>(OcclusionPrompts::k_labelKeep)= 128;
+		lut.at<uint8_t>(OcclusionPrompts::k_labelAdded)= 255;
+		cv::Mat image;
+		cv::LUT(frame.labels, lut, image);
+		cv::imwrite(prefix + "_labels.png", image);
+
+		std::vector<float> depth;
+		depth.reserve((size_t)frame.depth.total());
+		for (int y= 0; y < frame.depth.rows; ++y)
+		{
+			const float* row= frame.depth.ptr<float>(y);
+			depth.insert(depth.end(), row, row + frame.depth.cols);
+		}
+		NpyWriter::write(prefix + "_depth.npy", depth);
+
+		FILE* file= fopen((prefix + "_prompts.json").c_str(), "w");
+		if (file == nullptr)
+			return;
+		fprintf(file, "{\"file_index\": %zu, \"time_us\": %lld, \"width\": %d, \"height\": %d, \"runs\": [",
+				frame.fileIndex, (long long)frame.timeUs, frame.depth.cols, frame.depth.rows);
+		for (size_t r= 0; r < frame.runs.size(); ++r)
+		{
+			const OcclusionPromptRun& run= frame.runs[r];
+			const float iou= r < frame.runIoU.size() ? frame.runIoU[r] : -1.f;
+			const float coverage= r < frame.runCoverage.size() ? frame.runCoverage[r] : -1.f;
+			const float excess= r < frame.runExcess.size() ? frame.runExcess[r] : -1.f;
+			fprintf(file,
+					"%s{\"split_depth\": %.4f, \"contour_points\": %zu, \"box\": [%d, %d, %d, %d], "
+					"\"iou\": %.4f, \"coverage\": %.4f, \"excess\": %.4f, \"positives\": [",
+					r > 0 ? ", " : "", run.splitDepth, run.contour.size(), run.box.x, run.box.y, run.box.width,
+					run.box.height, iou, coverage, excess);
+			for (size_t p= 0; p < run.positives.size(); ++p)
+			{
+				fprintf(file, "%s[%.1f, %.1f]", p > 0 ? ", " : "", run.positives[p].x, run.positives[p].y);
+			}
+			fprintf(file, "], \"contour\": [");
+			for (size_t p= 0; p < run.contour.size(); ++p)
+			{
+				fprintf(file, "%s[%d, %d]", p > 0 ? ", " : "", run.contour[p].x, run.contour[p].y);
+			}
+			fprintf(file, "]}");
+
+			if (r < frame.runMasks.size() && !frame.runMasks[r].empty())
+			{
+				char maskSuffix[32];
+				snprintf(maskSuffix, sizeof(maskSuffix), "_run%zu_mask.png", r);
+				cv::imwrite(prefix + maskSuffix, frame.runMasks[r]);
+			}
+		}
+		fprintf(file, "]}\n");
+		fclose(file);
+	}
+
+private:
+	std::filesystem::path m_dumpDirectory;
+};
+} // namespace CmdAppOcclusionMatte
+
+int CmdApp::buildOcclusionMatte() const
+{
+	const std::string takeArg= getCommandLineStringArg("take");
+	if (takeArg.empty() || getCommandLineStringArg("glb").empty())
+	{
+		fprintf(stdout,
+				"error: -occlusionMatte needs -take=<path to the take's .trackcamera capture> and -glb=<mesh>\n");
+		return EXIT_FAILURE;
+	}
+
+	const std::filesystem::path mediaPath(takeArg);
+	Capture capture;
+	std::string captureError;
+	if (CaptureKindUtils::kindFromExtension(mediaPath) != eCaptureKind::trackcamera)
+	{
+		fprintf(stdout, "error: '%s' is not a .trackcamera capture\n", mediaPath.string().c_str());
+		return EXIT_FAILURE;
+	}
+	if (!capture.open(mediaPath, captureError))
+	{
+		fprintf(stdout, "error: could not open the capture '%s': %s\n", mediaPath.string().c_str(),
+				captureError.c_str());
+		return EXIT_FAILURE;
+	}
+	if (capture.findMember(eCaptureMemberRole::movie) == nullptr)
+	{
+		fprintf(stdout, "error: the capture has no movie\n");
+		return EXIT_FAILURE;
+	}
+	// A pose track of the same session may stand in for the capture's own, which is how a
+	// mesh fused at other poses is rendered at those poses
+	PoseTrack overrideTrack;
+	const std::string posesArg= getCommandLineStringArg("poses");
+	if (!posesArg.empty())
+	{
+		const PoseTrack& captureTrack= capture.getPoseTrack(eCaptureMemberRole::movie_pose);
+		if (!overrideTrack.loadFromFile(posesArg) || overrideTrack.getSessionId() != captureTrack.getSessionId()
+			|| overrideTrack.getFrameCount() != captureTrack.getFrameCount())
+		{
+			fprintf(stdout, "error: '%s' is not a pose track of this capture's session and frame count\n",
+					posesArg.c_str());
+			return EXIT_FAILURE;
+		}
+	}
+	const PoseTrack& track= posesArg.empty() ? capture.getPoseTrack(eCaptureMemberRole::movie_pose) : overrideTrack;
+
+	const std::string modelName= getCommandLineStringArg("model", "sam2_small");
+	const ModelCatalogEntry* modelEntry= ModelCatalog::findEntryByName(modelName);
+	if (modelEntry == nullptr || (modelEntry->id != eModelId::sam2_small && modelEntry->id != eModelId::sam2_tiny))
+	{
+		fprintf(stdout, "error: -model must be sam2_small or sam2_tiny\n");
+		return EXIT_FAILURE;
+	}
+	const std::string modelOverride= getCommandLineStringArg("sam2Models");
+	if (!ensureModelsInstalled({{modelEntry->id, modelOverride}}))
+		return EXIT_FAILURE;
+
+	// The meshes, in the take's ARKit world as -occlusionMesh writes them
+	std::vector<TriangleMesh> meshes;
+	std::vector<std::filesystem::path> meshPaths;
+	for (const char* key : {"glb", "glb2"})
+	{
+		const std::string pathArg= getCommandLineStringArg(key);
+		if (pathArg.empty())
+			continue;
+		TriangleMesh mesh;
+		std::string meshError;
+		if (!GlbMeshReader::read(pathArg, mesh, meshError))
+		{
+			fprintf(stdout, "error: %s\n", meshError.c_str());
+			return EXIT_FAILURE;
+		}
+		fprintf(stdout, "mesh   : %s, %zu triangles\n", pathArg.c_str(), mesh.getTriangleCount());
+		meshes.push_back(std::move(mesh));
+		meshPaths.push_back(pathArg);
+	}
+	std::vector<MatteMesh> matteMeshes;
+	for (size_t i= 0; i < meshes.size(); ++i)
+	{
+		MatteMesh matteMesh;
+		matteMesh.mesh= &meshes[i];
+		matteMesh.name= meshPaths[i].stem().string();
+		matteMesh.modelPath= meshPaths[i].string();
+		matteMeshes.push_back(matteMesh);
+	}
+
+	MovieDecoder decoder;
+	if (!decoder.openMovieUrl(capture.makeSubfileUrl(eCaptureMemberRole::movie)))
+	{
+		fprintf(stdout, "error: could not open the take's movie (see MikanCmd.log)\n");
+		return EXIT_FAILURE;
+	}
+
+	Sam2Segmenter segmenter;
+	Sam2Segmenter::Config segmenterConfig;
+	segmenterConfig.modelDirectory= ModelRepository::resolveDirectory(modelEntry->id, modelOverride).string();
+	segmenterConfig.preferGpu= !hasCommandLineFlag("cpu");
+	if (!segmenter.startup(segmenterConfig))
+	{
+		fprintf(stdout, "error: could not start the segmenter from %s (see MikanCmd.log)\n",
+				segmenterConfig.modelDirectory.c_str());
+		return EXIT_FAILURE;
+	}
+	fprintf(stdout, "model  : %s on %s\n", modelEntry->name.c_str(), segmenter.getActiveExecutionProvider());
+
+	OcclusionMatteSettings settings;
+	settings.bandPx= std::max(atoi(getCommandLineStringArg("band", "64").c_str()), 1);
+	settings.bCropSmallRuns= !hasCommandLineFlag("noCrop");
+	settings.minRunCoverage= std::clamp((float)atof(getCommandLineStringArg("minCoverage", "0.5").c_str()), 0.f, 1.f);
+	settings.prompts.runMaxSpanPx= std::max(atoi(getCommandLineStringArg("span", "640").c_str()), 1);
+	settings.matteScale= std::clamp(atoi(getCommandLineStringArg("scale", "1").c_str()), 1, 4);
+	settings.frameStep= std::max(atoi(getCommandLineStringArg("step", "1").c_str()), 1);
+	settings.firstFrame= std::max(atoi(getCommandLineStringArg("first", "0").c_str()), 0);
+	settings.lastFrame= atoi(getCommandLineStringArg("last", "-1").c_str());
+	settings.modelName= modelEntry->name;
+
+	const std::string outArg= getCommandLineStringArg("out");
+	const std::filesystem::path jsonPath=
+		outArg.empty() ? MatteTrack::sidecarPathForCapture(mediaPath) : std::filesystem::path(outArg);
+	fprintf(stdout, "frames : %zu in the track, band %d px, scale 1/%d, every %d%s frame\n", track.getFrameCount(),
+			settings.bandPx, settings.matteScale, settings.frameStep, settings.frameStep == 1 ? "" : "th");
+
+	CmdAppOcclusionMatte::ConsoleObserver observer(getCommandLineStringArg("dump"));
+	OcclusionMatteBuildResult result;
+	if (!OcclusionMatteBuilder::build(track, decoder, matteMeshes, settings, segmenter, jsonPath, &observer, result))
+	{
+		fprintf(stdout, "error: %s\n", result.failureReason.c_str());
+		return EXIT_FAILURE;
+	}
+
+	const OcclusionMatteBuildStats& stats= result.stats;
+	fprintf(stdout,
+			"matte  : %dx%d, %d frames segmented, %d held, %d unmatched, %d runs (%.1f per frame), %d dropped\n",
+			stats.matteWidth, stats.matteHeight, stats.framesSegmented, stats.framesHeld, stats.framesUnmatched,
+			stats.runsTotal, stats.framesSegmented > 0 ? (float)stats.runsTotal / stats.framesSegmented : 0.f,
+			stats.runsDropped);
+	fprintf(stdout, "time   : %.0f s, %.0f s in the segmenter (%.0f ms per segmented frame)\n", stats.totalSeconds,
+			stats.segmentSeconds,
+			stats.framesSegmented > 0 ? 1000.f * stats.segmentSeconds / stats.framesSegmented : 0.f);
+	fprintf(stdout, "wrote  : %s\n", result.jsonPath.string().c_str());
+	return EXIT_SUCCESS;
+}
 
 int CmdApp::alignTake() const
 {

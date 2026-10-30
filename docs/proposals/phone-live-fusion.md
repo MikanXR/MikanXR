@@ -1,6 +1,6 @@
 # Proposal: Live fusion on the phone
 
-Accepted. Parts 1 and 2 are built in MikanARStreamer, uncommitted on the Mac clone. Part 1 passes its parity gate. Part 2 runs live on the phone and fuses every frame it is meant to (below). Part 2's measurement does not call for Part 3, since integration takes a median 22.5 ms of the 100 ms a frame allows on the iPhone 12 Pro. Part 4 is not started. This document proposes replacing the phone's coverage points with the editor's own depth fusion, run live on the phone while a Track Camera take records and drawn over the camera as a mesh, so the operator sees the surface the editor's build will produce and judges its detail directly. It carries the evidence that motivates it, the design, the pieces in order, how it is verified, and the questions still open.
+Accepted. Parts 1 and 2 are built in MikanARStreamer and committed on its `main`. Part 1 passes its parity gate. Part 2 runs live on the phone and fuses every frame it is meant to (below). Part 2's measurement does not call for Part 3, since integration fits well inside the 100 ms a frame allows on the iPhone 12 Pro. Part 4 is not started. This document proposes replacing the phone's coverage points with the editor's own depth fusion, run live on the phone while a Track Camera take records and drawn over the camera as a mesh, so the operator sees the surface the editor's build will produce and judges its detail directly. It carries the evidence that motivates it, the design, the pieces in order, how it is verified, and the questions still open.
 
 ## Goal
 
@@ -8,13 +8,13 @@ While a take records, the operator sees a shaded mesh on the real objects: the s
 
 ## Evidence
 
-The coverage points of [occlusion-coverage-feedback.md](./occlusion-coverage-feedback.md) (Parts 5 and 6) were measured against the editor on `take_20261028_211829`, a 72 s walk all the way around a metal duster can on a desk ("The phone against the editor on a real take" in that proposal):
+The coverage points of [occlusion-coverage-feedback.md](./occlusion-coverage-feedback.md) (Parts 5 and 6) were measured against the editor on a tabletop recording, a walk all the way around a metal duster can on a desk ("The phone against the editor on a real take" in that proposal):
 
-- The editor's build of the take scores 94% of the can good. The phone's `CoverageGrid`, replayed over the same frames, scores 35%, and still only 45% at the editor's thresholds. The operator saw a can that stayed red however much they walked.
+- The editor's build of the recording scores nearly all of the can good. The phone's `CoverageGrid`, replayed over the same frames, scores only a minority good, even at the editor's thresholds. The operator saw a can that stayed red however much they walked.
 
 - The cause is the representation, not the walk, the thresholds, or pose drift. A voxel's surface point is fixed by the one frame that created it, so that frame's depth noise leaves it off the surface later frames agree on, and they carve it. Nothing ever removes a voxel, so specks a single frame creates in empty space stay red too. The editor's truncated signed distance volume averages every frame into each voxel and writes free space as well as surface, so noise averages out and a speck is erased by the frames that see through it.
 
-- Patching the grid recovers part of the gap and no more: dropping voxels that are seen through reaches 72% at the editor's thresholds, and averaging each voxel's point adds nothing on top. The base of the can, where it meets the desk, stays red while the editor calls it 85 to 97% good. Replaying with the editor's refined poses changes nothing, so the phone's raw ARKit poses are not what holds it back.
+- Patching the grid recovers part of the gap and no more: dropping voxels that are seen through closes some of it, and averaging each voxel's point adds nothing on top. The base of the can, where it meets the desk, stays red while the editor calls it good. Replaying with the editor's refined poses changes nothing, so the phone's raw ARKit poses are not what holds it back.
 
 - ARKit's own scene mesh (`ARMeshAnchor`) was considered and rejected for this. It is built for room-scale surfaces, walls and furniture, and its coarse triangles turn a 6.5 cm can into a rounded blob however well it was scanned, so it cannot show the detail the editor's 8 mm build will have.
 
@@ -46,15 +46,9 @@ So the measure the phone shows has to come from the same kind of fusion the edit
 
 - `tools/fusion_replay` holds the replay (`build.sh` builds it for macOS from the app's sources, and it writes the take's mesh as PLY) and `parity.py`, the parity measure, which needs numpy and scipy.
 
-The parity gate on `take_20261028_211829`, against `MikanCmd -occlusionMesh -voxel=0.008 -noRegistration -noTexture -bounds=-0.38,-0.33,-0.74,0.22,0.0,-0.14`, both fusing the same 723 frames, inside the box shrunk by 3 cm:
+The parity gate ran on a tabletop recording, against `MikanCmd -occlusionMesh -voxel=0.008 -noRegistration -noTexture -bounds=<box>`, both fusing the same frames, inside the box shrunk by 3 cm. It passes both directions (phone to editor, and the area the editor's coverage calls seen to phone) well above the 95 percent target within 8 mm, on the can alone as well. The editor's sign fill adds closed backs in the box that the phone leaves open. The measurements behind this are in the experiments repo's notes, against recordings that are not checked in.
 
-- Phone to editor: 99.9% of the phone mesh's area lies within 8 mm of the editor's mesh.
-
-- Editor to phone: 100% of the area the editor's coverage calls seen lies within 8 mm of the phone's mesh.
-
-- The median distance is 0.5 mm either way, and 90% lies within 0.9 mm. On the can alone (about 400 cm2) both directions are 100%. The editor's sign fill adds 37.5 cm2 of closed backs in the box that the phone leaves open.
-
-Measured on the Mac (an Apple silicon laptop, not the phone): integration took a median 2.1 ms a frame, at most 5.1 ms, and extracting the whole volume 0.5 s. The whole walk allocated 12,794 blocks (52 MB), four times the tabletop estimate below, because the tabletop preset fuses everything the LiDAR sees out to 5 m, the room around the desk included, at 8 mm. Part 2 has to measure this on the phone and decide whether the live volume limits its depth range or its cap.
+Measured on the Mac (an Apple silicon laptop, not the phone), the whole walk allocated several times the tabletop estimate below, because the tabletop preset fuses everything the LiDAR sees out to 5 m, the room around the desk included, at 8 mm. Part 2 has to measure this on the phone and decide whether the live volume limits its depth range or its cap.
 
 ## Part 2 as built
 
@@ -70,43 +64,39 @@ Measured on the Mac (an Apple silicon laptop, not the phone): integration took a
 
 - The simulator suite is 146 tests, all passing: the coverage grid's 19 went, and 3 for the regions came.
 
-Measured on the iPhone 12 Pro:
+Measured on the iPhone 12 Pro, with `fusion replay` of a tabletop recording at the tabletop preset with the camera preview running, and with a live take with the phone at rest on the desk: integration fits the 100 ms a 10 Hz frame allows, and the recorder is untouched, but each extraction pass held the worker long enough that a large share of the frames were dropped, so the live mesh was fused from far fewer frames than the editor's build uses. The memory for the whole walk is well inside the 25,000 block cap. The live mesh sat on the desk, the chair, the mouse, and the can in the screenshot.
 
-- `fusion replay` of `take_20261028_211829` at the tabletop preset, with the camera preview running: integration a median 24.7 ms a frame (p90 34, max 66), extraction of the changed regions a median 313 ms a pass (p90 500, max 899), 12,794 blocks (52 MB) and 1,049,066 triangles in 500 regions at the end, 66 s in all.
+Extraction was then sped up twice, each measured on the replay of the same tabletop recording with the Mac's `fusion_replay`, which now times the live cadence's passes too:
 
-- A live 15.6 s take with the phone at rest on the desk: the recorder wrote 463 frames with none dropped (29.7 fps). The fusion integrated 79 frames and dropped 71, integration taking 24 ms and an extraction pass 290 ms, and drew 112,723 triangles over 109 regions. The mesh sat on the desk, the chair, the mouse, and the can in the screenshot.
+- A block's samples are read straight from the voxel arrays, the block and its seven neighbours looked up once, rather than each of its 729 samples through the block hash. The marching cubes loop no longer allocates per cube. This nearly halved the Mac's median pass.
 
-So integration fits the 100 ms a 10 Hz frame allows, and the recorder is untouched, but each extraction pass held the worker for a third of a second, so about half the frames were dropped and the live mesh was fused from half the frames the editor's build uses. The memory, 52 MB for the whole walk, is well inside the 25,000 block cap.
+- The changed regions are extracted in parallel, since extraction only reads the volume. This cut the Mac's median pass to a small fraction of what remained.
 
-Extraction was then sped up twice, each measured on the replay of the duster take with the Mac's `fusion_replay`, which now times the live cadence's passes too:
+The mesh is unchanged by both: the same vertex and triangle counts, and the same parity result. On the iPhone 12 Pro, whose two performance cores share the work with ARKit and the preview, the gain is smaller: a replayed pass took less than half as long as before, and a live take at rest fused more of its frames and dropped fewer, with the recorder again dropping none.
 
-- A block's samples are read straight from the voxel arrays, the block and its seven neighbours looked up once, rather than each of its 729 samples through the block hash. The marching cubes loop no longer allocates per cube. The Mac's median pass went from 65 to 36 ms.
+Extraction then moved off the fusion queue as described above, so the fusion queue's share of a pass is only the copy. On the iPhone 12 Pro the copy is a small part of a pass, extraction runs beside integration, and a live take at rest fused every frame it was meant to, with the recorder again dropping none, and the mesh read clearly on the desk, the laptop, the can, the keyboard, and the mouse. The suite is 148 tests, with a copy test and a test of the worker's two queues through a take's start and end.
 
-- The changed regions are extracted in parallel, since extraction only reads the volume. The Mac's median pass went to 4.4 ms.
-
-The mesh is unchanged by both: the same vertex and triangle counts, and the parity check still 99.9% and 100% within 8 mm. On the iPhone 12 Pro, whose two performance cores share the work with ARKit and the preview, the gain is smaller: `fusion replay` of the duster take now takes a median 138 ms a pass (p90 209, max 377), against 313 before, with integration a median 17 ms. A live 15.3 s take at rest fused 125 frames and dropped 26, against 79 and 71 before, and the recorder again dropped none.
-
-Extraction then moved off the fusion queue as described above, so the fusion queue's share of a pass is only the copy. On the iPhone 12 Pro: `fusion replay` of the duster take copies in a median 8.9 ms (p90 14, max 26) and extracts in 129 ms (p90 193, max 350) beside integration, which takes a median 22.5 ms. A live 15.6 s take fused 151 frames and dropped none, against 125 and 26 before, with the recorder again dropping none, and the mesh read clearly on the desk, the laptop, the can, the keyboard, and the mouse. The suite is 148 tests, with a copy test and a test of the worker's two queues through a take's start and end.
-
-A first walk, `take_20261028_221738`, 60 s around the duster at the tabletop preset with the translucent mesh:
+A first tabletop walk around the can at the tabletop preset with the translucent mesh:
 
 - The operator found holes easy to spot, the lag fine, and no stutter, and asked for an opaque mesh, which is now the default.
 
-- The recorder wrote 1,769 frames over 59.9 s (29.5 fps). 29 frame intervals ran over 50 ms, each a single missed frame, about 1.6% of the take, against 14 (0.6%) on the duster take that ran the coverage grid. The live fusion costs the recorder about one frame in a hundred.
+- The recorder missed a few more single frames than on a walk that ran the coverage grid. The live fusion costs the recorder a small share of its frames.
 
-- The replay on the Mac ends with 14,634 blocks (59 MB) and 1,166,348 triangles, which the phone drew without visible stutter.
+- The phone drew the walk's full mesh without visible stutter.
 
-- Parity against `MikanCmd -noRegistration` boxed around the can: 99.6% of the phone's surface and 99.9% of the editor's seen surface within 8 mm of the other, median 0.5 mm. On the can itself, located as the 3.0 cm radius cylinder standing on the table, 100% both ways.
+- Parity against `MikanCmd -noRegistration` boxed around the can passes both directions within 8 mm, on the can itself as well.
 
-- The editor's registered build scores the can's sides 75% good. The weak quarter is the side the walk covered least: from 120 degrees round to -150 degrees about the can the sides are 34 to 55% good, where the camera spent 14 to 94 frames per 30 degree sector, against 200 to 500 on the sides that came out 93 to 100% good. Registration corrected 18 mm and 1.84 degrees by the end, more than on the duster take.
+- The editor's registered build scores most of the can's sides good. The weak part is the side the walk covered least, where the camera spent far fewer frames than on the sides that came out good. Registration corrected more drift than on the earlier tabletop recording.
 
-A room walk, `take_20261028_222918`, 262 s around the room at the room preset with the opaque mesh:
+A room walk at the room preset with the opaque mesh:
 
-- The recorder wrote 7,830 frames (29.85 fps) and its writer dropped none, but 38 frame intervals ran over 50 ms, each a single frame ARKit did not deliver, 0.5% of the take. 29 of them came in two bursts at 235 and 244 to 249 s. The fusion had little to do then: the trace of the replay shows 11 to 130 new blocks per 5 s and a slow camera, against 1,152 new blocks in the 5 s before 150 s, which passed without a skip. By then the volume held about 24,000 blocks and the mesh about 1.8 million triangles, so the phone's heat, drawing that mesh, and memory are each a candidate, and the take cannot tell them apart.
+- The recorder's writer dropped no frames, but ARKit did not deliver a small share of single frames, most of them in two bursts late in the walk. The fusion had little to do then: the trace of the replay shows few new blocks and a slow camera then, against a much larger burst of new blocks earlier in the walk, which passed without a skip. By then the volume and the mesh were large, so the phone's heat, drawing that mesh, and memory are each a candidate, and the recording cannot tell them apart.
 
-- Replayed on the phone with the 25,000 block cap: 24,758 blocks (101 MB), under the cap, so eviction never ran. Integration took a median 15.2 ms (p90 31, max 65), the copy 6.2 ms (max 39), and extraction 90 ms (p90 169, max 485). The mesh ended at 1,861,322 triangles in 750 regions.
+- Replayed on the phone with the 25,000 block cap, the walk stayed under the cap, so eviction never ran.
 
-- Parity against `MikanCmd -noRegistration -voxel=0.015 -pathRadius=0` boxed around the walk so the editor's voxel stays 1.5 cm (its automatic bounds grew it to 1.8 cm): 96.9% of the phone's surface and 99.9% of the editor's seen surface within 15 mm of the other, median about 2 mm. The phone keeps small islands the editor's cleanup removes (55,855 triangles there), which is where most of the 3.1% lies. `parity.py` samples a room at `PARITY_DENSITY=1e5` per square metre.
+- Parity against `MikanCmd -noRegistration -voxel=0.015 -pathRadius=0` boxed around the walk so the editor's voxel stays 1.5 cm (its automatic bounds grew it): both directions pass the 95 percent target within 15 mm, the phone's side with less margin. The phone keeps small islands the editor's cleanup removes, which is where most of the difference lies. `parity.py` samples a room at `PARITY_DENSITY=1e5` per square metre.
+
+The measurements behind this section were made against recordings that are not checked in.
 
 Extracting only the blocks that changed and joining each region from cached block meshes would make the mesh catch up sooner, since most of a changed region's blocks have not changed, but no frames are lost to extraction now.
 
@@ -152,7 +142,7 @@ Like the coverage grid now: it runs only while a Track Camera take records on a 
 
 - Tests: the editor's `TsdfVolumeTests` cases ported, plus allocation, the block boundary in extraction, and the winding.
 
-- The replay harness fuses a take offline with this code and writes the mesh. The parity check against `MikanCmd -occlusionMesh -noRegistration` at the same preset on `take_20261028_211829` passes when 95% of the phone mesh's area lies within one voxel of the editor's mesh, and 95% of the editor mesh's area that its coverage pass calls seen lies within one voxel of the phone's. A failure is a bug in one of the two until shown otherwise.
+- The replay harness fuses a take offline with this code and writes the mesh. The parity check against `MikanCmd -occlusionMesh -noRegistration` at the same preset on a tabletop recording passes when 95% of the phone mesh's area lies within one voxel of the editor's mesh, and 95% of the editor mesh's area that its coverage pass calls seen lies within one voxel of the phone's. A failure is a bug in one of the two until shown otherwise.
 
 ### Part 2: live on the phone
 
@@ -172,7 +162,7 @@ Like the coverage grid now: it runs only while a Track Camera take records on a 
 
 ## Out of scope
 
-- Registration on the phone. The editor's frame-to-model refinement corrected 7 mm on the duster take, and the live mesh does without it. A take whose drift is large shows it as doubled surfaces, which is the right thing for the operator to see.
+- Registration on the phone. The editor's frame-to-model refinement corrects a take's drift, and the live mesh does without it. A take whose drift is large shows it as doubled surfaces, which is the right thing for the operator to see.
 
 - Texturing, and any use of the phone's mesh by the editor.
 

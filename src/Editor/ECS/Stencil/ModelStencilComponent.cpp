@@ -49,6 +49,7 @@
 // -- ModelStencilConfig -----
 const std::string ModelStencilDefinition::k_modelStencilObjPathPropertyId= "model_path";
 const std::string ModelStencilDefinition::k_geometryUrlPropertyId= "geometry_url";
+const std::string ModelStencilDefinition::k_clientHoldoutPropertyId= "client_holdout";
 const std::string ModelStencilDefinition::k_alignedVideoSourceIdPropertyId= "aligned_video_source_id";
 const std::string ModelStencilDefinition::k_alignedSessionIdPropertyId= "aligned_session_id";
 
@@ -73,6 +74,8 @@ configuru::Config ModelStencilDefinition::writeToJSON()
 		pt[k_modelStencilObjPathPropertyId]= m_modelAssetRefConfig->writeToJSON();
 	}
 
+	pt[k_clientHoldoutPropertyId]= m_bClientHoldout;
+
 	if (m_alignedVideoSourceId != INVALID_MIKAN_ID)
 	{
 		pt[k_alignedVideoSourceIdPropertyId]= m_alignedVideoSourceId;
@@ -91,6 +94,7 @@ void ModelStencilDefinition::readFromJSON(const configuru::Config& pt)
 		m_modelAssetRefConfig->readFromJSON(pt[k_modelStencilObjPathPropertyId]);
 	}
 
+	m_bClientHoldout= pt.get_or<bool>(k_clientHoldoutPropertyId, true);
 	m_alignedVideoSourceId= pt.get_or<int>(k_alignedVideoSourceIdPropertyId, INVALID_MIKAN_ID);
 	m_alignedSessionId= pt.get_or<std::string>(k_alignedSessionIdPropertyId, std::string());
 }
@@ -107,6 +111,7 @@ bool ModelStencilDefinition::readFromInitParams(MikanObjectSystem* ownerObjectSy
 		const std::string utf8Path= componentValues->model_path.getUtf8Value();
 
 		setModelPath(PathUtils::utf8ToPath(utf8Path));
+		m_bClientHoldout= componentValues->client_holdout;
 	}
 
 	return true;
@@ -124,6 +129,15 @@ void ModelStencilDefinition::setModelPath(const std::filesystem::path& path, boo
 	{
 		m_modelAssetRefConfig->assetPath= stored;
 		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_modelStencilObjPathPropertyId));
+	}
+}
+
+void ModelStencilDefinition::setClientHoldout(bool bClientHoldout)
+{
+	if (bClientHoldout != m_bClientHoldout)
+	{
+		m_bClientHoldout= bClientHoldout;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_clientHoldoutPropertyId));
 	}
 }
 
@@ -431,6 +445,8 @@ void ModelStencilComponent::getPropertyDescriptors(std::vector<PropertyDescripto
 	outDescriptors.push_back(
 		std::make_shared<PropertyDescriptor>(ModelStencilDefinition::k_geometryUrlPropertyId, MikanVariantType::STRING)
 			->setReadOnly());
+	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(ModelStencilDefinition::k_clientHoldoutPropertyId,
+																  MikanVariantType::BOOL));
 }
 
 bool ModelStencilComponent::getPropertyValue(const std::string& propertyName, MikanVariant& outValue) const
@@ -447,6 +463,11 @@ bool ModelStencilComponent::getPropertyValue(const std::string& propertyName, Mi
 																			   : std::string());
 		return true;
 	}
+	if (propertyName == ModelStencilDefinition::k_clientHoldoutPropertyId)
+	{
+		outValue= getModelStencilDefinition()->getClientHoldout();
+		return true;
+	}
 
 	return StencilComponent::getPropertyValue(propertyName, outValue);
 }
@@ -459,6 +480,11 @@ bool ModelStencilComponent::setPropertyValue(const std::string& propertyName, co
 		const std::filesystem::path filePath(fileString);
 
 		setModelPath(filePath);
+		return true;
+	}
+	if (propertyName == ModelStencilDefinition::k_clientHoldoutPropertyId)
+	{
+		getModelStencilDefinition()->setClientHoldout(inValue.getBoolValue());
 		return true;
 	}
 
@@ -513,6 +539,11 @@ void ModelStencilComponent::bindLuaFunctions(lua_State* L)
 		.deriveClass<ModelStencilComponent, StencilComponent>(ModelStencilComponent::k_componentClassName.c_str())
 		.addProperty("modelPath", [](ModelStencilComponent* component) -> std::string
 					 { return component->getModelStencilDefinition()->getModelPath().string(); })
+		.addProperty(
+			"clientHoldout", [](ModelStencilComponent* component) -> bool
+			{ return component->getModelStencilDefinition()->getClientHoldout(); },
+			[](ModelStencilComponent* component, bool bClientHoldout)
+			{ component->getModelStencilDefinition()->setClientHoldout(bClientHoldout); })
 		.addFunction("alignStencil", [](ModelStencilComponent* c) { c->alignStencil(); })
 		.endClass();
 }

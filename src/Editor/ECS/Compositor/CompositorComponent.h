@@ -150,6 +150,9 @@ public:
 	inline MikanCompositorID getCompositorId() const { return getCompositorDefinition()->getCompositorId(); }
 
 	IMkTexturePtr getVideoSourceTexture(eVideoTextureSource textureSource) const;
+	// The occlusion matte uploaded for a queued frame (8-bit red: 0 removed, 128 keep, 255 added),
+	// or null when the video source carries none for it
+	IMkTexturePtr getOcclusionMatteTexture(int64_t frameIndex) const;
 	IMkTexturePtr getVideoPreviewTexture(eVideoTextureSource textureSource) const;
 	void setEditorCompositorNodeGraph(CompositorNodeGraphPtr editorNodeGraph);
 	// Editor pause: skip graph evaluation while frames keep draining, freezing
@@ -247,6 +250,18 @@ private:
 
 	// Pending queue of frames awaiting client render
 	std::queue<QueuedFrame> m_frameEventQueue;
+
+	// The occlusion matte of each queued frame, uploaded at enqueue from the video
+	// source and read back by the frame's index when it composites
+	struct MatteSlot
+	{
+		IMkTexturePtr texture;
+		int64_t frameIndex= -1;
+		int64_t sourceKey= -1;
+	};
+	std::vector<MatteSlot> m_matteRing;
+	size_t m_matteWriteIndex= 0;
+	void enqueueOcclusionMatte(int64_t frameIndex);
 	// The pose the last composited frame was drawn from
 	glm::mat4 m_lastCompositedAperturePose_StageSpace= glm::mat4(1.f);
 	bool m_bHasLastCompositedAperturePose= false;

@@ -1700,7 +1700,7 @@ IMkShaderCodeConstPtr getPTDepthMinMaxHShaderCode()
 				{
 					ivec2 p = ivec2(gl_FragCoord.xy);
 					ivec2 last = ivec2(screenSize) - 1;
-					int r = clamp(int(floatConstant0 + 0.5), 1, 32);
+					int r = clamp(int(floatConstant0 + 0.5), 1, 64);
 
 					float mn = texelFetch(depthTexture, p, 0).r;
 					float mx = mn;
@@ -1767,7 +1767,7 @@ IMkShaderCodeConstPtr getPTDepthMinMaxVShaderCode()
 				{
 					ivec2 p = ivec2(gl_FragCoord.xy);
 					ivec2 last = ivec2(screenSize) - 1;
-					int r = clamp(int(floatConstant0 + 0.5), 1, 32);
+					int r = clamp(int(floatConstant0 + 0.5), 1, 64);
 
 					vec2 center = texelFetch(minMaxTexture, p, 0).rg;
 					float mn = center.r;
@@ -2006,6 +2006,82 @@ IMkShaderCodeConstPtr getPTDepthOfFieldGatherShaderCode()
 	return x_shaderCode;
 }
 
+// Matte depth refine: applies a frame's occlusion matte to a linear depth mask using
+// the window min and max the two depth min/max passes computed over the band. The
+// matte is 0 where the matte removes a mesh pixel, 0.5 where it keeps it and 1 where
+// it adds one. An added pixel takes the nearest depth around it, the object the matte
+// extended; a removed pixel takes the farthest, the surface behind or the far plane.
+// The matte is sampled by normalized coordinate so it may be at another resolution.
+IMkShaderCodeConstPtr getPTMatteDepthRefineShaderCode()
+{
+	static IMkShaderCodePtr x_shaderCode= nullptr;
+
+	if (x_shaderCode == nullptr)
+	{
+		x_shaderCode= createIMkShaderCode(INTERNAL_MATERIAL_PT_MATTE_DEPTH_REFINE,
+										  // vertex shader
+										  R""""(
+				#version 330 core
+				layout (location = 0) in vec2 aPos;
+				layout (location = 1) in vec2 aTexCoords;
+
+				out vec2 TexCoords;
+
+				void main()
+				{
+					TexCoords = aTexCoords;
+					gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);
+				}
+				)"""",
+										  // fragment shader
+										  R""""(
+				#version 330 core
+				out vec4 FragColor;
+				out float gl_FragDepth;
+
+				in vec2 TexCoords;
+
+				// Linear depth mask, 1 where nothing was drawn
+				uniform sampler2D depthTexture;
+				// The matte: 0 removed, 0.5 keep, 1 added
+				uniform sampler2D alphaTexture;
+				// Pass 2 result: window min in r, window max in g
+				uniform sampler2D minMaxTexture;
+				// Mask size in pixels
+				uniform vec2 screenSize;
+
+				void main()
+				{
+					ivec2 p = ivec2(gl_FragCoord.xy);
+					float dp = texelFetch(depthTexture, p, 0).r;
+					vec2 window = texelFetch(minMaxTexture, p, 0).rg;
+					float label = texture(alphaTexture, (vec2(p) + 0.5) / screenSize).r;
+
+					float result = dp;
+					if (label > 0.75)
+					{
+						result = window.r;
+					}
+					else if (label < 0.25)
+					{
+						result = window.g;
+					}
+
+					FragColor = vec4(result, result, result, 1.0);
+					gl_FragDepth = result;
+				}
+				)"""");
+		x_shaderCode->addVertexAttribute("aPos", eVertexDataType::datatype_vec2, eVertexSemantic::position);
+		x_shaderCode->addVertexAttribute("aTexCoords", eVertexDataType::datatype_vec2, eVertexSemantic::texCoord);
+		x_shaderCode->addUniform("depthTexture", eUniformSemantic::depthTexture);
+		x_shaderCode->addUniform("alphaTexture", eUniformSemantic::alphaTexture);
+		x_shaderCode->addUniform("minMaxTexture", eUniformSemantic::textureParam);
+		x_shaderCode->addUniform("screenSize", eUniformSemantic::screenSize);
+	}
+
+	return x_shaderCode;
+}
+
 // Selection outline pass 1: writes floatConstant0 as an integer code into an R8 mask.
 // Only the position attribute is declared, so any mesh whose layout starts with a vec3
 // position draws through its own vertex array. The depth bias lets a mesh pass the depth
@@ -2185,6 +2261,7 @@ bool registerInternalShaders(GlShaderCache* shaderCache)
 		getPTDepthMinMaxVShaderCode(),
 		getPTDepthOfFieldCoCShaderCode(),
 		getPTDepthOfFieldGatherShaderCode(),
+		getPTMatteDepthRefineShaderCode(),
 		getPSelectionMaskShaderCode(),
 		getPTSelectionOutlineShaderCode(),
 	};

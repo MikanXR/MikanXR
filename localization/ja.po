@@ -1594,6 +1594,11 @@ msgid "Apply"
 msgstr "適用"
 
 #. Section: functions
+msgctxt "functions.build_occlusion_matte"
+msgid "Build Occlusion Matte"
+msgstr ""
+
+#. Section: functions
 msgctxt "functions.build_occlusion_mesh"
 msgid "Build Occlusion Mesh"
 msgstr ""
@@ -2361,6 +2366,26 @@ msgid "This license restricts how the model may be used. The full text is saved 
 msgstr ""
 
 #. Section: modelDownload
+msgctxt "modelDownload.sam2SmallDescription"
+msgid "Snaps the occlusion mesh's silhouette to the video, used by the occlusion matte build."
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.sam2SmallName"
+msgid "SAM 2.1 small segmenter"
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.sam2TinyDescription"
+msgid "The smaller segmenter for the occlusion matte build: faster, a little less exact on its edges."
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.sam2TinyName"
+msgid "SAM 2.1 tiny segmenter"
+msgstr ""
+
+#. Section: modelDownload
 #, c-format
 msgctxt "modelDownload.sizeFmt"
 msgid "Download size: %.1f GB"
@@ -2673,6 +2698,11 @@ msgstr "マテリアル適用"
 msgctxt "nodes.auto"
 msgid "Auto"
 msgstr "自動"
+
+#. Section: nodes
+msgctxt "nodes.bandRadius"
+msgid "Band Radius"
+msgstr ""
 
 #. Section: nodes
 #, fuzzy
@@ -3301,6 +3331,26 @@ msgid "Subtract"
 msgstr "減算"
 
 #. Section: nodes
+msgctxt "nodes.matteDepthRefineHasMatte"
+msgid "The frame being composited has an occlusion matte"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.matteDepthRefineHeader"
+msgid "Matte Depth Refine Node"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.matteDepthRefineNoMatte"
+msgid "No occlusion matte for the frame being composited, so the mask passes through"
+msgstr ""
+
+#. Section: nodes
+msgctxt "nodes.matteDepthRefineTitle"
+msgid "Matte Depth Refine"
+msgstr ""
+
+#. Section: nodes
 msgctxt "nodes.maxBlurRadius"
 msgid "Max Blur Radius (px)"
 msgstr ""
@@ -3766,6 +3816,230 @@ msgstr "ネットワークインターフェースIP"
 msgctxt "objectSystemPanel.transmitRateHz"
 msgid "Transmit Rate (Hz)"
 msgstr "送信レート (Hz)"
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.bandPx"
+msgid "Band width (px)"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.bandPxHelp"
+msgid "How far either side of a stencil's edge the matte may move it, in video pixels."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.build"
+msgid "Build"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.buildFailed"
+msgid "Occlusion matte build failed."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.cancelBuild"
+msgid "Cancel Build"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.cancelling"
+msgid "Cancelling..."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.completeNote"
+msgid "The take plays with its matte from now on. A compositor graph with a Matte Depth Refine node uses it."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.cropSmallRuns"
+msgid "Prompt small objects on a crop"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.cropSmallRunsHelp"
+msgid "Re-encodes a crop around each small contour for a sharper edge on thin objects, at about three times the time per frame. Off prompts every contour on the whole frame."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+#, c-format
+msgctxt "occlusionMatteBuild.elapsedSecondsFmt"
+msgid "Elapsed: %.0f s"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.frameStep"
+msgid "Segment every nth frame"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.frameStepHelp"
+msgid "The frames between segmented ones take the previous labels. 1 segments every frame."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+#, c-format
+msgctxt "occlusionMatteBuild.framesSummaryFmt"
+msgid "%d frames segmented, %d held, %.1f contour runs per frame"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+#, c-format
+msgctxt "occlusionMatteBuild.framesUnmatchedFmt"
+msgid "%d decoded frames matched no pose and were skipped."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.matteScale"
+msgid "Matte resolution"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+#, c-format
+msgctxt "occlusionMatteBuild.matteSummaryFmt"
+msgid "%d records of %dx%d labels"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.model"
+msgid "Segmenter"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+#, c-format
+msgctxt "occlusionMatteBuild.modelLoadFailedFmt"
+msgid "Could not start the segmenter from '%s'. See MikanCmd.log for details."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.modelNotInstalled"
+msgid "The segmenter model is not installed, so the build did not run."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.modelSmall"
+msgid "SAM 2.1 small (better edges)"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.modelTiny"
+msgid "SAM 2.1 tiny (faster)"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.movieUnreadable"
+msgid "The take's movie could not be opened (see the log)."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.noCamera"
+msgid "No camera on a stage uses this video source."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.noMediaPath"
+msgid "The video source has no media file."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.noModelStencil"
+msgid "No enabled model stencil has a model. Build or place an occlusion mesh first."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.noMovie"
+msgid "The capture has no movie to segment."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.noPoseTrack"
+msgid "The capture has no pose track."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.noProjectLoaded"
+msgid "No project is loaded."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.noReadableMesh"
+msgid "None of the model stencils could be read as a glTF mesh (see the log)."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.notAligned"
+msgid "The take is not aligned to the stage. Run Align Camera with its marker reference first."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.notTrackCamera"
+msgid "The video source is not playing a Track Camera capture (.trackcamera)."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.phaseFinishing"
+msgid "Writing the sidecar..."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+#, c-format
+msgctxt "occlusionMatteBuild.phaseSegmentingFmt"
+msgid "Segmenting frame %d of %d"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.poseTrackMissing"
+msgid "The capture's pose track override could not be loaded."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.previewLegend"
+msgid "Last segmented frame: green was added to the stencil's silhouette, red was removed from it."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.redo"
+msgid "Rebuild"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.retry"
+msgid "Retry"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.scaleFull"
+msgid "Full (video size)"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.scaleHalf"
+msgid "Half"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+#, c-format
+msgctxt "occlusionMatteBuild.sidecarFmt"
+msgid "Written to %s"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+#, c-format
+msgctxt "occlusionMatteBuild.takeSummaryFmt"
+msgid "Take: %d frames, %dx%d, %.1f s. %d model stencils to render."
+msgstr ""
+
+#. Section: occlusionMatteBuild
+#, c-format
+msgctxt "occlusionMatteBuild.timeSummaryFmt"
+msgid "%.0f s in total, %.2f s in the segmenter per frame"
+msgstr ""
+
+#. Section: occlusionMatteBuild
+msgctxt "occlusionMatteBuild.working"
+msgid "Working..."
+msgstr ""
 
 #. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.alignmentSettling"
@@ -5195,6 +5469,11 @@ msgstr ""
 #. Section: properties
 msgctxt "properties.client_color_render_scale"
 msgid "Client Color Render Scale"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.client_holdout"
+msgid "Client Holdout"
 msgstr ""
 
 #. Section: properties

@@ -43,6 +43,7 @@
 #include "Nodes/ColorTextureSourceNode.h"
 #include "Nodes/DepthTextureSourceNode.h"
 #include "Nodes/DepthOfFieldNode.h"
+#include "Nodes/MatteDepthRefineNode.h"
 #include "Nodes/DepthMaskNode.h"
 #include "Nodes/DrawLayerNode.h"
 #include "Nodes/DrawShapesNode.h"
@@ -91,6 +92,7 @@ CompositorNodeGraph::CompositorNodeGraph()
 	addNodeFactory<DrawShapesNodeFactory>();
 	addNodeFactory<DepthOfFieldNodeFactory>();
 	addNodeFactory<DepthMaskNodeFactory>();
+	addNodeFactory<MatteDepthRefineNodeFactory>();
 	addNodeFactory<EventNodeFactory>();
 	addNodeFactory<MousePosNodeFactory>();
 	addNodeFactory<MaterialNodeFactory>();

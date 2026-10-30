@@ -111,6 +111,7 @@ namespace MikanXR
 
 		public string model_path;
 		public string geometry_url;
+		public bool client_holdout;
 
 		public override string RuntimeClassName => "MikanModelStencilComponentValues";
 
@@ -119,6 +120,7 @@ namespace MikanXR
 			base.WriteFields(json);
 			json.Add("model_path", MikanJson.WriteString(this.model_path));
 			json.Add("geometry_url", MikanJson.WriteString(this.geometry_url));
+			json.Add("client_holdout", MikanJson.WriteBool(this.client_holdout));
 		}
 
 		public override void ReadFields(JObject json)
@@ -126,6 +128,7 @@ namespace MikanXR
 			base.ReadFields(json);
 			this.model_path = MikanJson.ReadString(MikanJson.Field(json, "model_path"));
 			this.geometry_url = MikanJson.ReadString(MikanJson.Field(json, "geometry_url"));
+			this.client_holdout = MikanJson.ReadBool(MikanJson.Field(json, "client_holdout"));
 		}
 
 		public override bool TryGetField(string fieldName, out object value)
@@ -134,6 +137,7 @@ namespace MikanXR
 			{
 				case "model_path": value = this.model_path; return true;
 				case "geometry_url": value = this.geometry_url; return true;
+				case "client_holdout": value = this.client_holdout; return true;
 			}
 			return base.TryGetField(fieldName, out value);
 		}
@@ -144,6 +148,7 @@ namespace MikanXR
 			{
 				case "model_path": return MikanJson.TryAssign(value, ref this.model_path);
 				case "geometry_url": return MikanJson.TryAssign(value, ref this.geometry_url);
+				case "client_holdout": return MikanJson.TryAssign(value, ref this.client_holdout);
 			}
 			return base.TrySetField(fieldName, value);
 		}

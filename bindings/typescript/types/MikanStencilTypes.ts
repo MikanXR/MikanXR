@@ -47,10 +47,12 @@ export class MikanModelStencilComponentValues extends MikanStencilComponentValue
   static readonly k_ownerSystemName = 'ModelStencilSystem';
   model_path: string = '';
   geometry_url: string = '';
+  client_holdout: boolean = true;
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'model_path', type: 'string' },
-    { name: 'geometry_url', type: 'string' }
+    { name: 'geometry_url', type: 'string' },
+    { name: 'client_holdout', type: 'boolean' }
   ];
 }
 

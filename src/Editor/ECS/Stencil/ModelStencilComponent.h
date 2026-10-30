@@ -36,6 +36,12 @@ public:
 	const std::filesystem::path getModelPath() const;
 	void setModelPath(const std::filesystem::path& path, bool bForceDirty= false);
 
+	// Whether clients draw this stencil as a holdout occluder. Off, the client renders the
+	// character unoccluded and the compositor clips it against the stencil's depth itself.
+	static const std::string k_clientHoldoutPropertyId;
+	inline bool getClientHoldout() const { return m_bClientHoldout; }
+	void setClientHoldout(bool bClientHoldout);
+
 	// The recorded take a stencil was fused from, by its video source and the
 	// session whose world the mesh lives in. While that source stays aligned for
 	// that session, a new alignment re-places the stencil. Definition only, not a
@@ -49,6 +55,7 @@ public:
 
 private:
 	AssetReferenceConfigPtr m_modelAssetRefConfig;
+	bool m_bClientHoldout= true;
 	MikanVideoSourceID m_alignedVideoSourceId= INVALID_MIKAN_ID;
 	std::string m_alignedSessionId;
 };
