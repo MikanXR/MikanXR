@@ -64,6 +64,8 @@
 #include "OcclusionMeshBuilder.h"
 #include "PoseTrack.h"
 #include "Capture.h"
+#include "CaptureMarkerAlignment.h"
+#include "MarkerComponent.h"
 #include "MaterialCompiler/GlslShaderWriter.h"
 #include "MaterialCompiler/MaterialCompiler.h"
 
@@ -185,6 +187,10 @@ int CmdApp::exec(int argc, char** argv)
 	{
 		result= buildOcclusionMesh();
 	}
+	else if (hasCommandLineFlag("alignTake"))
+	{
+		result= alignTake();
+	}
 	else if (hasCommandLineFlag("fetchModels"))
 	{
 		result= fetchModels();
@@ -251,6 +257,11 @@ void CmdApp::printUsage() const
 			"               [-stride=<n>] [-maxDepth=<metres>] [-cpu]\n"
 			"               Generate a camera-space depth proxy mesh from a single frame\n"
 			"               and write it as an OBJ.\n"
+			"  -alignTake -take=<path to take.trackcamera> [-markerId=<n>] [-markerMM=<side>]\n"
+			"               [-dictionary=<4|5|6|7>]\n"
+			"               Solve a take's world-to-stage offset from its marker shot and snap it\n"
+			"               onto the table height its depth measures, printing both offsets\n"
+			"               column-major and the marker centre in the take's ARKit world.\n"
 			"  -occlusionMesh -take=<path to take.trackcamera> [-glb=<path>]\n"
 			"               [-voxel=<metres>] [-stride=<n>]\n"
 			"               [-pathRadius=<metres>] [-noTexture] [-textureViews=<n>]\n"
@@ -709,6 +720,70 @@ private:
 	eOcclusionMeshBuildPhase m_lastPhase= eOcclusionMeshBuildPhase::idle;
 };
 } // namespace CmdAppOcclusionMesh
+
+namespace CmdAppAlignTake
+{
+void printOffset(const char* label, const glm::mat4& worldToStage)
+{
+	const glm::vec3 markerCentre(glm::inverse(worldToStage)[3]);
+	fprintf(stdout, "%s marker %.5f %.5f %.5f offset", label, markerCentre.x, markerCentre.y, markerCentre.z);
+	for (int column= 0; column < 4; ++column)
+		for (int row= 0; row < 4; ++row)
+			fprintf(stdout, " %.7f", worldToStage[column][row]);
+	fprintf(stdout, "\n");
+}
+} // namespace CmdAppAlignTake
+
+int CmdApp::alignTake() const
+{
+	const std::filesystem::path mediaPath(getCommandLineStringArg("take"));
+	Capture capture;
+	std::string error;
+	if (mediaPath.empty() || !capture.open(mediaPath, error))
+	{
+		fprintf(stdout, "error: -alignTake needs -take=<a .trackcamera capture that opens> %s\n", error.c_str());
+		return EXIT_FAILURE;
+	}
+
+	auto originMarker= std::make_shared<MarkerDefinition>();
+	originMarker->setArucoId(atoi(getCommandLineStringArg("markerId", "2").c_str()));
+	originMarker->setLengthMM((float)atof(getCommandLineStringArg("markerMM", "47").c_str()));
+	const int dictionarySize= atoi(getCommandLineStringArg("dictionary", "6").c_str());
+	const eCharucoDictionaryType dictionaryType= dictionarySize == 4   ? eCharucoDictionaryType::DICT_4X4
+												 : dictionarySize == 5 ? eCharucoDictionaryType::DICT_5X5
+												 : dictionarySize == 7 ? eCharucoDictionaryType::DICT_7X7
+																	   : eCharucoDictionaryType::DICT_6X6;
+
+	glm::mat4 shotWorldToStage;
+	if (!CaptureMarkerAlignment::solveWorldToStage(capture, originMarker, dictionaryType, shotWorldToStage, error))
+	{
+		fprintf(stdout, "error: %s\n", error.c_str());
+		return EXIT_FAILURE;
+	}
+	CmdAppAlignTake::printOffset("shot   :", shotWorldToStage);
+
+	const PoseTrack& track= capture.getPoseTrack(eCaptureMemberRole::movie_pose);
+	const CaptureArchiveMember* depthMember= capture.findMember(eCaptureMemberRole::depth);
+	const CaptureArchiveMember* confidenceMember= capture.findMember(eCaptureMemberRole::confidence);
+	if (!track.hasDepthTrack() || depthMember == nullptr || confidenceMember == nullptr)
+	{
+		fprintf(stdout, "warning: the capture has no depth track, so the shot's height stands\n");
+		return EXIT_SUCCESS;
+	}
+
+	CaptureMarkerAlignment::TableHeightResult result;
+	if (!CaptureMarkerAlignment::snapToTableHeight(mediaPath, *depthMember, *confidenceMember, track, shotWorldToStage,
+												   originMarker->getLengthMM() * 0.001f, nullptr, result, error))
+	{
+		fprintf(stdout, "warning: %s, so the shot's height stands\n", error.c_str());
+		return EXIT_SUCCESS;
+	}
+
+	fprintf(stdout, "table  : %.2f mm along the marker normal, spread %.2f mm, %d frames\n", result.heightM * 1000.f,
+			result.spreadM * 1000.f, result.framesUsed);
+	CmdAppAlignTake::printOffset("snapped:", result.snappedWorldToStage);
+	return EXIT_SUCCESS;
+}
 
 int CmdApp::buildOcclusionMesh() const
 {

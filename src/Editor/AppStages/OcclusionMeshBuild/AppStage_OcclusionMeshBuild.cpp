@@ -188,6 +188,14 @@ bool AppStage_OcclusionMeshBuild::tryEnterBuild(AppStage* fromAppStage, FileVide
 		return false;
 	}
 
+	// A mesh placed from an offset that is about to move by a few millimetres
+	// would land off the table its take measured
+	if (videoSource->isAlignmentSettling())
+	{
+		ModalDialog_MessageBox::showMessageBox(fromAppStage, locText("occlusionMeshBuild.alignmentSettling"));
+		return false;
+	}
+
 	auto cameraSystem= ownerWindow->getProjectManager()->getSystemOfType<CameraObjectSystem>();
 	CameraComponentPtr camera=
 		cameraSystem ? cameraSystem->findCameraForVideoSource(videoSource->getVideoSourceId()) : CameraComponentPtr();

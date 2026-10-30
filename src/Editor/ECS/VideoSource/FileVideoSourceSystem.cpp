@@ -48,8 +48,9 @@ glm::mat4 FileVideoSourceSystem::computeTakeToWorldTransform(const StageComponen
 }
 
 // The marker shot aligns its take to the stage of the camera playing it, whose
-// origin marker is the one the shot shows. A source no camera on a marker stage
-// plays waits until one does.
+// origin marker is the one the shot shows, and the height snap then sizes its
+// table annulus from that marker. A source no camera on a marker stage plays
+// waits until one does.
 void FileVideoSourceSystem::updateMarkerShotAlignment()
 {
 	CameraObjectSystemPtr cameraSystem= getObjectSystemOfType<CameraObjectSystem>();
@@ -60,7 +61,7 @@ void FileVideoSourceSystem::updateMarkerShotAlignment()
 	for (const auto& [id, weakComp] : getComponentMap())
 	{
 		FileVideoSourceComponentPtr source= weakComp.lock();
-		if (!source || !source->wantsMarkerShotAlignment())
+		if (!source || (!source->wantsMarkerShotAlignment() && !source->wantsHeightSnap()))
 			continue;
 
 		CameraComponentPtr camera= cameraSystem->findCameraForVideoSource(id);
@@ -72,7 +73,10 @@ void FileVideoSourceSystem::updateMarkerShotAlignment()
 		if (!originMarker)
 			continue;
 
-		source->alignFromMarkerShot(originMarker, markerSystem->getTypedDefinition()->getArucoDictionaryType());
+		if (source->wantsMarkerShotAlignment())
+			source->alignFromMarkerShot(originMarker, markerSystem->getTypedDefinition()->getArucoDictionaryType());
+		if (source->wantsHeightSnap())
+			source->startHeightSnap(originMarker->getLengthMM() * 0.001f);
 	}
 }
 

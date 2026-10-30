@@ -62,12 +62,16 @@ public:
 	// a descriptor would be a wire change. The offset carries the session id of
 	// the recording it was solved from, since each ARKit session has its own
 	// world origin and an offset says nothing about any other session.
+	// The height snap moves a solved offset onto the take's time-averaged table,
+	// and is recorded so a project reopening on a snapped offset does not redo it.
 	static const std::string k_poseOffsetPropertyId;
 	static const std::string k_poseOffsetSessionIdPropertyId;
+	static const std::string k_poseOffsetHeightSnappedPropertyId;
 	inline const glm::mat4& getPoseOffset() const { return m_poseOffset; }
 	inline bool hasPoseOffset() const { return m_bHasPoseOffset; }
 	inline const std::string& getPoseOffsetSessionId() const { return m_poseOffsetSessionId; }
-	void setPoseOffset(const glm::mat4& poseOffset, const std::string& sessionId);
+	inline bool isPoseOffsetHeightSnapped() const { return m_bPoseOffsetHeightSnapped; }
+	void setPoseOffset(const glm::mat4& poseOffset, const std::string& sessionId, bool bHeightSnapped= false);
 	void clearPoseOffset();
 
 private:
@@ -80,6 +84,7 @@ private:
 	glm::mat4 m_poseOffset;
 	bool m_bHasPoseOffset= false;
 	std::string m_poseOffsetSessionId;
+	bool m_bPoseOffsetHeightSnapped= false;
 };
 
 // -- FileVideoSourceComponent -----
@@ -163,6 +168,18 @@ public:
 	// Tried once per media open, whatever the outcome, so a shot without a
 	// readable marker is not decoded again every frame.
 	bool alignFromMarkerShot(MarkerDefinitionConstPtr originMarker, eCharucoDictionaryType dictionaryType);
+
+	// -- Height snap ----
+	// The marker shot catches ARKit's world at one instant, a few millimetres off
+	// the world the take averages to. Once an offset is set, a job reads the
+	// take's depth on its own thread and moves the offset's origin onto the
+	// table's time-averaged height under the marker. The unsnapped offset stays
+	// in effect until the job lands. True once per media open and offset while
+	// the offset is unsnapped and the capture has depth.
+	bool wantsHeightSnap() const;
+	void startHeightSnap(float markerLengthM);
+	// The offset may still move by a few millimetres: a snap is wanted or running
+	bool isAlignmentSettling() const;
 
 	// -- IAlignmentReferenceSource ----
 	virtual bool hasAlignmentReference() const override;
@@ -316,6 +333,13 @@ private:
 	bool m_bHasAlignmentReference= false;
 	bool m_bDropStaleOverride= false; // loadMedia found the override belongs to another take
 	bool m_bMarkerShotAlignmentTried= false;
+
+	// -- height snap job, polled from update --
+	struct HeightSnapJob;
+	void pollHeightSnap();
+	void cancelHeightSnap();
+	std::unique_ptr<HeightSnapJob> m_heightSnapJob;
+	bool m_bHeightSnapTried= false;
 
 	mutable std::mutex m_latestPoseMutex;
 	struct LatestPose

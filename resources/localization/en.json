@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1162,
-		"translatedCount": 1162,
-		"reviewedCount": 1162
+		"stringCount": 1163,
+		"translatedCount": 1163,
+		"reviewedCount": 1163
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -702,6 +702,7 @@
 		"transmitRateHz": "Transmit Rate (Hz)"
 	},
 	"occlusionMeshBuild": {
+		"alignmentSettling": "The take's alignment is still being refined from its depth. Try again in a few seconds.",
 		"boundsBoxFmt": "Bounds: the placed box, %.2f x %.2f x %.2f m",
 		"boundsBoxHelp": "Drag a face handle of the box with the left mouse button to fit it around the subject, then rebuild inside it.",
 		"build": "Build",

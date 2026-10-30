@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1162,
+		"stringCount": 1163,
 		"translatedCount": 900,
 		"reviewedCount": 0
 	},
@@ -702,6 +702,7 @@
 		"transmitRateHz": "送信レート (Hz)"
 	},
 	"occlusionMeshBuild": {
+		"alignmentSettling": "The take's alignment is still being refined from its depth. Try again in a few seconds.",
 		"boundsBoxFmt": "Bounds: the placed box, %.2f x %.2f x %.2f m",
 		"boundsBoxHelp": "Drag a face handle of the box with the left mouse button to fit it around the subject, then rebuild inside it.",
 		"build": "Build",

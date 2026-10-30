@@ -6,6 +6,7 @@
 #include "CapturePacker.h"
 #include "FileVideoSourceComponent.h"
 #include "MarkerComponent.h"
+#include "OcclusionMeshBuilder.h"
 #include "PoseTrack.h"
 
 #include "opencv2/imgcodecs.hpp"
@@ -162,6 +163,7 @@ bool run_capture_marker_alignment_tests()
 	UNIT_TEST_MODULE_CALL_TEST(capture_marker_alignment_test_marker_shot_solves_the_stage);
 	UNIT_TEST_MODULE_CALL_TEST(capture_marker_alignment_test_shot_without_marker_fails);
 	UNIT_TEST_MODULE_CALL_TEST(capture_marker_alignment_test_take_aligns_itself_for_its_session);
+	UNIT_TEST_MODULE_CALL_TEST(capture_marker_alignment_test_height_snaps_onto_the_table);
 	UNIT_TEST_MODULE_END()
 }
 
@@ -274,11 +276,82 @@ bool capture_marker_alignment_test_take_aligns_itself_for_its_session()
 	success&= solveShot(k_markerCentre + glm::vec3(0.f, 0.25f, 0.2f), expected);
 	success&= maxElementDifference(source->getPoseOffset(), expected) < 1e-4f;
 
+	// The capture has no depth, so the shot's height stands and nothing is pending
+	success&= !source->wantsHeightSnap() && !source->isAlignmentSettling();
+
 	// The tag survives the project file
 	FileVideoSourceDefinition restored;
 	restored.readFromJSON(definition->writeToJSON());
 	success&= restored.hasPoseOffset() && restored.getPoseOffsetSessionId() == k_sessionId;
 
 	source->closeVideoSource();
+	UNIT_TEST_COMPLETE()
+}
+
+bool capture_marker_alignment_test_height_snaps_onto_the_table()
+{
+	using namespace CaptureMarkerAlignmentTestsInternal;
+
+	UNIT_TEST_BEGIN("the shot's stage origin snaps onto the table height the take's depth measures")
+	// The take's depth sees a table at tableHeight. The shot solved the marker
+	// 4 mm above it, the error a moment of ARKit's world leaves in the shot.
+	const float tableHeight= -0.25f;
+	const glm::vec3 markerOnTable(0.4f, tableHeight, -0.3f);
+	const glm::vec3 shotMarker= markerOnTable + glm::vec3(0.f, 0.004f, 0.f);
+	const glm::mat4 shotWorldToStage= glm::inverse(glm::translate(glm::mat4(1.f), shotMarker));
+
+	// A small depth camera orbiting the marker at 0.4 m
+	const int width= 64;
+	const int height= 48;
+	PinholeIntrinsics intrinsics;
+	intrinsics.fx= 50.0;
+	intrinsics.fy= 50.0;
+	intrinsics.cx= 0.5 * width;
+	intrinsics.cy= 0.5 * height;
+
+	CaptureMarkerAlignment::TableHeightEstimator estimator(shotWorldToStage, k_markerLengthMM * 0.001f);
+	for (int frame= 0; frame < 12; ++frame)
+	{
+		const float angle= 0.5f * (float)frame;
+		const glm::vec3 eye= markerOnTable + glm::vec3(0.3f * std::sin(angle), 0.25f, 0.3f * std::cos(angle));
+		const glm::mat4 recordedCameraToWorld= glm::inverse(glm::lookAt(eye, markerOnTable, glm::vec3(0.f, 1.f, 0.f)));
+		const glm::mat4 cameraToWorld= OcclusionMeshBuilder::toOpenCvCameraToWorld(recordedCameraToWorld);
+
+		// Ray cast the table: OpenCV camera rays with unit z, so the hit's ray
+		// parameter is its depth
+		cv::Mat depth(height, width, CV_32FC1, cv::Scalar(0.f));
+		const cv::Mat confidence(height, width, CV_8UC1, cv::Scalar(2));
+		const glm::vec3 origin(cameraToWorld[3]);
+		for (int v= 0; v < height; ++v)
+		{
+			for (int u= 0; u < width; ++u)
+			{
+				const glm::vec3 direction= glm::mat3(cameraToWorld)
+										   * glm::vec3((float)((u - intrinsics.cx) / intrinsics.fx),
+													   (float)((v - intrinsics.cy) / intrinsics.fy), 1.f);
+				if (direction.y < -1e-6f)
+					depth.at<float>(v, u)= (tableHeight - origin.y) / direction.y;
+			}
+		}
+		success&= estimator.addFrame(depth, confidence, intrinsics, cameraToWorld);
+	}
+
+	float heightM= 0.f, spreadM= 0.f;
+	success&= estimator.estimate(heightM, spreadM);
+	success&= std::fabs(heightM - (-0.004f)) < 0.0005f && spreadM < 0.0005f;
+
+	// The snapped origin is on the table under the shot's marker, and the stage
+	// keeps the shot's orientation
+	const glm::mat4 snapped= CaptureMarkerAlignment::snapWorldToStageHeight(shotWorldToStage, heightM);
+	success&= glm::length(glm::vec3(snapped * glm::vec4(markerOnTable, 1.f))) < 0.0005f;
+	success&= maxElementDifference(glm::mat4(glm::mat3(snapped)), glm::mat4(glm::mat3(shotWorldToStage))) < 1e-5f;
+
+	// A frame looking away from the marker measures nothing
+	const glm::mat4 awayCameraToWorld= OcclusionMeshBuilder::toOpenCvCameraToWorld(
+		glm::inverse(glm::lookAt(markerOnTable + glm::vec3(0.f, 0.25f, 0.3f),
+								 markerOnTable + glm::vec3(0.f, 0.25f, 1.3f), glm::vec3(0.f, 1.f, 0.f))));
+	const cv::Mat emptyDepth(height, width, CV_32FC1, cv::Scalar(0.f));
+	const cv::Mat emptyConfidence(height, width, CV_8UC1, cv::Scalar(2));
+	success&= !estimator.addFrame(emptyDepth, emptyConfidence, intrinsics, awayCameraToWorld);
 	UNIT_TEST_COMPLETE()
 }

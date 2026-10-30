@@ -30,6 +30,7 @@ private:
 	int estimateLighting() const;
 	int generateDepthMesh() const;
 	int buildOcclusionMesh() const;
+	int alignTake() const;
 	int compileMaterial() const;
 	int fetchModels() const;
 

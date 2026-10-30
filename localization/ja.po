@@ -3768,6 +3768,11 @@ msgid "Transmit Rate (Hz)"
 msgstr "送信レート (Hz)"
 
 #. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.alignmentSettling"
+msgid "The take's alignment is still being refined from its depth. Try again in a few seconds."
+msgstr ""
+
+#. Section: occlusionMeshBuild
 #, c-format
 msgctxt "occlusionMeshBuild.boundsBoxFmt"
 msgid "Bounds: the placed box, %.2f x %.2f x %.2f m"
