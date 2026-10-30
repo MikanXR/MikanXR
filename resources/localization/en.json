@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1163,
-		"translatedCount": 1163,
-		"reviewedCount": 1163
+		"stringCount": 1164,
+		"translatedCount": 1164,
+		"reviewedCount": 1164
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -955,6 +955,7 @@
 		"charuco_square_length_mm": "ChArUco Square Length (mm)",
 		"client_aux_render_scale": "Client Aux Render Scale",
 		"client_color_render_scale": "Client Color Render Scale",
+		"client_holdout": "Client Holdout",
 		"client_max_buffer_dimension": "Max Buffer Dimension",
 		"client_source": "Client Source",
 		"component_name": "Component Name",

@@ -4559,6 +4559,11 @@ msgid "Client Color Render Scale"
 msgstr ""
 
 #. Section: properties
+msgctxt "properties.client_holdout"
+msgid "Client Holdout"
+msgstr ""
+
+#. Section: properties
 msgctxt "properties.client_max_buffer_dimension"
 msgid "Max Buffer Dimension"
 msgstr ""

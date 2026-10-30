@@ -111,6 +111,10 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanStencilTypes"),
 	// Read-only. The server-relative path of the model's GLB, joined to the HTTP base URL, or empty
 	// when no model is loaded. Its ?v= query changes whenever the served model does.
 	FIELD() Serialization::String geometry_url;
+	// When true the client draws the stencil as a holdout occluder that writes depth and clears
+	// coverage, and in its published depth. When false the client draws neither, keeps its shadow
+	// catcher, and the editor's compositor decides occlusion per pixel against the client depth.
+	FIELD() bool client_holdout= true;
 
 #ifdef MIKANAPI_REFLECTION_ENABLED
 	MikanModelStencilComponentValues_GENERATED

@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1163,
+		"stringCount": 1164,
 		"translatedCount": 900,
 		"reviewedCount": 0
 	},
@@ -955,6 +955,7 @@
 		"charuco_square_length_mm": "ChArUco マス目長 (mm)",
 		"client_aux_render_scale": "Client Aux Render Scale",
 		"client_color_render_scale": "Client Color Render Scale",
+		"client_holdout": "Client Holdout",
 		"client_max_buffer_dimension": "Max Buffer Dimension",
 		"client_source": "クライアントソース",
 		"component_name": "コンポーネント名",
