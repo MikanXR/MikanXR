@@ -341,6 +341,7 @@ bool OcclusionMatteBuilder::build(const PoseTrack& track, MovieDecoder& decoder,
 		{
 			processed.bgr= frameBgr;
 			processed.depth= depth;
+			processed.runMasks= runMasks;
 			observer->onFrameProcessed(processed);
 			observer->onProgress(eOcclusionMatteBuildPhase::decoding, (int)trackIndex + 1, total);
 		}

@@ -776,8 +776,9 @@ public:
 			fprintf(stdout, "matte  : frame %d of %d\n", done, total);
 		}
 	}
-	// Each segmented frame's labels (0, 128, 255), depth (a flat float32 .npy
-	// of matte height x width rows) and prompts, for the parity check
+	// Each segmented frame's labels (0, 128, 255), depth (a flat float32 .npy of matte height x
+	// width rows), prompts with their run's contour, and each run's chosen mask, for the parity
+	// check and for tracing a label back to the run that set it
 	virtual void onFrameProcessed(const OcclusionMatteFrame& frame) override
 	{
 		if (m_dumpDirectory.empty())
@@ -823,7 +824,19 @@ public:
 			{
 				fprintf(file, "%s[%.1f, %.1f]", p > 0 ? ", " : "", run.positives[p].x, run.positives[p].y);
 			}
+			fprintf(file, "], \"contour\": [");
+			for (size_t p= 0; p < run.contour.size(); ++p)
+			{
+				fprintf(file, "%s[%d, %d]", p > 0 ? ", " : "", run.contour[p].x, run.contour[p].y);
+			}
 			fprintf(file, "]}");
+
+			if (r < frame.runMasks.size() && !frame.runMasks[r].empty())
+			{
+				char maskSuffix[32];
+				snprintf(maskSuffix, sizeof(maskSuffix), "_run%zu_mask.png", r);
+				cv::imwrite(prefix + maskSuffix, frame.runMasks[r]);
+			}
 		}
 		fprintf(file, "]}\n");
 		fclose(file);

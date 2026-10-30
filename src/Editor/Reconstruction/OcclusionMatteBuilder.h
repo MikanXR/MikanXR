@@ -40,7 +40,7 @@ struct OcclusionMatteSettings
 	// A run whose box is small is prompted on a crop around it, encoded on its own, which resolves a thin
 	// part of a small object at the cost of an encoder pass per such run
 	bool bCropSmallRuns= true;
-	// A run whose chosen mask covers less than this share of the mesh's near side inside its box
+	// A run whose chosen mask covers less than this share of the mesh's near side within its band
 	// is dropped, and its band stays with the mesh: the segmenter did not find the object the
 	// contour belongs to, and whatever it did find would carve that object
 	float minRunCoverage= 0.5f;
@@ -73,6 +73,8 @@ struct OcclusionMatteFrame
 	std::vector<float> runIoU;
 	std::vector<float> runCoverage;
 	std::vector<float> runExcess;
+	// Per run, the mask its band was judged by (CV_8UC1 at the matte size), empty for a run that got none
+	std::vector<cv::Mat> runMasks;
 };
 
 // What the builder reports to while it runs, from the worker thread

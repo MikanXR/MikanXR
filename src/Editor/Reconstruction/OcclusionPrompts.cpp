@@ -97,6 +97,85 @@ cv::Mat distanceToSet(const cv::Mat& set)
 	return dist;
 }
 
+// Groups the contour pixels into runs: two pixels within gap of each other (Chebyshev) whose depths
+// are within depthRatio share a run, transitively, so a run follows one object's silhouette and
+// stops where it meets the silhouette of an object at another depth
+void groupContour(const cv::Mat& depth, const cv::Mat& contour, int gap, float depthRatio,
+				  std::vector<std::vector<cv::Point>>& outRuns)
+{
+	std::vector<cv::Point> points;
+	cv::Mat pointIndex(depth.size(), CV_32SC1, cv::Scalar(-1));
+	for (int y= 0; y < depth.rows; ++y)
+	{
+		for (int x= 0; x < depth.cols; ++x)
+		{
+			if (contour.at<uint8_t>(y, x))
+			{
+				pointIndex.at<int32_t>(y, x)= (int32_t)points.size();
+				points.push_back(cv::Point(x, y));
+			}
+		}
+	}
+
+	std::vector<int> parent(points.size());
+	for (size_t i= 0; i < parent.size(); ++i)
+	{
+		parent[i]= (int)i;
+	}
+	auto findRoot= [&parent](int i)
+	{
+		while (parent[i] != i)
+		{
+			parent[i]= parent[parent[i]];
+			i= parent[i];
+		}
+		return i;
+	};
+
+	// Each pixel joins the pixels after it in raster order within its window, which visits each
+	// pair once
+	for (size_t i= 0; i < points.size(); ++i)
+	{
+		const cv::Point& p= points[i];
+		const float d= depth.at<float>(p.y, p.x);
+		for (int dy= 0; dy <= gap; ++dy)
+		{
+			const int y= p.y + dy;
+			if (y >= depth.rows)
+				break;
+			for (int dx= dy == 0 ? 1 : -gap; dx <= gap; ++dx)
+			{
+				const int x= p.x + dx;
+				if (x < 0 || x >= depth.cols)
+					continue;
+				const int32_t j= pointIndex.at<int32_t>(y, x);
+				if (j < 0)
+					continue;
+				const float dq= depth.at<float>(y, x);
+				if (std::max(d, dq) > depthRatio * std::min(d, dq))
+					continue;
+				const int rootI= findRoot((int)i);
+				const int rootJ= findRoot(j);
+				if (rootI != rootJ)
+					parent[rootJ]= rootI;
+			}
+		}
+	}
+
+	// Runs in the order their first pixel appears
+	std::vector<int> runOfRoot(points.size(), -1);
+	for (size_t i= 0; i < points.size(); ++i)
+	{
+		const int root= findRoot((int)i);
+		if (runOfRoot[(size_t)root] < 0)
+		{
+			runOfRoot[(size_t)root]= (int)outRuns.size();
+			outRuns.emplace_back();
+		}
+		outRuns[(size_t)runOfRoot[(size_t)root]].push_back(points[i]);
+	}
+}
+
 // Splits a run's contour points at the median of the box's longer side until no part spans more
 // than maxSpan on either axis, appending the parts
 void splitBySpan(std::vector<cv::Point> points, int maxSpan, std::vector<std::vector<cv::Point>>& outParts)
@@ -171,31 +250,19 @@ void OcclusionPrompts::findRuns(const cv::Mat& depth, const OcclusionPromptSetti
 	if (cv::countNonZero(contour) == 0)
 		return;
 
-	// Contour pixels within the gap of each other share a run
-	const int gap= std::max(settings.runGapPx, 1);
-	cv::Mat joined;
-	cv::dilate(contour, joined, cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(gap, gap)));
-	cv::Mat labels;
-	const int labelCount= cv::connectedComponents(joined, labels, 8, CV_32S);
-	std::vector<std::vector<cv::Point>> runPoints(labelCount);
-	for (int y= 0; y < depth.rows; ++y)
-	{
-		for (int x= 0; x < depth.cols; ++x)
-		{
-			if (contour.at<uint8_t>(y, x))
-			{
-				runPoints[labels.at<int32_t>(y, x)].push_back(cv::Point(x, y));
-			}
-		}
-	}
+	// Contour pixels within the gap of each other at depths within the ratio share a run: a run is
+	// one object's silhouette, and where it meets the silhouette of an object behind, the run ends
+	std::vector<std::vector<cv::Point>> runPoints;
+	OcclusionPromptsInternal::groupContour(depth, contour, std::max(settings.runGapPx, 1),
+										   std::max(settings.runDepthRatio, 1.f), runPoints);
 
 	// A merged contour is split into parts of bounded span, each prompted on its own
 	std::vector<std::vector<cv::Point>> parts;
-	for (int label= 1; label < labelCount; ++label)
+	for (std::vector<cv::Point>& run : runPoints)
 	{
-		if ((int)runPoints[label].size() < settings.runMinPoints)
+		if ((int)run.size() < settings.runMinPoints)
 			continue;
-		OcclusionPromptsInternal::splitBySpan(std::move(runPoints[label]), std::max(settings.runMaxSpanPx, 1), parts);
+		OcclusionPromptsInternal::splitBySpan(std::move(run), std::max(settings.runMaxSpanPx, 1), parts);
 	}
 
 	const cv::Rect imageRect(0, 0, depth.cols, depth.rows);
@@ -242,11 +309,14 @@ void OcclusionPrompts::findRuns(const cv::Mat& depth, const OcclusionPromptSetti
 			{
 				const float d= depth.at<float>(y, x);
 				const bool bNear= OcclusionPromptsInternal::isCovered(d) && d < run.splitDepth;
-				if (bNear && run.box.contains(cv::Point(x, y)))
+				const float dist= distToContour.at<float>(y, x);
+				// The near side within the band is the object the contour belongs to; the rest of
+				// the box is whatever else stands near, which a long run's box takes in
+				if (bNear && dist <= (float)band)
 				{
 					run.nearMask.at<uint8_t>(y, x)= 255;
 				}
-				if (bNear && distToContour.at<float>(y, x) <= 2.f * band)
+				if (bNear && dist <= 2.f * band)
 				{
 					walkRegion.at<uint8_t>(y, x)= 255;
 				}
@@ -339,12 +409,56 @@ void OcclusionPrompts::computeLabels(const cv::Mat& depth, const std::vector<Occ
 		}
 	}
 
+	// Whether a run's mask holds the prompt nearest each contour point, by contour label. A mask
+	// that leaves out a prompt is not the object that prompt sits in, and it may not remove the
+	// pixels along that stretch of contour: a run cut through an object by the span split hands
+	// the object's far edge to a part whose mask is its neighbour, and that part may add along
+	// it but not carve it.
+	std::vector<uint8_t> labelHeld(labelOwner.size(), 1);
+
 	for (size_t runIndex= 0; runIndex < runs.size() && runIndex < runMasks.size(); ++runIndex)
 	{
 		const OcclusionPromptRun& run= runs[runIndex];
 		const cv::Mat& objectMask= runMasks[runIndex];
 		if (objectMask.empty() || objectMask.size() != depth.size() || objectMask.type() != CV_8UC1)
 			continue;
+
+		if (!run.positives.empty())
+		{
+			std::vector<uint8_t> positiveHeld(run.positives.size(), 0);
+			for (size_t i= 0; i < run.positives.size(); ++i)
+			{
+				const int px= (int)std::lround(run.positives[i].x);
+				const int py= (int)std::lround(run.positives[i].y);
+				positiveHeld[i]= px >= 0 && py >= 0 && px < objectMask.cols && py < objectMask.rows
+								 && objectMask.at<uint8_t>(py, px) != 0;
+			}
+			for (const cv::Point& p : run.contour)
+			{
+				size_t nearest= 0;
+				float nearestDist= std::numeric_limits<float>::max();
+				for (size_t i= 0; i < run.positives.size(); ++i)
+				{
+					const float dx= run.positives[i].x - (float)p.x;
+					const float dy= run.positives[i].y - (float)p.y;
+					const float d= dx * dx + dy * dy;
+					if (d < nearestDist)
+					{
+						nearestDist= d;
+						nearest= i;
+					}
+				}
+				labelHeld[(size_t)nearestContour.at<int>(p.y, p.x)]= positiveHeld[nearest];
+			}
+		}
+
+		// The mask the run removes by: its holes and notches narrower than the fill radius closed,
+		// since those are the print on a label or a ragged border, not an edge the segmenter found
+		const int fillRadius= std::max(band / std::max(settings.maskNotchDivisor, 1), 1);
+		cv::Mat removalMask;
+		cv::morphologyEx(
+			objectMask, removalMask, cv::MORPH_CLOSE,
+			cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2 * fillRadius + 1, 2 * fillRadius + 1)));
 
 		// The mesh's near side as this run sees it, and the two disagreements inside the band
 		cv::Mat meshNear= cv::Mat::zeros(depth.size(), CV_8UC1);
@@ -362,10 +476,11 @@ void OcclusionPrompts::computeLabels(const cv::Mat& depth, const std::vector<Occ
 					continue;
 
 				const bool bMaskOccluder= objectMask.at<uint8_t>(y, x) != 0;
-				const bool bOwner= labelOwner[(size_t)nearestContour.at<int>(y, x)] == (int)runIndex;
+				const int label= nearestContour.at<int>(y, x);
+				const bool bOwner= labelOwner[(size_t)label] == (int)runIndex;
 				if (bMaskOccluder && !bMeshOccluder)
 					added.at<uint8_t>(y, x)= 255;
-				else if (!bMaskOccluder && bMeshOccluder && bOwner)
+				else if (removalMask.at<uint8_t>(y, x) == 0 && bMeshOccluder && bOwner && labelHeld[(size_t)label])
 					removed.at<uint8_t>(y, x)= 255;
 			}
 		}

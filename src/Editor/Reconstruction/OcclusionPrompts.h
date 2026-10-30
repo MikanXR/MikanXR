@@ -11,8 +11,12 @@ struct OcclusionPromptSettings
 	float depthJump= 0.05f;
 	// Half width of the band around a contour inside which the matte may change the mesh
 	int bandPx= 24;
-	// Contour pixels closer than this join one run
+	// Contour pixels closer than this join one run, when their depths are within runDepthRatio
 	int runGapPx= 9;
+	// Contour pixels within the gap whose depths differ by more than this ratio lie on different
+	// objects, and a run never joins them: where a can's silhouette meets a stack of paper's, one
+	// run along both sees the paper's depth as its near side, prompts the paper, and carves the can
+	float runDepthRatio= 1.2f;
 	// A shorter run is mesh noise: its two or three points prompt whatever surface they land on
 	int runMinPoints= 40;
 	// A run whose contour spans more than this is split at the median of its longer side until each
@@ -22,6 +26,11 @@ struct OcclusionPromptSettings
 	// One prompt point per this many contour pixels, at most maxPointsPerRun
 	int pointSpacingPx= 40;
 	int maxPointsPerRun= 12;
+	// A notch into a run's mask narrower than the band over this is filled before the mask may
+	// remove: a ragged border where the frame cuts an object, or a hole the print on a label
+	// punches, is not an edge the segmenter found, and the mesh keeps it. Adding uses the mask as
+	// it is, since the filling would reach across a gap the mask left on purpose
+	int maskNotchDivisor= 8;
 };
 
 // One occluding contour run of a depth map and the prompt made from it. The
@@ -59,7 +68,8 @@ public:
 	// run's band with the surface it was prompted on. A disagreement only ever moves the
 	// silhouette: a removed region has to reach the far side of the mesh and an added region has
 	// to reach the mesh, so a hole the mask leaves inside an object, or a blob it adds beside one,
-	// stays keep.
+	// stays keep. A mask removes only outside its closed form, so a notch into it narrower than
+	// the band over maskNotchDivisor stays keep too.
 	static void computeLabels(const cv::Mat& depth, const std::vector<OcclusionPromptRun>& runs,
 							  const std::vector<cv::Mat>& runMasks, const OcclusionPromptSettings& settings,
 							  cv::Mat& outLabels);
