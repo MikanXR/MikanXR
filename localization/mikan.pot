@@ -2073,6 +2073,26 @@ msgid "This license restricts how the model may be used. The full text is saved 
 msgstr ""
 
 #. Section: modelDownload
+msgctxt "modelDownload.sam2SmallDescription"
+msgid "Snaps the occlusion mesh's silhouette to the video, used by the occlusion matte build."
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.sam2SmallName"
+msgid "SAM 2.1 small segmenter"
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.sam2TinyDescription"
+msgid "The smaller segmenter for the occlusion matte build: faster, a little less exact on its edges."
+msgstr ""
+
+#. Section: modelDownload
+msgctxt "modelDownload.sam2TinyName"
+msgid "SAM 2.1 tiny segmenter"
+msgstr ""
+
+#. Section: modelDownload
 #, c-format
 msgctxt "modelDownload.sizeFmt"
 msgid "Download size: %.1f GB"

@@ -121,10 +121,10 @@ MikanClientTestCPP.exe -vk
 The scene lighting estimator and the depth proxy mesh capture run ONNX models that no build ships: about 5GB together, past what a release can carry. The editor offers to download them the first time a capture needs one. The same download runs headlessly:
 
 ```
-MikanCmd.exe -fetchModels [-model=moge2|marigold]
+MikanCmd.exe -fetchModels [-model=moge2|marigold|sam2_small|sam2_tiny]
 ```
 
-Models land in `%LOCALAPPDATA%\MikanXR\models\<name>`, and a copy under `models/<name>` in the working directory is used ahead of that, which is what a developer checkout gets by building one locally. Passing `-fetchModels` accepts the model licenses, which the editor presents in its prompt instead. The license text is saved beside the weights either way. `moge2` comes from Hugging Face, `marigold` from the releases of [MikanXR/MikanMarigoldOnnx](https://github.com/MikanXR/MikanMarigoldOnnx), which is also where the Marigold ONNX export is produced. Details in [scene-lighting.md](./scene-lighting.md) and [depth-proxy-mesh.md](./depth-proxy-mesh.md).
+Models land in `%LOCALAPPDATA%\MikanXR\models\<name>`, and a copy under `models/<name>` in the working directory is used ahead of that, which is what a developer checkout gets by building one locally. Passing `-fetchModels` accepts the model licenses, which the editor presents in its prompt instead. The license text is saved beside the weights either way. `moge2` comes from Hugging Face, `marigold` from the releases of [MikanXR/MikanMarigoldOnnx](https://github.com/MikanXR/MikanMarigoldOnnx), which is also where the Marigold ONNX export is produced, and `sam2_small` and `sam2_tiny` from the releases of [MikanXR/MikanSam2Onnx](https://github.com/MikanXR/MikanSam2Onnx), one release per checkpoint, exported by the experiments repo. Details in [scene-lighting.md](./scene-lighting.md) and [depth-proxy-mesh.md](./depth-proxy-mesh.md).
 
 Both capture pipelines have a headless entry point that runs the same C++ code the editor stages do, which is how they are validated against the Python references:
 
@@ -133,6 +133,7 @@ MikanCmd.exe -estimateLighting -image=<path> [-fov=<degrees>] [-seed=<n>] [-dump
 MikanCmd.exe -depthMesh -image=<path> -fov=<degrees> [-obj=<path>] [-stride=<n>] [-maxDepth=<metres>] [-cpu]
 MikanCmd.exe -alignTake -take=<take.trackcamera> [-markerId=<n>] [-markerMM=<side>] [-dictionary=<4|5|6|7>]
 MikanCmd.exe -occlusionMesh -take=<take.trackcamera> [-glb=<path>] [-voxel=<metres>] [-stride=<n>] [-pathRadius=<metres>] [-noTexture] [-textureViews=<n>] [-bounds=<lo.x,lo.y,lo.z,hi.x,hi.y,hi.z>] [-coverage=<dir>]
+MikanCmd.exe -occlusionMatte -take=<take.trackcamera> -glb=<mesh.glb> [-glb2=<mesh.glb>] [-poses=<track.pose.json>] [-model=sam2_small|sam2_tiny] [-sam2Models=<dir>] [-band=<pixels>] [-scale=<1|2>] [-step=<n>] [-noCrop] [-out=<path.matte.json>] [-dump=<dir>] [-cpu]
 ```
 
 - `-estimateLighting` prints the recovered spherical harmonic environment plus its confidence numbers; `-dump=<dir>` also writes the raw model outputs as float TIFFs and the three reconstruction views the capture panel shows.
@@ -142,6 +143,7 @@ MikanCmd.exe -occlusionMesh -take=<take.trackcamera> [-glb=<path>] [-voxel=<metr
 - `-alignTake` solves a take's world-to-stage offset from its marker shot (marker id 2, 47 mm, the 6x6 dictionary unless given), snaps it onto the table height its depth measures, and prints both offsets column-major with the marker centre in the take's ARKit world. See [videosources.md](./videosources.md).
 
 - `-occlusionMesh` fuses a `trackcamera` capture's LiDAR depth members into an occlusion mesh in the take's ARKit world space, at the take's recorded poses and writes it as a glTF binary with its texture atlas as a sibling `.png`. `-voxel` sets the voxel size with a truncation of four voxels, `-stride` is the keyframe stride (default 3), `-pathRadius` trims the mesh to that many metres of the camera path (default 2, 0 for none), `-noTexture` skips the projected texture, `-textureViews` is how many video frames it projects (default 16), `-bounds` fuses inside that box instead of the computed bounds, and `-coverage` writes the per-vertex coverage measures into that folder as `.npy` files. See [occlusion-mesh.md](./occlusion-mesh.md).
+- `-occlusionMatte` builds a take's occlusion matte: per frame the meshes (glTF in the take's ARKit world, as `-occlusionMesh` writes them) are rendered to depth at the recorded pose, SAM2 is prompted along each occluding contour, and the labels are written as the `<stem>.matte.json` and `.bin` sidecar beside the take, or at `-out`. `-poses` renders at another pose track of the same session, `-band` is the band half width in video pixels (default 64), `-scale` builds the matte at the video size divided by 1 or 2, `-step` segments every nth frame (the frames between hold the last labels), `-noCrop` prompts every run on the whole frame instead of a crop around a small one, and `-dump` writes each segmented frame's labels, depth and prompts into that folder for the parity check. The model comes from `-fetchModels` or `-sam2Models`. See [occlusion-matte.md](./occlusion-matte.md).
 
 - `-cpu` forces the CPU execution provider instead of DirectML. Both commands take `-models=<dir>` / `-mogeModels=<dir>` to point at a model directory explicitly; an override is used exactly as given rather than searched past, and either command stops with a message naming `-fetchModels` when a model it needs is not installed.
 

@@ -18,6 +18,11 @@ enum class eModelId : int
 	/// Marigold IID lighting, exported to ONNX by MikanXR/MikanMarigoldOnnx.
 	/// The diffuse shading half of the scene lighting fit.
 	marigold,
+	/// SAM 2.1 hiera small, the image encoder and the prompt decoder exported
+	/// to ONNX by MikanXR/MikanSam2Onnx. The occlusion matte's segmenter.
+	sam2_small,
+	/// SAM 2.1 hiera tiny, the same two graphs from the smaller checkpoint.
+	sam2_tiny,
 
 	COUNT
 };

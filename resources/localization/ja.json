@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1164,
+		"stringCount": 1168,
 		"translatedCount": 900,
 		"reviewedCount": 0
 	},
@@ -452,6 +452,10 @@
 		"phaseFetchingManifest": "Reading the release manifest...",
 		"phaseVerifying": "Verifying...",
 		"restrictionsNotice": "This license restricts how the model may be used. The full text is saved beside the model files.",
+		"sam2SmallDescription": "Snaps the occlusion mesh's silhouette to the video, used by the occlusion matte build.",
+		"sam2SmallName": "SAM 2.1 small segmenter",
+		"sam2TinyDescription": "The smaller segmenter for the occlusion matte build: faster, a little less exact on its edges.",
+		"sam2TinyName": "SAM 2.1 tiny segmenter",
 		"sizeFmt": "Download size: %.1f GB",
 		"title": "Download Models",
 		"viewLicense": "View License"
