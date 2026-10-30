@@ -30,9 +30,9 @@ bool drawAssetReferenceProperty(MkGuiStyleConstPtr style, const std::string& fie
 	const std::string shortName=
 		!storedPath.empty() ? std::filesystem::path(storedPath).filename().string() : locText("componentPanel.noAsset");
 
-	// The value is only ever set by a drop, so the item is inert: it is here to
-	// read as a field and to carry the drop target. Floored so a narrow panel
-	// still leaves a usable field.
+	// The value is set only by a drop and cleared only from the context menu,
+	// so the item is inert: it is here to read as a field and to carry the drop
+	// target and the menu. Floored so a narrow panel still leaves a usable field.
 	const float fieldWidth= std::max(ImGui::GetContentRegionAvail().x, (float)style->getValueWidth());
 	const std::string itemLabel= glyph + " " + shortName + "##" + fieldName;
 
@@ -48,6 +48,20 @@ bool drawAssetReferenceProperty(MkGuiStyleConstPtr style, const std::string& fie
 	if (ImGui::IsItemHovered())
 	{
 		ImGui::SetTooltip("%s", !storedPath.empty() ? storedPath.c_str() : locText("componentPanel.dropAssetHint"));
+	}
+
+	// A right click on a set row offers to clear it back to "<None>"
+	if (!storedPath.empty() && ImGui::BeginPopupContextItem(("##clear" + fieldName).c_str()))
+	{
+		bool bCleared= false;
+		if (ImGui::MenuItem(locText("componentPanel.clearAsset")))
+		{
+			outStoredPath.clear();
+			bCleared= true;
+		}
+		ImGui::EndPopup();
+		if (bCleared)
+			return true;
 	}
 
 	bool bAssetDropped= false;

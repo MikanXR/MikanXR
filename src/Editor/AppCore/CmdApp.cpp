@@ -13,7 +13,9 @@
 #include "ARKitDebugProtocolTests.h"
 #include "AutomationProtocolTests.h"
 #include "AutomationVariantTextTests.h"
+#include "CameraFramePoseTests.h"
 #include "CaptureArchiveTests.h"
+#include "CaptureMarkerAlignmentTests.h"
 #include "ClientApiPropertySchemaTests.h"
 #include "ComponentNamingTests.h"
 #include "CompositorStreamRouteTests.h"
@@ -25,7 +27,6 @@
 #include "DMXUniverseRLETests.h"
 #include "FileVideoSourceTests.h"
 #include "FrameCoupledAlignmentTests.h"
-#include "FrameRegistrationTests.h"
 #include "GlbMeshWriterTests.h"
 #include "HttpServerTests.h"
 #include "JsonRpcServerTests.h"
@@ -63,6 +64,8 @@
 #include "OcclusionMeshBuilder.h"
 #include "PoseTrack.h"
 #include "Capture.h"
+#include "CaptureMarkerAlignment.h"
+#include "MarkerComponent.h"
 #include "MaterialCompiler/GlslShaderWriter.h"
 #include "MaterialCompiler/MaterialCompiler.h"
 
@@ -88,7 +91,9 @@ bool run_all_editor_unit_tests()
 	success&= run_arkit_debug_protocol_tests();
 	success&= run_automation_protocol_tests();
 	success&= run_automation_variant_text_tests();
+	success&= run_camera_frame_pose_tests();
 	success&= run_capture_archive_tests();
+	success&= run_capture_marker_alignment_tests();
 	success&= run_client_api_property_schema_tests();
 	success&= run_component_naming_tests();
 	success&= run_compositor_stream_route_tests();
@@ -100,7 +105,6 @@ bool run_all_editor_unit_tests()
 	success&= run_dmx_universe_rle_tests();
 	success&= run_file_video_source_tests();
 	success&= run_frame_coupled_alignment_tests();
-	success&= run_frame_registration_unit_tests();
 	success&= run_glb_mesh_writer_tests();
 	success&= run_http_server_tests();
 	success&= run_jsonrpc_server_tests();
@@ -183,6 +187,10 @@ int CmdApp::exec(int argc, char** argv)
 	{
 		result= buildOcclusionMesh();
 	}
+	else if (hasCommandLineFlag("alignTake"))
+	{
+		result= alignTake();
+	}
 	else if (hasCommandLineFlag("fetchModels"))
 	{
 		result= fetchModels();
@@ -249,15 +257,20 @@ void CmdApp::printUsage() const
 			"               [-stride=<n>] [-maxDepth=<metres>] [-cpu]\n"
 			"               Generate a camera-space depth proxy mesh from a single frame\n"
 			"               and write it as an OBJ.\n"
-			"  -occlusionMesh -take=<path to take.trackcamera> [-glb=<path>] [-refinedTrack=<path>]\n"
-			"               [-voxel=<metres>] [-stride=<n>] [-noRegistration]\n"
+			"  -alignTake -take=<path to take.trackcamera> [-markerId=<n>] [-markerMM=<side>]\n"
+			"               [-dictionary=<4|5|6|7>]\n"
+			"               Solve a take's world-to-stage offset from its marker shot and snap it\n"
+			"               onto the table height its depth measures, printing both offsets\n"
+			"               column-major and the marker centre in the take's ARKit world.\n"
+			"  -occlusionMesh -take=<path to take.trackcamera> [-glb=<path>]\n"
+			"               [-voxel=<metres>] [-stride=<n>]\n"
 			"               [-pathRadius=<metres>] [-noTexture] [-textureViews=<n>]\n"
 			"               [-bounds=<lo.x,lo.y,lo.z,hi.x,hi.y,hi.z>] [-coverage=<dir>]\n"
 			"               [-gradientCull=<relative jump, 0 for off>] [-cullSymmetric] [-cullRadius=<pixels>]\n"
 			"               Fuse a trackcamera capture's LiDAR depth tracks into an occlusion\n"
-			"               mesh in the take's ARKit world space, refining the poses against\n"
-			"               the model, trimmed to the camera path and textured from the video,\n"
-			"               and write it as a glTF binary with its atlas plus a refined pose track.\n"
+			"               mesh in the take's ARKit world space at its recorded poses, trimmed\n"
+			"               to the camera path and textured from the video, and write it as a\n"
+			"               glTF binary with its atlas.\n"
 			"               -bounds fuses inside that box instead of the computed bounds, and\n"
 			"               -coverage writes the per-vertex coverage measures as .npy files.\n"
 			"  -fetchModels [-model=<name>]\n"
@@ -708,6 +721,70 @@ private:
 };
 } // namespace CmdAppOcclusionMesh
 
+namespace CmdAppAlignTake
+{
+void printOffset(const char* label, const glm::mat4& worldToStage)
+{
+	const glm::vec3 markerCentre(glm::inverse(worldToStage)[3]);
+	fprintf(stdout, "%s marker %.5f %.5f %.5f offset", label, markerCentre.x, markerCentre.y, markerCentre.z);
+	for (int column= 0; column < 4; ++column)
+		for (int row= 0; row < 4; ++row)
+			fprintf(stdout, " %.7f", worldToStage[column][row]);
+	fprintf(stdout, "\n");
+}
+} // namespace CmdAppAlignTake
+
+int CmdApp::alignTake() const
+{
+	const std::filesystem::path mediaPath(getCommandLineStringArg("take"));
+	Capture capture;
+	std::string error;
+	if (mediaPath.empty() || !capture.open(mediaPath, error))
+	{
+		fprintf(stdout, "error: -alignTake needs -take=<a .trackcamera capture that opens> %s\n", error.c_str());
+		return EXIT_FAILURE;
+	}
+
+	auto originMarker= std::make_shared<MarkerDefinition>();
+	originMarker->setArucoId(atoi(getCommandLineStringArg("markerId", "2").c_str()));
+	originMarker->setLengthMM((float)atof(getCommandLineStringArg("markerMM", "47").c_str()));
+	const int dictionarySize= atoi(getCommandLineStringArg("dictionary", "6").c_str());
+	const eCharucoDictionaryType dictionaryType= dictionarySize == 4   ? eCharucoDictionaryType::DICT_4X4
+												 : dictionarySize == 5 ? eCharucoDictionaryType::DICT_5X5
+												 : dictionarySize == 7 ? eCharucoDictionaryType::DICT_7X7
+																	   : eCharucoDictionaryType::DICT_6X6;
+
+	glm::mat4 shotWorldToStage;
+	if (!CaptureMarkerAlignment::solveWorldToStage(capture, originMarker, dictionaryType, shotWorldToStage, error))
+	{
+		fprintf(stdout, "error: %s\n", error.c_str());
+		return EXIT_FAILURE;
+	}
+	CmdAppAlignTake::printOffset("shot   :", shotWorldToStage);
+
+	const PoseTrack& track= capture.getPoseTrack(eCaptureMemberRole::movie_pose);
+	const CaptureArchiveMember* depthMember= capture.findMember(eCaptureMemberRole::depth);
+	const CaptureArchiveMember* confidenceMember= capture.findMember(eCaptureMemberRole::confidence);
+	if (!track.hasDepthTrack() || depthMember == nullptr || confidenceMember == nullptr)
+	{
+		fprintf(stdout, "warning: the capture has no depth track, so the shot's height stands\n");
+		return EXIT_SUCCESS;
+	}
+
+	CaptureMarkerAlignment::TableHeightResult result;
+	if (!CaptureMarkerAlignment::snapToTableHeight(mediaPath, *depthMember, *confidenceMember, track, shotWorldToStage,
+												   originMarker->getLengthMM() * 0.001f, nullptr, result, error))
+	{
+		fprintf(stdout, "warning: %s, so the shot's height stands\n", error.c_str());
+		return EXIT_SUCCESS;
+	}
+
+	fprintf(stdout, "table  : %.2f mm along the marker normal, spread %.2f mm, %d frames\n", result.heightM * 1000.f,
+			result.spreadM * 1000.f, result.framesUsed);
+	CmdAppAlignTake::printOffset("snapped:", result.snappedWorldToStage);
+	return EXIT_SUCCESS;
+}
+
 int CmdApp::buildOcclusionMesh() const
 {
 	const std::string takeArg= getCommandLineStringArg("take");
@@ -776,7 +853,6 @@ int CmdApp::buildOcclusionMesh() const
 		settings.volume.gradientCullRadius= std::max(atoi(cullRadiusArg.c_str()), 1);
 	}
 	settings.keyframeStride= atoi(getCommandLineStringArg("stride", "3").c_str());
-	settings.bFrameToModel= !hasCommandLineFlag("noRegistration");
 	settings.cameraPathRadius= std::max((float)atof(getCommandLineStringArg("pathRadius", "2").c_str()), 0.f);
 	settings.bTexture= !hasCommandLineFlag("noTexture");
 	settings.textureViews= std::max(atoi(getCommandLineStringArg("textureViews", "16").c_str()), 1);
@@ -794,9 +870,8 @@ int CmdApp::buildOcclusionMesh() const
 		settings.boundsOverrideHi= glm::vec3(box[3], box[4], box[5]);
 	}
 
-	fprintf(stdout, "take   : %zu frames, depth %dx%d, registration %s, trim %.1f m, texture %s\n",
-			track.getFrameCount(), track.getDepthWidth(), track.getDepthHeight(), settings.bFrameToModel ? "on" : "off",
-			settings.cameraPathRadius, settings.bTexture ? "on" : "off");
+	fprintf(stdout, "take   : %zu frames, depth %dx%d, trim %.1f m, texture %s\n", track.getFrameCount(),
+			track.getDepthWidth(), track.getDepthHeight(), settings.cameraPathRadius, settings.bTexture ? "on" : "off");
 	fprintf(stdout, "volume : %.1f cm voxels, cull %.2f%s, radius %d\n", settings.volume.voxelSize * 100.f,
 			settings.volume.gradientCull, settings.volume.gradientCullKeepsNear ? " keeping the near pixel" : "",
 			settings.volume.gradientCullRadius);
@@ -837,15 +912,6 @@ int CmdApp::buildOcclusionMesh() const
 		fprintf(stdout, "texture: %d of %d video frames used, %dx%d atlas, %d triangles unseen\n",
 				stats.textureViewsUsed, stats.textureViews, stats.atlasWidth, stats.atlasHeight,
 				stats.trianglesUntextured);
-	}
-	if (result.bHasRefinedPoses)
-	{
-		fprintf(stdout,
-				"poses  : %d accepted, %d rejected, step %.1f mm %.2f deg, rms %.1f -> %.1f mm, "
-				"final correction %.0f mm %.2f deg\n",
-				stats.registrationsAccepted, stats.registrationsRejected, stats.meanStepTranslationMm,
-				stats.meanStepRotationDeg, stats.meanRmsBeforeMm, stats.meanRmsAfterMm, stats.finalCorrectionMm,
-				stats.finalCorrectionDeg);
 	}
 
 	const std::filesystem::path glbPath= getCommandLineStringArg("glb", "occlusion_mesh.glb");
@@ -899,35 +965,6 @@ int CmdApp::buildOcclusionMesh() const
 		}
 		fprintf(stdout, "wrote  : %s (coverage, %zu vertices)\n", coverageDir.string().c_str(),
 				coverage.getVertexCount());
-	}
-
-	if (result.bHasRefinedPoses)
-	{
-		const std::string refinedArg= getCommandLineStringArg("refinedTrack");
-		const std::filesystem::path refinedPath=
-			refinedArg.empty() ? mediaPath.parent_path() / (mediaPath.stem().string() + ".refined.pose.json")
-							   : std::filesystem::path(refinedArg);
-
-		// File order, so record i of the depth tracks still describes frame i
-		std::vector<size_t> trackOrder(track.getFrameCount());
-		std::iota(trackOrder.begin(), trackOrder.end(), (size_t)0);
-		std::sort(trackOrder.begin(), trackOrder.end(),
-				  [&](size_t a, size_t b) { return track.getFrame(a).fileIndex < track.getFrame(b).fileIndex; });
-
-		PoseTrackWriter writer(track.getSessionId(), track.getImageWidth(), track.getImageHeight());
-		writer.setDepthTrack(track.getDepthWidth(), track.getDepthHeight(), track.getDepthUnitMm());
-		for (size_t trackIndex : trackOrder)
-		{
-			const PoseTrackFrame& frame= track.getFrame(trackIndex);
-			writer.append(frame.timeUs, frame.captureTimestampUs, result.refinedCameraToWorld[frame.fileIndex],
-						  frame.fx, frame.fy, frame.cx, frame.cy);
-		}
-		if (!writer.writeToFile(refinedPath))
-		{
-			fprintf(stdout, "error: failed to write '%s'\n", refinedPath.string().c_str());
-			return EXIT_FAILURE;
-		}
-		fprintf(stdout, "wrote  : %s\n", refinedPath.string().c_str());
 	}
 
 	return EXIT_SUCCESS;

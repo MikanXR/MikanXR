@@ -16,6 +16,7 @@
 #include "TextStyle.h"
 #include "TrackingVolumeComponent.h"
 #include "VideoFrameDistortionView.h"
+#include "VideoSourceComponent.h"
 
 #include "opencv2/opencv.hpp"
 #include "opencv2/calib3d/calib3d.hpp"
@@ -40,13 +41,12 @@ public:
 //-- CalibrationPatternFinder_Aruco -----
 static void initArucoBoardData(ArucoBoardData* markerData, OpenCVCalibrationGeometry& opencvSolvePnPGeometry,
 							   OpenCVCalibrationGeometry& opencvLensCalibrationGeometry,
-							   OpenGLCalibrationGeometry& openglSolvePnPGeometry, MarkerObjectSystemPtr markerSystem,
+							   OpenGLCalibrationGeometry& openglSolvePnPGeometry, eCharucoDictionaryType dictionaryType,
 							   MarkerDefinitionConstPtr markerDefinition)
 {
 	const int desiredArucoId= markerDefinition->getArucoId();
 	const float markerLengthMM= markerDefinition->getLengthMM();
-	ArucoDictionaryPtr dictionary=
-		CalibrationPatternFinder::getArucoDictionary(markerSystem->getTypedDefinition()->getArucoDictionaryType());
+	ArucoDictionaryPtr dictionary= CalibrationPatternFinder::getArucoDictionary(dictionaryType);
 
 	// Use corner refinement to get the best possible corner locations
 	cv::aruco::DetectorParameters detectorParams;
@@ -85,6 +85,27 @@ static void initArucoBoardData(ArucoBoardData* markerData, OpenCVCalibrationGeom
 	}
 }
 
+// Fills outImagePoints with the desired marker's corners, or empties it when the
+// marker is not among those found. Returns whether any marker was found.
+static bool detectDesiredMarker(ArucoBoardData* markerData, const cv::Mat& grayscaleImage,
+								t_opencv_point2d_list& outImagePoints)
+{
+	outImagePoints.clear();
+	markerData->markerCorners.clear();
+	markerData->detector->detectMarkers(grayscaleImage, markerData->markerCorners, markerData->markerVisibleIds);
+
+	for (size_t index= 0; index < markerData->markerVisibleIds.size(); ++index)
+	{
+		if (markerData->markerVisibleIds[index] == markerData->desiredArucoId)
+		{
+			outImagePoints= markerData->markerCorners[index];
+			break;
+		}
+	}
+
+	return markerData->markerVisibleIds.size() > 0;
+}
+
 CalibrationPatternFinder_Aruco::CalibrationPatternFinder_Aruco(CameraComponentConstPtr cameraComponent,
 															   VideoFrameDistortionView* distortionView)
 	: CalibrationPatternFinder(distortionView)
@@ -102,7 +123,8 @@ CalibrationPatternFinder_Aruco::CalibrationPatternFinder_Aruco(CameraComponentCo
 	assert(originMarker != nullptr);
 
 	initArucoBoardData(m_markerData, m_opencvSolvePnPGeometry, m_opencvLensCalibrationGeometry,
-					   m_openglSolvePnPGeometry, markerSystem, originMarker);
+					   m_openglSolvePnPGeometry, markerSystem->getTypedDefinition()->getArucoDictionaryType(),
+					   originMarker);
 }
 
 CalibrationPatternFinder_Aruco::CalibrationPatternFinder_Aruco(CameraComponentConstPtr cameraComponent,
@@ -120,7 +142,8 @@ CalibrationPatternFinder_Aruco::CalibrationPatternFinder_Aruco(CameraComponentCo
 	assert(markerDefinition != nullptr);
 
 	initArucoBoardData(m_markerData, m_opencvSolvePnPGeometry, m_opencvLensCalibrationGeometry,
-					   m_openglSolvePnPGeometry, markerSystem, markerDefinition);
+					   m_openglSolvePnPGeometry, markerSystem->getTypedDefinition()->getArucoDictionaryType(),
+					   markerDefinition);
 }
 
 CalibrationPatternFinder_Aruco::~CalibrationPatternFinder_Aruco() { delete m_markerData; }
@@ -136,29 +159,69 @@ bool CalibrationPatternFinder_Aruco::findNewCalibrationPattern(const float minSe
 	if (gsSourceBuffer == nullptr)
 		return false;
 
-	// Find Arcuo marker corners on the small image
-	m_markerData->markerCorners.clear();
-	m_markerData->detector->detectMarkers(*gsSourceBuffer, m_markerData->markerCorners, m_markerData->markerVisibleIds);
-	const bool bFoundMarkers= m_markerData->markerVisibleIds.size() > 0;
+	return detectDesiredMarker(m_markerData, *gsSourceBuffer, m_currentImagePoints);
+}
 
-	// Re-clear out the image points if we decided the latest captured onces are invalid
-	if (bFoundMarkers)
+bool CalibrationPatternFinder_Aruco::estimateMarkerPoseInImage(const cv::Mat& grayscaleImage,
+															   const MikanMonoIntrinsics& intrinsics,
+															   MarkerDefinitionConstPtr markerDefinition,
+															   eCharucoDictionaryType dictionaryType,
+															   glm::dmat4& outApertureToMarkerXform)
+{
+	if (!markerDefinition || grayscaleImage.empty())
+		return false;
+
+	ArucoBoardData markerData;
+	OpenCVCalibrationGeometry opencvSolvePnPGeometry;
+	OpenCVCalibrationGeometry opencvLensCalibrationGeometry;
+	OpenGLCalibrationGeometry openglSolvePnPGeometry;
+	initArucoBoardData(&markerData, opencvSolvePnPGeometry, opencvLensCalibrationGeometry, openglSolvePnPGeometry,
+					   dictionaryType, markerDefinition);
+
+	t_opencv_point2d_list imagePoints;
+	detectDesiredMarker(&markerData, grayscaleImage, imagePoints);
+	if (imagePoints.empty())
+		return false;
+
+	cv::Quatd cameraToMarkerRot;
+	cv::Vec3d cameraToMarkerVecMM;
+	if (!computeOpenCVCameraRelativeSquareMarkerTransform(intrinsics, imagePoints, markerData.markerLengthMM,
+														  cameraToMarkerRot, cameraToMarkerVecMM))
 	{
-		for (int index= 0; index < m_markerData->markerVisibleIds.size(); ++index)
-		{
-			if (m_markerData->markerVisibleIds[index] == m_markerData->desiredArucoId)
-			{
-				m_currentImagePoints= m_markerData->markerCorners[index];
-				break;
-			}
-		}
-	}
-	else
-	{
-		m_currentImagePoints.clear();
+		return false;
 	}
 
-	return bFoundMarkers;
+	convertOpenCVCameraRelativePoseToGLMMat(cameraToMarkerRot, cameraToMarkerVecMM, outApertureToMarkerXform);
+	return true;
+}
+
+bool CalibrationPatternFinder_Aruco::estimateNewCalibrationPatternPose(glm::dmat4& outCameraToPatternXform)
+{
+	MikanVideoSourceIntrinsics cameraIntrinsics;
+	m_distortionView->getVideoSourceComponent()->getCameraIntrinsics(cameraIntrinsics);
+	if (cameraIntrinsics.intrinsics_type != MikanIntrinsicsType::MONO_CAMERA_INTRINSICS)
+		return false;
+
+	if (!findNewCalibrationPattern())
+		return false;
+
+	cv::Point2f boundingQuad[4];
+	t_opencv_point2d_list imagePoints;
+	t_opencv_pointID_list imagePointIDs;
+	if (!fetchLastFoundCalibrationPattern(imagePoints, imagePointIDs, boundingQuad))
+		return false;
+
+	cv::Quatd cameraToMarkerRot;
+	cv::Vec3d cameraToMarkerVecMM;
+	if (!computeOpenCVCameraRelativeSquareMarkerTransform(cameraIntrinsics.getMonoIntrinsics(), imagePoints,
+														  m_markerData->markerLengthMM, cameraToMarkerRot,
+														  cameraToMarkerVecMM))
+	{
+		return false;
+	}
+
+	convertOpenCVCameraRelativePoseToGLMMat(cameraToMarkerRot, cameraToMarkerVecMM, outCameraToPatternXform);
+	return true;
 }
 
 bool CalibrationPatternFinder_Aruco::fetchLastFoundCalibrationPattern(t_opencv_point2d_list& outImagePoints,

@@ -245,6 +245,12 @@ public:
 	bool getWorldSpaceAperturePose(glm::mat4& outCameraPose) const;
 	bool getWorldSpaceAperturePose(glm::dmat4& outCameraPose) const;
 	glm::mat4 getStageToWorldTransform() const;
+	// A compositor composites a queued frame after the camera has moved on, so for
+	// the span of compositing it pins the pose the frame was queued with: the stage
+	// space aperture pose, and every pose and view matrix derived from it, report
+	// the pinned pose until it is unpinned
+	void pinCompositedFramePose(const glm::mat4& aperturePose_StageSpace);
+	void unpinCompositedFramePose();
 	bool getApertureProjectionMatrix(glm::mat4& outProjectionMatrix, bool bVerticalFlip= false) const;
 	bool getApertureViewMatrix(glm::mat4& outViewMatrix) const;
 	bool getApertureViewProjectionMatrix(glm::mat4& outVPMatrix, bool bVerticalFlip= false) const;
@@ -312,4 +318,6 @@ protected:
 private:
 	SelectionComponentWeakPtr m_selectionComponent;
 	VRDevicePoseViewPtr m_trackingMountPoseView_StageSpace;
+	bool m_bCompositedFramePosePinned= false;
+	glm::mat4 m_compositedFramePose_StageSpace= glm::mat4(1.f);
 };

@@ -261,9 +261,12 @@ void CompositorOutputEditorWindow::update(float deltaSeconds)
 		if (cameraComponent && m_viewCamera)
 		{
 			// World space: this view camera renders scene renderables, whose model
-			// matrices are world transforms
+			// matrices are world transforms. They are drawn over the composited frame,
+			// so from the pose that frame was composited with, the camera's own until
+			// one has been.
 			glm::mat4 cameraXform;
-			if (cameraComponent->getWorldSpaceAperturePose(cameraXform))
+			if (compositor->getCompositedFrameWorldAperturePose(cameraXform)
+				|| cameraComponent->getWorldSpaceAperturePose(cameraXform))
 			{
 				m_viewCamera->setCameraTransform(cameraXform);
 			}

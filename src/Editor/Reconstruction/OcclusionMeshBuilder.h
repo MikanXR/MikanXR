@@ -1,6 +1,5 @@
 #pragma once
 
-#include "FrameToModelRegistration.h"
 #include "MeshCoverage.h"
 #include "MeshTexturing.h"
 #include "ReconstructionTypes.h"
@@ -55,14 +54,8 @@ struct OcclusionMeshBuildSettings
 	glm::vec3 boundsOverrideLo= glm::vec3(0.f);
 	glm::vec3 boundsOverrideHi= glm::vec3(0.f);
 	int minComponentTriangles= 500;
-	bool bFrameToModel= true; // register each frame against the model before fusing it
-	int warmupFrames= 3;      // frames fused at their recorded pose before registration starts
-	float normalStencilVoxels= 2.f;
-	float raycastStepFraction= 0.5f;
-	RegistrationConfig registration;
 	// Metres from the nearest fused camera position beyond which the volume is
-	// trimmed at extraction, 0 for no trim. The grid itself is never trimmed,
-	// so the registration keeps the far walls as constraints.
+	// trimmed at extraction, 0 for no trim
 	float cameraPathRadius= 2.f;
 	// Projected texture from the take's video, when build is given a decoder
 	bool bTexture= true;
@@ -97,15 +90,6 @@ struct OcclusionMeshBuildStats
 	int trianglesUntextured= 0; // triangles no view saw
 	int atlasWidth= 0;
 	int atlasHeight= 0;
-	// Frame-to-model registration, zero when it did not run
-	int registrationsAccepted= 0;
-	int registrationsRejected= 0;
-	float meanStepTranslationMm= 0.f;
-	float meanStepRotationDeg= 0.f;
-	float meanRmsBeforeMm= 0.f;
-	float meanRmsAfterMm= 0.f;
-	float finalCorrectionMm= 0.f;
-	float finalCorrectionDeg= 0.f;
 	float integrateSeconds= 0.f;
 	float totalSeconds= 0.f;
 };
@@ -123,19 +107,14 @@ struct OcclusionMeshBuildResult
 	cv::Mat atlas;
 	// Track indices of the keyframes that were fused, in time order
 	std::vector<size_t> fusedKeyframes;
-	// One refined camera-to-world per frame of the take, indexed by the
-	// frame's file index, in the pose track's own camera convention. Empty
-	// unless registration ran.
-	bool bHasRefinedPoses= false;
-	std::vector<glm::mat4> refinedCameraToWorld;
 	// One record per vertex of mesh, following the texturing's vertex split
 	MeshCoverageResult coverage;
 	OcclusionMeshBuildStats stats;
 };
 
-// Fuses a take's LiDAR depth into a mesh, refining the recorded poses
-// against the model as it goes. Pure data in and out: the stage, the
-// headless command, and the tests all call build() the same way.
+// Fuses a take's LiDAR depth into a mesh at the take's recorded poses. Pure
+// data in and out: the stage, the headless command, and the tests all call
+// build() the same way.
 class OcclusionMeshBuilder
 {
 public:

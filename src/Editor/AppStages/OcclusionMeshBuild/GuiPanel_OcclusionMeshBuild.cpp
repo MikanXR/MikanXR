@@ -49,13 +49,6 @@ void GuiPanel_OcclusionMeshBuild::onGui()
 		}
 		ImGui::TextWrapped("%s", locText("occlusionMeshBuild.pathRadiusHelp"));
 
-		ImGui::Checkbox(locLabel("occlusionMeshBuild.frameToModel"), &m_bFrameToModel);
-		ImGui::TextWrapped("%s", locText("occlusionMeshBuild.frameToModelHelp"));
-		ImGui::BeginDisabled(!m_bFrameToModel);
-		ImGui::Checkbox(locLabel("occlusionMeshBuild.replacePoseTrack"), &m_bReplacePoseTrack);
-		ImGui::EndDisabled();
-		ImGui::TextWrapped("%s", locText("occlusionMeshBuild.replacePoseTrackHelp"));
-
 		ImGui::Checkbox(locLabel("occlusionMeshBuild.texture"), &m_bTexture);
 		ImGui::TextWrapped("%s", locText("occlusionMeshBuild.textureHelp"));
 
@@ -183,19 +176,6 @@ void GuiPanel_OcclusionMeshBuild::onGui()
 		ImGui::TextWrapped("%s", locFormat("occlusionMeshBuild.coverageSummaryFmt", m_stats.coverageGood * 100.f,
 										   m_stats.coverageWeak * 100.f, m_stats.coverageUnseen * 100.f)
 									 .c_str());
-		if (m_bRegistrationRan)
-		{
-			ImGui::TextWrapped("%s",
-							   locFormat("occlusionMeshBuild.registrationSummaryFmt", m_stats.registrationsAccepted,
-										 m_stats.registrationsRejected, m_stats.meanStepTranslationMm,
-										 m_stats.meanStepRotationDeg, m_stats.meanRmsBeforeMm, m_stats.meanRmsAfterMm,
-										 m_stats.finalCorrectionMm, m_stats.finalCorrectionDeg)
-								   .c_str());
-		}
-		else
-		{
-			ImGui::TextWrapped("%s", locText("occlusionMeshBuild.registrationOff"));
-		}
 		if (m_stats.voxelsClipped > 0)
 		{
 			ImGui::TextWrapped(
@@ -293,13 +273,6 @@ void GuiPanel_OcclusionMeshBuild::onGui()
 	{
 		ImGui::TextWrapped("%s",
 						   locFormat("occlusionMeshBuild.stencilCreatedFmt", m_createdStencilName.c_str()).c_str());
-		if (!m_refinedTrackPath.empty())
-		{
-			ImGui::TextWrapped(
-				"%s", locFormat("occlusionMeshBuild.refinedTrackWrittenFmt", m_refinedTrackPath.c_str()).c_str());
-			if (m_bReplacedSourceTrack)
-				ImGui::TextWrapped("%s", locText("occlusionMeshBuild.poseTrackReplacedNote"));
-		}
 		ImGui::Spacing();
 		if (ImGui::Button(locLabel("common.ok")))
 		{

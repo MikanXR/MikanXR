@@ -2,6 +2,7 @@
 #include "AssetReference.h"
 #include "AssetReferencePropertyMetaData.h"
 #include "CameraMath.h"
+#include "CaptureMarkerAlignment.h"
 #include "EnumPropertyMetaData.h"
 #include "Logger.h"
 #include "MikanObject.h"
@@ -47,6 +48,8 @@ const std::string FileVideoSourceDefinition::k_mediaPathPropertyId= "media_path"
 const std::string FileVideoSourceDefinition::k_poseTrackPathPropertyId= "pose_track_path";
 const std::string FileVideoSourceDefinition::k_loopPropertyId= "loop";
 const std::string FileVideoSourceDefinition::k_poseOffsetPropertyId= "pose_offset";
+const std::string FileVideoSourceDefinition::k_poseOffsetSessionIdPropertyId= "pose_offset_session_id";
+const std::string FileVideoSourceDefinition::k_poseOffsetHeightSnappedPropertyId= "pose_offset_height_snapped";
 
 FileVideoSourceDefinition::FileVideoSourceDefinition()
 	: VideoSourceDefinition()
@@ -79,6 +82,10 @@ configuru::Config FileVideoSourceDefinition::writeToJSON()
 	if (m_bHasPoseOffset)
 	{
 		writePoseOffset(pt, m_poseOffset);
+		if (!m_poseOffsetSessionId.empty())
+			pt[k_poseOffsetSessionIdPropertyId]= m_poseOffsetSessionId;
+		if (m_bPoseOffsetHeightSnapped)
+			pt[k_poseOffsetHeightSnappedPropertyId]= true;
 	}
 
 	return pt;
@@ -114,6 +121,8 @@ void FileVideoSourceDefinition::readFromJSON(const configuru::Config& pt)
 
 	m_bHasPoseOffset= false;
 	m_poseOffset= glm::mat4(1.f);
+	m_poseOffsetSessionId= pt.get_or<std::string>(k_poseOffsetSessionIdPropertyId, std::string());
+	m_bPoseOffsetHeightSnapped= pt.get_or<bool>(k_poseOffsetHeightSnappedPropertyId, false);
 	if (pt.has_key(k_poseOffsetPropertyId))
 	{
 		const configuru::Config& offsetValues= pt[k_poseOffsetPropertyId];
@@ -188,10 +197,13 @@ void FileVideoSourceDefinition::setLoop(bool bLoop)
 	}
 }
 
-void FileVideoSourceDefinition::setPoseOffset(const glm::mat4& poseOffset)
+void FileVideoSourceDefinition::setPoseOffset(const glm::mat4& poseOffset, const std::string& sessionId,
+											  bool bHeightSnapped)
 {
 	m_poseOffset= poseOffset;
 	m_bHasPoseOffset= true;
+	m_poseOffsetSessionId= sessionId;
+	m_bPoseOffsetHeightSnapped= bHeightSnapped;
 	notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_poseOffsetPropertyId));
 }
 
@@ -199,6 +211,8 @@ void FileVideoSourceDefinition::clearPoseOffset()
 {
 	m_poseOffset= glm::mat4(1.f);
 	m_bHasPoseOffset= false;
+	m_poseOffsetSessionId.clear();
+	m_bPoseOffsetHeightSnapped= false;
 	notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_poseOffsetPropertyId));
 }
 
@@ -209,6 +223,8 @@ const std::string FileVideoSourceComponent::k_durationSecondsPropertyId= "durati
 const std::string FileVideoSourceComponent::k_playFunctionId= "play";
 const std::string FileVideoSourceComponent::k_pauseFunctionId= "pause";
 const std::string FileVideoSourceComponent::k_stopFunctionId= "stop";
+const std::string FileVideoSourceComponent::k_stepBackFunctionId= "step_back";
+const std::string FileVideoSourceComponent::k_stepForwardFunctionId= "step_forward";
 const std::string FileVideoSourceComponent::k_buildOcclusionMeshFunctionId= "build_occlusion_mesh";
 
 FileVideoSourceComponent::FileVideoSourceComponent(MikanObjectWeakPtr owner)
@@ -216,7 +232,11 @@ FileVideoSourceComponent::FileVideoSourceComponent(MikanObjectWeakPtr owner)
 {
 }
 
-FileVideoSourceComponent::~FileVideoSourceComponent() { stopWorker(); }
+FileVideoSourceComponent::~FileVideoSourceComponent()
+{
+	cancelHeightSnap();
+	stopWorker();
+}
 
 Serialization::StructTypeHandle FileVideoSourceComponent::getClientAPIValuesStructType() const
 {
@@ -429,6 +449,9 @@ void FileVideoSourceComponent::clearRuntimeState()
 	m_capture.close();
 	m_overridePoseTrack.clear();
 	m_bHasAlignmentReference= false;
+	m_bMarkerShotAlignmentTried= false;
+	cancelHeightSnap();
+	m_bHeightSnapTried= false;
 
 	std::lock_guard<std::mutex> lock(m_latestPoseMutex);
 	m_latestPose= LatestPose();
@@ -667,6 +690,7 @@ void FileVideoSourceComponent::update(float deltaSeconds)
 	VideoSourceComponent::update(deltaSeconds);
 
 	applyOpenResult();
+	pollHeightSnap();
 
 	// Nobody is watching, so the clock holds and the worker idles
 	if (!m_bIsOpen || !m_bHasAnyActiveViews)
@@ -969,6 +993,20 @@ void FileVideoSourceComponent::seekTo(double timeSeconds)
 		requestSeek(m_playbackTime);
 }
 
+void FileVideoSourceComponent::stepFrame(int frameDelta)
+{
+	// A step holds the frame it lands on, so stopped or playing it becomes paused
+	m_playbackState= eFilePlaybackState::paused;
+	if (!m_bIsOpen || m_bIsStill || !(m_fps > 0.0) || frameDelta == 0)
+		return;
+
+	// From the frame on screen rather than the clock, which runs ahead of it while
+	// the next frame decodes. The seek rounds to the nearest frame, so a whole
+	// frame period lands on the neighbouring frame, and the frame arrives with
+	// its own pose.
+	seekTo((double)m_currentPtsUs / 1000000.0 + (double)frameDelta / m_fps);
+}
+
 // -- Pose tracks ----
 // A trackcamera publishes the poses of its movie track, or of the override, and
 // the poses of its marker track while the reference is active. A still kind is
@@ -1014,6 +1052,9 @@ bool FileVideoSourceComponent::loadMedia()
 	m_capture.close();
 	m_overridePoseTrack.clear();
 	m_bHasAlignmentReference= false;
+	m_bMarkerShotAlignmentTried= false;
+	cancelHeightSnap();
+	m_bHeightSnapTried= false;
 
 	const std::filesystem::path mediaPath= resolveMediaPath();
 	if (CaptureKindUtils::isCaptureExtension(mediaPath))
@@ -1078,11 +1119,6 @@ void FileVideoSourceComponent::publishPoseForFrame(int64_t ptsUs)
 
 	const PoseTrackFrame& poseFrame= track.getFrame(frameIndex);
 
-	// The single point where a recorded pose leaves its own world space. A
-	// stage-space capture's poses are already there.
-	const glm::mat4& cameraToWorld= poseFrame.cameraToWorld;
-	const glm::mat4 cameraToStage= hasPoseOffset() ? getPoseOffset() * cameraToWorld : cameraToWorld;
-
 	MikanVideoSourceIntrinsics intrinsics;
 	MikanMonoIntrinsics monoIntrinsics;
 	createMonoIntrinsicsFromPinhole(track.getImageWidth(), track.getImageHeight(), poseFrame.fx, poseFrame.fy,
@@ -1090,8 +1126,7 @@ void FileVideoSourceComponent::publishPoseForFrame(int64_t ptsUs)
 	intrinsics.makeMonoIntrinsics()= monoIntrinsics;
 
 	std::lock_guard<std::mutex> lock(m_latestPoseMutex);
-	m_latestPose.transform= cameraToStage;
-	m_latestPose.sourceWorldTransform= cameraToWorld;
+	m_latestPose.sourceWorldTransform= poseFrame.cameraToWorld;
 	m_latestPose.intrinsics= intrinsics;
 	m_latestPose.frameSeq= m_frameSeq;
 	m_latestPose.bValid= true;
@@ -1109,15 +1144,20 @@ void FileVideoSourceComponent::setPoseOffset(const glm::mat4& worldToStageXform)
 		return;
 	}
 
-	getFileVideoSourceDefinition()->setPoseOffset(worldToStageXform);
+	// A new offset starts unsnapped, and any snap of the previous one is moot
+	cancelHeightSnap();
+	m_bHeightSnapTried= false;
+	getFileVideoSourceDefinition()->setPoseOffset(worldToStageXform, getPoseSessionId());
 }
 
+// An offset solved from another recording describes another session's world
+// origin, so it reads as no alignment at all until this media is aligned
 glm::mat4 FileVideoSourceComponent::getPoseOffset() const
 {
 	if (m_capture.isOpen() && m_capture.isStageSpace())
 		return glm::mat4(1.f);
 
-	return getFileVideoSourceDefinition()->getPoseOffset();
+	return hasPoseOffset() ? getFileVideoSourceDefinition()->getPoseOffset() : glm::mat4(1.f);
 }
 
 bool FileVideoSourceComponent::hasPoseOffset() const
@@ -1125,7 +1165,150 @@ bool FileVideoSourceComponent::hasPoseOffset() const
 	if (m_capture.isOpen() && m_capture.isStageSpace())
 		return true;
 
-	return getFileVideoSourceDefinition()->hasPoseOffset();
+	FileVideoSourceDefinitionPtr definition= getFileVideoSourceDefinition();
+	return definition->hasPoseOffset() && definition->getPoseOffsetSessionId() == getPoseSessionId();
+}
+
+bool FileVideoSourceComponent::wantsMarkerShotAlignment() const
+{
+	if (m_bMarkerShotAlignmentTried || !m_capture.isOpen() || m_capture.getKind() != eCaptureKind::trackcamera)
+		return false;
+
+	return m_bHasAlignmentReference && m_capture.getPoseTrack(eCaptureMemberRole::marker_pose).isLoaded()
+		   && !hasPoseOffset();
+}
+
+bool FileVideoSourceComponent::alignFromMarkerShot(MarkerDefinitionConstPtr originMarker,
+												   eCharucoDictionaryType dictionaryType)
+{
+	m_bMarkerShotAlignmentTried= true;
+
+	glm::mat4 worldToStage;
+	std::string error;
+	if (!CaptureMarkerAlignment::solveWorldToStage(m_capture, originMarker, dictionaryType, worldToStage, error))
+	{
+		MIKAN_LOG_WARNING("FileVideoSourceComponent::alignFromMarkerShot")
+			<< "Could not align " << resolveMediaPath() << " from its marker shot: " << error
+			<< ". Align Camera on its camera aligns it by hand.";
+		return false;
+	}
+
+	setPoseOffset(worldToStage);
+	MIKAN_LOG_INFO("FileVideoSourceComponent::alignFromMarkerShot")
+		<< "Aligned " << resolveMediaPath() << " from its marker shot (session " << getPoseSessionId() << ")";
+	return true;
+}
+
+// -- Height snap ----
+// Everything the job reads it owns: its own reader on the capture file, a copy
+// of the movie track, and the offset it started from. The main thread only
+// reads the result once bDone is set.
+struct FileVideoSourceComponent::HeightSnapJob
+{
+	std::thread thread;
+	std::atomic<bool> bCancel{false};
+	std::atomic<bool> bDone{false};
+
+	std::filesystem::path capturePath;
+	CaptureArchiveMember depthMember;
+	CaptureArchiveMember confidenceMember;
+	PoseTrack track;
+	glm::mat4 inputOffset= glm::mat4(1.f);
+	std::string sessionId;
+	float markerLengthM= 0.f;
+
+	bool bSucceeded= false;
+	CaptureMarkerAlignment::TableHeightResult result;
+	std::string error;
+
+	void run()
+	{
+		bSucceeded= CaptureMarkerAlignment::snapToTableHeight(capturePath, depthMember, confidenceMember, track,
+															  inputOffset, markerLengthM, &bCancel, result, error);
+		bDone= true;
+	}
+};
+
+bool FileVideoSourceComponent::wantsHeightSnap() const
+{
+	if (m_heightSnapJob || m_bHeightSnapTried || !m_capture.isOpen() || m_capture.isStageSpace())
+		return false;
+
+	if (!hasPoseOffset() || getFileVideoSourceDefinition()->isPoseOffsetHeightSnapped())
+		return false;
+
+	return m_capture.getPoseTrack(eCaptureMemberRole::movie_pose).hasDepthTrack()
+		   && m_capture.findMember(eCaptureMemberRole::depth) != nullptr
+		   && m_capture.findMember(eCaptureMemberRole::confidence) != nullptr;
+}
+
+bool FileVideoSourceComponent::isAlignmentSettling() const { return m_heightSnapJob != nullptr || wantsHeightSnap(); }
+
+void FileVideoSourceComponent::startHeightSnap(float markerLengthM)
+{
+	if (!wantsHeightSnap())
+		return;
+
+	auto job= std::make_unique<HeightSnapJob>();
+	job->capturePath= m_capture.getPath();
+	job->depthMember= *m_capture.findMember(eCaptureMemberRole::depth);
+	job->confidenceMember= *m_capture.findMember(eCaptureMemberRole::confidence);
+	job->track= m_capture.getPoseTrack(eCaptureMemberRole::movie_pose);
+	job->inputOffset= getFileVideoSourceDefinition()->getPoseOffset();
+	job->sessionId= getPoseSessionId();
+	job->markerLengthM= markerLengthM;
+
+	HeightSnapJob* jobPtr= job.get();
+	job->thread= std::thread([jobPtr]() { jobPtr->run(); });
+	m_heightSnapJob= std::move(job);
+}
+
+void FileVideoSourceComponent::pollHeightSnap()
+{
+	if (!m_heightSnapJob || !m_heightSnapJob->bDone)
+		return;
+
+	std::unique_ptr<HeightSnapJob> job= std::move(m_heightSnapJob);
+	job->thread.join();
+	m_bHeightSnapTried= true;
+
+	// The offset the job started from must still be the one in effect
+	FileVideoSourceDefinitionPtr definition= getFileVideoSourceDefinition();
+	if (!hasPoseOffset() || definition->getPoseOffset() != job->inputOffset || getPoseSessionId() != job->sessionId)
+		return;
+
+	if (!job->bSucceeded)
+	{
+		MIKAN_LOG_WARNING("FileVideoSourceComponent::pollHeightSnap")
+			<< "Kept the marker shot's height for " << resolveMediaPath() << ": " << job->error << " ("
+			<< job->result.framesUsed << " frames)";
+		return;
+	}
+
+	definition->setPoseOffset(job->result.snappedWorldToStage, job->sessionId, true);
+	MIKAN_LOG_INFO("FileVideoSourceComponent::pollHeightSnap")
+		<< "Snapped the alignment of " << resolveMediaPath()
+		<< " onto the table's averaged height: " << job->result.heightM * 1000.f
+		<< " mm along the marker normal, spread " << job->result.spreadM * 1000.f << " mm over "
+		<< job->result.framesUsed << " frames";
+}
+
+void FileVideoSourceComponent::cancelHeightSnap()
+{
+	if (!m_heightSnapJob)
+		return;
+
+	m_heightSnapJob->bCancel= true;
+	m_heightSnapJob->thread.join();
+	m_heightSnapJob.reset();
+}
+
+std::string FileVideoSourceComponent::getPoseSessionId() const
+{
+	if (m_capture.isOpen())
+		return m_capture.getManifest().sessionId;
+
+	return m_overridePoseTrack.isLoaded() ? m_overridePoseTrack.getSessionId() : std::string();
 }
 
 bool FileVideoSourceComponent::getLatestFrameCoupledPose(glm::mat4& outTransform,
@@ -1136,7 +1319,10 @@ bool FileVideoSourceComponent::getLatestFrameCoupledPose(glm::mat4& outTransform
 	if (!m_latestPose.bValid)
 		return false;
 
-	outTransform= m_latestPose.transform;
+	// The single point where a recorded pose leaves its own world space, applied
+	// as the pose is read so a new alignment takes effect without a new frame.
+	// A stage-space capture's poses are already there.
+	outTransform= getPoseOffset() * m_latestPose.sourceWorldTransform;
 	outIntrinsics= m_latestPose.intrinsics;
 	outFrameSeq= m_latestPose.frameSeq;
 	return true;
@@ -1291,6 +1477,8 @@ void FileVideoSourceComponent::getFunctionDescriptors(std::vector<FunctionDescri
 	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_playFunctionId, "Play"));
 	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_pauseFunctionId, "Pause"));
 	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_stopFunctionId, "Stop"));
+	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_stepBackFunctionId, "Step Back"));
+	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_stepForwardFunctionId, "Step Forward"));
 	outDescriptors.push_back(
 		std::make_shared<FunctionDescriptor>(k_buildOcclusionMeshFunctionId, "Build Occlusion Mesh"));
 }
@@ -1310,6 +1498,16 @@ bool FileVideoSourceComponent::invokeFunction(const std::string& functionName)
 	else if (functionName == k_stopFunctionId)
 	{
 		stop();
+		return true;
+	}
+	else if (functionName == k_stepBackFunctionId)
+	{
+		stepFrame(-1);
+		return true;
+	}
+	else if (functionName == k_stepForwardFunctionId)
+	{
+		stepFrame(1);
 		return true;
 	}
 	else if (functionName == k_buildOcclusionMeshFunctionId)

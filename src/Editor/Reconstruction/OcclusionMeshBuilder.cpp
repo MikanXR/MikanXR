@@ -2,13 +2,11 @@
 
 #include "CameraPathClip.h"
 #include "DepthTrackReader.h"
-#include "FrameToModelRegistration.h"
 #include "Logger.h"
 #include "MeshCleanup.h"
 #include "MeshTexturing.h"
 #include "MovieDecoder.h"
 #include "PoseTrack.h"
-#include "SmallMotion.h"
 #include "TsdfVolume.h"
 
 #include "glm/common.hpp"
@@ -23,7 +21,6 @@
 #include <cmath>
 #include <cstdlib>
 #include <limits>
-#include <map>
 
 namespace OcclusionMeshBuilderInternal
 {
@@ -221,24 +218,12 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 		<< "Fusing " << keyframes.size() << " keyframes into a " << stats.gridDims.x << "x" << stats.gridDims.y << "x"
 		<< stats.gridDims.z << " grid at " << stats.voxelSize * 100.f << " cm";
 
-	// Integration, with frame-to-model registration when asked for. The
-	// correction carried in delta turns the next frame's recorded pose into
-	// its prediction, so the solve only has to find the new drift.
-	RegistrationConfig registrationConfig= settings.registration;
-	registrationConfig.depthMin= settings.volume.depthMin;
-	registrationConfig.depthMax= settings.volume.depthMax;
-
-	std::map<size_t, glm::mat4> corrections; // by file index, integrated frames only
-	std::vector<glm::vec3> pathPositions;    // where each fused frame's camera stood
-	glm::mat4 delta(1.f);
-	double sumStepTranslation= 0.0;
-	double sumStepRotation= 0.0;
-	double sumRmsBefore= 0.0;
-	double sumRmsAfter= 0.0;
-	int rmsSamples= 0;
+	// Integration, each frame at its recorded pose. The mesh shares the
+	// recorded poses' world, so it stays in register with the camera that
+	// plays the take.
+	std::vector<glm::vec3> pathPositions; // where each fused frame's camera stood
 
 	cv::Mat depth, confidence, weight;
-	ModelMap modelMap;
 	const Clock::time_point integrateStart= Clock::now();
 	for (size_t keyframeIndex= 0; keyframeIndex < keyframes.size(); ++keyframeIndex)
 	{
@@ -258,44 +243,12 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 		DepthTrackReader::confidenceToWeight(confidence, weight);
 
 		const PinholeIntrinsics intrinsics= frameDepthIntrinsics(track, frame);
-		const glm::mat4 recordedCameraToWorld= toOpenCvCameraToWorld(frame.cameraToWorld);
-		const glm::mat4 priorCameraToWorld= delta * recordedCameraToWorld;
-		glm::mat4 cameraToWorld= priorCameraToWorld;
-
-		if (settings.bFrameToModel && (int)keyframeIndex >= settings.warmupFrames)
-		{
-			volume.raycast(intrinsics, priorCameraToWorld, reader.getWidth(), reader.getHeight(),
-						   settings.raycastStepFraction, settings.normalStencilVoxels, modelMap);
-			const RegistrationResult registration= FrameToModelRegistration::registerFrame(
-				depth, weight, intrinsics, priorCameraToWorld, modelMap, priorCameraToWorld, registrationConfig);
-
-			if (!registration.bAccepted)
-			{
-				// Fusing the frame at a pose the data disagree with would smear
-				// the model, so the frame is left out and the carried correction
-				// stands for the next one
-				++stats.registrationsRejected;
-				continue;
-			}
-
-			++stats.registrationsAccepted;
-			cameraToWorld= registration.cameraToWorld;
-			sumStepTranslation+= registration.translationM;
-			sumStepRotation+= registration.rotationDeg;
-			if (std::isfinite(registration.rmsBeforeM) && std::isfinite(registration.rmsAfterM))
-			{
-				sumRmsBefore+= registration.rmsBeforeM;
-				sumRmsAfter+= registration.rmsAfterM;
-				++rmsSamples;
-			}
-		}
+		const glm::mat4 cameraToWorld= toOpenCvCameraToWorld(frame.cameraToWorld);
 
 		volume.integrate(depth, weight, intrinsics, cameraToWorld);
 		++stats.framesIntegrated;
 		outResult.fusedKeyframes.push_back(keyframes[keyframeIndex]);
 		pathPositions.push_back(glm::vec3(cameraToWorld[3]));
-		delta= cameraToWorld * glm::inverse(recordedCameraToWorld);
-		corrections[frame.fileIndex]= delta;
 	}
 	stats.integrateSeconds= secondsSince(integrateStart);
 
@@ -303,53 +256,6 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 	{
 		outResult.failureReason= "No frame was fused";
 		return false;
-	}
-
-	// Every frame of the take, fused or not, takes the correction of the
-	// nearest fused frame by file index, so a frame is scored and played back
-	// where the mesh around it was built. The correction is world-side, so
-	// it composes onto the recorded pose without a camera-axis conversion.
-	if (settings.bFrameToModel && !corrections.empty())
-	{
-		std::vector<size_t> anchorIndices;
-		anchorIndices.reserve(corrections.size());
-		for (const auto& entry : corrections)
-			anchorIndices.push_back(entry.first);
-
-		outResult.refinedCameraToWorld.assign(track.getFrameCount(), glm::mat4(1.f));
-		for (size_t trackIndex= 0; trackIndex < track.getFrameCount(); ++trackIndex)
-		{
-			const PoseTrackFrame& frame= track.getFrame(trackIndex);
-			if (frame.fileIndex >= outResult.refinedCameraToWorld.size())
-				outResult.refinedCameraToWorld.resize(frame.fileIndex + 1, glm::mat4(1.f));
-
-			auto upper= std::lower_bound(anchorIndices.begin(), anchorIndices.end(), frame.fileIndex);
-			size_t nearest= (upper != anchorIndices.end()) ? *upper : anchorIndices.back();
-			if (upper != anchorIndices.begin())
-			{
-				const size_t lower= *(upper - 1);
-				// The lower anchor wins a tie
-				if (upper == anchorIndices.end() || frame.fileIndex - lower <= nearest - frame.fileIndex)
-					nearest= lower;
-			}
-
-			outResult.refinedCameraToWorld[frame.fileIndex]= corrections[nearest] * frame.cameraToWorld;
-		}
-		outResult.bHasRefinedPoses= true;
-
-		const glm::mat4& finalCorrection= corrections.rbegin()->second;
-		stats.finalCorrectionMm= glm::length(glm::vec3(finalCorrection[3])) * 1000.f;
-		stats.finalCorrectionDeg= (float)SmallMotion::rotationAngleDeg(glm::dmat3(glm::mat3(finalCorrection)));
-		if (stats.registrationsAccepted > 0)
-		{
-			stats.meanStepTranslationMm= (float)(sumStepTranslation / stats.registrationsAccepted * 1000.0);
-			stats.meanStepRotationDeg= (float)(sumStepRotation / stats.registrationsAccepted);
-		}
-		if (rmsSamples > 0)
-		{
-			stats.meanRmsBeforeMm= (float)(sumRmsBefore / rmsSamples * 1000.0);
-			stats.meanRmsAfterMm= (float)(sumRmsAfter / rmsSamples * 1000.0);
-		}
 	}
 
 	if (isCancelled(observer))
@@ -361,7 +267,7 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 	reportProgress(observer, eOcclusionMeshBuildPhase::extracting, 0, 0);
 
 	// The trim is a mask over the extraction only: the grid keeps everything
-	// it fused, so a far wall still anchored the registration above
+	// it fused
 	std::vector<uint8_t> keepMask;
 	if (settings.cameraPathRadius > 0.f)
 	{
@@ -455,9 +361,6 @@ bool OcclusionMeshBuilder::build(const PoseTrack& track, DepthTrackReader& reade
 		<< "Fused " << stats.framesIntegrated << " frames into " << stats.trianglesClean << " triangles ("
 		<< stats.trianglesRemovedAsIslands << " island triangles removed, " << stats.voxelsClipped
 		<< " voxels trimmed) in " << stats.totalSeconds << " s"
-		<< (settings.bFrameToModel ? ", registration " + std::to_string(stats.registrationsAccepted) + " accepted / "
-										 + std::to_string(stats.registrationsRejected) + " rejected"
-								   : std::string())
 		<< (stats.textureViews > 0 ? ", textured from " + std::to_string(stats.textureViewsUsed) + " of "
 										 + std::to_string(stats.textureViews) + " views"
 								   : std::string());
@@ -490,11 +393,7 @@ bool OcclusionMeshBuilder::measureCoverage(const PoseTrack& track, DepthTrackRea
 		if (!reader.readRecord(frame.fileIndex, view.depth, view.confidence))
 			continue;
 
-		const glm::mat4& recordedCameraToWorld=
-			result.bHasRefinedPoses && frame.fileIndex < result.refinedCameraToWorld.size()
-				? result.refinedCameraToWorld[frame.fileIndex]
-				: frame.cameraToWorld;
-		view.cameraToWorld= toOpenCvCameraToWorld(recordedCameraToWorld);
+		view.cameraToWorld= toOpenCvCameraToWorld(frame.cameraToWorld);
 		view.depthIntrinsics= frameDepthIntrinsics(track, frame);
 		TsdfVolume::cullFlyingPixels(view.depth, settings.volume.gradientCull, view.keep,
 									 settings.volume.gradientCullKeepsNear, settings.volume.gradientCullRadius);
@@ -556,11 +455,7 @@ int OcclusionMeshBuilder::collectTextureViews(const PoseTrack& track, DepthTrack
 
 		Candidate candidate;
 		candidate.trackIndex= trackIndex;
-		const glm::mat4& recordedCameraToWorld=
-			result.bHasRefinedPoses && frame.fileIndex < result.refinedCameraToWorld.size()
-				? result.refinedCameraToWorld[frame.fileIndex]
-				: frame.cameraToWorld;
-		candidate.view.cameraToWorld= toOpenCvCameraToWorld(recordedCameraToWorld);
+		candidate.view.cameraToWorld= toOpenCvCameraToWorld(frame.cameraToWorld);
 		candidate.view.depthIntrinsics= frameDepthIntrinsics(track, frame);
 		candidate.view.depth= depth.clone();
 		MeshTexturing::markSeenTriangles(result.mesh, candidate.view, texturing, candidate.seen);

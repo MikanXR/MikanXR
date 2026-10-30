@@ -163,10 +163,8 @@ private:
 	mutable std::mutex m_latestPoseMutex;
 	struct LatestPose
 	{
-		// Camera-to-stage: what CameraComponent consumes, offset already applied.
-		glm::mat4 transform= glm::mat4(1.0f);
-		// The same pose in ARKit's own world space, kept because solving for the
-		// offset has to start from a pose the offset has not touched.
+		// Camera-to-world in ARKit's own world space. The offset is applied as the
+		// pose is read, and solving for the offset starts from this untouched pose.
 		glm::mat4 sourceWorldTransform= glm::mat4(1.0f);
 		MikanVideoSourceIntrinsics intrinsics;
 		uint32_t frameSeq= 0;

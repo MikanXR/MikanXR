@@ -42,6 +42,18 @@ bool computeOpenCVCameraRelativePatternTransform(const struct MikanMonoIntrinsic
 												 const t_opencv_point2d_list& imagePoints,
 												 const t_opencv_point3d_list& objectPointsMM, cv::Quatd& outOrientation,
 												 cv::Vec3d& outPositionMM, double* outMeanError= nullptr);
+// A square marker's pose from its 4 corners, through OpenCV's square-marker
+// IPPE solve. The corners are in the order the ArUco detector returns them, and
+// the object frame is the marker finders' own: the square on the XZ plane,
+// +X along the top edge and +Z toward the top. A planar square seen from one
+// view has two candidate poses, and the solve is refused when the second fits
+// the corners nearly as well as the first, the case where its tilt is a guess.
+static constexpr double k_squareMarkerMinAmbiguityRatio= 2.0;
+bool computeOpenCVCameraRelativeSquareMarkerTransform(const struct MikanMonoIntrinsics& intrinsics,
+													  const t_opencv_point2d_list& cornerImagePoints,
+													  double markerLengthMM, cv::Quatd& outOrientation,
+													  cv::Vec3d& outPositionMM, double* outMeanError= nullptr,
+													  double* outAmbiguityRatio= nullptr);
 void convertOpenCVCameraRelativePoseToGLMMat(const cv::Quatd& orientation, const cv::Vec3d& positionMM,
 											 glm::dmat4& outXform);
 

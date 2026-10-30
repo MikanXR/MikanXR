@@ -78,8 +78,11 @@ bool ProjectManager::startup(MainWindow* mainWindow)
 	addSystem<MarkerObjectSystem>();
 	addSystem<StageObjectSystem>();
 	addSystem<SceneObjectSystem>();
-	addSystem<CompositorObjectSystem>();
+	// Cameras before compositors: a camera takes the pose its video source just
+	// delivered with a frame, and a compositor queues that frame in the same tick,
+	// so the frame's event carries the frame's own pose rather than the last one
 	addSystem<CameraObjectSystem>();
+	addSystem<CompositorObjectSystem>();
 	addSystem<AnchorObjectSystem>();
 	addSystem<QuadShapeSystem>();
 	addSystem<BoxShapeSystem>();

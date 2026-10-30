@@ -11,6 +11,7 @@
 #include "Capture.h"
 #include "DepthTrackReader.h"
 #include "FileVideoSourceComponent.h"
+#include "FileVideoSourceSystem.h"
 #include "GlbMeshWriter.h"
 #include "IEditorWindow.h"
 #include "IMkGraphicsContext.h"
@@ -52,15 +53,6 @@ const char* AppStage_OcclusionMeshBuild::APP_STAGE_NAME= "OcclusionMeshBuild";
 
 namespace OcclusionMeshBuildStage
 {
-const char* k_refinedTrackSuffix= ".refined.pose.json";
-
-// A capture is never rewritten, so its refined track sits beside it in the
-// captures folder under the capture's stem
-std::filesystem::path refinedTrackPathForMedia(const std::filesystem::path& mediaPath)
-{
-	return mediaPath.parent_path() / (mediaPath.stem().string() + k_refinedTrackSuffix);
-}
-
 // A take recorded at the finer preset resolves small objects at arm's
 // length; the coarser one is what a room sweep needs
 void applyVoxelPreset(eOcclusionMeshVoxelPreset preset, OcclusionMeshBuildSettings& settings)
@@ -155,8 +147,8 @@ bool AppStage_OcclusionMeshBuild::tryEnterBuild(AppStage* fromAppStage, FileVide
 		return false;
 	}
 
-	// The override, when set, is a refined track from an earlier build on
-	// this capture; the capture's own track otherwise. An override from
+	// The build fuses from the track the source plays: the override, when one
+	// was set by hand, or the capture's own track. An override from
 	// another session is a leftover of a different take and is skipped the
 	// way playback skips it, since its frames index nothing in this capture.
 	PoseTrack track;
@@ -190,9 +182,17 @@ bool AppStage_OcclusionMeshBuild::tryEnterBuild(AppStage* fromAppStage, FileVide
 		return false;
 	}
 
-	if (!definition->hasPoseOffset())
+	if (!videoSource->hasPoseOffset())
 	{
 		ModalDialog_MessageBox::showMessageBox(fromAppStage, locText("occlusionMeshBuild.notAligned"));
+		return false;
+	}
+
+	// A mesh placed from an offset that is about to move by a few millimetres
+	// would land off the table its take measured
+	if (videoSource->isAlignmentSettling())
+	{
+		ModalDialog_MessageBox::showMessageBox(fromAppStage, locText("occlusionMeshBuild.alignmentSettling"));
 		return false;
 	}
 
@@ -300,7 +300,6 @@ OcclusionMeshBuildSettings AppStage_OcclusionMeshBuild::gatherSettings() const
 	OcclusionMeshBuildSettings settings;
 	OcclusionMeshBuildStage::applyVoxelPreset(m_buildPanel->getVoxelPreset(), settings);
 	settings.keyframeStride= std::max(m_buildPanel->getKeyframeStride(), 1);
-	settings.bFrameToModel= m_buildPanel->getFrameToModel();
 	settings.cameraPathRadius= std::max(m_buildPanel->getPathRadius(), 0.f);
 	settings.bTexture= m_buildPanel->getTexture();
 	if (m_buildPanel->hasBoundsBox())
@@ -372,7 +371,6 @@ void AppStage_OcclusionMeshBuild::onBuildEvent()
 	m_framesDone= 0;
 	m_frameCount= 0;
 	m_buildElapsedSeconds= 0.f;
-	m_bLastBuildRegistered= request.settings.bFrameToModel;
 
 	{
 		std::lock_guard<std::mutex> lock(m_workerMutex);
@@ -503,7 +501,7 @@ void AppStage_OcclusionMeshBuild::consumeBuildOutput()
 	m_result= std::move(output.result);
 	m_bHasResult= true;
 
-	m_buildPanel->setBuildSummary(m_result.stats, m_result.bHasRefinedPoses);
+	m_buildPanel->setBuildSummary(m_result.stats);
 	buildPreview();
 	setMenuState(eOcclusionMeshBuildMenuState::verifyMesh);
 }
@@ -588,80 +586,21 @@ bool AppStage_OcclusionMeshBuild::createStencilFromMesh()
 		return false;
 	}
 
-	// The vertices are in the take's ARKit world space. The same offset that
-	// carries a recorded camera pose into the stage carries the whole mesh,
-	// and the stage's own transform takes it on into the world.
-	const glm::mat4 poseOffset= m_videoSource->getFileVideoSourceDefinition()->getPoseOffset();
-	stencilComponent->setWorldTransform(m_stage->getWorldTransform() * poseOffset);
-
-	std::string refinedTrackStoredPath;
-	bool bReplacedSourceTrack= false;
-	if (m_result.bHasRefinedPoses)
-	{
-		if (!writeRefinedPoseTrack(refinedTrackStoredPath, bReplacedSourceTrack))
-		{
-			// The stencil stands; only the track is missing
-			MIKAN_LOG_WARNING("AppStage_OcclusionMeshBuild") << "The refined pose track was not written";
-		}
-	}
+	// The vertices are in the take's ARKit world space. The stencil remembers
+	// the take, so a later alignment of it moves the stencil along.
+	stencilComponent->setWorldTransform(getMeshToWorld());
+	stencilComponent->getModelStencilDefinition()->setAlignedTake(m_videoSource->getVideoSourceId(),
+																  m_videoSource->getPoseSessionId());
 
 	if (ProjectAssetCatalog* catalog= getOwnerWindow()->getAssetCatalog())
 		catalog->refresh();
 
 	m_buildPanel->setCreatedStencilName(stencilName);
-	m_buildPanel->setRefinedTrackPath(refinedTrackStoredPath, bReplacedSourceTrack);
 
 	MIKAN_LOG_INFO("AppStage_OcclusionMeshBuild")
 		<< "Created occlusion mesh stencil '" << stencilName << "' (" << m_result.mesh.getTriangleCount()
 		<< " triangles, " << meshPath.string() << ")";
 
-	return true;
-}
-
-bool AppStage_OcclusionMeshBuild::writeRefinedPoseTrack(std::string& outStoredPath, bool& outReplacedSourceTrack)
-{
-	outStoredPath.clear();
-	outReplacedSourceTrack= false;
-
-	FileVideoSourceDefinitionPtr definition= m_videoSource->getFileVideoSourceDefinition();
-	if (m_capturePath.empty())
-		return false;
-
-	// Frames go out in file order so record i of the depth members still
-	// describes frame i of the refined track
-	std::vector<size_t> trackOrder(m_track.getFrameCount());
-	std::iota(trackOrder.begin(), trackOrder.end(), (size_t)0);
-	std::sort(trackOrder.begin(), trackOrder.end(),
-			  [this](size_t a, size_t b) { return m_track.getFrame(a).fileIndex < m_track.getFrame(b).fileIndex; });
-
-	PoseTrackWriter writer(m_track.getSessionId(), m_track.getImageWidth(), m_track.getImageHeight());
-	writer.setDepthTrack(m_track.getDepthWidth(), m_track.getDepthHeight(), m_track.getDepthUnitMm());
-	for (size_t trackIndex : trackOrder)
-	{
-		const PoseTrackFrame& frame= m_track.getFrame(trackIndex);
-		const glm::mat4& cameraToWorld= frame.fileIndex < m_result.refinedCameraToWorld.size()
-											? m_result.refinedCameraToWorld[frame.fileIndex]
-											: frame.cameraToWorld;
-		writer.append(frame.timeUs, frame.captureTimestampUs, cameraToWorld, frame.fx, frame.fy, frame.cx, frame.cy);
-	}
-
-	const std::filesystem::path refinedPath= OcclusionMeshBuildStage::refinedTrackPathForMedia(m_capturePath);
-	if (!writer.writeToFile(refinedPath))
-	{
-		m_buildPanel->setFailureReason(
-			locFormat("occlusionMeshBuild.refinedTrackWriteFailedFmt", refinedPath.string().c_str()));
-		return false;
-	}
-
-	outStoredPath= PathUtils::makeStoredProjectPath(refinedPath);
-	if (m_buildPanel->getReplacePoseTrack())
-	{
-		definition->setPoseTrackPath(refinedPath);
-		outReplacedSourceTrack= true;
-	}
-
-	MIKAN_LOG_INFO("AppStage_OcclusionMeshBuild") << "Wrote refined pose track " << refinedPath.string()
-												  << (outReplacedSourceTrack ? " (now the source's track)" : "");
 	return true;
 }
 
@@ -694,10 +633,8 @@ void AppStage_OcclusionMeshBuild::onCancelEvent() { getOwnerWindow()->popAppStat
 // -- preview -----
 glm::mat4 AppStage_OcclusionMeshBuild::getMeshToWorld() const
 {
-	// The same offset that carries a recorded camera pose into the stage
-	// carries the whole mesh, which is where the stencil will land
-	const glm::mat4 poseOffset= m_videoSource->getFileVideoSourceDefinition()->getPoseOffset();
-	return m_stage->getWorldTransform() * poseOffset;
+	// Where the stencil will land
+	return FileVideoSourceSystem::computeTakeToWorldTransform(*m_stage, *m_videoSource);
 }
 
 void AppStage_OcclusionMeshBuild::buildPreview()
@@ -758,12 +695,7 @@ void AppStage_OcclusionMeshBuild::frameMesh()
 	glm::vec3 meanForward(0.f);
 	for (size_t trackIndex : m_result.fusedKeyframes)
 	{
-		const PoseTrackFrame& frame= m_track.getFrame(trackIndex);
-		const glm::mat4& cameraToWorld=
-			m_result.bHasRefinedPoses && frame.fileIndex < m_result.refinedCameraToWorld.size()
-				? m_result.refinedCameraToWorld[frame.fileIndex]
-				: frame.cameraToWorld;
-		meanForward-= glm::vec3(cameraToWorld[2]);
+		meanForward-= glm::vec3(m_track.getFrame(trackIndex).cameraToWorld[2]);
 	}
 	meanForward= glm::mat3(meshToWorld) * meanForward;
 	const glm::vec3 toEye= glm::length(meanForward) > 1e-6f ? -glm::normalize(meanForward) : glm::vec3(0.f, 0.5f, 1.f);
@@ -801,12 +733,7 @@ void AppStage_OcclusionMeshBuild::renderCameraPath()
 	glm::vec3 previous(0.f);
 	for (size_t trackIndex : m_result.fusedKeyframes)
 	{
-		const PoseTrackFrame& frame= m_track.getFrame(trackIndex);
-		const glm::mat4& cameraToWorld=
-			m_result.bHasRefinedPoses && frame.fileIndex < m_result.refinedCameraToWorld.size()
-				? m_result.refinedCameraToWorld[frame.fileIndex]
-				: frame.cameraToWorld;
-		const glm::vec3 position(cameraToWorld[3]);
+		const glm::vec3 position(m_track.getFrame(trackIndex).cameraToWorld[3]);
 		if (bHasPrevious)
 			drawSegment(getGraphicsContext(), meshToWorld, previous, position, pathColor);
 		previous= position;
@@ -1042,7 +969,7 @@ bool AppStage_OcclusionMeshBuild::handleRemoteControlCommand(const std::string& 
 		if (parameters.size() != 2)
 		{
 			outResults.push_back("usage: set_option "
-								 "<voxel_preset|keyframe_stride|frame_to_model|replace_pose_track|path_radius|texture|"
+								 "<voxel_preset|keyframe_stride|path_radius|texture|"
 								 "view|bounds> <value>");
 			return false;
 		}
@@ -1077,16 +1004,6 @@ bool AppStage_OcclusionMeshBuild::handleRemoteControlCommand(const std::string& 
 				return false;
 			}
 			m_buildPanel->setKeyframeStride(stride);
-			return true;
-		}
-		else if (option == "frame_to_model" && OcclusionMeshBuildStage::parseBool(value, bFlag))
-		{
-			m_buildPanel->setFrameToModel(bFlag);
-			return true;
-		}
-		else if (option == "replace_pose_track" && OcclusionMeshBuildStage::parseBool(value, bFlag))
-		{
-			m_buildPanel->setReplacePoseTrack(bFlag);
 			return true;
 		}
 		else if (option == "path_radius")
@@ -1144,10 +1061,6 @@ bool AppStage_OcclusionMeshBuild::handleRemoteControlCommand(const std::string& 
 		outResults.push_back("voxel_size " + std::to_string(stats.voxelSize));
 		outResults.push_back("grid " + std::to_string(stats.gridDims.x) + " " + std::to_string(stats.gridDims.y) + " "
 							 + std::to_string(stats.gridDims.z));
-		outResults.push_back("registrations_accepted " + std::to_string(stats.registrationsAccepted));
-		outResults.push_back("registrations_rejected " + std::to_string(stats.registrationsRejected));
-		outResults.push_back("final_correction_mm " + std::to_string(stats.finalCorrectionMm));
-		outResults.push_back("final_correction_deg " + std::to_string(stats.finalCorrectionDeg));
 		outResults.push_back("voxels_clipped " + std::to_string(stats.voxelsClipped));
 		outResults.push_back("texture_views " + std::to_string(stats.textureViewsUsed) + " "
 							 + std::to_string(stats.textureViews));

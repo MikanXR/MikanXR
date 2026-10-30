@@ -14,6 +14,7 @@
 #include "IMkGraphicsContext.h"
 #include "Logger.h"
 #include "MainWindow.h"
+#include "MathGLM.h"
 #include "MathTypeConversion.h"
 #include "MikanCompositorTypes.h"
 #include "MikanObject.h"
@@ -331,9 +332,10 @@ void CompositorComponent::tryCompositeOldestFrame(float deltaSeconds)
 		return;
 
 	// The oldest pending frame is at the front of the queue
-	MikanCameraNewFrameEvent& oldestPendingFrame= m_frameEventQueue.front();
+	const QueuedFrame& oldestPendingFrame= m_frameEventQueue.front();
 
-	MIKAN_LOG_TRACE("CompositorComponent::tryCompositeOldestFrame") << "Compositing frame " << oldestPendingFrame.frame;
+	MIKAN_LOG_TRACE("CompositorComponent::tryCompositeOldestFrame")
+		<< "Compositing frame " << oldestPendingFrame.frameEvent.frame;
 
 	// Try to get the editor node graph first...
 	CompositorNodeGraphPtr nodeGraph= m_editorNodeGraph.lock();
@@ -348,11 +350,23 @@ void CompositorComponent::tryCompositeOldestFrame(float deltaSeconds)
 	// freezing the output at the last composite.
 	if (nodeGraph && !m_bEditorEvaluationPaused)
 	{
+		// The camera has moved on since this frame was queued and sent to the
+		// clients. Every pass draws it from the pose it was queued with, the pose
+		// the clients rendered it from, rather than the camera's current one.
+		CameraComponentPtr cameraComponent= getCameraComponent();
+		const bool bPinPose= cameraComponent && oldestPendingFrame.bHasAperturePose;
+		if (bPinPose)
+			cameraComponent->pinCompositedFramePose(oldestPendingFrame.aperturePose_StageSpace);
 		evaluateCompositorNodeGraph(nodeGraph);
+		if (bPinPose)
+			cameraComponent->unpinCompositedFramePose();
+
+		m_lastCompositedAperturePose_StageSpace= oldestPendingFrame.aperturePose_StageSpace;
+		m_bHasLastCompositedAperturePose= oldestPendingFrame.bHasAperturePose;
 	}
 
 	// Remember the index of the last frame we composited
-	m_lastCompositedFrameIndex= oldestPendingFrame.frame;
+	m_lastCompositedFrameIndex= oldestPendingFrame.frameEvent.frame;
 
 	// Reset the time since the last frame was composited
 	m_timeSinceLastFrameComposited= 0.f;
@@ -403,7 +417,11 @@ void CompositorComponent::tryEnqueueNewFrame(CameraComponentPtr cameraComponent)
 				newFrameEvent))
 		{
 			MIKAN_LOG_TRACE("CompositorComponent::tryEnqueueNewFrame") << "Enqueue frame " << newFrameEvent.frame;
-			m_frameEventQueue.push(newFrameEvent);
+			QueuedFrame queuedFrame;
+			queuedFrame.frameEvent= newFrameEvent;
+			queuedFrame.bHasAperturePose=
+				cameraComponent->getStageSpaceAperturePose(queuedFrame.aperturePose_StageSpace);
+			m_frameEventQueue.push(queuedFrame);
 
 			// Tell clients what to render, in the form the camera's sync mode wants
 			publishClientFrameNotification(cameraComponent, newFrameEvent);
@@ -505,7 +523,18 @@ IMkTexturePtr CompositorComponent::getCompositedFrameTextureMutable()
 
 int64_t CompositorComponent::getPendingCompositedFrameIndex() const
 {
-	return !m_frameEventQueue.empty() ? m_frameEventQueue.front().frame : -1;
+	return !m_frameEventQueue.empty() ? m_frameEventQueue.front().frameEvent.frame : -1;
+}
+
+bool CompositorComponent::getCompositedFrameWorldAperturePose(glm::mat4& outCameraPose) const
+{
+	CameraComponentPtr cameraComponent= getCameraComponent();
+	if (!cameraComponent || !m_bHasLastCompositedAperturePose)
+		return false;
+
+	outCameraPose=
+		glm_composite_xform(m_lastCompositedAperturePose_StageSpace, cameraComponent->getStageToWorldTransform());
+	return true;
 }
 
 bool CompositorComponent::hasValidCompositorGraph() const { return m_nodeGraph != nullptr; }

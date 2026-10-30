@@ -890,6 +890,11 @@ msgid "Clamped Size"
 msgstr ""
 
 #. Section: componentPanel
+msgctxt "componentPanel.clearAsset"
+msgid "Clear"
+msgstr ""
+
+#. Section: componentPanel
 #, fuzzy
 msgctxt "componentPanel.columns"
 msgid "Columns"
@@ -1686,6 +1691,16 @@ msgstr "テクスチャソース設定を表示"
 msgctxt "functions.show_video_source_settings"
 msgid "Show Video Source Settings"
 msgstr "映像ソース設定を表示"
+
+#. Section: functions
+msgctxt "functions.step_back"
+msgid "Step Back"
+msgstr ""
+
+#. Section: functions
+msgctxt "functions.step_forward"
+msgid "Step Forward"
+msgstr ""
 
 #. Section: functions
 msgctxt "functions.stop"
@@ -3753,6 +3768,11 @@ msgid "Transmit Rate (Hz)"
 msgstr "送信レート (Hz)"
 
 #. Section: occlusionMeshBuild
+msgctxt "occlusionMeshBuild.alignmentSettling"
+msgid "The take's alignment is still being refined from its depth. Try again in a few seconds."
+msgstr ""
+
+#. Section: occlusionMeshBuild
 #, c-format
 msgctxt "occlusionMeshBuild.boundsBoxFmt"
 msgid "Bounds: the placed box, %.2f x %.2f x %.2f m"
@@ -3818,16 +3838,6 @@ msgstr ""
 #. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.frameMesh"
 msgid "Frame Mesh"
-msgstr ""
-
-#. Section: occlusionMeshBuild
-msgctxt "occlusionMeshBuild.frameToModel"
-msgid "Refine poses against the model"
-msgstr ""
-
-#. Section: occlusionMeshBuild
-msgctxt "occlusionMeshBuild.frameToModelHelp"
-msgid "Registers each frame to the mesh built so far before fusing it, which removes the drift that accumulates along a sweep."
 msgstr ""
 
 #. Section: occlusionMeshBuild
@@ -3942,11 +3952,6 @@ msgid "The capture's pose track override could not be loaded."
 msgstr ""
 
 #. Section: occlusionMeshBuild
-msgctxt "occlusionMeshBuild.poseTrackReplacedNote"
-msgid "The video source now plays the take with the refined poses."
-msgstr ""
-
-#. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.presetRoom"
 msgid "Room (1.5 cm voxels)"
 msgstr ""
@@ -3980,39 +3985,6 @@ msgstr ""
 #. Section: occlusionMeshBuild
 msgctxt "occlusionMeshBuild.redo"
 msgid "Rebuild"
-msgstr ""
-
-#. Section: occlusionMeshBuild
-#, c-format
-msgctxt "occlusionMeshBuild.refinedTrackWriteFailedFmt"
-msgid "Failed to write the refined pose track to %s."
-msgstr ""
-
-#. Section: occlusionMeshBuild
-#, c-format
-msgctxt "occlusionMeshBuild.refinedTrackWrittenFmt"
-msgid "Refined pose track written to %s."
-msgstr ""
-
-#. Section: occlusionMeshBuild
-msgctxt "occlusionMeshBuild.registrationOff"
-msgid "Poses were used as recorded."
-msgstr ""
-
-#. Section: occlusionMeshBuild
-#, c-format
-msgctxt "occlusionMeshBuild.registrationSummaryFmt"
-msgid "Registration: %d accepted, %d rejected. Step %.1f mm, %.2f deg. Residual %.1f to %.1f mm. Final correction %.0f mm, %.2f deg."
-msgstr ""
-
-#. Section: occlusionMeshBuild
-msgctxt "occlusionMeshBuild.replacePoseTrack"
-msgid "Play the take with the refined poses"
-msgstr ""
-
-#. Section: occlusionMeshBuild
-msgctxt "occlusionMeshBuild.replacePoseTrackHelp"
-msgid "The refined poses are written beside the take as a second pose track. With this on, the video source switches to it."
 msgstr ""
 
 #. Section: occlusionMeshBuild

@@ -58,7 +58,7 @@ The editor/server application itself. All editor code compiles once into the `Mi
 - `AppStages`: top-level app state machine (menus, calibration flows, compositor stage)
 - `Asset`, `Project`, `Config`: persisted project/scene/asset state (Configuru-backed config files); `Asset` also holds the `ProjectAssetCatalog` behind the Assets panels, the shared tile and property-row widgets, and `Asset/Test` for the catalog test module (see [objects.md](./objects.md)); `Project` also holds the two on-load migrations (legacy graph and material layout, loose takes into captures) and `Project/Test`
 - `Capture`: the capture archive library (the ustar reader and writer, the manifest, the opened `Capture` with its member accessors, the guided flow's step machine, and the working directory packer) and its `Test/`, see [videosources.md](./videosources.md)
-- `Reconstruction`: the occlusion mesh fusion (TSDF volume, marching cubes, frame-to-model registration, depth member reader, builder) and its `Test/`, see [occlusion-mesh.md](./occlusion-mesh.md)
+- `Reconstruction`: the occlusion mesh fusion (TSDF volume, marching cubes, depth member reader, builder) and its `Test/`, see [occlusion-mesh.md](./occlusion-mesh.md)
 - `Calibration`: camera/mixed-reality calibration algorithms (OpenCV-based), see [calibration.md](./calibration.md); also the ONNX-backed frame estimators behind [scene-lighting.md](./scene-lighting.md) and [depth-proxy-mesh.md](./depth-proxy-mesh.md)
 - `ECS`: entity/component scene representation (see [objects.md](./objects.md))
 - `Delegates`, `Events`: callback/event plumbing
