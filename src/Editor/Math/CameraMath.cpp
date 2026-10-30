@@ -204,6 +204,52 @@ bool computeOpenCVCameraRelativePatternTransform(const MikanMonoIntrinsics& intr
 	return true;
 }
 
+bool computeOpenCVCameraRelativeSquareMarkerTransform(const MikanMonoIntrinsics& intrinsics,
+													  const t_opencv_point2d_list& cornerImagePoints,
+													  double markerLengthMM, cv::Quatd& outOrientation,
+													  cv::Vec3d& outPositionMM, double* outMeanError,
+													  double* outAmbiguityRatio)
+{
+	if (cornerImagePoints.size() != 4 || !(markerLengthMM > 0.0))
+		return false;
+
+	// IPPE_SQUARE wants the square on its own XY plane, top-left first and
+	// clockwise. The finders' square lies on the XZ plane, so a fixed rotation
+	// carries one frame into the other: x stays, z becomes y, and y becomes -z.
+	const double half= 0.5 * markerLengthMM;
+	const std::vector<cv::Point3d> canonicalCorners= {cv::Point3d(-half, half, 0.0), cv::Point3d(half, half, 0.0),
+													  cv::Point3d(half, -half, 0.0), cv::Point3d(-half, -half, 0.0)};
+	const cv::Matx33d markerToCanonical(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -1.0, 0.0);
+
+	const cv::Matx33d cvIntrinsicMatrix= MikanMatrix3d_to_cv_mat33d(intrinsics.undistorted_camera_matrix);
+	const cv::Matx<double, 1, 8> cvDistCoeffsRowVector= cv::Matx<double, 1, 8>::zeros();
+
+	std::vector<cv::Mat> rvecs, tvecs;
+	cv::Mat reprojectionErrors;
+	const int solutionCount=
+		cv::solvePnPGeneric(canonicalCorners, cornerImagePoints, cvIntrinsicMatrix, cvDistCoeffsRowVector, rvecs, tvecs,
+							false, cv::SOLVEPNP_IPPE_SQUARE, cv::noArray(), cv::noArray(), reprojectionErrors);
+	if (solutionCount < 1)
+		return false;
+
+	// Solutions come back best first
+	const double bestError= reprojectionErrors.at<double>(0);
+	const double ambiguityRatio= solutionCount > 1 ? reprojectionErrors.at<double>(1) / std::max(bestError, 1e-9)
+												   : std::numeric_limits<double>::infinity();
+	if (outAmbiguityRatio != nullptr)
+		*outAmbiguityRatio= ambiguityRatio;
+	if (outMeanError != nullptr)
+		*outMeanError= bestError;
+	if (ambiguityRatio < k_squareMarkerMinAmbiguityRatio)
+		return false;
+
+	cv::Matx33d canonicalToCamera;
+	cv::Rodrigues(rvecs[0], canonicalToCamera);
+	outOrientation= cv::Quatd::createFromRotMat(canonicalToCamera * markerToCanonical);
+	outPositionMM= cv::Vec3d(tvecs[0].at<double>(0), tvecs[0].at<double>(1), tvecs[0].at<double>(2));
+	return true;
+}
+
 void convertOpenCVCameraRelativePoseToGLMMat(const cv::Quatd& orientation, const cv::Vec3d& positionMM,
 											 glm::dmat4& outXform)
 {

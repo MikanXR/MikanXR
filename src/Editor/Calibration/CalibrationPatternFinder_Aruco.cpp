@@ -16,6 +16,7 @@
 #include "TextStyle.h"
 #include "TrackingVolumeComponent.h"
 #include "VideoFrameDistortionView.h"
+#include "VideoSourceComponent.h"
 
 #include "opencv2/opencv.hpp"
 #include "opencv2/calib3d/calib3d.hpp"
@@ -184,13 +185,42 @@ bool CalibrationPatternFinder_Aruco::estimateMarkerPoseInImage(const cv::Mat& gr
 
 	cv::Quatd cameraToMarkerRot;
 	cv::Vec3d cameraToMarkerVecMM;
-	if (!computeOpenCVCameraRelativePatternTransform(intrinsics, imagePoints, opencvSolvePnPGeometry.points,
-													 cameraToMarkerRot, cameraToMarkerVecMM, nullptr))
+	if (!computeOpenCVCameraRelativeSquareMarkerTransform(intrinsics, imagePoints, markerData.markerLengthMM,
+														  cameraToMarkerRot, cameraToMarkerVecMM))
 	{
 		return false;
 	}
 
 	convertOpenCVCameraRelativePoseToGLMMat(cameraToMarkerRot, cameraToMarkerVecMM, outApertureToMarkerXform);
+	return true;
+}
+
+bool CalibrationPatternFinder_Aruco::estimateNewCalibrationPatternPose(glm::dmat4& outCameraToPatternXform)
+{
+	MikanVideoSourceIntrinsics cameraIntrinsics;
+	m_distortionView->getVideoSourceComponent()->getCameraIntrinsics(cameraIntrinsics);
+	if (cameraIntrinsics.intrinsics_type != MikanIntrinsicsType::MONO_CAMERA_INTRINSICS)
+		return false;
+
+	if (!findNewCalibrationPattern())
+		return false;
+
+	cv::Point2f boundingQuad[4];
+	t_opencv_point2d_list imagePoints;
+	t_opencv_pointID_list imagePointIDs;
+	if (!fetchLastFoundCalibrationPattern(imagePoints, imagePointIDs, boundingQuad))
+		return false;
+
+	cv::Quatd cameraToMarkerRot;
+	cv::Vec3d cameraToMarkerVecMM;
+	if (!computeOpenCVCameraRelativeSquareMarkerTransform(cameraIntrinsics.getMonoIntrinsics(), imagePoints,
+														  m_markerData->markerLengthMM, cameraToMarkerRot,
+														  cameraToMarkerVecMM))
+	{
+		return false;
+	}
+
+	convertOpenCVCameraRelativePoseToGLMMat(cameraToMarkerRot, cameraToMarkerVecMM, outCameraToPatternXform);
 	return true;
 }
 

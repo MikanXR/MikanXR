@@ -60,7 +60,7 @@ A recovered lighting environment is a spherical function stored as 27 coefficien
 
 - Runtime: `glm::quat` / `glm::dquat`. Wire/config: `MikanQuatf` / `MikanQuatd`; `MikanRotator3f` holds Euler angles for UI-facing rotation properties, converted via `MikanRotator3f_to_glm_quat` / `glm_quat_to_MikanRotator3f` (`MathTypeConversion.h`) and the Euler helpers in `MathGLM.h`.
 
-- Rodrigues rotation vectors exist only at the OpenCV boundary: `cv::solvePnP` returns an `rvec` that `computeOpenCVCameraRelativePatternTransform` (`CameraMath.cpp`) immediately converts with `cv::Quatd::createFromRvec`; nothing downstream stores rvecs.
+- Rodrigues rotation vectors exist only at the OpenCV boundary: the `rvec` that `cv::solvePnP` or `cv::solvePnPGeneric` returns is converted to a `cv::Quatd` at once in `CameraMath.cpp` (`computeOpenCVCameraRelativePatternTransform`, `computeOpenCVCameraRelativeSquareMarkerTransform`). Nothing downstream stores rvecs.
 
 ## Intrinsics
 
@@ -72,7 +72,7 @@ A recovered lighting environment is a spherical function stored as 27 coefficien
 
 - Distortion model: OpenCV rational model, 8 coefficients `(k1, k2, p1, p2, k3, k4, k5, k6)`. Calibration runs `cv::calibrateCamera` with `CALIB_RATIONAL_MODEL + CALIB_ZERO_TANGENT_DIST + CALIB_FIX_K3/K4/K5 + CALIB_FIX_ASPECT_RATIO + CALIB_FIX_PRINCIPAL_POINT`, keeps the first 8 of OpenCV's 14 outputs, and stores them as a column vector (`cv_vec8_to_Mikan_distortion`; OpenCV's native row vector is transposed on the way in and back out via `Mikan_distortion_to_cv_vec8`).
 
-- Pose solves against undistorted image points pass zeroed distortion coefficients to `cv::solvePnP` (`computeOpenCVCameraRelativePatternTransform`).
+- Pose solves against undistorted image points pass zeroed distortion coefficients to `cv::solvePnP` and `cv::solvePnPGeneric` (`computeOpenCVCameraRelativePatternTransform`, `computeOpenCVCameraRelativeSquareMarkerTransform`).
 
 ---
 

@@ -52,6 +52,8 @@ The error after the fit is 2.6 mm under every alignment, so the height-only snap
 
 The editor's height snap landed with `MikanCmd -alignTake` and was scored on the six pairs. Its table heights match the simulation's: applied to the square-marker shots they give 3.19 mm before the fit, against 3.04 mm simulated. Applied to the editor's own AP3P shots they give 4.02 mm, from 5.38 mm unsnapped. The gap is AP3P's tilt on take C's close shot, 1.37 degrees off the square-marker solve, which the snap passes through because it only translates. On the A and B pairs, where the two solvers agree, the editor's snapped result (3.41 and 3.38 mm) matches the simulation (2.96 and 3.49 mm). So the solver switch in part 2 is what carries the snap to its full gain.
 
+With the solver switched to `SOLVEPNP_IPPE_SQUARE`, the editor's shots match the measurement's square-marker solves exactly, and the snapped alignments give 3.06 mm before the fit over the six pairs, against 4.84 mm unsnapped and 3.04 mm simulated. What remains is mostly in-plane (2.9 mm), which the measurement cannot resolve on a tabletop.
+
 ## Live alignment
 
 A live session has the same problem: the live world wanders while the alignment is solved once. Following the wander means re-solving the alignment while the marker is visible, or an ARKit image anchor that ARKit moves with its own world corrections. Either way the stage moves during a session, which needs smoothing so it never jumps and a rule for when the marker is out of view. That behaviour change is decided separately, after the take work lands.

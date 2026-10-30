@@ -2,6 +2,7 @@
 #include "unit_test.h"
 
 #include "CalibrationPatternFinder.h"
+#include "CameraMath.h"
 #include "CaptureMarkerAlignment.h"
 #include "CapturePacker.h"
 #include "FileVideoSourceComponent.h"
@@ -9,6 +10,7 @@
 #include "OcclusionMeshBuilder.h"
 #include "PoseTrack.h"
 
+#include "opencv2/core/quaternion.hpp"
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/imgproc.hpp"
 #include "opencv2/objdetect/aruco_detector.hpp"
@@ -164,6 +166,7 @@ bool run_capture_marker_alignment_tests()
 	UNIT_TEST_MODULE_CALL_TEST(capture_marker_alignment_test_shot_without_marker_fails);
 	UNIT_TEST_MODULE_CALL_TEST(capture_marker_alignment_test_take_aligns_itself_for_its_session);
 	UNIT_TEST_MODULE_CALL_TEST(capture_marker_alignment_test_height_snaps_onto_the_table);
+	UNIT_TEST_MODULE_CALL_TEST(capture_marker_alignment_test_square_solve_by_distance);
 	UNIT_TEST_MODULE_END()
 }
 
@@ -353,5 +356,52 @@ bool capture_marker_alignment_test_height_snaps_onto_the_table()
 	const cv::Mat emptyDepth(height, width, CV_32FC1, cv::Scalar(0.f));
 	const cv::Mat emptyConfidence(height, width, CV_8UC1, cv::Scalar(2));
 	success&= !estimator.addFrame(emptyDepth, emptyConfidence, intrinsics, awayCameraToWorld);
+	UNIT_TEST_COMPLETE()
+}
+
+bool capture_marker_alignment_test_square_solve_by_distance()
+{
+	using namespace CaptureMarkerAlignmentTestsInternal;
+
+	UNIT_TEST_BEGIN("the square marker solve places the stage from 0.2 to 0.8 m and refuses a head-on square")
+	// 45 degrees off the marker's normal at each distance, the range a phone
+	// shot and a take's frames cover. A fraction of a pixel of corner error grows
+	// with distance, as it does on the phone, so the tolerance is a share of it:
+	// at 0.8 m the marker spans 29 px of this small image.
+	const float distances[]= {0.2f, 0.4f, 0.8f};
+	for (int index= 0; index < 3; ++index)
+	{
+		const float offset= distances[index] * std::sqrt(0.5f);
+		glm::mat4 worldToStage;
+		const bool bSolved= solveShot(k_markerCentre + glm::vec3(0.f, offset, offset), worldToStage);
+		success&= bSolved;
+		if (!bSolved)
+			continue;
+
+		const glm::vec3 markerInStage= glm::vec3(worldToStage * glm::vec4(k_markerCentre, 1.f));
+		const glm::vec3 worldUpInStage= glm::normalize(glm::vec3(worldToStage * glm::vec4(0.f, 1.f, 0.f, 0.f)));
+		const bool bPlaced= glm::length(markerInStage) < 0.01f * distances[index]
+							&& glm::dot(worldUpInStage, glm::vec3(0.f, 1.f, 0.f)) > std::cos(glm::radians(1.f));
+		if (!bPlaced)
+			fprintf(stdout, "    at %.1f m the marker solved %.2f mm off\n", distances[index],
+					glm::length(markerInStage) * 1000.f);
+		success&= bPlaced;
+	}
+
+	// Seen head on, a planar square's two poses fit its corners equally well,
+	// and which way it tilts is a guess
+	MikanMonoIntrinsics intrinsics;
+	createMonoIntrinsicsFromPinhole(k_imageWidth, k_imageHeight, k_focalLength, k_focalLength, 0.5 * k_imageWidth,
+									0.5 * k_imageHeight, intrinsics);
+	const float cx= 0.5f * k_imageWidth, cy= 0.5f * k_imageHeight, halfPixels= 30.f;
+	const t_opencv_point2d_list headOn= {
+		cv::Point2f(cx - halfPixels, cy - halfPixels), cv::Point2f(cx + halfPixels, cy - halfPixels),
+		cv::Point2f(cx + halfPixels, cy + halfPixels), cv::Point2f(cx - halfPixels, cy + halfPixels)};
+	cv::Quatd orientation;
+	cv::Vec3d positionMM;
+	double ambiguityRatio= 0.0;
+	success&= !computeOpenCVCameraRelativeSquareMarkerTransform(intrinsics, headOn, k_markerLengthMM, orientation,
+																positionMM, nullptr, &ambiguityRatio);
+	success&= ambiguityRatio < k_squareMarkerMinAmbiguityRatio;
 	UNIT_TEST_COMPLETE()
 }

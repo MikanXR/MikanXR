@@ -9,7 +9,7 @@ The living plan: what is in flight now, what comes next, and the open questions.
 
 ## Next
 - [ ] Marker alignment accuracy, [marker-alignment-accuracy.md](./proposals/marker-alignment-accuracy.md): a take's marker shot catches ARKit's world at one instant, 4 to 6 mm from the world its mesh is averaged in.
-	- [ ] Marker solver: `SOLVEPNP_IPPE_SQUARE` for the 4-corner case, refusing ambiguous solves, measured against the three takes and a live session
+	- [ ] Check the live ARKit alignment with the square-marker solve: a phone stream aligned through `ARKitMarkerAutoAligner` and through Align Camera, with the verify overlay on the marker and no shots refused at a normal framing
 	- [ ] Phone guidance: the marker shot under 0.45 m, with the distance shown while framing
 	- [ ] Live alignment that follows the world's wander, decided after the take work lands
 - [ ] Capture flows on the phone: tune the motion detector's thresholds (1 cm and 0.5 degrees in MikanARStreamer's `CameraMotionDetector`) against a phone on a tripod, since ARKit's jitter at rest sets the floor and the values are the design's starting guesses. Then shoot one capture of each kind end to end into a project through the Captures panel. Design in [captures.md](./proposals/captures.md).

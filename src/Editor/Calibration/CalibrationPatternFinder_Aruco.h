@@ -18,6 +18,8 @@ public:
 		return eCalibrationPatternType::mode_aruco;
 	}
 	virtual bool findNewCalibrationPattern(const float minSeperationDist= 0.f) override;
+	// The square-marker solve rather than the general one the other patterns use
+	virtual bool estimateNewCalibrationPatternPose(glm::dmat4& outCameraToPatternXform) override;
 	virtual bool fetchLastFoundCalibrationPattern(t_opencv_point2d_list& outImagePoints,
 												  t_opencv_pointID_list& outImagePointIDs,
 												  cv::Point2f outBoundingQuad[4]) override;
