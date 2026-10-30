@@ -1,0 +1,75 @@
+# Occlusion matte
+
+The occlusion matte corrects the silhouettes the occlusion mesh gives a composited character. The mesh ([occlusion-mesh.md](./occlusion-mesh.md)) is a coarse prior: its edges sit off the picture's by a per-frame pose shift, by LiDAR smear, and by surfaces the LiDAR never returned. The matte is a per-frame label map, built once per recorded take by an image segmenter prompted from the mesh, that says where the true silhouette differs from the mesh inside a band around each occluding contour. The compositor refines the mesh's depth mask with it and decides occlusion per pixel against the client's depth, which is why a client gives up its holdout for the stencil. This doc covers the matte's definition, the prompt design and the measurements behind it, the builder, the sidecar, the headless command, the playback path, the compositor node, and the client flag. The measurements live in the experiments repo's `NOTES.md` ("SAM2 prompted from the mesh silhouette").
+
+## The matte
+
+A matte is one label per pixel at the video's resolution, or at a declared fraction of it:
+
+- keep (1): outside every band, or where the segmenter agrees with the mesh
+- added (2): inside a band, where the segmenter says occluder and the mesh's near side does not
+- removed (0): inside a band, where the segmenter says background and the mesh says occluder
+
+The refined depth is one rule over the mask: an added pixel takes the nearest mesh depth in a window of the band radius around it, which is the object the matte extended; a removed pixel takes the farthest, the surface behind or the far plane; a kept pixel keeps the mask's own depth. Outside the bands the mask is untouched, so the desk an object stands on is never in question. The matte is binary, so edges are hard.
+
+## Why a segmenter, and why these prompts
+
+Every band-local method tried before (the removed `DepthEdgeRefineNode`, guided filters, a colour vote) moves an edge only within its band and only toward colour contrast, so on the hand-marked can frames the best of them reached a 4 px median but a 36 px p90: the prior is wrong past any band where the can's black cap is missing from the mesh and where the silhouette shifts. SAM 2.1 (Apache 2.0) prompted with positive points per occluding contour run puts the marked edge at 1.0 to 1.7 px median and 2.7 to 6.3 px p90 on 24 marked frames across the can, cup, room and duster takes, whether the mesh is 6 or 46 px off. The prompt design came out of the same measurement:
+
+- the prompt is per occluding contour run, not per silhouette: the mesh region nearer than a threshold merges an object with what it stands on, and a box or points over that region segment both
+- positive points alone: a box helps where the mesh is accurate and hurts where it is not, and negative points land on the object wherever the mesh is short by more than the band
+- the small checkpoint: tiny is a little worse on the edge, base plus and large no better
+- the decoder's point axis is dynamic: a padding point is not neutral to the decoder and moves the masks
+
+## The builder (`src/Editor/Reconstruction/OcclusionMatteBuilder`)
+
+`OcclusionMatteBuilder::build` is pure data in and data out, as the mesh builder is: a `PoseTrack`, a `MovieDecoder` open on the take's movie, the meshes in the take's ARKit world, settings, a started `Sam2Segmenter`, the sidecar path, an optional observer, and a result. Frames decode in order and each is matched to the track by its presentation time, as playback matches them, and written under that frame's `fileIndex`. Per frame:
+
+1. `DepthRasterizer` renders the meshes to an eye-depth map at the matte's size from the recorded pose through `OcclusionMeshBuilder::toOpenCvCameraToWorld`, the one camera convention point, with the frame's intrinsics scaled to that size. A CPU z-buffer rasterizer, perspective-correct, no backface culling, pixel (u, v) on the ray through the integer position as the harness's ray cast samples it, rows parallel over `parallelFor`.
+2. `OcclusionPrompts::findRuns` finds the occluding contours (a 4-neighbour farther by more than 5 percent of its depth, or uncovered, marks the near pixel), groups them into runs by proximity, and for each run samples points along it by farthest-point greedy and walks each inward along the gradient of the near side's signed distance to the spot farthest from any edge, within two bands. The run carries its contour, its positives, its box grown by the band, its split depth (the geometric mean of the two sides, or 1.5 times the near depth where the far side is uncovered), and the covered pixels nearer than the split inside the box.
+3. `Sam2Segmenter` encodes the frame once (resized to 1024x1024, RGB in [0,1], the ImageNet normalization inside the graph) and decodes each run's points, choosing among the three candidate masks the one with the highest IoU against the run's near side, and unions them.
+4. `OcclusionPrompts::computeLabels` labels each run's band from the union and the mesh's near side.
+5. The record is written. The frames between segmented ones, when the frame step is above one, take the last labels.
+
+Settings: the band in video pixels (64), the matte scale (1, or 2 for half resolution), the frame step (1), whether a small run is prompted on a crop of its own (on), and the prompt settings, scaled to the matte's resolution by `promptSettingsAtScale`. The band is the reach of the correction: on the can take a 24 px band leaves a 17 px p90 on the marked frames because the mesh sits up to 30 px off its edge, 48 px gives 4.6 and 64 px the unbanded 2.9, while the live angles, where the mesh is off by up to 46 px, keep a 20 px p90 even at 64. A small run's crop costs an encoder pass per run (about 1.7 s per frame against 0.6 s on an RTX 3090 under DirectML for the can take) and buys the median and the share within 2 px, not the p90. The observer gets cooperative cancellation between frames, progress per frame, and each segmented frame's data for a preview or a dump.
+
+## The segmenter (`src/Editor/Calibration/Sam2Segmenter`)
+
+Two `OnnxSession`s, DirectML first with CPU fallback ([build.md](./build.md)), from the `sam2_small` or `sam2_tiny` model: `encoder.onnx` takes the resized frame and returns the image embedding with the predictor's no-memory embedding added and the two high-resolution feature maps already reduced; `decoder.onnx` takes those with any number of points and returns three 256x256 logit masks and a score each, upsampled to the requested size and thresholded at zero. The graphs are exported by the experiments repo (`tools/sam2_export_encoder.py`, `tools/sam2_export_decoder.py --dynamic-points`, validated against the PyTorch predictor to 1e-5 on the logits) and published as a MikanXR/MikanSam2Onnx release per checkpoint with a `manifest.json`, which the model catalog points at; `MikanCmd -fetchModels -model=sam2_small` downloads one ([commands.md](./commands.md)). The worker that runs a build owns the segmenter for its whole lifetime, since a session is created, run and destroyed on one thread.
+
+## The sidecar (`src/Editor/Reconstruction/MatteTrack`)
+
+Beside the capture, regenerable, never inside the archive:
+
+- `captures/<stem>.matte.json`: `format` "mikan-matte-track", `version` 1, `session_id`, `image_width`, `image_height`, `matte_width`, `matte_height`, `band_px`, `frame_step`, `record_count` (the pose track's frame count), `model`, `created`, and `stencils`, the names and model paths the matte was built against
+- `captures/<stem>.matte.bin`: headerless fixed-size records indexed by the pose track's `fileIndex`, two bits per pixel row-major with rows padded to a byte, an unwritten record reading as keep
+
+`MatteTrackWriter` pre-sizes the binary with keep, writes records in any order, and renames both files into place on `finish`, the binary first so a json in place always has its binary. `MatteTrackReader::open` checks the format, the version, the session and the record count, and `readRecord` is one seek. At full 1920x1440 a record is 691 KB, about 20 MB per second of take.
+
+## The headless command
+
+```
+MikanCmd.exe -occlusionMatte -take=<take.trackcamera> -glb=<mesh.glb> [-glb2=<mesh.glb>] [-poses=<track.pose.json>] [-model=sam2_small|sam2_tiny] [-sam2Models=<dir>] [-band=<pixels>] [-scale=<1|2>] [-step=<n>] [-out=<path.matte.json>] [-dump=<dir>] [-cpu]
+```
+
+The glb is in the take's ARKit world as `-occlusionMesh` writes it, read by `GlbMeshReader` with no GL. `-poses` renders at another track of the same session, which is how a mesh fused at refined poses is rendered at them. `-dump` writes each segmented frame's labels (`<fileIndex>_labels.png`, 0, 128 and 255), depth (a flat float32 `.npy` of matte height times width) and prompts (`<fileIndex>_prompts.json`), which is the parity check against the Python harness: `tools/score_mikan_matte.py` in the experiments repo applies the dumped labels to a marked frame's prior and scores them beside the Python result. At the shipped defaults the C++ matte scores 1.0 px median, 3.7 px p90 and 94 percent within 5 px on the marked can take frames, against the Python crop prompt's 1.0, 2.9 and 97 percent, and the mesh's 11.6, 37 and 29 percent.
+
+## Playback
+
+`FileVideoSourceComponent` looks for `<stem>.matte.json` beside the capture when it loads a trackcamera take, by stem and with no property, and keeps the reader open while the session and record count match the track's. It records the matched track frame's `fileIndex` with the latest pose, and answers `IOcclusionMatteSource::tryGetLatestFrameMatte` with that frame's record and the frame sequence as the key. `CompositorComponent::tryEnqueueNewFrame` asks the camera's video source for the matte of the frame it just queued and uploads it into a ring of 8-bit red textures stamped with the compositor's frame index (the labels spread to 0, 128 and 255), one slot more than the frame queue holds, and `getOcclusionMatteTexture` finds a queued frame's matte by that index. The compositor's frame index is the video view's write counter and not the take's frame, which is why the key is captured at enqueue rather than derived at composite.
+
+## The node
+
+`MatteDepthRefineNode` takes the depth mask on `depthTexture` and returns the refined depth on `texture` in the mask's format, so `WriteDepthNode` and the client depth mask materials consume it unchanged. It runs the two depth min/max passes it shares with depth of field over its band radius, then `Internal_PT_MatteDepthRefine` with the pending frame's matte from the compositor, writing the result as hardware depth and colour. With no matte for the pending frame (no sidecar, a live source, the first frames) the mask passes through with a warning, so a graph wired for it keeps compositing. The bundled `ue_client_matte_graph.compgraph` is the UE shadow graph with the client colour layer drawn through `rgbInvAlphaClientDepthMask` fed by the sensor grain output, the client depth, and the refined depth.
+
+## The client flag
+
+`client_holdout` on the model stencil (`MikanModelStencilComponentValues`, default true) tells a client whether to draw the stencil as a holdout occluder. Off, the Unreal plugin hides its holdout and depth mesh components and keeps the shadow catcher, and the Unity package skips the holdout pass and keeps the catcher pass, so the character reaches the editor unoccluded in colour and depth and the graph above decides occlusion. `DepthMaskNode` keeps drawing the stencil whatever the flag says, since it is what the compositor compares against. The Unity package publishes depth only with its render depth setting on, which the compare needs.
+
+## Known limits
+
+- A segmenter prompted by the mesh cannot find what the mesh never had: a plant whose leaves have no mesh at all gives no run and no prompt.
+- One binary mask per frame: edges are hard, and a soft matte is in `plan.md`.
+- Several occluders at different depths in one frame are segmented per run, each run judging its own band by its own mask; the measurement scored one occluder per frame.
+- A removed pixel takes the window's farthest depth. Beside an object's base, on the surface it stands on, that can be a surface behind both, so a character overlapping that strip of the band would show through it. The strip is below the object's silhouette, where a character behind the object rarely projects.
+- The live source path is not built. The segmenter's encoder costs 67 to 75 ms per frame under DirectML on an RTX 3090, against the two-frame slot the compositor's queue gives a worker, and a live source has no CPU copy of its frames in compositor mode.

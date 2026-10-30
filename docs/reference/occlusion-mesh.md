@@ -1,6 +1,6 @@
 # Occlusion mesh
 
-The occlusion mesh is a static room mesh fused from the LiDAR depth a phone records beside a take, registered as a model stencil so a composited character is hidden by the real furniture it walks behind. This doc covers the fusion pipeline, the editor stage and the headless command that drive it, the files they write, and the spaces everything lives in. The decision behind the design and the measurements that led to it are in [the proposal](../proposals/occlusion-mesh.md); the take format it consumes is in [videosources.md](./videosources.md) ("Pose tracks" and "Depth tracks"); the single-frame depth proxy it supersedes for occlusion is in [depth-proxy-mesh.md](./depth-proxy-mesh.md).
+The occlusion mesh is a static room mesh fused from the LiDAR depth a phone records beside a take, registered as a model stencil so a composited character is hidden by the real furniture it walks behind. This doc covers the fusion pipeline, the editor stage and the headless command that drive it, the files they write, and the spaces everything lives in. The decision behind the design and the measurements that led to it are in [the proposal](../proposals/occlusion-mesh.md); the take format it consumes is in [videosources.md](./videosources.md) ("Pose tracks" and "Depth tracks"); the single-frame depth proxy it supersedes for occlusion is in [depth-proxy-mesh.md](./depth-proxy-mesh.md); the per-frame matte that corrects its silhouettes in the compositor is in [occlusion-matte.md](./occlusion-matte.md).
 
 ## Input
 

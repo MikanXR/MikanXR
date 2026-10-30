@@ -11,6 +11,7 @@
 #include "MovieDecoder.h"
 #include "PathUtils.h"
 #include "PlaybackTime.h"
+#include "OcclusionMatteBuild/AppStage_OcclusionMatteBuild.h"
 #include "OcclusionMeshBuild/AppStage_OcclusionMeshBuild.h"
 #include "PoseTrackAssetReference.h"
 #include "ThreadUtils.h"
@@ -226,6 +227,7 @@ const std::string FileVideoSourceComponent::k_stopFunctionId= "stop";
 const std::string FileVideoSourceComponent::k_stepBackFunctionId= "step_back";
 const std::string FileVideoSourceComponent::k_stepForwardFunctionId= "step_forward";
 const std::string FileVideoSourceComponent::k_buildOcclusionMeshFunctionId= "build_occlusion_mesh";
+const std::string FileVideoSourceComponent::k_buildOcclusionMatteFunctionId= "build_occlusion_matte";
 
 FileVideoSourceComponent::FileVideoSourceComponent(MikanObjectWeakPtr owner)
 	: VideoSourceComponent(owner)
@@ -1530,6 +1532,8 @@ void FileVideoSourceComponent::getFunctionDescriptors(std::vector<FunctionDescri
 	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_stepForwardFunctionId, "Step Forward"));
 	outDescriptors.push_back(
 		std::make_shared<FunctionDescriptor>(k_buildOcclusionMeshFunctionId, "Build Occlusion Mesh"));
+	outDescriptors.push_back(
+		std::make_shared<FunctionDescriptor>(k_buildOcclusionMatteFunctionId, "Build Occlusion Matte"));
 }
 
 bool FileVideoSourceComponent::invokeFunction(const std::string& functionName)
@@ -1564,6 +1568,12 @@ bool FileVideoSourceComponent::invokeFunction(const std::string& functionName)
 		// The stage checks the take and explains a refusal itself
 		AppStage_OcclusionMeshBuild::tryEnterBuild(getOwnerEditorWindow()->getCurrentAppStage(),
 												   getSelfPtr<FileVideoSourceComponent>());
+		return true;
+	}
+	else if (functionName == k_buildOcclusionMatteFunctionId)
+	{
+		AppStage_OcclusionMatteBuild::tryEnterBuild(getOwnerEditorWindow()->getCurrentAppStage(),
+													getSelfPtr<FileVideoSourceComponent>());
 		return true;
 	}
 

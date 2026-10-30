@@ -59,6 +59,7 @@
 #include "LightFixtureCalibration/AppStage_LightFixtureCalibration.h"
 #include "DepthMeshCapture/AppStage_DepthMeshCapture.h"
 #include "OcclusionMeshBuild/AppStage_OcclusionMeshBuild.h"
+#include "OcclusionMatteBuild/AppStage_OcclusionMatteBuild.h"
 #include "SceneLightingCapture/AppStage_SceneLightingCapture.h"
 #include "MainMenu/AppStage_MainMenu.h"
 #include "MonoLensCalibration/AppStage_MonoLensCalibration.h"
@@ -111,6 +112,7 @@ MainWindow::MainWindow(App* ownerApp)
 	m_appStageFactory.addAppStageConstructor<AppStage_AnchorTriangulation>();
 	m_appStageFactory.addAppStageConstructor<AppStage_DepthMeshCapture>();
 	m_appStageFactory.addAppStageConstructor<AppStage_OcclusionMeshBuild>();
+	m_appStageFactory.addAppStageConstructor<AppStage_OcclusionMatteBuild>();
 	m_appStageFactory.addAppStageConstructor<AppStage_LightFixtureCalibration>();
 	m_appStageFactory.addAppStageConstructor<AppStage_SceneLightingCapture>();
 	m_appStageFactory.addAppStageConstructor<AppStage_MainMenu>();

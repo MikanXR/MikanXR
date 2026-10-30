@@ -212,6 +212,7 @@ public:
 	static const std::string k_stepBackFunctionId;
 	static const std::string k_stepForwardFunctionId;
 	static const std::string k_buildOcclusionMeshFunctionId;
+	static const std::string k_buildOcclusionMatteFunctionId;
 	static void getFunctionDescriptors(std::vector<FunctionDescriptorConstPtr>& outDescriptors);
 	virtual bool invokeFunction(const std::string& functionName) override;
 
