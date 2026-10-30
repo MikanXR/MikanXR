@@ -263,11 +263,6 @@ void AppStage_OcclusionMatteBuild::exit()
 	// segmenter on the thread that created it
 	stopBuildWorker();
 
-	// A build still in flight when the stage leaves had the source's sidecar
-	if (m_bSourceMatteReleased && m_videoSource)
-		m_videoSource->reloadOcclusionMatte();
-	m_bSourceMatteReleased= false;
-
 	releasePreview();
 	m_previewQuad= nullptr;
 	m_result= OcclusionMatteBuildResult();
@@ -434,14 +429,6 @@ void AppStage_OcclusionMatteBuild::onBuildEvent()
 	request.settings= gatherSettings();
 	request.jsonPath= MatteTrack::sidecarPathForCapture(m_capturePath);
 	request.modelDirectory= ModelRepository::resolveDirectory(getChosenModelId());
-
-	// The source lets go of the sidecar it plays, or the writer cannot move
-	// the new one over it. It takes whichever is there back when the build ends.
-	if (m_videoSource)
-	{
-		m_videoSource->closeOcclusionMatte();
-		m_bSourceMatteReleased= true;
-	}
 
 	releasePreview();
 	m_bHasResult= false;
@@ -628,7 +615,6 @@ void AppStage_OcclusionMatteBuild::consumeBuildOutput()
 	// cancelled or failed build
 	if (m_videoSource)
 		m_videoSource->reloadOcclusionMatte();
-	m_bSourceMatteReleased= false;
 
 	if (output.result.bCancelled)
 	{

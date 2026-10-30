@@ -147,6 +147,12 @@ MikanCmd.exe -occlusionMatte -take=<take.trackcamera> -glb=<mesh.glb> [-glb2=<me
 
 - `-cpu` forces the CPU execution provider instead of DirectML. Both commands take `-models=<dir>` / `-mogeModels=<dir>` to point at a model directory explicitly; an override is used exactly as given rather than searched past, and either command stops with a message naming `-fetchModels` when a model it needs is not installed.
 
+A matte sidecar from before the run-length format (version 1) is refused by the editor. This converts it in place, keeping the labels exactly, with numpy as its one dependency. `--verify` decodes every converted record and compares it with the old labels before replacing anything:
+
+```
+python tools/convert_matte_v1.py <take.matte.json> [<take.matte.json> ...] [--verify]
+```
+
 ---
 
 ## Material graphs

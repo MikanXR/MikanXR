@@ -188,9 +188,6 @@ public:
 	// Reopens the matte sidecar beside the capture, so one written while the
 	// media is open shows up without reopening the media
 	void reloadOcclusionMatte();
-	// Lets go of the sidecar so a build can replace it: an open reader holds
-	// the file, and the writer's move over it fails while it does
-	void closeOcclusionMatte();
 
 	// -- IAlignmentReferenceSource ----
 	virtual bool hasAlignmentReference() const override;
@@ -280,7 +277,8 @@ private:
 	};
 
 	// -- IOcclusionMatteSource ----
-	virtual bool tryGetLatestFrameMatte(cv::Mat& outLabels, int64_t& outFrameKey) const override;
+	virtual bool tryGetLatestFrameMatte(const std::array<uint8_t, 3>& labelValues, cv::Mat& outLabels,
+										int64_t& outFrameKey) const override;
 
 	void reopenMedia();
 	void startWorker();

@@ -1134,8 +1134,6 @@ void FileVideoSourceComponent::openOcclusionMatte(const std::filesystem::path& m
 
 void FileVideoSourceComponent::reloadOcclusionMatte() { openOcclusionMatte(resolveMediaPath()); }
 
-void FileVideoSourceComponent::closeOcclusionMatte() { m_matteReader.close(); }
-
 void FileVideoSourceComponent::publishPoseForFrame(int64_t ptsUs)
 {
 	const PoseTrack& track= getActivePoseTrack();
@@ -1168,7 +1166,8 @@ void FileVideoSourceComponent::publishPoseForFrame(int64_t ptsUs)
 }
 
 // -- IOcclusionMatteSource ----
-bool FileVideoSourceComponent::tryGetLatestFrameMatte(cv::Mat& outLabels, int64_t& outFrameKey) const
+bool FileVideoSourceComponent::tryGetLatestFrameMatte(const std::array<uint8_t, 3>& labelValues, cv::Mat& outLabels,
+													  int64_t& outFrameKey) const
 {
 	if (!m_matteReader.isOpen())
 		return false;
@@ -1182,7 +1181,7 @@ bool FileVideoSourceComponent::tryGetLatestFrameMatte(cv::Mat& outLabels, int64_
 		outFrameKey= (int64_t)m_latestPose.frameSeq;
 	}
 
-	return m_matteReader.readRecord(fileIndex, outLabels);
+	return m_matteReader.readRecord(fileIndex, outLabels, labelValues);
 }
 
 // -- IFrameCoupledPoseProvider ----

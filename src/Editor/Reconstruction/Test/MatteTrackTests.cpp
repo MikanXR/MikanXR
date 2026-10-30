@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <random>
 #include <string>
 #include <system_error>
@@ -103,7 +104,9 @@ bool run_matte_track_unit_tests()
 	UNIT_TEST_MODULE_CALL_TEST(matte_track_test_open_rejects_mismatches);
 	UNIT_TEST_MODULE_CALL_TEST(matte_track_test_sidecar_paths);
 	UNIT_TEST_MODULE_CALL_TEST(matte_track_test_temp_files);
-	UNIT_TEST_MODULE_CALL_TEST(matte_track_test_pack_layout);
+	UNIT_TEST_MODULE_CALL_TEST(matte_track_test_encode_layout);
+	UNIT_TEST_MODULE_CALL_TEST(matte_track_test_label_values);
+	UNIT_TEST_MODULE_CALL_TEST(matte_track_test_dedup);
 	UNIT_TEST_MODULE_END()
 }
 
@@ -217,7 +220,8 @@ bool matte_track_test_open_rejects_mismatches()
 {
 	using namespace MatteTrackTestsInternal;
 
-	UNIT_TEST_BEGIN("open rejects another session, another record count, and a truncated bin")
+	UNIT_TEST_BEGIN("open rejects another session, another record count, a bin short of its index, and a record "
+					"placed outside the bin")
 	const std::filesystem::path directory= makeTestDirectory("open_rejects");
 	const std::filesystem::path jsonPath= directory / "take.matte.json";
 	std::vector<cv::Mat> records;
@@ -246,8 +250,23 @@ bool matte_track_test_open_rejects_mismatches()
 	const std::filesystem::path binPath= MatteTrack::binPathForJson(jsonPath);
 	std::error_code ec;
 	const uintmax_t binBytes= std::filesystem::file_size(binPath, ec);
-	success&= binBytes == 3 * MatteTrack::getRecordBytes(k_matteWidth, k_matteHeight);
-	std::filesystem::resize_file(binPath, binBytes - 1, ec);
+	success&= binBytes > MatteTrack::getIndexBytes(3);
+
+	// The last record's offset moved past the end of the bin
+	{
+		std::fstream binFile(binPath, std::ios::in | std::ios::out | std::ios::binary);
+		binFile.seekp((std::streamoff)(2 * MatteTrack::k_indexEntryBytes), std::ios::beg);
+		const uint8_t farOffset[8]= {0, 0, 0, 0, 0, 0, 1, 0};
+		binFile.write((const char*)farOffset, sizeof(farOffset));
+		success&= (bool)binFile;
+	}
+
+	error.clear();
+	success&= !reader.open(jsonPath, k_sessionId, 3, error);
+	success&= !error.empty();
+	success&= !reader.isOpen();
+
+	std::filesystem::resize_file(binPath, MatteTrack::getIndexBytes(3) - 1, ec);
 	success&= !ec;
 
 	error.clear();
@@ -307,48 +326,153 @@ bool matte_track_test_temp_files()
 	UNIT_TEST_COMPLETE()
 }
 
-bool matte_track_test_pack_layout()
+bool matte_track_test_encode_layout()
 {
 	using namespace MatteTrackTestsInternal;
 
-	UNIT_TEST_BEGIN("pack and unpack round trip, with two bits per pixel least significant first")
+	UNIT_TEST_BEGIN("encode and decode round trip, with the run bytes the format defines")
 
-	// Labels 0, 1, 2, 1 in one byte: 00 | 01 << 2 | 10 << 4 | 01 << 6
+	// Four runs of one pixel each: label in bits 7-6, no continue, length - 1 of 0
 	cv::Mat row(1, 4, CV_8UC1);
 	row.at<uint8_t>(0, 0)= 0;
 	row.at<uint8_t>(0, 1)= 1;
 	row.at<uint8_t>(0, 2)= 2;
 	row.at<uint8_t>(0, 3)= 1;
-	std::vector<uint8_t> packed;
-	MatteTrack::packRecord(row, packed);
-	success&= packed.size() == 1;
-	success&= !packed.empty() && packed[0] == 0x64;
+	std::vector<uint8_t> encoded;
+	MatteTrack::encodeRecord(row, encoded);
+	success&= encoded == std::vector<uint8_t>({0x00, 0x40, 0x80, 0x40});
 
-	cv::Mat unpacked;
-	MatteTrack::unpackRecord(packed.data(), 4, 1, unpacked);
-	success&= labelsEqual(unpacked, row);
+	cv::Mat decoded;
+	success&= MatteTrack::decodeRecord(encoded.data(), encoded.size(), 4, 1, MatteTrack::k_labelValues, decoded);
+	success&= labelsEqual(decoded, row);
 
-	// A random record whose width is not a multiple of 4
+	// One run of 100 keep: length - 1 = 99 = 3 << 5 | 3, so 01 1 00011 then 0 0000011
+	MatteTrack::encodeRecord(cv::Mat(1, 100, CV_8UC1, cv::Scalar((int)eMatteLabel::keep)), encoded);
+	success&= encoded == std::vector<uint8_t>({0x63, 0x03});
+
+	// A run crosses row ends: a whole record of added is one run
+	MatteTrack::encodeRecord(cv::Mat(k_matteHeight, k_matteWidth, CV_8UC1, cv::Scalar((int)eMatteLabel::added)),
+							 encoded);
+	success&= encoded.size() == 2;
+	success&= MatteTrack::decodeRecord(encoded.data(), encoded.size(), k_matteWidth, k_matteHeight,
+									   MatteTrack::k_labelValues, decoded);
+	success&= decoded.rows == k_matteHeight && decoded.cols == k_matteWidth
+			  && cv::countNonZero(decoded != (int)eMatteLabel::added) == 0;
+
+	// A random record round trips
 	std::mt19937 generator(4242);
 	const cv::Mat labels= makeRandomLabels(generator);
-	MatteTrack::packRecord(labels, packed);
-	success&= MatteTrack::getRowBytes(k_matteWidth) == 10;
-	success&= packed.size() == MatteTrack::getRecordBytes(k_matteWidth, k_matteHeight);
-	success&= packed.size() == 10 * (size_t)k_matteHeight;
-	MatteTrack::unpackRecord(packed.data(), k_matteWidth, k_matteHeight, unpacked);
-	success&= labelsEqual(unpacked, labels);
+	MatteTrack::encodeRecord(labels, encoded);
+	success&= MatteTrack::decodeRecord(encoded.data(), encoded.size(), k_matteWidth, k_matteHeight,
+									   MatteTrack::k_labelValues, decoded);
+	success&= labelsEqual(decoded, labels);
 
-	// An all-keep record is the byte pattern the writer pre-sizes with
-	MatteTrack::packRecord(cv::Mat(k_matteHeight, k_matteWidth, CV_8UC1, cv::Scalar((int)eMatteLabel::keep)), packed);
-	bool bAllKeepBytes= !packed.empty();
-	for (uint8_t value : packed)
-		bAllKeepBytes&= value == MatteTrack::k_keepByte;
-	success&= bAllKeepBytes;
+	// A destination that is a view of a larger image is replaced by an image of its own
+	cv::Mat larger(k_matteHeight + 2, k_matteWidth + 3, CV_8UC1, cv::Scalar(9));
+	cv::Mat view= larger(cv::Rect(1, 1, k_matteWidth, k_matteHeight));
+	success&= MatteTrack::decodeRecord(encoded.data(), encoded.size(), k_matteWidth, k_matteHeight,
+									   MatteTrack::k_labelValues, view);
+	success&= labelsEqual(view, labels);
 
-	// A label past 2 packs as keep, and a non-label image packs to nothing
-	MatteTrack::packRecord(cv::Mat(1, 4, CV_8UC1, cv::Scalar(7)), packed);
-	success&= packed.size() == 1 && packed[0] == MatteTrack::k_keepByte;
-	MatteTrack::packRecord(cv::Mat(1, 4, CV_32FC1, cv::Scalar(0)), packed);
-	success&= packed.empty();
+	// A label past 2 encodes as keep, and a non-label image encodes to nothing
+	MatteTrack::encodeRecord(cv::Mat(1, 4, CV_8UC1, cv::Scalar(7)), encoded);
+	success&= encoded == std::vector<uint8_t>({0x43});
+	MatteTrack::encodeRecord(cv::Mat(1, 4, CV_32FC1, cv::Scalar(0)), encoded);
+	success&= encoded.empty();
+
+	// Malformed records are refused: label 3, a run whose length is cut off, runs
+	// short of the image, and runs past it
+	const uint8_t labelThree[]= {0xC3};
+	success&= !MatteTrack::decodeRecord(labelThree, sizeof(labelThree), 4, 1, MatteTrack::k_labelValues, decoded);
+	const uint8_t cutOff[]= {0x63};
+	success&= !MatteTrack::decodeRecord(cutOff, sizeof(cutOff), 100, 1, MatteTrack::k_labelValues, decoded);
+	const uint8_t shortRuns[]= {0x42};
+	success&= !MatteTrack::decodeRecord(shortRuns, sizeof(shortRuns), 4, 1, MatteTrack::k_labelValues, decoded);
+	const uint8_t longRuns[]= {0x44};
+	success&= !MatteTrack::decodeRecord(longRuns, sizeof(longRuns), 4, 1, MatteTrack::k_labelValues, decoded);
+	const uint8_t extraRun[]= {0x43, 0x40};
+	success&= !MatteTrack::decodeRecord(extraRun, sizeof(extraRun), 4, 1, MatteTrack::k_labelValues, decoded);
+	success&= !MatteTrack::decodeRecord(nullptr, 0, 4, 1, MatteTrack::k_labelValues, decoded);
+	UNIT_TEST_COMPLETE()
+}
+
+bool matte_track_test_label_values()
+{
+	using namespace MatteTrackTestsInternal;
+
+	UNIT_TEST_BEGIN("a read writes the asked value per label, an unwritten record included")
+	const std::filesystem::path directory= makeTestDirectory("label_values");
+	const std::filesystem::path jsonPath= directory / "take.matte.json";
+	std::mt19937 generator(99);
+	const cv::Mat written= makeRandomLabels(generator);
+
+	MatteTrackWriter writer;
+	success&= writer.open(jsonPath, makeHeader(2));
+	success&= writer.writeRecord(0, written);
+	success&= writer.finish();
+
+	const MatteLabelValues spread= {0, 128, 255};
+	MatteTrackReader reader;
+	std::string error;
+	success&= reader.open(jsonPath, k_sessionId, 2, error);
+
+	cv::Mat values;
+	success&= reader.readRecord(0, values, spread);
+	cv::Mat expected(written.size(), CV_8UC1);
+	for (int y= 0; y < written.rows; ++y)
+	{
+		for (int x= 0; x < written.cols; ++x)
+			expected.at<uint8_t>(y, x)= spread[written.at<uint8_t>(y, x)];
+	}
+	success&= labelsEqual(values, expected);
+
+	success&= reader.readRecord(1, values, spread);
+	success&= values.rows == k_matteHeight && values.cols == k_matteWidth && cv::countNonZero(values != 128) == 0;
+
+	reader.close();
+	removeTestDirectory(directory);
+	UNIT_TEST_COMPLETE()
+}
+
+bool matte_track_test_dedup()
+{
+	using namespace MatteTrackTestsInternal;
+
+	UNIT_TEST_BEGIN("a record equal to the one appended last shares its bytes")
+	const std::filesystem::path directory= makeTestDirectory("dedup");
+	const std::filesystem::path jsonPath= directory / "take.matte.json";
+	std::mt19937 generator(31);
+	const cv::Mat held= makeRandomLabels(generator);
+	const cv::Mat other= makeRandomLabels(generator);
+	std::vector<uint8_t> heldEncoded;
+	std::vector<uint8_t> otherEncoded;
+	MatteTrack::encodeRecord(held, heldEncoded);
+	MatteTrack::encodeRecord(other, otherEncoded);
+
+	// Records 0 to 2 hold one set of labels, record 3 another
+	MatteTrackWriter writer;
+	success&= writer.open(jsonPath, makeHeader(4));
+	success&= writer.writeRecord(0, held);
+	success&= writer.writeRecord(1, held);
+	success&= writer.writeRecord(2, held);
+	success&= writer.writeRecord(3, other);
+	success&= writer.finish();
+
+	std::error_code ec;
+	const uintmax_t binBytes= std::filesystem::file_size(MatteTrack::binPathForJson(jsonPath), ec);
+	success&= binBytes == MatteTrack::getIndexBytes(4) + heldEncoded.size() + otherEncoded.size();
+
+	MatteTrackReader reader;
+	std::string error;
+	success&= reader.open(jsonPath, k_sessionId, 4, error);
+	for (size_t index= 0; index < 4; ++index)
+	{
+		cv::Mat labels;
+		success&= reader.readRecord(index, labels);
+		success&= labelsEqual(labels, index < 3 ? held : other);
+	}
+
+	reader.close();
+	removeTestDirectory(directory);
 	UNIT_TEST_COMPLETE()
 }

@@ -480,10 +480,15 @@ void CompositorComponent::enqueueOcclusionMatte(int64_t frameIndex)
 	if (!matteSource || !m_videoDistortionView)
 		return;
 
+	// The labels 0, 1, 2 spread over the byte so the shader reads them as 0, 0.5 and 1
+	static const std::array<uint8_t, 3> k_matteTextureValues= {0, 128, 255};
 	cv::Mat labels;
 	int64_t sourceKey= -1;
-	if (!matteSource->tryGetLatestFrameMatte(labels, sourceKey) || labels.empty() || labels.type() != CV_8UC1)
+	if (!matteSource->tryGetLatestFrameMatte(k_matteTextureValues, labels, sourceKey) || labels.empty()
+		|| labels.type() != CV_8UC1 || !labels.isContinuous())
+	{
 		return;
+	}
 
 	// One slot more than the queue holds, so the frame being composited keeps its matte
 	// while the newest frame's is written
@@ -507,18 +512,7 @@ void CompositorComponent::enqueueOcclusionMatte(int64_t frameIndex)
 		slot.texture->createTexture();
 	}
 
-	// The labels 0, 1, 2 spread over the byte so the shader reads them as 0, 0.5 and 1
-	m_matteUploadBuffer.resize((size_t)labels.cols * labels.rows);
-	for (int y= 0; y < labels.rows; ++y)
-	{
-		const uint8_t* row= labels.ptr<uint8_t>(y);
-		uint8_t* out= m_matteUploadBuffer.data() + (size_t)y * labels.cols;
-		for (int x= 0; x < labels.cols; ++x)
-		{
-			out[x]= row[x] == 0 ? 0 : (row[x] == 1 ? 128 : 255);
-		}
-	}
-	slot.texture->copyBufferIntoTexture(m_matteUploadBuffer.data(), m_matteUploadBuffer.size());
+	slot.texture->copyBufferIntoTexture(labels.data, labels.total());
 	slot.frameIndex= frameIndex;
 	slot.sourceKey= sourceKey;
 }

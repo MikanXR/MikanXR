@@ -3,8 +3,8 @@
 
 #include <configuru.hpp>
 
-#include <algorithm>
 #include <chrono>
+#include <cstring>
 #include <ctime>
 #include <limits>
 #include <system_error>
@@ -12,8 +12,56 @@
 
 namespace MatteTrackInternal
 {
-// Bytes written per call while pre-sizing the bin file
-const size_t k_fillChunkBytes= 1 << 20;
+// A run's first byte: the label above the continue flag above 5 bits of length
+const int k_runLabelShift= 6;
+const uint8_t k_runFirstContinueBit= 0x20;
+const uint8_t k_runFirstLengthMask= 0x1f;
+const int k_runFirstLengthBits= 5;
+// The bytes after it: a continue flag above 7 bits of length
+const uint8_t k_runNextContinueBit= 0x80;
+const uint8_t k_runNextLengthMask= 0x7f;
+const int k_runNextLengthBits= 7;
+
+void appendRun(uint8_t label, uint64_t length, std::vector<uint8_t>& outEncoded)
+{
+	uint64_t remaining= length - 1;
+	uint8_t byte= (uint8_t)((label << k_runLabelShift) | (remaining & k_runFirstLengthMask));
+	remaining>>= k_runFirstLengthBits;
+	if (remaining != 0)
+		byte|= k_runFirstContinueBit;
+	outEncoded.push_back(byte);
+
+	while (remaining != 0)
+	{
+		byte= (uint8_t)(remaining & k_runNextLengthMask);
+		remaining>>= k_runNextLengthBits;
+		if (remaining != 0)
+			byte|= k_runNextContinueBit;
+		outEncoded.push_back(byte);
+	}
+}
+
+void putLittleEndian(uint64_t value, size_t byteCount, uint8_t* outBytes)
+{
+	for (size_t byteIndex= 0; byteIndex < byteCount; ++byteIndex)
+		outBytes[byteIndex]= (uint8_t)(value >> (8 * byteIndex));
+}
+
+uint64_t getLittleEndian(const uint8_t* bytes, size_t byteCount)
+{
+	uint64_t value= 0;
+	for (size_t byteIndex= 0; byteIndex < byteCount; ++byteIndex)
+		value|= (uint64_t)bytes[byteIndex] << (8 * byteIndex);
+	return value;
+}
+
+// Reads entry recordIndex of the index at the start of a bin
+void readIndexEntry(const uint8_t* bin, size_t recordIndex, uint64_t& outOffset, uint32_t& outSize)
+{
+	const uint8_t* entry= bin + recordIndex * MatteTrack::k_indexEntryBytes;
+	outOffset= getLittleEndian(entry, 8);
+	outSize= (uint32_t)getLittleEndian(entry + 8, 4);
+}
 
 std::string makeCreatedString()
 {
@@ -165,12 +213,7 @@ std::filesystem::path MatteTrack::binPathForJson(const std::filesystem::path& js
 	return binPath;
 }
 
-size_t MatteTrack::getRowBytes(int matteWidth) { return ((size_t)matteWidth + 3) / 4; }
-
-size_t MatteTrack::getRecordBytes(int matteWidth, int matteHeight)
-{
-	return getRowBytes(matteWidth) * (size_t)matteHeight;
-}
+size_t MatteTrack::getIndexBytes(size_t recordCount) { return recordCount * k_indexEntryBytes; }
 
 bool MatteTrack::validateHeader(const MatteTrackHeader& header, std::string& outError)
 {
@@ -207,51 +250,81 @@ bool MatteTrack::validateHeader(const MatteTrackHeader& header, std::string& out
 	return true;
 }
 
-void MatteTrack::packRecord(const cv::Mat& labels, std::vector<uint8_t>& outPacked)
+void MatteTrack::encodeRecord(const cv::Mat& labels, std::vector<uint8_t>& outEncoded)
 {
-	outPacked.clear();
+	outEncoded.clear();
 	if (labels.empty() || labels.type() != CV_8UC1)
 		return;
 
-	const int width= labels.cols;
-	const int height= labels.rows;
-	const size_t rowBytes= getRowBytes(width);
-	outPacked.assign(rowBytes * (size_t)height, 0);
-
 	const uint8_t keep= (uint8_t)eMatteLabel::keep;
 	const uint8_t added= (uint8_t)eMatteLabel::added;
-	for (int y= 0; y < height; ++y)
+	uint8_t runLabel= keep;
+	uint64_t runLength= 0;
+	for (int y= 0; y < labels.rows; ++y)
 	{
 		const uint8_t* labelRow= labels.ptr<uint8_t>(y);
-		uint8_t* packedRow= outPacked.data() + (size_t)y * rowBytes;
-		for (int x= 0; x < width; ++x)
+		for (int x= 0; x < labels.cols; ++x)
 		{
 			const uint8_t label= labelRow[x] > added ? keep : labelRow[x];
-			packedRow[x / 4]|= (uint8_t)(label << ((x % 4) * 2));
-		}
+			if (runLength > 0 && label == runLabel)
+			{
+				++runLength;
+				continue;
+			}
 
-		// The pixels past the row's end read as keep so the padding is deterministic
-		for (int x= width; x < (int)rowBytes * 4; ++x)
-			packedRow[x / 4]|= (uint8_t)(keep << ((x % 4) * 2));
+			if (runLength > 0)
+				MatteTrackInternal::appendRun(runLabel, runLength, outEncoded);
+			runLabel= label;
+			runLength= 1;
+		}
 	}
+	MatteTrackInternal::appendRun(runLabel, runLength, outEncoded);
 }
 
-void MatteTrack::unpackRecord(const uint8_t* packed, int width, int height, cv::Mat& outLabels)
+bool MatteTrack::decodeRecord(const uint8_t* encoded, size_t encodedBytes, int width, int height,
+							  const MatteLabelValues& labelValues, cv::Mat& outLabels)
 {
-	outLabels.create(height, width, CV_8UC1);
+	if (width <= 0 || height <= 0)
+		return false;
 
-	const size_t rowBytes= getRowBytes(width);
-	const uint8_t keep= (uint8_t)eMatteLabel::keep;
-	for (int y= 0; y < height; ++y)
+	// Runs cross row ends, so they fill the image as one block
+	outLabels.create(height, width, CV_8UC1);
+	if (!outLabels.isContinuous())
+		outLabels= cv::Mat(height, width, CV_8UC1);
+
+	uint8_t* labels= outLabels.data;
+	const uint64_t pixelCount= (uint64_t)width * (uint64_t)height;
+	uint64_t pixelsWritten= 0;
+	size_t position= 0;
+	while (position < encodedBytes)
 	{
-		const uint8_t* packedRow= packed + (size_t)y * rowBytes;
-		uint8_t* labelRow= outLabels.ptr<uint8_t>(y);
-		for (int x= 0; x < width; ++x)
+		const uint8_t first= encoded[position++];
+		const uint8_t label= (uint8_t)(first >> MatteTrackInternal::k_runLabelShift);
+		if (label > (uint8_t)eMatteLabel::added)
+			return false;
+
+		uint64_t lengthMinusOne= first & MatteTrackInternal::k_runFirstLengthMask;
+		bool bContinue= (first & MatteTrackInternal::k_runFirstContinueBit) != 0;
+		int shift= MatteTrackInternal::k_runFirstLengthBits;
+		while (bContinue)
 		{
-			const uint8_t label= (uint8_t)((packedRow[x / 4] >> ((x % 4) * 2)) & 0x3);
-			labelRow[x]= label > (uint8_t)eMatteLabel::added ? keep : label;
+			if (position >= encodedBytes || shift >= 64)
+				return false;
+
+			const uint8_t next= encoded[position++];
+			lengthMinusOne|= (uint64_t)(next & MatteTrackInternal::k_runNextLengthMask) << shift;
+			shift+= MatteTrackInternal::k_runNextLengthBits;
+			bContinue= (next & MatteTrackInternal::k_runNextContinueBit) != 0;
 		}
+
+		if (lengthMinusOne >= pixelCount - pixelsWritten)
+			return false;
+
+		std::memset(labels + pixelsWritten, labelValues[label], (size_t)lengthMinusOne + 1);
+		pixelsWritten+= lengthMinusOne + 1;
 	}
+
+	return pixelsWritten == pixelCount;
 }
 
 // -- MatteTrackWriter -----
@@ -285,7 +358,10 @@ bool MatteTrackWriter::open(const std::filesystem::path& jsonPath, const MatteTr
 	m_binPath= MatteTrack::binPathForJson(jsonPath);
 	m_jsonTempPath= jsonPath.string() + ".tmp";
 	m_binTempPath= m_binPath.string() + ".tmp";
-	m_recordBytes= MatteTrack::getRecordBytes(header.matteWidth, header.matteHeight);
+	m_index.assign(header.recordCount, IndexEntry());
+	m_binBytes= (uint64_t)MatteTrack::getIndexBytes(header.recordCount);
+	m_lastEncoded.clear();
+	m_lastEntry= IndexEntry();
 
 	std::error_code ec;
 	std::filesystem::create_directories(jsonPath.parent_path(), ec);
@@ -317,21 +393,14 @@ bool MatteTrackWriter::open(const std::filesystem::path& jsonPath, const MatteTr
 		return false;
 	}
 
-	// Every record starts as keep, so a record never written reads as keep
-	const uint64_t totalBytes= (uint64_t)header.recordCount * (uint64_t)m_recordBytes;
-	const std::vector<char> fill((size_t)std::min<uint64_t>(totalBytes, (uint64_t)MatteTrackInternal::k_fillChunkBytes),
-								 (char)MatteTrack::k_keepByte);
-	for (uint64_t written= 0; written < totalBytes;)
+	// Every record starts unwritten, so finish writes the index over zeros
+	const std::vector<char> zeroIndex((size_t)m_binBytes, 0);
+	m_binFile.write(zeroIndex.data(), (std::streamsize)zeroIndex.size());
+	if (!m_binFile)
 	{
-		const uint64_t chunk= std::min<uint64_t>(totalBytes - written, (uint64_t)fill.size());
-		m_binFile.write(fill.data(), (std::streamsize)chunk);
-		written+= chunk;
-		if (!m_binFile)
-		{
-			MIKAN_LOG_ERROR("MatteTrackWriter::open") << "Could not size " << m_binTempPath;
-			removeTempFiles();
-			return false;
-		}
+		MIKAN_LOG_ERROR("MatteTrackWriter::open") << "Could not size " << m_binTempPath;
+		removeTempFiles();
+		return false;
 	}
 
 	m_bIsOpen= true;
@@ -350,19 +419,32 @@ bool MatteTrackWriter::writeRecord(size_t recordIndex, const cv::Mat& labels)
 		return false;
 	}
 
-	MatteTrack::packRecord(labels, m_packed);
-	if (m_packed.size() != m_recordBytes)
+	MatteTrack::encodeRecord(labels, m_encoded);
+	if (m_encoded.empty() || m_encoded.size() > (size_t)std::numeric_limits<uint32_t>::max())
 		return false;
 
+	// A frame step holds the last labels over the frames between, so a record
+	// often repeats the one before it
+	if (m_lastEntry.size != 0 && m_encoded == m_lastEncoded)
+	{
+		m_index[recordIndex]= m_lastEntry;
+		return true;
+	}
+
 	m_binFile.clear();
-	m_binFile.seekp((std::streamoff)((uint64_t)recordIndex * (uint64_t)m_recordBytes), std::ios::beg);
-	m_binFile.write((const char*)m_packed.data(), (std::streamsize)m_packed.size());
+	m_binFile.seekp((std::streamoff)m_binBytes, std::ios::beg);
+	m_binFile.write((const char*)m_encoded.data(), (std::streamsize)m_encoded.size());
 	if (!m_binFile)
 	{
 		MIKAN_LOG_ERROR("MatteTrackWriter::writeRecord") << "Failed to write record " << (uint64_t)recordIndex;
 		return false;
 	}
 
+	m_lastEntry.offset= m_binBytes;
+	m_lastEntry.size= (uint32_t)m_encoded.size();
+	m_index[recordIndex]= m_lastEntry;
+	m_binBytes+= m_encoded.size();
+	std::swap(m_lastEncoded, m_encoded);
 	return true;
 }
 
@@ -371,6 +453,17 @@ bool MatteTrackWriter::finish()
 	if (!m_bIsOpen)
 		return false;
 
+	std::vector<uint8_t> indexBytes(MatteTrack::getIndexBytes(m_index.size()));
+	for (size_t recordIndex= 0; recordIndex < m_index.size(); ++recordIndex)
+	{
+		uint8_t* entry= indexBytes.data() + recordIndex * MatteTrack::k_indexEntryBytes;
+		MatteTrackInternal::putLittleEndian(m_index[recordIndex].offset, 8, entry);
+		MatteTrackInternal::putLittleEndian(m_index[recordIndex].size, 4, entry + 8);
+	}
+
+	m_binFile.clear();
+	m_binFile.seekp(0, std::ios::beg);
+	m_binFile.write((const char*)indexBytes.data(), (std::streamsize)indexBytes.size());
 	m_binFile.flush();
 	const bool bBinOk= (bool)m_binFile;
 	closeFile();
@@ -417,6 +510,9 @@ void MatteTrackWriter::closeFile()
 	if (m_binFile.is_open())
 		m_binFile.close();
 	m_binFile.clear();
+	m_index.clear();
+	m_encoded.clear();
+	m_lastEncoded.clear();
 }
 
 void MatteTrackWriter::removeTempFiles()
@@ -497,63 +593,88 @@ bool MatteTrackReader::open(const std::filesystem::path& jsonPath, const std::st
 	}
 
 	const std::filesystem::path binPath= MatteTrack::binPathForJson(jsonPath);
-	const uint64_t recordBytes= (uint64_t)MatteTrack::getRecordBytes(header.matteWidth, header.matteHeight);
-	const uint64_t expectedBinBytes= (uint64_t)header.recordCount * recordBytes;
-	const uint64_t binBytes= (uint64_t)std::filesystem::file_size(binPath, ec);
-	if (ec)
+	if (!std::filesystem::is_regular_file(binPath, ec))
 	{
 		outError= "Matte track data file is missing: " + binPath.string();
 		return false;
 	}
 
-	if (binBytes != expectedBinBytes)
+	std::vector<uint8_t> data;
 	{
-		outError= "Matte track data file " + binPath.string() + " is " + std::to_string(binBytes) + " bytes, expected "
-				  + std::to_string(expectedBinBytes);
+		std::ifstream binFile(binPath, std::ios::in | std::ios::binary | std::ios::ate);
+		if (!binFile.is_open())
+		{
+			outError= "Failed to open " + binPath.string();
+			return false;
+		}
+
+		const std::streamoff binBytes= binFile.tellg();
+		data.resize(binBytes > 0 ? (size_t)binBytes : 0);
+		binFile.seekg(0, std::ios::beg);
+		binFile.read((char*)data.data(), (std::streamsize)data.size());
+		if (!binFile)
+		{
+			outError= "Failed to read " + binPath.string();
+			return false;
+		}
+	}
+
+	const size_t indexBytes= MatteTrack::getIndexBytes(header.recordCount);
+	if (data.size() < indexBytes)
+	{
+		outError= "Matte track data file " + binPath.string() + " is " + std::to_string(data.size())
+				  + " bytes, shorter than its " + std::to_string(indexBytes) + " byte index";
 		return false;
 	}
 
-	m_binFile.open(binPath, std::ios::in | std::ios::binary);
-	if (!m_binFile.is_open())
+	for (size_t recordIndex= 0; recordIndex < header.recordCount; ++recordIndex)
 	{
-		outError= "Failed to open " + binPath.string();
-		close();
-		return false;
+		uint64_t offset= 0;
+		uint32_t size= 0;
+		MatteTrackInternal::readIndexEntry(data.data(), recordIndex, offset, size);
+		if (size != 0 && (offset < indexBytes || offset > data.size() || size > data.size() - offset))
+		{
+			outError= "Matte track data file " + binPath.string() + " places record " + std::to_string(recordIndex)
+					  + " outside the file";
+			return false;
+		}
 	}
 
 	m_header= std::move(header);
-	m_recordBytes= (size_t)recordBytes;
+	m_data= std::move(data);
 	m_bIsOpen= true;
 	return true;
 }
 
 void MatteTrackReader::close()
 {
-	if (m_binFile.is_open())
-		m_binFile.close();
-	m_binFile.clear();
-
 	m_header= MatteTrackHeader();
-	m_packed.clear();
-	m_recordBytes= 0;
+	m_data.clear();
+	m_data.shrink_to_fit();
 	m_bIsOpen= false;
 }
 
-bool MatteTrackReader::readRecord(size_t recordIndex, cv::Mat& outLabels) const
+bool MatteTrackReader::readRecord(size_t recordIndex, cv::Mat& outLabels, const MatteLabelValues& labelValues) const
 {
 	if (!m_bIsOpen || recordIndex >= m_header.recordCount)
 		return false;
 
-	m_packed.resize(m_recordBytes);
-	m_binFile.clear();
-	m_binFile.seekg((std::streamoff)((uint64_t)recordIndex * (uint64_t)m_recordBytes), std::ios::beg);
-	m_binFile.read((char*)m_packed.data(), (std::streamsize)m_packed.size());
-	if (!m_binFile || m_binFile.gcount() != (std::streamsize)m_packed.size())
+	uint64_t offset= 0;
+	uint32_t size= 0;
+	MatteTrackInternal::readIndexEntry(m_data.data(), recordIndex, offset, size);
+	if (size == 0)
 	{
-		MIKAN_LOG_ERROR("MatteTrackReader::readRecord") << "Failed to read record " << (uint64_t)recordIndex;
+		outLabels.create(m_header.matteHeight, m_header.matteWidth, CV_8UC1);
+		outLabels.setTo(labelValues[(size_t)eMatteLabel::keep]);
+		return true;
+	}
+
+	if (!MatteTrack::decodeRecord(m_data.data() + offset, size, m_header.matteWidth, m_header.matteHeight, labelValues,
+								  outLabels))
+	{
+		MIKAN_LOG_ERROR("MatteTrackReader::readRecord") << "Record " << (uint64_t)recordIndex << " is malformed";
 		return false;
 	}
 
-	MatteTrack::unpackRecord(m_packed.data(), m_header.matteWidth, m_header.matteHeight, outLabels);
 	return true;
 }

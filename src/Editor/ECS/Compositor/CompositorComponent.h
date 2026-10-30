@@ -261,7 +261,6 @@ private:
 	};
 	std::vector<MatteSlot> m_matteRing;
 	size_t m_matteWriteIndex= 0;
-	std::vector<uint8_t> m_matteUploadBuffer;
 	void enqueueOcclusionMatte(int64_t frameIndex);
 	// The pose the last composited frame was drawn from
 	glm::mat4 m_lastCompositedAperturePose_StageSpace= glm::mat4(1.f);
