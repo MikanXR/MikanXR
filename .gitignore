@@ -71,7 +71,8 @@ deps
 .vs
 .vscode/*
 !.vscode/launch.json
-.claude
+.claude/*
+!.claude/agents/
 
 #Mikan
 imgui.ini

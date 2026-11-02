@@ -16,6 +16,7 @@ MikanXR/
 ├── .github/workflows/build-and-test.yml # CI: Linux format-check and localization-check jobs + Windows Ninja build/test job
 ├── .github/workflows/release.yml       # tag-triggered release: Release build with GStreamer, tests, app zip + symbols zip + client SDK zip + installer as a draft release
 ├── .gitmodules                         # submodule list (all under thirdparty/)
+├── .claude/agents/                     # the delegated agents, one file per role, each binding its model, its tools, and its standing rules
 ├── cmake/                              # CMake modules: Environment, Version, ThirdParty, Installer, ClientSdk, Symbols, ClangFormat, Localization, Find*.cmake
 ├── src/                                # all first-party C++ source (the only tree clang-format touches)
 ├── bindings/                           # generated client bindings for C# and TypeScript
