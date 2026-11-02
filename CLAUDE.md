@@ -65,7 +65,8 @@ Read these for context, and keep them current as part of doing work:
 
 - Delegate confidently-specifiable work (mechanical refactors, migrations against a settled contract, well-specced isolated features) to subagents with disjoint file ownership, and review each diff on return. Design, contracts, and final verification stay in the main session.
 - Match the delegated model to the judgment the brief leaves unresolved: the least capable tier that will do the task reliably. A tight spec makes work mechanical, and mechanical work never pays for a premium model.
-- Delegated agents build their touched targets and verify their own surface only. The global gates (both test suites, FormatCheck) run once in the main session before each commit.
+- Delegated agents build their touched targets and verify their own surface only. The global gates (both test suites, FormatCheck) run once before each commit, from the main session or through its gate agent.
+- The agents under `.claude/agents/` (`executor`, `reviewer`, `auditor`, `gate`, `lander`) bind their model, their tools, and the standing rules of their role in their own files, so a brief names an agent and the task, never a model or the rules. The executor, reviewer, and auditor default to Opus and the gate and lander to Sonnet, which the Agent call's model parameter overrides when a brief warrants it.
 
 ### Git
 
