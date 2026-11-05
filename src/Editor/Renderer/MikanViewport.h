@@ -149,6 +149,8 @@ private:
 	int m_currentCameraIndex= 0;
 
 	const float k_camera_mouse_zoom_scalar= 0.1f;
+	// A wheel notch in fly mode covers this many seconds of flight at the camera speed setting
+	const float k_camera_mouse_dolly_seconds= 0.25f;
 	const float k_camera_mouse_pan_scalar= 0.25f;
 	const float k_camera_min_zoom= 0.01f;
 };

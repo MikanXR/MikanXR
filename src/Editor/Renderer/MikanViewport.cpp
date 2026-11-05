@@ -543,6 +543,13 @@ void MikanViewport::onMouseWheel(int scrollAmount)
 		const float zoomFactor= fmaxf(0.1f, 1.f - (float)scrollAmount * k_camera_mouse_zoom_scalar);
 		camera->setOrthoExtent(camera->getOrthoExtent() * zoomFactor);
 	}
+	else if (camera->getCameraMovementMode() == fly)
+	{
+		// Scrolling up dollies forward along the view direction, at the speed the fly keys use
+		auto editorObjectSystem= m_ownerWindow->getProjectManager()->getSystemOfType<EditorObjectSystem>();
+		const float cameraSpeed= editorObjectSystem->getEditorSystemConfig()->getCameraSpeed();
+		camera->adjustFlyForward((float)scrollAmount * cameraSpeed * k_camera_mouse_dolly_seconds);
+	}
 	else
 	{
 		const float deltaRadius= (float)scrollAmount * k_camera_mouse_zoom_scalar;
