@@ -51,6 +51,10 @@ void MikanViewport::setViewport(const glm::i32vec2& viewportOrigin, const glm::i
 
 void MikanViewport::setBackgroundColor(const glm::vec3& color) { m_backgroundColor= glm::vec4(color, 1.f); }
 
+void MikanViewport::setRenderTarget(IMkFrameBufferPtr target) { m_renderTarget= target; }
+
+IMkFrameBufferPtr MikanViewport::getRenderTarget() const { return m_renderTarget; }
+
 MikanViewport::~MikanViewport() { unbindInput(); }
 
 void MikanViewport::applyRenderingViewport(IMkState* glState)
@@ -116,6 +120,10 @@ bool MikanViewport::getRenderingViewport(glm::i32vec2& outOrigin, glm::i32vec2& 
 
 void MikanViewport::update(float deltaSeconds)
 {
+	// A viewport nothing shows takes no input, since its rect is stale
+	if (!m_bIsRenderingEnabled)
+		return;
+
 	// Don't process input if the cursor isn't in the viewport
 	glm::vec2 viewportLocation;
 	if (!getCursorViewportPixelPos(viewportLocation))
@@ -390,6 +398,9 @@ bool MikanViewport::getCursorViewportPixelPos(glm::vec2& outViewportLocation) co
 
 void MikanViewport::onMouseMotion(int deltaX, int deltaY)
 {
+	if (!m_bIsRenderingEnabled)
+		return;
+
 	MikanCameraPtr camera= std::static_pointer_cast<MikanCamera>(getCurrentCamera());
 
 	if (camera)
@@ -471,6 +482,9 @@ void MikanViewport::onMouseMotion(int deltaX, int deltaY)
 
 void MikanViewport::onMouseButtonPressed(int button)
 {
+	if (!m_bIsRenderingEnabled)
+		return;
+
 	MikanCameraPtr camera= std::static_pointer_cast<MikanCamera>(getCurrentCamera());
 
 	glm::vec2 viewportPos;
@@ -516,6 +530,9 @@ void MikanViewport::onMouseButtonReleased(int button)
 
 void MikanViewport::onMouseWheel(int scrollAmount)
 {
+	if (!m_bIsRenderingEnabled)
+		return;
+
 	MikanCameraPtr camera= std::static_pointer_cast<MikanCamera>(getCurrentCamera());
 	if (!camera)
 		return;

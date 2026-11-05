@@ -51,9 +51,12 @@ public:
 	virtual void render(IMkViewportPtr targetViewport);
 
 	// A stage that lays its panels out in a dockspace: the window hosts the
-	// dockspace and menu bar around onGui, and leaves the central node empty so
-	// the 3d scene shows through it
+	// dockspace and menu bar around onGui
 	virtual bool getUsesDockspace() const { return false; }
+	// True while the stage's scene view is hovered or mid-drag, so window input
+	// reaches the viewport although ImGui reports capture over the panel that
+	// presents it
+	virtual bool getViewportWantsInput() const { return false; }
 	// Called inside the host window's menu bar when getUsesDockspace is true
 	virtual void onMenuBarGui() {}
 	// Called only when there is no saved layout, to place the stage's panels

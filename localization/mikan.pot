@@ -4347,6 +4347,11 @@ msgid "Project"
 msgstr ""
 
 #. Section: project
+msgctxt "project.panelScene"
+msgid "Scene"
+msgstr ""
+
+#. Section: project
 msgctxt "project.panelScenes"
 msgid "Scenes"
 msgstr ""
@@ -6222,6 +6227,11 @@ msgstr ""
 #. Section: windows
 msgctxt "windows.projectSettings"
 msgid "Settings"
+msgstr ""
+
+#. Section: windows
+msgctxt "windows.scene"
+msgid "Scene"
 msgstr ""
 
 #. Section: windows

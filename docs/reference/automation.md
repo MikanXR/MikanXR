@@ -132,7 +132,7 @@ Value syntax for `property get`/`set`:
 
 ### Synthetic input (input)
 
-Injected input is posted to the real event queue, so it travels the path a user's input does: the same window routing, the same ImGui capture arbitration, the same listener. A driven session is therefore evidence about the shipping input path rather than about a test-only shortcut. Every verb raises the target window first, since input only lands where the OS is delivering it.
+Injected input is posted to the real event queue, so it travels the path a user's input does: the same window routing, the same ImGui capture arbitration (the Scene panel forwards input to the viewport while it is hovered or dragging), the same listener. A driven session is therefore evidence about the shipping input path rather than about a test-only shortcut. Every verb raises the target window first, since input only lands where the OS is delivering it.
 
 Mouse position is warped rather than fabricated, which moves the real cursor. ImGui's backend re-reads the OS cursor every frame whenever the pointer is not over one of our windows, and would overwrite a fabricated position before the widget under it saw the click.
 

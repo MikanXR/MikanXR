@@ -24,9 +24,13 @@ public:
 
 	virtual void setViewport(const glm::i32vec2& viewportOrigin, const glm::i32vec2& viewportSize) override;
 	virtual void setBackgroundColor(const glm::vec3& color) override;
+	const glm::vec4& getBackgroundColor() const { return m_backgroundColor; }
 
 	inline void setIsRenderingEnabled(bool enabled) { m_bIsRenderingEnabled= enabled; }
 	inline bool getIsRenderingEnabled() const { return m_bIsRenderingEnabled; }
+
+	void setRenderTarget(IMkFrameBufferPtr target);
+	IMkFrameBufferPtr getRenderTarget() const;
 
 	void bindInput();
 	void unbindInput();
@@ -135,6 +139,11 @@ private:
 	// restore the outer one rather than end the viewport's render.
 	std::vector<glm::i32vec4> m_appliedRenderRects;
 	glm::vec4 m_backgroundColor;
+	// The frame buffer the viewport renders into, or null for the window's back
+	// buffer. The origin and size stay the viewport's rect in window pixels either
+	// way, because the mouse rays, the ortho pan, and the input gate measure the
+	// cursor against that rect.
+	IMkFrameBufferPtr m_renderTarget;
 
 	std::vector<MikanCameraPtr> m_cameraPool;
 	int m_currentCameraIndex= 0;
