@@ -128,6 +128,19 @@ void InputManager::getMouseScreenPosition(int& outScreenX, int& outScreenY) cons
 	}
 }
 
+void InputManager::getMouseDesktopPosition(int& outDesktopX, int& outDesktopY) const
+{
+	if (m_ownerWindow)
+	{
+		m_ownerWindow->getMouseDesktopPosition(outDesktopX, outDesktopY);
+	}
+	else
+	{
+		outDesktopX= 0;
+		outDesktopY= 0;
+	}
+}
+
 KeyEventBindings* InputManager::getKeyBindings(MkKeySym key, uint16_t modMask)
 {
 	EventBindingSet* bindingSet= getCurrentEventBindingSet();

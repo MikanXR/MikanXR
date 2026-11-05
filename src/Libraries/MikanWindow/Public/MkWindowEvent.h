@@ -179,6 +179,9 @@ public:
 
 	virtual eMkWindowEventType getEventType() const= 0;
 	virtual eMkWindowEventID getWindowEventID() const= 0;
+	// The id of the OS window the event belongs to, or 0 for an event with no window
+	// (a quit). A listener that also owns child windows tells their events apart by it.
+	virtual uint32_t getWindowId() const= 0;
 	virtual MkKeySym getKeySym() const= 0;
 	virtual uint16_t getKeyMod() const= 0; // MkKeyMod flags held during a key event
 	virtual int getKeyRepeat() const= 0;

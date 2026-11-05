@@ -22,6 +22,11 @@ public:
 	virtual glm::i32vec2 getViewportOrigin() const override { return m_viewportOrigin; }
 	virtual glm::i32vec2 getViewportSize() const override { return m_viewportSize; }
 
+	// The rect's space follows the render target, so set the render target first.
+	// Without one the rect is in window pixels and is clamped to the window. With
+	// one it is in ImGui screen space (desktop pixels, since the main window's GUI
+	// runs multi-viewports), where a torn-out panel's rect sits outside the window,
+	// so it is taken as given.
 	virtual void setViewport(const glm::i32vec2& viewportOrigin, const glm::i32vec2& viewportSize) override;
 	virtual void setBackgroundColor(const glm::vec3& color) override;
 	const glm::vec4& getBackgroundColor() const { return m_backgroundColor; }
@@ -62,7 +67,8 @@ public:
 	bool getIsAltPressed() const { return m_isLeftAltPressed || m_isRightAltPressed; }
 	bool getIsShiftPressed() const { return m_isLeftShiftPressed || m_isRightShiftPressed; }
 
-	// Convert cursor pixel position from app window relative to viewport relative
+	// Convert the cursor position to viewport relative pixels, reading it in the
+	// same space as the viewport's rect
 	bool getCursorViewportPixelPos(glm::vec2& outViewportLocation) const;
 
 	MulticastDelegate<void()> OnMouseEntered;
@@ -140,9 +146,9 @@ private:
 	std::vector<glm::i32vec4> m_appliedRenderRects;
 	glm::vec4 m_backgroundColor;
 	// The frame buffer the viewport renders into, or null for the window's back
-	// buffer. The origin and size stay the viewport's rect in window pixels either
-	// way, because the mouse rays, the ortho pan, and the input gate measure the
-	// cursor against that rect.
+	// buffer. The origin and size are the rect the mouse rays, the ortho pan, and
+	// the input gate measure the cursor against: window pixels for the back buffer,
+	// ImGui screen space for a frame buffer a panel presents.
 	IMkFrameBufferPtr m_renderTarget;
 
 	std::vector<MikanCameraPtr> m_cameraPool;

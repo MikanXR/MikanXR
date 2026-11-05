@@ -51,7 +51,10 @@ public:
 	virtual ~InputManager();
 
 	bool onWindowEvent(const MkWindowEvent& event);
+	// The cursor in client pixels of whichever window has mouse focus
 	void getMouseScreenPosition(int& outScreenX, int& outScreenY) const;
+	// The cursor in desktop pixels, the space of the main window's ImGui positions
+	void getMouseDesktopPosition(int& outDesktopX, int& outDesktopY) const;
 
 	KeyEventBindings* getKeyBindings(MkKeySym key, uint16_t modMask= MkKeyMod::ANY);
 	KeyEventBindings* fetchOrAddKeyBindings(MkKeySym key, uint16_t modMask= MkKeyMod::ANY);

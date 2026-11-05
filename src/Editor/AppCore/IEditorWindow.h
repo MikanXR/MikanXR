@@ -21,6 +21,7 @@ public:
 	virtual float getHeight() const= 0;
 	virtual float getAspectRatio() const= 0;
 	virtual void getMouseScreenPosition(int& outScreenX, int& outScreenY) const= 0;
+	virtual void getMouseDesktopPosition(int& outDesktopX, int& outDesktopY) const= 0;
 
 	virtual class MikanModelResourceManager* getModelResourceManager()= 0;
 	virtual class MikanTextureCache* getTextureCache()= 0;

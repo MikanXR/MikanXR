@@ -1261,10 +1261,20 @@ void AppStage_Project::renderCameraAlignmentDebug(IMkGraphicsContext* graphicsCo
 
 void AppStage_Project::renderCameraAlignmentGui()
 {
-	const glm::i32vec2 vpOrigin= m_viewport ? m_viewport->getViewportOrigin() : glm::i32vec2(0, 45);
-	ImGui::SetNextWindowPos(
-		ImVec2((float)vpOrigin.x + 8 * MkGui::getUiScale(), (float)vpOrigin.y + 44 * MkGui::getUiScale()),
-		ImGuiCond_FirstUseEver);
+	// ImGui positions are desktop pixels. The viewport's rect is already in that
+	// space while the Scene panel presents it, and in window pixels otherwise, which
+	// sit at the main viewport's position.
+	const ImVec2 mainViewportPos= ImGui::GetMainViewport()->Pos;
+	ImVec2 vpOrigin(mainViewportPos.x, mainViewportPos.y + 45.f);
+	if (m_viewport)
+	{
+		const glm::i32vec2 viewportOrigin= m_viewport->getViewportOrigin();
+		vpOrigin= m_viewport->getRenderTarget() ? ImVec2((float)viewportOrigin.x, (float)viewportOrigin.y)
+												: ImVec2(mainViewportPos.x + (float)viewportOrigin.x,
+														 mainViewportPos.y + (float)viewportOrigin.y);
+	}
+	ImGui::SetNextWindowPos(ImVec2(vpOrigin.x + 8 * MkGui::getUiScale(), vpOrigin.y + 44 * MkGui::getUiScale()),
+							ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ImVec2(340.f * MkGui::getUiScale(), 0.f), ImGuiCond_FirstUseEver);
 
 	if (ImGui::Begin(locWindowTitle("windows.cameraAlignmentDebug")))

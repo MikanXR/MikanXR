@@ -185,7 +185,8 @@ bool MainWindow::startup()
 	if (success)
 	{
 		bool ok= false;
-		MIKAN_TIMED_STARTUP("startupGuiContext", ok= startupGuiContext("main", /*bEnableDocking=*/true));
+		MIKAN_TIMED_STARTUP("startupGuiContext",
+							ok= startupGuiContext("main", /*bEnableDocking=*/true, /*bEnableViewports=*/true));
 		if (!ok)
 			success= false;
 	}
@@ -580,7 +581,18 @@ void MainWindow::render()
 
 		// Finalize rendering
 		m_graphicsContext->renderEnd();
+	}
 
+	// Render the OS windows panels are torn out into. ImGui requires this pass on
+	// every frame the GUI ran NewFrame, which update does whether or not a stage is
+	// current or the GUI is hidden.
+	m_guiContext->renderPlatformWindows(
+		[this](uint32_t viewportId, int drawableWidth, int drawableHeight)
+		{ m_automationServer->servicePendingViewportCapture(viewportId, drawableWidth, drawableHeight); });
+	m_automationServer->failUnservicedViewportCapture();
+
+	if (appStage != nullptr)
+	{
 		// Capture the finished frame for any pending automation screenshot, then present the
 		// rendered frame (may block on vsync or SteamVR overlay DWM handshake)
 		presentFrame();
@@ -829,8 +841,14 @@ bool MainWindow::onWindowEvent(const MkWindowEvent& event)
 			break;
 		}
 
+		// A torn-out panel's OS window holds the focus while the user works in it,
+		// so its events pass the gate this window's focus guards
+		const uint32_t eventWindowId= event.getWindowId();
+		const bool bFromChildWindow= eventWindowId != 0 && eventWindowId != (uint32_t)m_mkWindowContext->getWindowId();
+
 		bHandled= bGuiHandled;
-		if (bForwardToInput && (m_mkWindowContext->hasMouseFocus() || m_mkWindowContext->hasKeyboardFocus()))
+		if (bForwardToInput
+			&& (m_mkWindowContext->hasMouseFocus() || m_mkWindowContext->hasKeyboardFocus() || bFromChildWindow))
 		{
 			bHandled= m_inputManager->onWindowEvent(event) || bGuiHandled;
 		}

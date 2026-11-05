@@ -24,6 +24,7 @@
 #include "MikanPropertyDatabase.h"
 #include "MikanServer.h"
 #include "MikanShaderConfig.h"
+#include "MkGuiContext.h"
 #include "PathUtils.h"
 #include "ProjectConfig.h"
 #include "ProjectManager.h"
@@ -50,6 +51,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <map>
@@ -68,6 +70,46 @@ bool parseComponentId(const std::string& token, int& outComponentId)
 
 	outComponentId= (int)parsed;
 	return true;
+}
+
+// Viewport ids are ImGui ids, listed and taken in hex with or without the 0x prefix
+std::string formatViewportId(uint32_t viewportId)
+{
+	char text[16];
+	snprintf(text, sizeof(text), "0x%08X", viewportId);
+	return text;
+}
+
+bool parseViewportId(const std::string& token, uint32_t& outViewportId)
+{
+	if (token.empty())
+		return false;
+
+	char* end= nullptr;
+	const unsigned long parsed= strtoul(token.c_str(), &end, 16);
+	if (end == nullptr || *end != '\0')
+		return false;
+
+	outViewportId= (uint32_t)parsed;
+	return true;
+}
+
+// A window id goes out quoted when it holds a space or a quote, so a listed id
+// pastes straight back into a command
+std::string quoteTokenIfNeeded(const std::string& token)
+{
+	if (token.find_first_of(" \t\"\\") == std::string::npos)
+		return token;
+
+	std::string quoted= "\"";
+	for (char c : token)
+	{
+		if (c == '"' || c == '\\')
+			quoted+= '\\';
+		quoted+= c;
+	}
+	quoted+= '"';
+	return quoted;
 }
 
 // Resolves an optional compositor component id token, defaulting to the project's single
@@ -493,8 +535,12 @@ void AutomationServer::registerCoreNamespaces()
 		std::bind(&AutomationServer::handleFunctionCommand, this, _1, _2, _3));
 
 	registerCommandNamespace("screenshot",
-							 {"screenshot compositor [componentId] [path]", "screenshot window [windowIndex] [path]"},
+							 {"screenshot compositor [componentId] [path]", "screenshot window [windowIndex] [path]",
+							  "screenshot viewport <viewportId> [path]"},
 							 std::bind(&AutomationServer::handleScreenshotCommand, this, _1, _2, _3));
+
+	registerCommandNamespace("gui", {"gui viewports", "gui float <windowId> <x> <y> [<width> <height>]"},
+							 std::bind(&AutomationServer::handleGuiCommand, this, _1, _2, _3));
 
 	registerCommandNamespace("window", {"window list", "window focus <windowIndex>"},
 							 std::bind(&AutomationServer::handleWindowCommand, this, _1, _2, _3));
@@ -504,7 +550,8 @@ void AutomationServer::registerCoreNamespaces()
 		{"input move <windowIndex> <x> <y>", "input click <windowIndex> <x> <y> [left|middle|right] [clickCount]",
 		 "input press|release <windowIndex> <x> <y> [left|middle|right]",
 		 "input wheel <windowIndex> <x> <y> <scrollY> [scrollX]",
-		 "input key|keydown|keyup <windowIndex> <keyName> [modifiers...]", "input text <windowIndex> <text...>"},
+		 "input key|keydown|keyup <windowIndex> <keyName> [modifiers...]", "input text <windowIndex> <text...>",
+		 "input <verb> viewport <viewportId> ... (any verb above, in a torn-out panel's window)"},
 		std::bind(&AutomationServer::handleInputCommand, this, _1, _2, _3));
 
 	registerCommandNamespace("script",
@@ -1000,7 +1047,7 @@ bool AutomationServer::handleScreenshotCommand(const std::vector<std::string>& a
 	}
 	else if (verb == "window")
 	{
-		if (m_bWindowCapturePending)
+		if (m_bWindowCapturePending || m_bViewportCapturePending)
 		{
 			outError= "a window capture is already pending";
 			return false;
@@ -1028,6 +1075,45 @@ bool AutomationServer::handleScreenshotCommand(const std::vector<std::string>& a
 		m_windowCapturePath= args.size() > nextArg ? args[nextArg] : "mikan_window.png";
 		m_windowCaptureTarget= targetWindow;
 		m_bWindowCapturePending= true;
+		m_bReplyDeferred= true;
+		return true;
+	}
+	else if (verb == "viewport")
+	{
+		if (m_bWindowCapturePending || m_bViewportCapturePending)
+		{
+			outError= "a window capture is already pending";
+			return false;
+		}
+
+		if (args.size() < 2)
+		{
+			outError= "usage: screenshot viewport <viewportId> [path]";
+			return false;
+		}
+
+		MkGuiViewportInfo viewport;
+		if (!resolveMainWindowViewport(args[1], viewport, outError))
+			return false;
+
+		const std::string path= args.size() > 2 ? args[2] : "mikan_viewport.png";
+
+		if (viewport.bIsMainViewport)
+		{
+			// The main viewport is the main window itself
+			m_windowCapturePath= path;
+			m_windowCaptureTarget= m_mainWindow;
+			m_bWindowCapturePending= true;
+		}
+		else
+		{
+			// Parked until the main window renders its torn-out viewports; the reply is
+			// sent from servicePendingViewportCapture
+			m_viewportCapturePath= path;
+			m_viewportCaptureId= viewport.viewportId;
+			m_bViewportCapturePending= true;
+		}
+
 		m_bReplyDeferred= true;
 		return true;
 	}
@@ -1696,6 +1782,36 @@ EditorWindow* AutomationServer::resolveWindowIndex(const std::string& indexText,
 	return appWindows[windowIndex];
 }
 
+bool AutomationServer::resolveMainWindowViewport(const std::string& idText, MkGuiViewportInfo& outViewport,
+												 std::string& outError) const
+{
+	uint32_t viewportId= 0;
+	if (!parseViewportId(idText, viewportId))
+	{
+		outError= "invalid viewport id '" + idText + "'";
+		return false;
+	}
+
+	MkGuiContext* guiContext= m_mainWindow->getGuiContext();
+	if (guiContext == nullptr)
+	{
+		outError= "the main window has no GUI";
+		return false;
+	}
+
+	for (const MkGuiViewportInfo& viewport : guiContext->getViewports())
+	{
+		if (viewport.viewportId == viewportId)
+		{
+			outViewport= viewport;
+			return true;
+		}
+	}
+
+	outError= "no viewport " + formatViewportId(viewportId) + " (see gui viewports)";
+	return false;
+}
+
 bool AutomationServer::handleWindowCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,
 										   std::string& outError)
 {
@@ -1752,19 +1868,47 @@ bool AutomationServer::handleInputCommand(const std::vector<std::string>& args, 
 
 	const std::string& verb= args[0];
 
-	EditorWindow* window= resolveWindowIndex(args[1], outError);
-	if (!window)
-		return false;
+	// The target is a window index, or `viewport <viewportId>` for a panel torn out of the main
+	// window into its own OS window, which the main window's context drives as a child window.
+	// The arguments after the target start at firstArg either way.
+	EditorWindow* window= nullptr;
+	uint32_t childWindowId= 0;
+	size_t firstArg= 2;
+	if (args[1] == "viewport")
+	{
+		if (args.size() < 3)
+		{
+			outError= "usage: input " + verb + " viewport <viewportId> ...";
+			return false;
+		}
+
+		MkGuiViewportInfo viewport;
+		if (!resolveMainWindowViewport(args[2], viewport, outError))
+			return false;
+
+		window= m_mainWindow;
+		childWindowId= viewport.bIsMainViewport ? 0 : viewport.platformWindowId;
+		firstArg= 3;
+	}
+	else
+	{
+		window= resolveWindowIndex(args[1], outError);
+		if (!window)
+			return false;
+	}
 
 	IMkWindowContextPtr windowContext= window->getMkWindowContext();
 
 	// Injected input only reaches ImGui and the window's listener if the window is actually the one
 	// receiving OS input, so every verb raises it first.
-	windowContext->raiseWindow();
+	if (childWindowId != 0)
+		windowContext->raiseChildWindow(childWindowId);
+	else
+		windowContext->raiseWindow();
 
 	if (verb == "move" || verb == "click" || verb == "press" || verb == "release" || verb == "wheel")
 	{
-		if (args.size() < 4)
+		if (args.size() < firstArg + 2)
 		{
 			outError= "usage: input " + verb + " <windowIndex> <x> <y> ...";
 			return false;
@@ -1772,76 +1916,81 @@ bool AutomationServer::handleInputCommand(const std::vector<std::string>& args, 
 
 		int windowX= 0;
 		int windowY= 0;
-		if (!parseComponentId(args[2], windowX) || !parseComponentId(args[3], windowY))
+		if (!parseComponentId(args[firstArg], windowX) || !parseComponentId(args[firstArg + 1], windowY))
 		{
-			outError= "invalid position '" + args[2] + " " + args[3] + "'";
+			outError= "invalid position '" + args[firstArg] + " " + args[firstArg + 1] + "'";
 			return false;
 		}
 
-		windowContext->warpMouseToWindowPosition(windowX, windowY);
+		if (childWindowId != 0)
+			windowContext->warpMouseToChildWindowPosition(childWindowId, windowX, windowY);
+		else
+			windowContext->warpMouseToWindowPosition(windowX, windowY);
 
 		if (verb == "move")
 			return true;
+
+		const size_t optionArg= firstArg + 2;
 
 		if (verb == "wheel")
 		{
 			int scrollY= 0;
 			int scrollX= 0;
-			if (args.size() < 5 || !parseComponentId(args[4], scrollY))
+			if (args.size() < optionArg + 1 || !parseComponentId(args[optionArg], scrollY))
 			{
 				outError= "usage: input wheel <windowIndex> <x> <y> <scrollY> [scrollX]";
 				return false;
 			}
-			if (args.size() >= 6 && !parseComponentId(args[5], scrollX))
+			if (args.size() >= optionArg + 2 && !parseComponentId(args[optionArg + 1], scrollX))
 			{
-				outError= "invalid scrollX '" + args[5] + "'";
+				outError= "invalid scrollX '" + args[optionArg + 1] + "'";
 				return false;
 			}
 
-			windowContext->injectMouseWheel(windowX, windowY, scrollX, scrollY);
+			windowContext->injectMouseWheel(windowX, windowY, scrollX, scrollY, childWindowId);
 			return true;
 		}
 
 		int mkMouseButton= MkMouseButton::LEFT;
-		if (args.size() >= 5 && !parseMouseButtonName(args[4], mkMouseButton))
+		if (args.size() >= optionArg + 1 && !parseMouseButtonName(args[optionArg], mkMouseButton))
 		{
-			outError= "unknown mouse button '" + args[4] + "' (left|middle|right)";
+			outError= "unknown mouse button '" + args[optionArg] + "' (left|middle|right)";
 			return false;
 		}
 
 		int clickCount= 1;
-		if (args.size() >= 6 && !parseComponentId(args[5], clickCount))
+		if (args.size() >= optionArg + 2 && !parseComponentId(args[optionArg + 1], clickCount))
 		{
-			outError= "invalid click count '" + args[5] + "'";
+			outError= "invalid click count '" + args[optionArg + 1] + "'";
 			return false;
 		}
 
 		// press and release are the halves of click, for drags and for widgets whose popup only
 		// survives while the button is held
 		if (verb != "release")
-			windowContext->injectMouseButton(mkMouseButton, true, windowX, windowY, clickCount);
+			windowContext->injectMouseButton(mkMouseButton, true, windowX, windowY, clickCount, childWindowId);
 		if (verb != "press")
-			windowContext->injectMouseButton(mkMouseButton, false, windowX, windowY, clickCount);
+			windowContext->injectMouseButton(mkMouseButton, false, windowX, windowY, clickCount, childWindowId);
 
 		return true;
 	}
 	else if (verb == "key" || verb == "keydown" || verb == "keyup")
 	{
-		if (args.size() < 3)
+		if (args.size() < firstArg + 1)
 		{
 			outError= "usage: input " + verb + " <windowIndex> <keyName> [modifiers...]";
 			return false;
 		}
 
 		MkKeySym keySym= MkKey::UNKNOWN;
-		if (!parseKeyName(args[2], keySym))
+		if (!parseKeyName(args[firstArg], keySym))
 		{
-			outError= "unknown key '" + args[2] + "'";
+			outError= "unknown key '" + args[firstArg] + "'";
 			return false;
 		}
 
 		uint16_t keyMod= MkKeyMod::NONE;
-		for (size_t argIndex= 3; argIndex < args.size(); ++argIndex)
+		for (size_t argIndex= firstArg + 1; argIndex < args.size(); ++argIndex)
 		{
 			uint16_t parsedMod= MkKeyMod::NONE;
 			if (!parseKeyModifier(args[argIndex], parsedMod))
@@ -1855,23 +2004,23 @@ bool AutomationServer::handleInputCommand(const std::vector<std::string>& args, 
 		// keydown and keyup are the halves of key, so a drive can hold a
 		// modifier (keydown ctrl ctrl) across a mouse press, move, and release
 		if (verb != "keyup")
-			windowContext->injectKey(keySym, keyMod, true);
+			windowContext->injectKey(keySym, keyMod, true, childWindowId);
 		if (verb != "keydown")
-			windowContext->injectKey(keySym, keyMod, false);
+			windowContext->injectKey(keySym, keyMod, false, childWindowId);
 		return true;
 	}
 	else if (verb == "text")
 	{
-		// Free text: take the remainder of the raw line so spacing and quoting survive tokenization
-		const std::string text=
-			AutomationProtocol::remainderAfterTokens(getCurrentCommandLine(), 3); // input text <windowIndex>
+		// Free text: take the remainder of the raw line so spacing and quoting survive tokenization.
+		// The tokens before it are `input text <windowIndex>` or `input text viewport <viewportId>`.
+		const std::string text= AutomationProtocol::remainderAfterTokens(getCurrentCommandLine(), firstArg + 1);
 		if (text.empty())
 		{
 			outError= "usage: input text <windowIndex> <text...>";
 			return false;
 		}
 
-		windowContext->injectText(text);
+		windowContext->injectText(text, childWindowId);
 		return true;
 	}
 
@@ -1895,6 +2044,101 @@ void AutomationServer::servicePendingWindowCapture(EditorWindow* window, int win
 	{
 		sendErrorReply("screenshot window: failed to write '" + m_windowCapturePath + "'");
 	}
+}
+
+void AutomationServer::servicePendingViewportCapture(uint32_t viewportId, int drawableWidth, int drawableHeight)
+{
+	if (!m_bViewportCapturePending || viewportId != m_viewportCaptureId)
+		return;
+
+	m_bViewportCapturePending= false;
+
+	if (saveDefaultFramebufferToPNG(drawableWidth, drawableHeight, m_viewportCapturePath.c_str()))
+	{
+		sendReply({std::filesystem::absolute(m_viewportCapturePath).string()});
+	}
+	else
+	{
+		sendErrorReply("screenshot viewport: failed to write '" + m_viewportCapturePath + "'");
+	}
+}
+
+void AutomationServer::failUnservicedViewportCapture()
+{
+	if (!m_bViewportCapturePending)
+		return;
+
+	m_bViewportCapturePending= false;
+	sendErrorReply("screenshot viewport: viewport " + formatViewportId(m_viewportCaptureId)
+				   + " did not render (closed, hidden, or minimized)");
+}
+
+bool AutomationServer::handleGuiCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,
+										std::string& outError)
+{
+	if (args.empty())
+	{
+		outError= "usage: gui viewports|float ...";
+		return false;
+	}
+
+	MkGuiContext* guiContext= m_mainWindow->getGuiContext();
+	if (guiContext == nullptr)
+	{
+		outError= "the main window has no GUI";
+		return false;
+	}
+
+	const std::string& verb= args[0];
+
+	if (verb == "viewports")
+	{
+		for (const MkGuiViewportInfo& viewport : guiContext->getViewports())
+		{
+			std::string line= formatViewportId(viewport.viewportId) + " " + std::to_string(viewport.x) + ","
+							  + std::to_string(viewport.y) + " " + std::to_string(viewport.width) + "x"
+							  + std::to_string(viewport.height);
+			for (const std::string& windowId : viewport.windowIds)
+			{
+				line+= " " + quoteTokenIfNeeded(windowId);
+			}
+
+			outLines.push_back(line);
+		}
+
+		return true;
+	}
+	else if (verb == "float")
+	{
+		if (args.size() != 4 && args.size() != 6)
+		{
+			outError= "usage: gui float <windowId> <x> <y> [<width> <height>]";
+			return false;
+		}
+
+		int x= 0;
+		int y= 0;
+		int width= 0;
+		int height= 0;
+		if (!parseComponentId(args[2], x) || !parseComponentId(args[3], y))
+		{
+			outError= "invalid position '" + args[2] + " " + args[3] + "'";
+			return false;
+		}
+		if (args.size() == 6
+			&& (!parseComponentId(args[4], width) || !parseComponentId(args[5], height) || width <= 0 || height <= 0))
+		{
+			outError= "invalid size '" + args[4] + " " + args[5] + "'";
+			return false;
+		}
+
+		// Applied at the start of the next GUI frame, so the window shows up in
+		// `gui viewports` a frame or two later
+		return guiContext->requestFloatWindow(args[1], x, y, width, height, outError);
+	}
+
+	outError= "unknown verb '" + verb + "'";
+	return false;
 }
 
 bool AutomationServer::handleScriptCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,

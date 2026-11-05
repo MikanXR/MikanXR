@@ -213,6 +213,11 @@ void SdlWindowContext::getMouseScreenPosition(int& outScreenX, int& outScreenY) 
 	SDL_GetMouseState(&outScreenX, &outScreenY);
 }
 
+void SdlWindowContext::getMouseDesktopPosition(int& outDesktopX, int& outDesktopY) const
+{
+	SDL_GetGlobalMouseState(&outDesktopX, &outDesktopY);
+}
+
 void SdlWindowContext::handleEvents(IMkWindowEventListener* eventListener)
 {
 	IMkWindowContextManagerPtr ownerWindowManager= m_ownerWindowManager.lock();
@@ -230,7 +235,29 @@ void SdlWindowContext::handleEvents(IMkWindowEventListener* eventListener)
 		{
 			bHandled= handleSDLWindowEvent(&sdlEvent);
 
-			if (!bHandled && eventListener != nullptr)
+			if (eventListener != nullptr)
+			{
+				SdlWindowEvent mkEvent(&sdlEvent);
+				if (!bHandled)
+				{
+					bHandled= eventListener->onWindowEvent(mkEvent);
+				}
+				else if (sdlEvent.type == SDL_WINDOWEVENT)
+				{
+					// A window event this window has already applied still reaches the listener.
+					// An ImGui context with multi-viewports tracks which of its OS windows holds
+					// the mouse from the enter events, and without this window's own it keeps
+					// treating the last torn-out window the mouse entered as hovered.
+					eventListener->onWindowEvent(mkEvent);
+				}
+			}
+		}
+		else if (eventListener != nullptr)
+		{
+			// A child window's resize, focus or close is that window's own, so it skips
+			// handleSDLWindowEvent rather than touch this window's size, focus or destroy flag
+			const uint32_t childWindowId= getSdlEventWindowId(&sdlEvent);
+			if (childWindowId != 0 && eventListener->ownsChildWindow(childWindowId))
 			{
 				SdlWindowEvent mkEvent(&sdlEvent);
 				bHandled= eventListener->onWindowEvent(mkEvent);
@@ -366,7 +393,20 @@ uint8_t mkMouseButtonToSdlButton(int mkMouseButton)
 }
 } // namespace
 
+uint32_t SdlWindowContext::resolveInjectedWindowId(uint32_t childWindowId) const
+{
+	return childWindowId != 0 ? childWindowId : (uint32_t)m_windowId;
+}
+
 void SdlWindowContext::raiseWindow() { focus(); }
+
+void SdlWindowContext::raiseChildWindow(uint32_t childWindowId)
+{
+	if (SDL_Window* childWindow= SDL_GetWindowFromID(childWindowId))
+	{
+		SDL_RaiseWindow(childWindow);
+	}
+}
 
 void SdlWindowContext::warpMouseToWindowPosition(int windowX, int windowY)
 {
@@ -374,7 +414,16 @@ void SdlWindowContext::warpMouseToWindowPosition(int windowX, int windowY)
 	SDL_WarpMouseInWindow(m_sdlWindow, windowX, windowY);
 }
 
-void SdlWindowContext::injectMouseButton(int mkMouseButton, bool bPressed, int windowX, int windowY, int clickCount)
+void SdlWindowContext::warpMouseToChildWindowPosition(uint32_t childWindowId, int windowX, int windowY)
+{
+	if (SDL_Window* childWindow= SDL_GetWindowFromID(childWindowId))
+	{
+		SDL_WarpMouseInWindow(childWindow, windowX, windowY);
+	}
+}
+
+void SdlWindowContext::injectMouseButton(int mkMouseButton, bool bPressed, int windowX, int windowY, int clickCount,
+										 uint32_t childWindowId)
 {
 	const uint8_t sdlButton= mkMouseButtonToSdlButton(mkMouseButton);
 	if (sdlButton == 0)
@@ -383,7 +432,7 @@ void SdlWindowContext::injectMouseButton(int mkMouseButton, bool bPressed, int w
 	SDL_Event sdlEvent{};
 	sdlEvent.type= bPressed ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP;
 	sdlEvent.button.timestamp= SDL_GetTicks();
-	sdlEvent.button.windowID= (uint32_t)m_windowId;
+	sdlEvent.button.windowID= resolveInjectedWindowId(childWindowId);
 	sdlEvent.button.which= 0;
 	sdlEvent.button.button= sdlButton;
 	sdlEvent.button.state= bPressed ? SDL_PRESSED : SDL_RELEASED;
@@ -394,12 +443,12 @@ void SdlWindowContext::injectMouseButton(int mkMouseButton, bool bPressed, int w
 	SDL_PushEvent(&sdlEvent);
 }
 
-void SdlWindowContext::injectMouseWheel(int windowX, int windowY, int scrollX, int scrollY)
+void SdlWindowContext::injectMouseWheel(int windowX, int windowY, int scrollX, int scrollY, uint32_t childWindowId)
 {
 	SDL_Event sdlEvent{};
 	sdlEvent.type= SDL_MOUSEWHEEL;
 	sdlEvent.wheel.timestamp= SDL_GetTicks();
-	sdlEvent.wheel.windowID= (uint32_t)m_windowId;
+	sdlEvent.wheel.windowID= resolveInjectedWindowId(childWindowId);
 	sdlEvent.wheel.which= 0;
 	sdlEvent.wheel.x= scrollX;
 	sdlEvent.wheel.y= scrollY;
@@ -412,12 +461,12 @@ void SdlWindowContext::injectMouseWheel(int windowX, int windowY, int scrollX, i
 	SDL_PushEvent(&sdlEvent);
 }
 
-void SdlWindowContext::injectKey(MkKeySym keySym, uint16_t keyMod, bool bPressed)
+void SdlWindowContext::injectKey(MkKeySym keySym, uint16_t keyMod, bool bPressed, uint32_t childWindowId)
 {
 	SDL_Event sdlEvent{};
 	sdlEvent.type= bPressed ? SDL_KEYDOWN : SDL_KEYUP;
 	sdlEvent.key.timestamp= SDL_GetTicks();
-	sdlEvent.key.windowID= (uint32_t)m_windowId;
+	sdlEvent.key.windowID= resolveInjectedWindowId(childWindowId);
 	sdlEvent.key.state= bPressed ? SDL_PRESSED : SDL_RELEASED;
 	sdlEvent.key.repeat= 0;
 	sdlEvent.key.keysym.sym= (SDL_Keycode)keySym;
@@ -427,7 +476,7 @@ void SdlWindowContext::injectKey(MkKeySym keySym, uint16_t keyMod, bool bPressed
 	SDL_PushEvent(&sdlEvent);
 }
 
-void SdlWindowContext::injectText(const std::string& utf8Text)
+void SdlWindowContext::injectText(const std::string& utf8Text, uint32_t childWindowId)
 {
 	// SDL_TextInputEvent carries a fixed 32 byte buffer, so longer text goes out as several events.
 	// Splitting only on a UTF-8 lead byte keeps multi-byte characters intact across the boundary.
@@ -449,7 +498,7 @@ void SdlWindowContext::injectText(const std::string& utf8Text)
 		SDL_Event sdlEvent{};
 		sdlEvent.type= SDL_TEXTINPUT;
 		sdlEvent.text.timestamp= SDL_GetTicks();
-		sdlEvent.text.windowID= (uint32_t)m_windowId;
+		sdlEvent.text.windowID= resolveInjectedWindowId(childWindowId);
 		memcpy(sdlEvent.text.text, utf8Text.data() + offset, chunkBytes);
 		sdlEvent.text.text[chunkBytes]= '\0';
 

@@ -114,10 +114,14 @@ void scaleWindowLayout(float factor)
 		}
 	}
 
-	// The floating windows that are already live. A docked window takes its size
-	// from its node instead, and a child from its parent, so scaling those is
-	// overwritten rather than wrong.
-	ImGui::ScaleWindowsInViewport((ImGuiViewportP*)ImGui::GetMainViewport(), factor);
+	// The floating windows that are already live, in the main window and in every
+	// OS window a panel is torn out into. A docked window takes its size from its
+	// node instead, and a child from its parent, so scaling those is overwritten
+	// rather than wrong.
+	for (ImGuiViewportP* viewport : context->Viewports)
+	{
+		ImGui::ScaleWindowsInViewport(viewport, factor);
+	}
 
 	// The stored settings, which is where a window that has not been created yet
 	// gets its size from. Without this, a panel closed when the scale changed

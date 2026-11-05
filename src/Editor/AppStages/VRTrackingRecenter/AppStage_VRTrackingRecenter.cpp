@@ -397,7 +397,9 @@ void AppStage_VRTrackingRecenter::onGui()
 
 	const float panelWidth= 415.f * MkGui::getUiScale();
 	const float displayWidth= m_ownerWindow->getWidth();
-	ImGui::SetNextWindowPos(ImVec2(displayWidth - panelWidth, 0.f), ImGuiCond_Always);
+	// ImGui positions are desktop pixels, so the panel anchors to the main window
+	const ImVec2 mainWorkPos= ImGui::GetMainViewport()->WorkPos;
+	ImGui::SetNextWindowPos(ImVec2(mainWorkPos.x + displayWidth - panelWidth, mainWorkPos.y), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(ImVec2(panelWidth, 0), ImGuiCond_Always);
 
 	constexpr ImGuiWindowFlags k_flags=

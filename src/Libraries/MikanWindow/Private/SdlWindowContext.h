@@ -29,6 +29,7 @@ public:
 	virtual bool getIsRenderingStage() const override { return m_isRenderingStage; }
 
 	virtual void getMouseScreenPosition(int& outScreenX, int& outScreenY) const override;
+	virtual void getMouseDesktopPosition(int& outDesktopX, int& outDesktopY) const override;
 
 	virtual eWindowAPI getWindowAPI() const override { return eWindowAPI::SDL; }
 	virtual void* getNativeWindowHandle() const override { return m_sdlWindow; }
@@ -47,11 +48,14 @@ public:
 
 	virtual int getWindowId() const override { return m_windowId; }
 	virtual void raiseWindow() override;
+	virtual void raiseChildWindow(uint32_t childWindowId) override;
 	virtual void warpMouseToWindowPosition(int windowX, int windowY) override;
-	virtual void injectMouseButton(int mkMouseButton, bool bPressed, int windowX, int windowY, int clickCount) override;
-	virtual void injectMouseWheel(int windowX, int windowY, int scrollX, int scrollY) override;
-	virtual void injectKey(MkKeySym keySym, uint16_t keyMod, bool bPressed) override;
-	virtual void injectText(const std::string& utf8Text) override;
+	virtual void warpMouseToChildWindowPosition(uint32_t childWindowId, int windowX, int windowY) override;
+	virtual void injectMouseButton(int mkMouseButton, bool bPressed, int windowX, int windowY, int clickCount,
+								   uint32_t childWindowId) override;
+	virtual void injectMouseWheel(int windowX, int windowY, int scrollX, int scrollY, uint32_t childWindowId) override;
+	virtual void injectKey(MkKeySym keySym, uint16_t keyMod, bool bPressed, uint32_t childWindowId) override;
+	virtual void injectText(const std::string& utf8Text, uint32_t childWindowId) override;
 
 	// -- SdlWindowContext specific --
 	void focus();
@@ -65,6 +69,8 @@ public:
 
 protected:
 	bool handleSDLWindowEvent(const SDL_Event* event);
+	// The id an injected event is stamped with: the child window's, or this window's for zero
+	uint32_t resolveInjectedWindowId(uint32_t childWindowId) const;
 
 private:
 	IMkWindowContextManagerWeakPtr m_ownerWindowManager;

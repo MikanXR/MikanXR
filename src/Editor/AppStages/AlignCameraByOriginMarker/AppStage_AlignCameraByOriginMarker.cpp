@@ -259,7 +259,8 @@ void AppStage_AlignCameraByOriginMarker::onGui()
 											  | ImGuiWindowFlags_NoBringToFrontOnFocus
 											  | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
 
-		ImGui::SetNextWindowPos(ImVec2(0.f, 0.f));
+		const ImVec2 mainPos= ImGui::GetMainViewport()->Pos;
+		ImGui::SetNextWindowPos(mainPos);
 		ImGui::SetNextWindowSize(ImVec2(videoAreaWidth, displaySize.y));
 		ImGui::SetNextWindowBgAlpha(0.0f);
 		if (ImGui::Begin("##VideoTargetBg", nullptr, k_bgFlags))
@@ -278,7 +279,9 @@ void AppStage_AlignCameraByOriginMarker::onGui()
 	const float panelWidth= 415.f * MkGui::getUiScale();
 	const float displayWidth= m_ownerWindow->getWidth();
 
-	ImGui::SetNextWindowPos(ImVec2(displayWidth - panelWidth, 0.f), ImGuiCond_Always);
+	// ImGui positions are desktop pixels, so the panel anchors to the main window
+	const ImVec2 mainWorkPos= ImGui::GetMainViewport()->WorkPos;
+	ImGui::SetNextWindowPos(ImVec2(mainWorkPos.x + displayWidth - panelWidth, mainWorkPos.y), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(ImVec2(panelWidth, 0), ImGuiCond_Always);
 	constexpr ImGuiWindowFlags k_flags=
 		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;

@@ -43,6 +43,16 @@ void EditorWindow::getMouseScreenPosition(int& outScreenX, int& outScreenY) cons
 	m_mkWindowContext->getMouseScreenPosition(outScreenX, outScreenY);
 }
 
+void EditorWindow::getMouseDesktopPosition(int& outDesktopX, int& outDesktopY) const
+{
+	m_mkWindowContext->getMouseDesktopPosition(outDesktopX, outDesktopY);
+}
+
+bool EditorWindow::ownsChildWindow(uint32_t windowId) const
+{
+	return m_guiContext != nullptr && m_guiContext->ownsPlatformWindow(windowId);
+}
+
 MikanModelResourceManager* EditorWindow::getModelResourceManager() { return m_modelResourceManager.get(); }
 
 MikanTextureCache* EditorWindow::getTextureCache() { return m_textureCache.get(); }
@@ -153,7 +163,7 @@ bool EditorWindow::startupWindow(const std::string& title, int width, int height
 	return true;
 }
 
-bool EditorWindow::startupGuiContext(const std::string& iniName, bool bEnableDocking)
+bool EditorWindow::startupGuiContext(const std::string& iniName, bool bEnableDocking, bool bEnableViewports)
 {
 	EASY_FUNCTION();
 
@@ -164,7 +174,8 @@ bool EditorWindow::startupGuiContext(const std::string& iniName, bool bEnableDoc
 	std::filesystem::create_directories(iniDir);
 	const std::filesystem::path iniPath= iniDir / ("imgui_" + iniName + ".ini");
 
-	m_guiContext= std::make_shared<MkGuiContext>(getMkWindowContext().get(), iniPath.string(), bEnableDocking);
+	m_guiContext=
+		std::make_shared<MkGuiContext>(getMkWindowContext().get(), iniPath.string(), bEnableDocking, bEnableViewports);
 	if (!m_guiContext->startup())
 	{
 		MIKAN_LOG_ERROR("EditorWindow::startupGuiContext") << "Unable to create GUI context";

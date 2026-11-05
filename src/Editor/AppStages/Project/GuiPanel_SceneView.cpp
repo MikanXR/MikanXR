@@ -86,11 +86,13 @@ void GuiPanel_SceneView::onGui()
 	if (!colorTexture || colorTexture->getGlTextureId() == 0)
 		return;
 
-	// The viewport's rect is the image's screen rect, so the mouse rays and the
-	// camera aspect follow the panel while the render goes to the frame buffer
+	// The viewport's rect is the image's ImGui screen rect (desktop pixels, so it
+	// holds in a torn-out window too), so the mouse rays and the camera aspect
+	// follow the panel while the render goes to the frame buffer. The render
+	// target goes first, since it selects the space setViewport takes the rect in.
 	const ImVec2 imagePos= ImGui::GetCursorScreenPos();
-	m_viewport->setViewport({(int)imagePos.x, (int)imagePos.y}, {imageWidth, imageHeight});
 	m_viewport->setRenderTarget(m_frameBuffer);
+	m_viewport->setViewport({(int)imagePos.x, (int)imagePos.y}, {imageWidth, imageHeight});
 	m_viewport->setIsRenderingEnabled(true);
 	m_bDrawnThisFrame= true;
 
