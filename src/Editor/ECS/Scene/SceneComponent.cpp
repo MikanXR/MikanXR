@@ -198,7 +198,10 @@ void SceneComponent::onDefinitionMarkedDirty(CommonConfigPtr configPtr,
 {
 	TransformComponent::onDefinitionMarkedDirty(configPtr, changedPropertySet);
 
-	if (changedPropertySet.hasPropertyName(SceneComponentDefinition::k_displayCompositorIdPropertyId))
+	// Only the current scene drives the active compositors. Another scene's choice
+	// takes effect when activateScene() runs on switching to it.
+	if (changedPropertySet.hasPropertyName(SceneComponentDefinition::k_displayCompositorIdPropertyId)
+		&& isCurrentScene())
 	{
 		refreshActiveCompositors();
 	}
