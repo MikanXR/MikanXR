@@ -93,7 +93,7 @@ The living plan: what is in flight now, what comes next, and the open questions.
 - [ ] A live ARKit source notices a restarted phone session only as `frameSeq` running backwards while the editor runs. A session restarted while the editor was closed keeps the old offset, since the stream carries no session id. Sending the ARKit session id with the stream would let the source tag its offset the way a file source does.
 - [ ] Record ARKit's per-frame tracking state in the pose track so the fusion can skip limited-tracking frames, which it now fuses at whatever pose ARKit reported.
 - [ ] Depth of field: follow an autofocusing camera. `focus_distance` is fixed per camera, which is what a focus-locked lens holds. A phone that refocuses would need a metric focus distance per frame from MikanARStreamer, if ARKit or AVFoundation can report one.
-- [ ] Depth of field: focus on a CG pixel. Ctrl+click in the compositor output window focuses on stencils only. Focusing on the character itself needs a readback of the client depth texel under the cursor.
+- [ ] Depth of field: focus on a CG pixel. Ctrl+click in the compositor output panel focuses on stencils only. Focusing on the character itself needs a readback of the client depth texel under the cursor.
 - [ ] Depth of field: publish `focus_distance` and `aperture_diameter_mm` to clients, for a client that renders its own blur. A wire change: the camera values struct and the properties event.
 - [ ] Depth of field: a half resolution gather for blur radii beyond 32 pixels, where the 64 tap spiral gets sparse.
 - [ ] Stereo calibration: `MikanStereoIntrinsics` and the rectification math exist but no stereo calibration AppStage does.

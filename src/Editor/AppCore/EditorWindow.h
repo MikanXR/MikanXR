@@ -76,7 +76,7 @@ public:
 protected:
 	// Shares the MainWindow's GL context instead of creating a new one, so scene resources
 	// (VAOs, FBOs, textures) allocated on the MainWindow remain accessible. Used by satellite
-	// windows (e.g. NodeEditorWindow, CompositorOutputEditorWindow); MainWindow does not call this.
+	// windows (e.g. NodeEditorWindow); MainWindow does not call this.
 	void shareGraphicsContextWithMainWindow();
 
 	bool startupWindow(const std::string& title, int width, int height);

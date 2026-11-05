@@ -149,6 +149,7 @@ protected:
 	class GuiPanel_HttpTriggers* m_httpTriggersPanel= nullptr;
 	class GuiPanel_SceneList* m_sceneListPanel= nullptr;
 	class GuiPanel_CompositorList* m_compositorListPanel= nullptr;
+	class GuiPanel_CompositorOutput* m_compositorOutputPanel= nullptr;
 	class GuiPanel_Assets* m_assetsPanel= nullptr;
 	eProjectViewMode m_viewMode= eProjectViewMode::INVALID;
 	// Window visibility, driven by the View menu (session-only)
@@ -157,6 +158,7 @@ protected:
 	bool m_bHttpTriggersPanelVisible= true;
 	bool m_bSceneListVisible= true;
 	bool m_bCompositorListVisible= true;
+	bool m_bCompositorOutputVisible= true;
 	bool m_bAssetsPanelVisible= true;
 	bool m_bDMXPanelVisible= false;
 	bool m_bShowLogPanel= true;

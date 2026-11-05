@@ -45,6 +45,7 @@
 #include "Project/GuiPanel_ProjectOutliner.h"
 #include "Project/GuiPanel_Assets.h"
 #include "Project/GuiPanel_CompositorList.h"
+#include "Project/GuiPanel_CompositorOutput.h"
 #include "Project/GuiPanel_HttpTriggers.h"
 #include "Project/GuiPanel_ProjectSettings.h"
 #include "Project/GuiPanel_SceneList.h"
@@ -185,6 +186,9 @@ void AppStage_Project::enter()
 		m_compositorListPanel= addGuiPanel<GuiPanel_CompositorList>();
 		m_compositorListPanel->init(m_projectGuiPanelContext, m_projectOutlinerPanel);
 
+		m_compositorOutputPanel= addGuiPanel<GuiPanel_CompositorOutput>();
+		m_compositorOutputPanel->init(getGraphicsContext());
+
 		m_assetsPanel= addGuiPanel<GuiPanel_Assets>();
 		m_assetsPanel->init(m_projectGuiPanelContext);
 	}
@@ -235,6 +239,7 @@ void AppStage_Project::exit()
 	m_httpTriggersPanel= nullptr;
 	m_sceneListPanel= nullptr;
 	m_compositorListPanel= nullptr;
+	m_compositorOutputPanel= nullptr;
 	m_assetsPanel= nullptr;
 
 	// Unregister all viewports from the editor
@@ -421,6 +426,23 @@ void AppStage_Project::onGui()
 		}
 	}
 
+	// The composite of the current scene's display compositor. A hidden tab
+	// renders nothing that frame.
+	if (m_bCompositorOutputVisible && m_compositorOutputPanel != nullptr)
+	{
+		// The image is sized from the window, so a floating window would otherwise
+		// auto-fit to its empty first frame and shrink to a title bar
+		ImGui::SetNextWindowSize(ImVec2(640.f, 360.f), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSizeConstraints(ImVec2(320.f, 180.f), ImVec2(FLT_MAX, FLT_MAX));
+		MkGuiScopedWindow compositorOutputWindow(locWindowTitle("windows.compositorOutput"),
+												 &m_bCompositorOutputVisible,
+												 ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+		if (compositorOutputWindow)
+		{
+			m_compositorOutputPanel->onGui();
+		}
+	}
+
 	// The project asset browser
 	if (m_bAssetsPanelVisible && m_assetsPanel != nullptr)
 	{
@@ -490,6 +512,7 @@ void AppStage_Project::onMenuBarGui()
 		ImGui::MenuItem(locLabel("project.panelHttpTriggers"), nullptr, &m_bHttpTriggersPanelVisible);
 		ImGui::MenuItem(locLabel("project.panelScenes"), nullptr, &m_bSceneListVisible);
 		ImGui::MenuItem(locLabel("project.panelCompositors"), nullptr, &m_bCompositorListVisible);
+		ImGui::MenuItem(locLabel("project.panelCompositorOutput"), nullptr, &m_bCompositorOutputVisible);
 		ImGui::MenuItem(locLabel("project.panelAssets"), nullptr, &m_bAssetsPanelVisible);
 		ImGui::MenuItem(locLabel("project.panelDMX"), nullptr, &m_bDMXPanelVisible);
 		ImGui::Separator();
@@ -504,6 +527,7 @@ void AppStage_Project::onMenuBarGui()
 			m_bHttpTriggersPanelVisible= true;
 			m_bSceneListVisible= true;
 			m_bCompositorListVisible= true;
+			m_bCompositorOutputVisible= true;
 			m_bAssetsPanelVisible= true;
 			m_bShowLogPanel= true;
 			m_bDockLayoutResetRequested= true;
@@ -552,11 +576,13 @@ void AppStage_Project::applyPendingProjectActions()
 
 void AppStage_Project::onBuildDefaultDockLayout(unsigned int dockspaceId)
 {
-	// Project and Settings tabbed on the right. Along the bottom, left to right:
-	// the scene list, the compositor list, the assets browser, and the log. The
-	// central node is left empty for the scene.
+	// Project and Settings tabbed on the right. In the middle, the scene view and
+	// the compositor output side by side. Along the bottom of the scene view, left
+	// to right: the scene list, the compositor list, the assets browser, and the
+	// log. The central node is left empty for the scene.
 	ImGuiID remaining= (ImGuiID)dockspaceId;
 	const ImGuiID rightId= MkGui::dockBuilderSplit(remaining, ImGuiDir_Right, 0.28f, remaining);
+	const ImGuiID compositorOutputId= MkGui::dockBuilderSplit(remaining, ImGuiDir_Right, 0.45f, remaining);
 	// The bottom row is tall enough for a row of asset tiles, and the assets
 	// browser takes half of what the two lists leave, so its folder list and
 	// tile grid both fit at a 720p window
@@ -569,6 +595,7 @@ void AppStage_Project::onBuildDefaultDockLayout(unsigned int dockspaceId)
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.projectSettings"), rightId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.httpTriggers"), rightId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.dmx"), rightId);
+	MkGui::dockBuilderDockWindow(locWindowTitle("windows.compositorOutput"), compositorOutputId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.scenes"), scenesId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.compositors"), compositorsId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.assets"), assetsId);
