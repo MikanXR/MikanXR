@@ -47,8 +47,14 @@ public:
 	virtual void render(IMkViewportPtr targetViewport) override;
 
 	virtual bool getUsesDockspace() const override { return true; }
+	virtual bool getViewportWantsInput() const override;
 	virtual void onMenuBarGui() override;
 	virtual void onBuildDefaultDockLayout(unsigned int dockspaceId) override;
+
+	// Editor camera views, indexed as the view-mode combo lists them:
+	// 0 is the perspective view, 1..6 are the eCameraViewpoint orthographic views
+	void applyCameraView(int viewIndex);
+	int getCurrentCameraViewIndex() const;
 
 protected:
 	SceneComponentConstPtr getCurrentSceneConst() const;
@@ -79,10 +85,6 @@ protected:
 	void setViewMode(eProjectViewMode newViewMode);
 	void onViewModeChanged();
 
-	// Editor camera views, indexed as the view-mode combo lists them:
-	// 0 is the perspective view, 1..6 are the eCameraViewpoint orthographic views
-	void applyCameraView(int viewIndex);
-	int getCurrentCameraViewIndex() const;
 	bool captureCameraState(EditorCameraState& outCameraState) const;
 	void restoreCameraState();
 	// The camera pose is written back to the editor settings once it comes to rest,
@@ -144,19 +146,23 @@ protected:
 	class ProjectGuiPanelContext* m_projectGuiPanelContext= nullptr;
 
 	// Project-level ImGui panels
+	class GuiPanel_SceneView* m_sceneViewPanel= nullptr;
 	class GuiPanel_ProjectOutliner* m_projectOutlinerPanel= nullptr;
 	class GuiPanel_ProjectSettings* m_projectSettingsPanel= nullptr;
 	class GuiPanel_HttpTriggers* m_httpTriggersPanel= nullptr;
 	class GuiPanel_SceneList* m_sceneListPanel= nullptr;
 	class GuiPanel_CompositorList* m_compositorListPanel= nullptr;
+	class GuiPanel_CompositorOutput* m_compositorOutputPanel= nullptr;
 	class GuiPanel_Assets* m_assetsPanel= nullptr;
 	eProjectViewMode m_viewMode= eProjectViewMode::INVALID;
 	// Window visibility, driven by the View menu (session-only)
+	bool m_bSceneViewVisible= true;
 	bool m_bOutlinerVisible= true;
 	bool m_bSettingsPanelVisible= true;
 	bool m_bHttpTriggersPanelVisible= true;
 	bool m_bSceneListVisible= true;
 	bool m_bCompositorListVisible= true;
+	bool m_bCompositorOutputVisible= true;
 	bool m_bAssetsPanelVisible= true;
 	bool m_bDMXPanelVisible= false;
 	bool m_bShowLogPanel= true;

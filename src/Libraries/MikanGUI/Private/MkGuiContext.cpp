@@ -39,17 +39,23 @@
 #endif
 
 #include "imgui.h"
+// IMGUI_DEFINE_MATH_OPERATORS comes from the MikanGUI target definitions
+#include "imgui_internal.h"
 #include "misc/cpp/imgui_stdlib.h"
 #include "backends/imgui_impl_sdl2.h"
 #include "backends/imgui_impl_opengl3.h"
 
+#include <cstring>
+
 // The app-wide user scale multiplier, applied on top of each monitor's content scale
 static float g_userUiScale= 1.f;
 
-MkGuiContext::MkGuiContext(class IMkWindowContext* window, const std::string& iniFilePath, bool bEnableDocking)
+MkGuiContext::MkGuiContext(class IMkWindowContext* window, const std::string& iniFilePath, bool bEnableDocking,
+						   bool bEnableViewports)
 	: m_window(window)
 	, m_iniFilePath(iniFilePath)
 	, m_bEnableDocking(bEnableDocking)
+	, m_bEnableViewports(bEnableViewports)
 {
 }
 
@@ -341,6 +347,16 @@ void MkGuiContext::configImGui()
 		io.IniFilename= m_iniFilePath.c_str();
 	}
 
+	// Set before the first NewFrame, which is when the ini loads the torn-out
+	// windows' viewport positions. The viewport config stays at ImGui's defaults:
+	// ImGui-drawn title bars on borderless OS windows, a taskbar entry per torn-out
+	// window, and a floating panel becoming an OS window only once it crosses the
+	// main window's edge.
+	if (m_bEnableViewports)
+	{
+		io.ConfigFlags|= ImGuiConfigFlags_ViewportsEnable;
+	}
+
 	if (m_bEnableDocking)
 	{
 		io.ConfigFlags|= ImGuiConfigFlags_DockingEnable;
@@ -361,4 +377,223 @@ void MkGuiContext::configImGui()
 	ImFont* uiFont= MkGuiTheme::loadFonts();
 	m_NormalIconFont= uiFont;
 	m_BigIconFont= uiFont;
+}
+
+void MkGuiContext::renderPlatformWindows(const ViewportRenderedCallback& viewportRenderedCallback)
+{
+	if (!m_bEnableViewports || m_imguiContext == nullptr || m_imguiGraphicsAPI != eGraphicsAPI::OpenGL)
+		return;
+
+	MkGuiScopedContext scopedContext(*this);
+
+	if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) == 0)
+		return;
+
+	// Each torn-out window renders on its own GL context, which the SDL backend
+	// creates sharing objects with this window's, so this window's context has to
+	// be current again before its own frame presents
+	SDL_Window* backupWindow= SDL_GL_GetCurrentWindow();
+	SDL_GLContext backupContext= SDL_GL_GetCurrentContext();
+
+	ImGui::UpdatePlatformWindows();
+
+	// RenderPlatformWindowsDefault, walked here so a torn-out window's back buffer
+	// can be read between its render and its swap
+	ImGuiPlatformIO& platformIO= ImGui::GetPlatformIO();
+	for (int viewportIndex= 1; viewportIndex < platformIO.Viewports.Size; ++viewportIndex)
+	{
+		ImGuiViewport* viewport= platformIO.Viewports[viewportIndex];
+		if (viewport->Flags & ImGuiViewportFlags_IsMinimized)
+			continue;
+
+		if (platformIO.Platform_RenderWindow)
+			platformIO.Platform_RenderWindow(viewport, nullptr);
+		if (platformIO.Renderer_RenderWindow)
+			platformIO.Renderer_RenderWindow(viewport, nullptr);
+
+		if (viewportRenderedCallback)
+		{
+			SDL_Window* viewportWindow= SDL_GetWindowFromID((Uint32)(intptr_t)viewport->PlatformHandle);
+			int drawableWidth= 0;
+			int drawableHeight= 0;
+			if (viewportWindow != nullptr)
+			{
+				SDL_GL_GetDrawableSize(viewportWindow, &drawableWidth, &drawableHeight);
+			}
+
+			viewportRenderedCallback(viewport->ID, drawableWidth, drawableHeight);
+		}
+	}
+
+	for (int viewportIndex= 1; viewportIndex < platformIO.Viewports.Size; ++viewportIndex)
+	{
+		ImGuiViewport* viewport= platformIO.Viewports[viewportIndex];
+		if (viewport->Flags & ImGuiViewportFlags_IsMinimized)
+			continue;
+
+		if (platformIO.Platform_SwapBuffers)
+			platformIO.Platform_SwapBuffers(viewport, nullptr);
+		if (platformIO.Renderer_SwapBuffers)
+			platformIO.Renderer_SwapBuffers(viewport, nullptr);
+	}
+
+	SDL_GL_MakeCurrent(backupWindow, backupContext);
+}
+
+bool MkGuiContext::ownsPlatformWindow(uint32_t windowId)
+{
+	if (!m_bEnableViewports || m_imguiContext == nullptr || windowId == 0)
+		return false;
+
+	MkGuiScopedContext scopedContext(*this);
+
+	ImGuiViewport* viewport= ImGui::FindViewportByPlatformHandle((void*)(intptr_t)windowId);
+	return viewport != nullptr && viewport != ImGui::GetMainViewport();
+}
+
+// The part of a window's ImGui name its ID hashes from: what follows "###" when
+// the name carries one, the whole name otherwise
+static const char* getStableWindowId(const ImGuiWindow* window) { return ImHashSkipUncontributingPrefix(window->Name); }
+
+// A window the user sees as a panel, drawn last frame: not a child region, dock
+// node host or popup, and not one of the "##" hosts that carry no title
+static bool isListedWindow(const ImGuiWindow* window)
+{
+	if (!window->WasActive)
+		return false;
+	if ((window->Flags & ImGuiWindowFlags_ChildWindow) && !window->DockIsActive)
+		return false;
+	if (window->Flags
+		& (ImGuiWindowFlags_DockNodeHost | ImGuiWindowFlags_Popup | ImGuiWindowFlags_Tooltip
+		   | ImGuiWindowFlags_ChildMenu))
+		return false;
+
+	const char* stableId= getStableWindowId(window);
+	return stableId[0] != 0 && strncmp(stableId, "##", 2) != 0;
+}
+
+std::vector<MkGuiViewportInfo> MkGuiContext::getViewports()
+{
+	std::vector<MkGuiViewportInfo> viewportInfos;
+	if (m_imguiContext == nullptr)
+		return viewportInfos;
+
+	MkGuiScopedContext scopedContext(*this);
+
+	ImGuiContext& context= *ImGui::GetCurrentContext();
+	const ImGuiViewport* mainViewport= ImGui::GetMainViewport();
+	for (ImGuiViewportP* viewport : context.Viewports)
+	{
+		MkGuiViewportInfo info;
+		info.viewportId= viewport->ID;
+		info.platformWindowId= (uint32_t)(intptr_t)viewport->PlatformHandle;
+		info.bIsMainViewport= viewport == mainViewport;
+		info.x= (int)viewport->Pos.x;
+		info.y= (int)viewport->Pos.y;
+		info.width= (int)viewport->Size.x;
+		info.height= (int)viewport->Size.y;
+
+		for (ImGuiWindow* window : context.Windows)
+		{
+			if (window->Viewport == viewport && isListedWindow(window))
+			{
+				info.windowIds.push_back(getStableWindowId(window));
+			}
+		}
+
+		// The main viewport leads, whatever order ImGui keeps them in
+		if (info.bIsMainViewport)
+			viewportInfos.insert(viewportInfos.begin(), info);
+		else
+			viewportInfos.push_back(info);
+	}
+
+	return viewportInfos;
+}
+
+bool MkGuiContext::requestFloatWindow(const std::string& windowId, int x, int y, int width, int height,
+									  std::string& outError)
+{
+	if (!m_bEnableViewports || m_imguiContext == nullptr)
+	{
+		outError= "this window's GUI has no multi-viewports";
+		return false;
+	}
+
+	MkGuiScopedContext scopedContext(*this);
+
+	const std::string stableSuffix= "###" + windowId;
+	ImGuiWindow* matchedWindow= nullptr;
+	for (ImGuiWindow* window : ImGui::GetCurrentContext()->Windows)
+	{
+		if (!isListedWindow(window))
+			continue;
+
+		const std::string windowName= window->Name;
+		const bool bEndsWithStableId=
+			windowName.size() >= stableSuffix.size()
+			&& windowName.compare(windowName.size() - stableSuffix.size(), stableSuffix.size(), stableSuffix) == 0;
+		if (windowName == windowId || bEndsWithStableId)
+		{
+			matchedWindow= window;
+			break;
+		}
+	}
+
+	if (matchedWindow == nullptr)
+	{
+		outError= "no open window '" + windowId + "'";
+		return false;
+	}
+
+	PendingFloatRequest request;
+	request.windowName= matchedWindow->Name;
+	request.x= x;
+	request.y= y;
+	request.width= width;
+	request.height= height;
+	m_pendingFloatRequests.push_back(request);
+
+	return true;
+}
+
+void MkGuiContext::applyPendingFloatRequests()
+{
+	if (m_pendingFloatRequests.empty())
+		return;
+
+	MkGuiScopedContext scopedContext(*this);
+
+	for (const PendingFloatRequest& request : m_pendingFloatRequests)
+	{
+		ImGuiWindow* window= ImGui::FindWindowByName(request.windowName.c_str());
+		if (window == nullptr)
+			continue;
+
+		// The same undock a tab dragged out of its node gets
+		ImGui::DockContextProcessUndockWindow(ImGui::GetCurrentContext(), window, true);
+
+		const ImVec2 desktopPos((float)request.x, (float)request.y);
+		ImGui::SetWindowPos(window, desktopPos, ImGuiCond_Always);
+		if (request.width > 0 && request.height > 0)
+		{
+			ImGui::SetWindowSize(window, ImVec2((float)request.width, (float)request.height), ImGuiCond_Always);
+		}
+
+		// A window that already owns its viewport carries it to the new position.
+		// One still in the main viewport would only be clamped back to that
+		// viewport's edge, so it drops the viewport and takes the path a window
+		// restored from the ini takes: its next Begin creates a viewport at the
+		// saved position, which stays its own unless the window fits inside the
+		// main window.
+		const bool bOwnsViewport= window->Viewport != nullptr && window->Viewport->Window == window;
+		if (!bOwnsViewport)
+		{
+			window->Viewport= nullptr;
+			window->ViewportId= window->ID;
+			window->ViewportPos= desktopPos;
+		}
+	}
+
+	m_pendingFloatRequests.clear();
 }

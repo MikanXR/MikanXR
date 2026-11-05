@@ -60,7 +60,6 @@ public:
 	virtual bool setPropertyValue(const std::string& propertyName, const MikanVariant& inValue) override;
 
 	// -- IFunctionInterface ----
-	static const std::string k_showCompositorOutputFunctionId;
 	static const std::string k_activateSceneFunctionId;
 	static void getFunctionDescriptors(std::vector<FunctionDescriptorConstPtr>& outDescriptors);
 	virtual bool invokeFunction(const std::string& functionName) override;
@@ -81,7 +80,6 @@ public:
 	std::vector<MikanCompositorID> getOutputCompositorIDs() const;
 	std::vector<CompositorComponentPtr> getOutputCompositors() const;
 	void attachToStage(MikanStageID newParentId);
-	void showCompositorOutput();
 	void activateScene();
 	void deactivateScene();
 	void refreshActiveCompositors();

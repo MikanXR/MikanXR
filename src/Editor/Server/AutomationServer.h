@@ -66,6 +66,16 @@ public:
 	/// runs only for the window the command named.
 	void servicePendingWindowCapture(class EditorWindow* window, int windowWidth, int windowHeight);
 
+	/// Capture a torn-out panel's OS window for a pending screenshot viewport
+	/// command. Called by the main window for each torn-out viewport, with that
+	/// viewport's GL context current, after it renders and before it swaps.
+	void servicePendingViewportCapture(uint32_t viewportId, int drawableWidth, int drawableHeight);
+
+	/// Answer a pending screenshot viewport command whose viewport did not render
+	/// this frame (closed, hidden, or minimized), so the client is not left waiting.
+	/// Called by the main window after its torn-out viewports render.
+	void failUnservicedViewportCapture();
+
 	/// Register a command namespace. Future features (transaction history,
 	/// metrics, ...) add their surface here.
 	void registerCommandNamespace(const std::string& namespaceName, const std::vector<std::string>& helpLines,
@@ -127,9 +137,15 @@ private:
 							std::string& outError);
 	bool handleAssetsCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,
 							 std::string& outError);
+	bool handleGuiCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,
+						  std::string& outError);
 
 	/// Resolve a window index from the `window list` ordering.
 	class EditorWindow* resolveWindowIndex(const std::string& indexText, std::string& outError) const;
+
+	/// Resolve a viewport id from the `gui viewports` listing of the main window.
+	bool resolveMainWindowViewport(const std::string& idText, struct MkGuiViewportInfo& outViewport,
+								   std::string& outError) const;
 
 	struct CommandProvider
 	{
@@ -154,4 +170,9 @@ private:
 	bool m_bWindowCapturePending= false;
 	class EditorWindow* m_windowCaptureTarget= nullptr;
 	std::string m_windowCapturePath;
+
+	// Pending screenshot viewport capture, serviced while the main window renders its torn-out viewports
+	bool m_bViewportCapturePending= false;
+	uint32_t m_viewportCaptureId= 0;
+	std::string m_viewportCapturePath;
 };

@@ -124,15 +124,36 @@ Value syntax for `property get`/`set`:
 
 - `screenshot compositor [componentId] [path]` writes the composited frame to a PNG and replies the absolute path. The component id may be omitted when the project has exactly one compositor. Without a path it writes `mikan_compositor.png` in the working directory, overwritten each capture.
 - `screenshot window [windowIndex] [path]` writes a window's back buffer (the editor UI included) at the end of that window's frame render, replying the absolute path once the capture lands. The index comes from `window list`; omitting it means the main window. Default `mikan_window.png`.
+- `screenshot viewport <viewportId> [path]` writes a torn-out panel's OS window the same way, read between its render and its swap in the main window's platform window pass. The id comes from `gui viewports`, and the image is that window's client area, so its pixels are the coordinates `input ... viewport` takes. The main viewport's id captures the main window. A viewport that does not render that frame (closed, hidden, minimized) answers with an error. Default `mikan_viewport.png`.
 
 ### Windows (window)
 
 - `window list` replies `<index> <width>x<height> <title>` per open window, main window first. The index is the handle the `screenshot` and `input` commands take, and it shifts as windows open and close, so list before driving rather than hard-coding one.
 - `window focus <windowIndex>` raises the window and gives it OS focus
 
+### Torn-out panels (gui)
+
+A panel dragged past the main window's edge becomes its own OS window, which ImGui calls a viewport. These windows belong to the main window's GUI context rather than to the app's window list, so `window list` does not show them. They are addressed by ImGui viewport id instead.
+
+- `gui viewports` replies `<viewportId> <x>,<y> <width>x<height> <windowIds...>` per viewport of the main window, main viewport first. The rect is in desktop pixels, and each window id is the stable part of a panel's ImGui name (the English title after `###`), quoted when it holds a space, so it pastes straight into `gui float`.
+
+- `gui float <windowId> <x> <y> [<width> <height>]` undocks a panel drawn last frame and moves it to a desktop position, which is how a drive reaches the torn-out state a hand drag would produce. A position outside the main window gives the panel its own OS window. The move applies at the start of the next GUI frame, so poll `gui viewports` after it. The ids are the panel titles:
+	- `Scene`
+	- `"Compositor Output"`
+	- `Project`
+	- `Settings`
+	- `"HTTP Triggers"`
+	- `Scenes`
+	- `Compositors`
+	- `Assets`
+	- `Log`
+	- `DMX`
+
+A torn-out panel comes back torn out at the same desktop position on the next launch, since ImGui keeps its viewport position in `imgui_main.ini`, and View > Reset Layout docks every panel again.
+
 ### Synthetic input (input)
 
-Injected input is posted to the real event queue, so it travels the path a user's input does: the same window routing, the same ImGui capture arbitration, the same listener. A driven session is therefore evidence about the shipping input path rather than about a test-only shortcut. Every verb raises the target window first, since input only lands where the OS is delivering it.
+Injected input is posted to the real event queue, so it travels the path a user's input does: the same window routing, the same ImGui capture arbitration (the Scene panel forwards input to the viewport while it is hovered or dragging), the same listener. A driven session is therefore evidence about the shipping input path rather than about a test-only shortcut. Every verb raises the target window first, since input only lands where the OS is delivering it.
 
 Mouse position is warped rather than fabricated, which moves the real cursor. ImGui's backend re-reads the OS cursor every frame whenever the pointer is not over one of our windows, and would overwrite a fabricated position before the widget under it saw the click.
 
@@ -142,8 +163,11 @@ Mouse position is warped rather than fabricated, which moves the real cursor. Im
 - `input wheel <windowIndex> <x> <y> <scrollY> [scrollX]` scrolls in notches
 - `input key <windowIndex> <keyName> [modifiers...]` presses and releases a key, and `input keydown` / `input keyup` are its halves, so a drive can hold a modifier across a mouse press, move, and release (`input keydown 1 ctrl ctrl`, then `input keyup 1 ctrl`; the modifier key names are `ctrl`, `shift`, `alt`). Names are `return`/`enter`, `tab`, `escape`, `backspace`, `delete`, `space`, the arrows, `home`, `end`, `pageup`, `pagedown`, `insert`, `f1` to `f12`, or a single printable character. Modifiers are `shift`, `ctrl`, `alt`, `gui`.
 - `input text <windowIndex> <text...>` commits text the way typing does, taking the raw untokenized rest of the line
+- `input <verb> viewport <viewportId> ...` is every verb above aimed at a torn-out panel's OS window, with `viewport <viewportId>` from `gui viewports` in place of the window index and positions in that window's client pixels. The event is stamped with that window's id, so it reaches the main window's listener through the same child-window claim a user's input in it takes.
 
 Two things a warp cannot fake. A warped move often reports a zero relative delta, so anything driven by relative motion rather than by cursor position is unreliable under synthetic input: the viewport camera's right-drag rotate and pan usually see delta 0 and leave the camera where it was. A `input key` press and release land in the same frame, so held-key behavior such as the WASD fly never accumulates. Verify camera manipulation by hand, or seed the state and check that the editor applies it.
+
+After a drive works in one OS window of the main window's GUI (the main window or a torn-out panel), a click into another that follows a single `input move` is lost. Move twice in the new window (`input move`, `sleep:0.5`, `input move` a pixel over, `sleep:0.5`) before the first click there.
 
 One caveat worth knowing when a click seems to vanish: an ImGui window's capture flags are computed at `NewFrame` and so describe the previous frame's cursor position. A click injected in the same command that moved the cursor is judged against where the cursor used to be. Code that owns a non-ImGui region of a window should route the mouse by geometry rather than by asking ImGui, which is what `CEFBrowserEditorWindow` does for its page area.
 

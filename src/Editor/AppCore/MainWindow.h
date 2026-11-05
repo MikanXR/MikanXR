@@ -16,6 +16,8 @@
 
 #include <assert.h>
 
+#include "glm/ext/vector_float4.hpp"
+
 //-- definitions -----
 class MainWindow : public EditorWindow
 {
@@ -63,12 +65,17 @@ public:
 
 	void processPendingAppStageOps();
 
+	// True while F11 or -hideMainWindowGUI hides the stage UI
+	bool getIsMainWindowGuiHidden() const { return m_bIsMainWindowGuiHidden; }
+
+	// The colour the window's back buffer is cleared to each frame
+	inline static const glm::vec4 k_clearColor= glm::vec4(0.45f, 0.45f, 0.5f, 1.f);
+
 protected:
-	void renderStageViewport(AppStage* appStage, IMkViewportPtr targetViewport);
+	void renderStageViewport(AppStage* appStage, MikanViewportPtr targetViewport);
 	void renderStageUI(AppStage* appStage);
 	// Full-viewport host window carrying the menu bar and the dockspace the
-	// stage's panels dock into. Returns the central node's screen rect, which is
-	// the area left for the 3d scene.
+	// stage's panels dock into
 	void beginDockspaceHost(AppStage* appStage);
 	void endDockspaceHost();
 

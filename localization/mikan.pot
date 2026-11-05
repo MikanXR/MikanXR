@@ -1467,11 +1467,6 @@ msgid "Reset to Defaults"
 msgstr ""
 
 #. Section: functions
-msgctxt "functions.show_compositor_output"
-msgid "Show Compositor Output"
-msgstr ""
-
-#. Section: functions
 msgctxt "functions.show_texture_source_settings"
 msgid "Show Texture Source Settings"
 msgstr ""
@@ -2209,17 +2204,6 @@ msgstr ""
 #. Section: nodeEditor
 msgctxt "nodeEditor.compositorMenu"
 msgid "Compositor"
-msgstr ""
-
-#. Section: nodeEditor
-#, c-format
-msgctxt "nodeEditor.compositorOutputTitleFmt"
-msgid "%s - Compositor Output"
-msgstr ""
-
-#. Section: nodeEditor
-msgctxt "nodeEditor.compositorOutputWindowTitle"
-msgid "Compositor Output"
 msgstr ""
 
 #. Section: nodeEditor
@@ -4338,6 +4322,11 @@ msgid "Assets"
 msgstr ""
 
 #. Section: project
+msgctxt "project.panelCompositorOutput"
+msgid "Compositor Output"
+msgstr ""
+
+#. Section: project
 msgctxt "project.panelCompositors"
 msgid "Compositors"
 msgstr ""
@@ -4355,6 +4344,11 @@ msgstr ""
 #. Section: project
 msgctxt "project.panelProject"
 msgid "Project"
+msgstr ""
+
+#. Section: project
+msgctxt "project.panelScene"
+msgid "Scene"
 msgstr ""
 
 #. Section: project
@@ -6156,6 +6150,11 @@ msgid "Camera Alignment Debug"
 msgstr ""
 
 #. Section: windows
+msgctxt "windows.compositorOutput"
+msgid "Compositor Output"
+msgstr ""
+
+#. Section: windows
 msgctxt "windows.compositors"
 msgid "Compositors"
 msgstr ""
@@ -6228,6 +6227,11 @@ msgstr ""
 #. Section: windows
 msgctxt "windows.projectSettings"
 msgid "Settings"
+msgstr ""
+
+#. Section: windows
+msgctxt "windows.scene"
+msgid "Scene"
 msgstr ""
 
 #. Section: windows

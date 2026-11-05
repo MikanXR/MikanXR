@@ -31,6 +31,13 @@ public:
 	virtual float getHeight() const override;
 	virtual float getAspectRatio() const override;
 	virtual void getMouseScreenPosition(int& outScreenX, int& outScreenY) const override;
+	virtual void getMouseDesktopPosition(int& outDesktopX, int& outDesktopY) const override;
+
+	// -- IMkWindowEventListener ----
+	// The OS windows this window's panels are torn out into
+	virtual bool ownsChildWindow(uint32_t windowId) const override;
+
+	class MkGuiContext* getGuiContext() const { return m_guiContext.get(); }
 
 	virtual MikanModelResourceManager* getModelResourceManager() override;
 	virtual MikanTextureCache* getTextureCache() override;
@@ -76,11 +83,11 @@ public:
 protected:
 	// Shares the MainWindow's GL context instead of creating a new one, so scene resources
 	// (VAOs, FBOs, textures) allocated on the MainWindow remain accessible. Used by satellite
-	// windows (e.g. NodeEditorWindow, CompositorOutputEditorWindow); MainWindow does not call this.
+	// windows (e.g. NodeEditorWindow); MainWindow does not call this.
 	void shareGraphicsContextWithMainWindow();
 
 	bool startupWindow(const std::string& title, int width, int height);
-	bool startupGuiContext(const std::string& iniName, bool bEnableDocking= false);
+	bool startupGuiContext(const std::string& iniName, bool bEnableDocking= false, bool bEnableViewports= false);
 	bool startupStyleManager();
 	bool startupTextureCache();
 	bool startupModelResourceManager();

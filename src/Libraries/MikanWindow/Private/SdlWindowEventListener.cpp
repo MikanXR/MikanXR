@@ -8,10 +8,42 @@
 #include <SDL2/SDL_events.h>
 #endif
 
+uint32_t getSdlEventWindowId(const SDL_Event* event)
+{
+	switch (event->type)
+	{
+	case SDL_WINDOWEVENT:
+		return event->window.windowID;
+	case SDL_KEYDOWN:
+	case SDL_KEYUP:
+		return event->key.windowID;
+	case SDL_TEXTEDITING:
+		return event->edit.windowID;
+	case SDL_TEXTINPUT:
+		return event->text.windowID;
+	case SDL_MOUSEMOTION:
+		return event->motion.windowID;
+	case SDL_MOUSEBUTTONDOWN:
+	case SDL_MOUSEBUTTONUP:
+		return event->button.windowID;
+	case SDL_MOUSEWHEEL:
+		return event->wheel.windowID;
+	case SDL_DROPFILE:
+	case SDL_DROPTEXT:
+	case SDL_DROPBEGIN:
+	case SDL_DROPCOMPLETE:
+		return event->drop.windowID;
+	default:
+		return 0;
+	}
+}
+
 SdlWindowEvent::SdlWindowEvent(const SDL_Event* event)
 	: m_event(event)
 {
 }
+
+uint32_t SdlWindowEvent::getWindowId() const { return getSdlEventWindowId(m_event); }
 
 eMkWindowEventType SdlWindowEvent::getEventType() const
 {

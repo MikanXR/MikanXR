@@ -16,7 +16,7 @@ ImGuiID beginDockspaceHost(const char* hostWindowId, const char* dockspaceId, bo
 	ImGui::SetNextWindowSize(viewport->WorkSize);
 	ImGui::SetNextWindowViewport(viewport->ID);
 
-	// NoBackground is what lets the 3d scene show through the central node.
+	// NoBackground keeps the host from painting over the dock nodes.
 	// NoBringToFrontOnFocus keeps the host behind the panels docked into it.
 	const ImGuiWindowFlags hostFlags=
 		ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar
@@ -53,17 +53,6 @@ ImGuiID dockBuilderSplit(ImGuiID nodeId, ImGuiDir direction, float sizeRatio, Im
 void dockBuilderDockWindow(const char* windowName, ImGuiID nodeId) { ImGui::DockBuilderDockWindow(windowName, nodeId); }
 
 void dockBuilderFinish(ImGuiID dockspaceId) { ImGui::DockBuilderFinish(dockspaceId); }
-
-bool getDockspaceCentralRect(const char* dockspaceId, ImVec2& outPos, ImVec2& outSize)
-{
-	const ImGuiDockNode* centralNode= ImGui::DockBuilderGetCentralNode(ImGui::GetID(dockspaceId));
-	if (centralNode == nullptr)
-		return false;
-
-	outPos= centralNode->Pos;
-	outSize= centralNode->Size;
-	return true;
-}
 
 // -- Layout reference scale ----
 // The ini entry is written and read through ImGui's own settings machinery, so
@@ -125,10 +114,14 @@ void scaleWindowLayout(float factor)
 		}
 	}
 
-	// The floating windows that are already live. A docked window takes its size
-	// from its node instead, and a child from its parent, so scaling those is
-	// overwritten rather than wrong.
-	ImGui::ScaleWindowsInViewport((ImGuiViewportP*)ImGui::GetMainViewport(), factor);
+	// The floating windows that are already live, in the main window and in every
+	// OS window a panel is torn out into. A docked window takes its size from its
+	// node instead, and a child from its parent, so scaling those is overwritten
+	// rather than wrong.
+	for (ImGuiViewportP* viewport : context->Viewports)
+	{
+		ImGui::ScaleWindowsInViewport(viewport, factor);
+	}
 
 	// The stored settings, which is where a window that has not been created yet
 	// gets its size from. Without this, a panel closed when the scale changed

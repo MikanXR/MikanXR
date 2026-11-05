@@ -52,9 +52,6 @@ local TransformComponent = {}
 ---@field displayCompositorId integer ID of the display compositor (read-only)
 local SceneComponent = {}
 
---- Switch the scene's display to its compositor output.
-function SceneComponent:showCompositorOutput() end
-
 --- Get the parent StageComponent.
 ---@return StageComponent
 function SceneComponent:getParentStage() end

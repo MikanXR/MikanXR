@@ -2,8 +2,8 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1217,
-		"translatedCount": 900,
+		"stringCount": 1218,
+		"translatedCount": 897,
 		"reviewedCount": 0
 	},
 	"CEFTextureSourceComponent": {
@@ -315,7 +315,6 @@
 		"print_checkerboard": "チェッカーボードを印刷",
 		"print_marker": "マーカーを印刷",
 		"reset_settings": "既定値に戻す",
-		"show_compositor_output": "コンポジター出力を表示",
 		"show_texture_source_settings": "テクスチャソース設定を表示",
 		"show_video_source_settings": "映像ソース設定を表示",
 		"step_back": "Step Back",
@@ -483,8 +482,6 @@
 		"assetsTab": "グラフアセット",
 		"compositorGraphFilesFilterDescription": "コンポジターグラフファイル (*.compgraph)",
 		"compositorMenu": "コンポジター",
-		"compositorOutputTitleFmt": "%s - コンポジター出力",
-		"compositorOutputWindowTitle": "コンポジター出力",
 		"delete": "削除",
 		"details": "詳細",
 		"disconnect": "Disconnect",
@@ -911,10 +908,12 @@
 		"outlinerTrackingGroup": "トラッキングボリューム",
 		"outlinerUnparented": "親なし",
 		"panelAssets": "アセット",
+		"panelCompositorOutput": "Compositor Output",
 		"panelCompositors": "コンポジター",
 		"panelDMX": "DMX Panel",
 		"panelHttpTriggers": "HTTPトリガー",
 		"panelProject": "プロジェクト",
+		"panelScene": "Scene",
 		"panelScenes": "シーン",
 		"panelSettings": "設定",
 		"puckPoseValidFmt": "パックの姿勢が有効: %s",
@@ -1289,6 +1288,7 @@
 		"addCompositor": "コンポジターを追加",
 		"assets": "アセット",
 		"cameraAlignmentDebug": "カメラ位置合わせデバッグ",
+		"compositorOutput": "Compositor Output",
 		"compositors": "コンポジター",
 		"dmx": "DMX",
 		"httpTriggers": "HTTPトリガー",
@@ -1304,6 +1304,7 @@
 		"nodeVariablesPanel": "変数",
 		"project": "プロジェクト",
 		"projectSettings": "設定",
+		"scene": "Scene",
 		"scenes": "シーン",
 		"selectCamera": "カメラを選択"
 	}

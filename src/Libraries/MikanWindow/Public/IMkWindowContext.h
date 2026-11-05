@@ -36,7 +36,11 @@ public:
 	virtual float getAspectRatio() const= 0;
 	virtual bool getIsRenderingStage() const= 0;
 
+	// The cursor in client pixels of whichever window has mouse focus
 	virtual void getMouseScreenPosition(int& outScreenX, int& outScreenY) const= 0;
+	// The cursor in desktop pixels, the space ImGui positions are in when its
+	// multi-viewports are on
+	virtual void getMouseDesktopPosition(int& outDesktopX, int& outDesktopY) const= 0;
 
 	virtual eWindowAPI getWindowAPI() const= 0;
 	virtual void* getNativeWindowHandle() const= 0;
@@ -64,13 +68,21 @@ public:
 	// frame whenever the pointer is not over one of our windows, and would overwrite a fabricated
 	// position before the widget under it ever saw the click. Moving the real cursor is therefore
 	// load-bearing, and it is why injection visibly takes the pointer over.
+	//
+	// A childWindowId targets an OS window the listener owns beside this one (a torn-out ImGui
+	// panel): the event is stamped with that window's id, so it reaches the listener through the
+	// child-window claim in handleEvents the way a user's input in that window does. Zero means
+	// this window. Child positions are that window's client pixels.
 	virtual int getWindowId() const= 0;
 	virtual void raiseWindow()= 0;
+	virtual void raiseChildWindow(uint32_t childWindowId)= 0;
 	virtual void warpMouseToWindowPosition(int windowX, int windowY)= 0;
-	virtual void injectMouseButton(int mkMouseButton, bool bPressed, int windowX, int windowY, int clickCount)= 0;
-	virtual void injectMouseWheel(int windowX, int windowY, int scrollX, int scrollY)= 0;
-	virtual void injectKey(MkKeySym keySym, uint16_t keyMod, bool bPressed)= 0;
-	virtual void injectText(const std::string& utf8Text)= 0;
+	virtual void warpMouseToChildWindowPosition(uint32_t childWindowId, int windowX, int windowY)= 0;
+	virtual void injectMouseButton(int mkMouseButton, bool bPressed, int windowX, int windowY, int clickCount,
+								   uint32_t childWindowId)= 0;
+	virtual void injectMouseWheel(int windowX, int windowY, int scrollX, int scrollY, uint32_t childWindowId)= 0;
+	virtual void injectKey(MkKeySym keySym, uint16_t keyMod, bool bPressed, uint32_t childWindowId)= 0;
+	virtual void injectText(const std::string& utf8Text, uint32_t childWindowId)= 0;
 };
 
 MIKAN_WINDOW_FUNC(IMkWindowContextPtr) createMkWindowContext(IMkWindowContextManagerPtr ownerWindowManager,

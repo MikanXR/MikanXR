@@ -19,6 +19,10 @@ MkGuiScopedUpdate::MkGuiScopedUpdate(MkGuiContext& context)
 	// After NewFrame, which is where a settings load builds the dock nodes and
 	// window settings this re-proportions
 	context.refreshLayoutScale();
+
+	// Before any window begins this frame, so a moved window is placed (and given
+	// its own viewport) by the Begin that follows
+	context.applyPendingFloatRequests();
 }
 
 MkGuiScopedUpdate::~MkGuiScopedUpdate()

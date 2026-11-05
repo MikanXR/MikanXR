@@ -1,8 +1,6 @@
-#include "App.h"
 #include "CompositorObjectSystem.h"
 #include "CompositorComponent.h"
 #include "ColliderComponent.h"
-#include "Windows/CompositorOutputEditorWindow.h"
 #include "IMkSceneRenderable.h"
 #include "ModalSceneAddCompositor/ModalDialog_SceneAddCompositor.h"
 #include "MikanObject.h"
@@ -198,23 +196,12 @@ void SceneComponent::onDefinitionMarkedDirty(CommonConfigPtr configPtr,
 {
 	TransformComponent::onDefinitionMarkedDirty(configPtr, changedPropertySet);
 
-	if (changedPropertySet.hasPropertyName(SceneComponentDefinition::k_displayCompositorIdPropertyId))
+	// Only the current scene drives the active compositors. Another scene's choice
+	// takes effect when activateScene() runs on switching to it.
+	if (changedPropertySet.hasPropertyName(SceneComponentDefinition::k_displayCompositorIdPropertyId)
+		&& isCurrentScene())
 	{
 		refreshActiveCompositors();
-	}
-}
-
-void SceneComponent::showCompositorOutput()
-{
-	App* app= App::getInstance();
-	CompositorOutputEditorWindow* window= app->getWindowOfType<CompositorOutputEditorWindow>();
-	if (!window)
-	{
-		window= app->createAppWindow<CompositorOutputEditorWindow>();
-	}
-	if (window)
-	{
-		window->bindSceneComponent(getSelfPtr<SceneComponent>());
 	}
 }
 
@@ -289,7 +276,6 @@ bool SceneComponent::setPropertyValue(const std::string& propertyName, const Mik
 }
 
 // -- IFunctionInterface ----
-const std::string SceneComponent::k_showCompositorOutputFunctionId= "show_compositor_output";
 const std::string SceneComponent::k_activateSceneFunctionId= "activate_scene";
 
 void SceneComponent::getFunctionDescriptors(std::vector<FunctionDescriptorConstPtr>& outDescriptors)
@@ -297,8 +283,6 @@ void SceneComponent::getFunctionDescriptors(std::vector<FunctionDescriptorConstP
 	TransformComponent::getFunctionDescriptors(outDescriptors);
 
 	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_activateSceneFunctionId, "Activate Scene"));
-	outDescriptors.push_back(
-		std::make_shared<FunctionDescriptor>(k_showCompositorOutputFunctionId, "Show Compositor Output"));
 }
 
 bool SceneComponent::invokeFunction(const std::string& functionName)
@@ -310,12 +294,6 @@ bool SceneComponent::invokeFunction(const std::string& functionName)
 		{
 			sceneSystem->setCurrentSceneById(getSceneId());
 		}
-		return true;
-	}
-
-	if (functionName == SceneComponent::k_showCompositorOutputFunctionId)
-	{
-		showCompositorOutput();
 		return true;
 	}
 
@@ -339,7 +317,6 @@ void SceneComponent::bindLuaFunctions(struct lua_State* L)
 			[](SceneComponent* component, bool bForceRender)
 			{ component->getSceneComponentDefinition()->setForceRender(bForceRender); })
 		.addProperty("isCurrentScene", [](SceneComponent* component) -> bool { return component->isCurrentScene(); })
-		.addFunction("showCompositorOutput", [](SceneComponent* c) { c->showCompositorOutput(); })
 		.addFunction("getParentStage", [](SceneComponent* c) -> StageComponent* { return c->getParentStage().get(); })
 		.addFunction("getOutputCompositorCount",
 					 [](SceneComponent* c) -> int { return static_cast<int>(c->getOutputCompositors().size()); })

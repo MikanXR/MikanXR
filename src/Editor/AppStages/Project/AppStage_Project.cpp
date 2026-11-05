@@ -45,9 +45,11 @@
 #include "Project/GuiPanel_ProjectOutliner.h"
 #include "Project/GuiPanel_Assets.h"
 #include "Project/GuiPanel_CompositorList.h"
+#include "Project/GuiPanel_CompositorOutput.h"
 #include "Project/GuiPanel_HttpTriggers.h"
 #include "Project/GuiPanel_ProjectSettings.h"
 #include "Project/GuiPanel_SceneList.h"
+#include "Project/GuiPanel_SceneView.h"
 #include "Shared/GuiPanel_DMXObjectSystem.h"
 #include "AnchorObjectSystem.h"
 #include "BoxShapeComponent.h"
@@ -162,10 +164,16 @@ void AppStage_Project::enter()
 
 		// Register the scene with the primary viewport
 		m_editorSystem.lock()->bindViewport(m_viewport);
+
+		// The Scene panel clears its frame buffer to the colour the window clears to
+		m_viewport->setBackgroundColor(glm::vec3(MainWindow::k_clearColor));
 	}
 
 	// Create ImGui GuiPanel context and project panels
 	{
+		m_sceneViewPanel= addGuiPanel<GuiPanel_SceneView>();
+		m_sceneViewPanel->init(m_viewport);
+
 		m_projectGuiPanelContext= new ProjectGuiPanelContext(this);
 		m_projectGuiPanelContext->init();
 
@@ -184,6 +192,9 @@ void AppStage_Project::enter()
 
 		m_compositorListPanel= addGuiPanel<GuiPanel_CompositorList>();
 		m_compositorListPanel->init(m_projectGuiPanelContext, m_projectOutlinerPanel);
+
+		m_compositorOutputPanel= addGuiPanel<GuiPanel_CompositorOutput>();
+		m_compositorOutputPanel->init(getGraphicsContext());
 
 		m_assetsPanel= addGuiPanel<GuiPanel_Assets>();
 		m_assetsPanel->init(m_projectGuiPanelContext);
@@ -230,11 +241,13 @@ void AppStage_Project::exit()
 	// Clean up the GuiPanel Context (panels themselves are owned by AppStage::m_guiPanels)
 	delete m_projectGuiPanelContext;
 	m_projectGuiPanelContext= nullptr;
+	m_sceneViewPanel= nullptr;
 	m_projectOutlinerPanel= nullptr;
 	m_projectSettingsPanel= nullptr;
 	m_httpTriggersPanel= nullptr;
 	m_sceneListPanel= nullptr;
 	m_compositorListPanel= nullptr;
+	m_compositorOutputPanel= nullptr;
 	m_assetsPanel= nullptr;
 
 	// Unregister all viewports from the editor
@@ -278,6 +291,26 @@ void AppStage_Project::resume() { AppStage::resume(); }
 
 void AppStage_Project::update(float deltaSeconds)
 {
+	// Where the viewport renders this frame, from whether the Scene panel drew it
+	if (m_viewport && m_sceneViewPanel != nullptr && !m_sceneViewPanel->consumeDrawnThisFrame())
+	{
+		if (App::getInstance()->getMainWindow()->getIsMainWindowGuiHidden())
+		{
+			// The UI is hidden (F11 or -hideMainWindowGUI), so the scene fills the
+			// window through the back buffer
+			m_viewport->setRenderTarget(nullptr);
+			m_viewport->setViewport({0, 0}, {(int)m_ownerWindow->getWidth(), (int)m_ownerWindow->getHeight()});
+			m_viewport->setIsRenderingEnabled(true);
+		}
+		else
+		{
+			// The panel is closed or its tab is hidden, so nothing shows the scene
+			m_viewport->setIsRenderingEnabled(false);
+		}
+	}
+	// Otherwise the panel drew this frame and has already pointed the viewport at
+	// its frame buffer and image rect
+
 	AppStage::update(deltaSeconds);
 
 	// Update the timing dependent state for the project GuiPanels
@@ -321,55 +354,28 @@ void AppStage_Project::onGui()
 	// Process deferred events emitted due to Gui interaction
 	AppStage::onGui();
 
-	// Viewport view-mode selector overlay (perspective / orthographic), editor camera only.
-	// Compositor cameras (pool index > 0) use real lens intrinsics and must not be switched.
-	if (m_viewport && m_viewport->getCurrentCameraIndex() == 0)
-	{
-		MikanCameraPtr camera= m_viewport->getMikanCameraByIndex(0);
-		if (camera)
-		{
-			const glm::i32vec2 vpOrigin= m_viewport->getViewportOrigin();
-			ImGui::SetNextWindowPos(
-				ImVec2((float)vpOrigin.x + 8 * MkGui::getUiScale(), (float)vpOrigin.y + 8 * MkGui::getUiScale()),
-				ImGuiCond_Always);
-
-			constexpr ImGuiWindowFlags k_overlayFlags= ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
-													   | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar
-													   | ImGuiWindowFlags_AlwaysAutoResize;
-
-			MkGuiScopedWindow overlay("##ViewModeOverlay", nullptr, k_overlayFlags);
-			if (overlay)
-			{
-				const char* k_viewLabels[]= {locText("project.viewPerspective"), locText("project.viewTop"),
-											 locText("project.viewBottom"),      locText("project.viewFront"),
-											 locText("project.viewBack"),        locText("project.viewLeft"),
-											 locText("project.viewRight")};
-
-				int currentIndex= getCurrentCameraViewIndex();
-
-				ImGui::SetNextItemWidth(110.f * MkGui::getUiScale());
-				if (ImGui::Combo("##ViewMode", &currentIndex, k_viewLabels, IM_ARRAYSIZE(k_viewLabels)))
-				{
-					applyCameraView(currentIndex);
-				}
-			}
-		}
-	}
-
 	// MR camera-alignment debug readout window
 	if (getEditorSettings().bDebugCameraAlignment)
 	{
 		renderCameraAlignmentGui();
 	}
 
-	// Keep the 3d viewport on the dockspace's empty central node, so the scene
-	// fills whatever the docked panels leave behind
+	// The 3d scene view. A hidden tab presents nothing that frame, and update()
+	// then stops the viewport rendering.
+	if (m_bSceneViewVisible && m_sceneViewPanel != nullptr)
 	{
-		ImVec2 centralPos, centralSize;
-		if (MkGui::getDockspaceCentralRect("MikanDockspace", centralPos, centralSize) && centralSize.x >= 1.f
-			&& centralSize.y >= 1.f)
+		// The image is sized from the window, so a floating window would otherwise
+		// auto-fit to its empty first frame and shrink to a title bar
+		ImGui::SetNextWindowSize(ImVec2(640.f, 360.f), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSizeConstraints(ImVec2(320.f, 180.f), ImVec2(FLT_MAX, FLT_MAX));
+		// The image fills the window edge to edge
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
+		MkGuiScopedWindow sceneWindow(locWindowTitle("windows.scene"), &m_bSceneViewVisible,
+									  ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+		ImGui::PopStyleVar();
+		if (sceneWindow)
 		{
-			m_viewport->setViewport({(int)centralPos.x, (int)centralPos.y}, {(int)centralSize.x, (int)centralSize.y});
+			m_sceneViewPanel->onGui();
 		}
 	}
 
@@ -418,6 +424,23 @@ void AppStage_Project::onGui()
 		if (compositorListWindow)
 		{
 			m_compositorListPanel->onGui();
+		}
+	}
+
+	// The composite of the current scene's display compositor. A hidden tab
+	// renders nothing that frame.
+	if (m_bCompositorOutputVisible && m_compositorOutputPanel != nullptr)
+	{
+		// The image is sized from the window, so a floating window would otherwise
+		// auto-fit to its empty first frame and shrink to a title bar
+		ImGui::SetNextWindowSize(ImVec2(640.f, 360.f), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSizeConstraints(ImVec2(320.f, 180.f), ImVec2(FLT_MAX, FLT_MAX));
+		MkGuiScopedWindow compositorOutputWindow(locWindowTitle("windows.compositorOutput"),
+												 &m_bCompositorOutputVisible,
+												 ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+		if (compositorOutputWindow)
+		{
+			m_compositorOutputPanel->onGui();
 		}
 	}
 
@@ -485,11 +508,13 @@ void AppStage_Project::onMenuBarGui()
 
 	if (ImGui::BeginMenu(locLabel("mainWindow.viewMenu")))
 	{
+		ImGui::MenuItem(locLabel("project.panelScene"), nullptr, &m_bSceneViewVisible);
 		ImGui::MenuItem(locLabel("project.panelProject"), nullptr, &m_bOutlinerVisible);
 		ImGui::MenuItem(locLabel("project.panelSettings"), nullptr, &m_bSettingsPanelVisible);
 		ImGui::MenuItem(locLabel("project.panelHttpTriggers"), nullptr, &m_bHttpTriggersPanelVisible);
 		ImGui::MenuItem(locLabel("project.panelScenes"), nullptr, &m_bSceneListVisible);
 		ImGui::MenuItem(locLabel("project.panelCompositors"), nullptr, &m_bCompositorListVisible);
+		ImGui::MenuItem(locLabel("project.panelCompositorOutput"), nullptr, &m_bCompositorOutputVisible);
 		ImGui::MenuItem(locLabel("project.panelAssets"), nullptr, &m_bAssetsPanelVisible);
 		ImGui::MenuItem(locLabel("project.panelDMX"), nullptr, &m_bDMXPanelVisible);
 		ImGui::Separator();
@@ -499,11 +524,13 @@ void AppStage_Project::onMenuBarGui()
 		ImGui::Separator();
 		if (ImGui::MenuItem(locLabel("mainWindow.resetLayout")))
 		{
+			m_bSceneViewVisible= true;
 			m_bOutlinerVisible= true;
 			m_bSettingsPanelVisible= true;
 			m_bHttpTriggersPanelVisible= true;
 			m_bSceneListVisible= true;
 			m_bCompositorListVisible= true;
+			m_bCompositorOutputVisible= true;
 			m_bAssetsPanelVisible= true;
 			m_bShowLogPanel= true;
 			m_bDockLayoutResetRequested= true;
@@ -552,11 +579,13 @@ void AppStage_Project::applyPendingProjectActions()
 
 void AppStage_Project::onBuildDefaultDockLayout(unsigned int dockspaceId)
 {
-	// Project and Settings tabbed on the right. Along the bottom, left to right:
-	// the scene list, the compositor list, the assets browser, and the log. The
-	// central node is left empty for the scene.
+	// Project and Settings tabbed on the right. In the middle, the scene view and
+	// the compositor output side by side. Along the bottom of the scene view, left
+	// to right: the scene list, the compositor list, the assets browser, and the
+	// log. The Scene panel takes the central node.
 	ImGuiID remaining= (ImGuiID)dockspaceId;
 	const ImGuiID rightId= MkGui::dockBuilderSplit(remaining, ImGuiDir_Right, 0.28f, remaining);
+	const ImGuiID compositorOutputId= MkGui::dockBuilderSplit(remaining, ImGuiDir_Right, 0.45f, remaining);
 	// The bottom row is tall enough for a row of asset tiles, and the assets
 	// browser takes half of what the two lists leave, so its folder list and
 	// tile grid both fit at a 720p window
@@ -569,10 +598,17 @@ void AppStage_Project::onBuildDefaultDockLayout(unsigned int dockspaceId)
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.projectSettings"), rightId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.httpTriggers"), rightId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.dmx"), rightId);
+	MkGui::dockBuilderDockWindow(locWindowTitle("windows.compositorOutput"), compositorOutputId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.scenes"), scenesId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.compositors"), compositorsId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.assets"), assetsId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.log"), bottomId);
+	MkGui::dockBuilderDockWindow(locWindowTitle("windows.scene"), remaining);
+}
+
+bool AppStage_Project::getViewportWantsInput() const
+{
+	return m_sceneViewPanel != nullptr && m_sceneViewPanel->wantsViewportInput();
 }
 
 // Viewport view mode
@@ -1225,10 +1261,20 @@ void AppStage_Project::renderCameraAlignmentDebug(IMkGraphicsContext* graphicsCo
 
 void AppStage_Project::renderCameraAlignmentGui()
 {
-	const glm::i32vec2 vpOrigin= m_viewport ? m_viewport->getViewportOrigin() : glm::i32vec2(0, 45);
-	ImGui::SetNextWindowPos(
-		ImVec2((float)vpOrigin.x + 8 * MkGui::getUiScale(), (float)vpOrigin.y + 44 * MkGui::getUiScale()),
-		ImGuiCond_FirstUseEver);
+	// ImGui positions are desktop pixels. The viewport's rect is already in that
+	// space while the Scene panel presents it, and in window pixels otherwise, which
+	// sit at the main viewport's position.
+	const ImVec2 mainViewportPos= ImGui::GetMainViewport()->Pos;
+	ImVec2 vpOrigin(mainViewportPos.x, mainViewportPos.y + 45.f);
+	if (m_viewport)
+	{
+		const glm::i32vec2 viewportOrigin= m_viewport->getViewportOrigin();
+		vpOrigin= m_viewport->getRenderTarget() ? ImVec2((float)viewportOrigin.x, (float)viewportOrigin.y)
+												: ImVec2(mainViewportPos.x + (float)viewportOrigin.x,
+														 mainViewportPos.y + (float)viewportOrigin.y);
+	}
+	ImGui::SetNextWindowPos(ImVec2(vpOrigin.x + 8 * MkGui::getUiScale(), vpOrigin.y + 44 * MkGui::getUiScale()),
+							ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ImVec2(340.f * MkGui::getUiScale(), 0.f), ImGuiCond_FirstUseEver);
 
 	if (ImGui::Begin(locWindowTitle("windows.cameraAlignmentDebug")))

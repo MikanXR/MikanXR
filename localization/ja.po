@@ -1681,12 +1681,6 @@ msgstr "既定値に戻す"
 
 #. Section: functions
 #, fuzzy
-msgctxt "functions.show_compositor_output"
-msgid "Show Compositor Output"
-msgstr "コンポジター出力を表示"
-
-#. Section: functions
-#, fuzzy
 msgctxt "functions.show_texture_source_settings"
 msgid "Show Texture Source Settings"
 msgstr "テクスチャソース設定を表示"
@@ -2514,18 +2508,6 @@ msgstr "コンポジターグラフファイル (*.compgraph)"
 msgctxt "nodeEditor.compositorMenu"
 msgid "Compositor"
 msgstr "コンポジター"
-
-#. Section: nodeEditor
-#, fuzzy, c-format
-msgctxt "nodeEditor.compositorOutputTitleFmt"
-msgid "%s - Compositor Output"
-msgstr "%s - コンポジター出力"
-
-#. Section: nodeEditor
-#, fuzzy
-msgctxt "nodeEditor.compositorOutputWindowTitle"
-msgid "Compositor Output"
-msgstr "コンポジター出力"
 
 #. Section: nodeEditor
 #, fuzzy
@@ -4893,6 +4875,11 @@ msgid "Assets"
 msgstr "アセット"
 
 #. Section: project
+msgctxt "project.panelCompositorOutput"
+msgid "Compositor Output"
+msgstr ""
+
+#. Section: project
 #, fuzzy
 msgctxt "project.panelCompositors"
 msgid "Compositors"
@@ -4914,6 +4901,11 @@ msgstr "HTTPトリガー"
 msgctxt "project.panelProject"
 msgid "Project"
 msgstr "プロジェクト"
+
+#. Section: project
+msgctxt "project.panelScene"
+msgid "Scene"
+msgstr ""
 
 #. Section: project
 #, fuzzy
@@ -6971,6 +6963,11 @@ msgid "Camera Alignment Debug"
 msgstr "カメラ位置合わせデバッグ"
 
 #. Section: windows
+msgctxt "windows.compositorOutput"
+msgid "Compositor Output"
+msgstr ""
+
+#. Section: windows
 #, fuzzy
 msgctxt "windows.compositors"
 msgid "Compositors"
@@ -7060,6 +7057,11 @@ msgid "Settings"
 msgstr "設定"
 
 #. Section: windows
+msgctxt "windows.scene"
+msgid "Scene"
+msgstr ""
+
+#. Section: windows
 #, fuzzy
 msgctxt "windows.scenes"
 msgid "Scenes"
@@ -7082,6 +7084,21 @@ msgstr "カメラを選択"
 #~ msgstr "ハンドラー"
 
 #, fuzzy
+#~ msgctxt "functions.show_compositor_output"
+#~ msgid "Show Compositor Output"
+#~ msgstr "コンポジター出力を表示"
+
+#, fuzzy
 #~ msgctxt "httpTriggers.noRoutesRegistered"
 #~ msgid "No HTTP trigger routes registered"
 #~ msgstr "登録されたHTTPトリガールートがありません"
+
+#, fuzzy, c-format
+#~ msgctxt "nodeEditor.compositorOutputTitleFmt"
+#~ msgid "%s - Compositor Output"
+#~ msgstr "%s - コンポジター出力"
+
+#, fuzzy
+#~ msgctxt "nodeEditor.compositorOutputWindowTitle"
+#~ msgid "Compositor Output"
+#~ msgstr "コンポジター出力"

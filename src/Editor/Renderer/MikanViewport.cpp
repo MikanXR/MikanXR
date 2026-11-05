@@ -1,6 +1,7 @@
 #include "App.h"
 #include "EditorObjectSystem.h"
 #include "IEditorWindow.h"
+#include "IMkFrameBuffer.h"
 #include "IMkGraphicsContext.h"
 #include "MikanViewport.h"
 #include "MikanCamera.h"
@@ -27,10 +28,18 @@ glm::i32vec2 MikanViewport::getWindowSize() const
 
 void MikanViewport::setViewport(const glm::i32vec2& viewportOrigin, const glm::i32vec2& viewportSize)
 {
-	const glm::i32vec2 windowSize= getWindowSize();
+	if (m_renderTarget)
+	{
+		m_viewportOrigin= viewportOrigin;
+		m_viewportSize= glm::max(viewportSize, glm::i32vec2(0, 0));
+	}
+	else
+	{
+		const glm::i32vec2 windowSize= getWindowSize();
 
-	m_viewportOrigin= glm::max(glm::min(viewportOrigin, windowSize), glm::i32vec2(0, 0));
-	m_viewportSize= glm::min((m_viewportOrigin + viewportSize), windowSize) - m_viewportOrigin;
+		m_viewportOrigin= glm::max(glm::min(viewportOrigin, windowSize), glm::i32vec2(0, 0));
+		m_viewportSize= glm::min((m_viewportOrigin + viewportSize), windowSize) - m_viewportOrigin;
+	}
 
 	// Net valid until applyViewport
 	m_renderOrigin= glm::i32vec2();
@@ -51,6 +60,10 @@ void MikanViewport::setViewport(const glm::i32vec2& viewportOrigin, const glm::i
 
 void MikanViewport::setBackgroundColor(const glm::vec3& color) { m_backgroundColor= glm::vec4(color, 1.f); }
 
+void MikanViewport::setRenderTarget(IMkFrameBufferPtr target) { m_renderTarget= target; }
+
+IMkFrameBufferPtr MikanViewport::getRenderTarget() const { return m_renderTarget; }
+
 MikanViewport::~MikanViewport() { unbindInput(); }
 
 void MikanViewport::applyRenderingViewport(IMkState* glState)
@@ -65,10 +78,19 @@ void MikanViewport::applyRenderingViewport(IMkState* glState)
 
 	// This calls onRenderingViewportApply from mkStateSetViewportImpl.
 	// onRenderingViewportRevert is called when the scoped state is popped.
-	// The window height converts the top-left origin the dockspace works in to
-	// the bottom-left one GL wants, so it has to be the live height.
-	mkStateSetViewport(glState, m_viewportOrigin.x, getWindowSize().y - (m_viewportOrigin.y + m_viewportSize.y),
-					   m_viewportSize.x, m_viewportSize.y);
+	if (m_renderTarget)
+	{
+		// The frame buffer is the whole render surface, whatever screen rect the
+		// panel presents it at
+		mkStateSetViewport(glState, 0, 0, m_renderTarget->getWidth(), m_renderTarget->getHeight());
+	}
+	else
+	{
+		// The window height converts the top-left origin the window rect is in to
+		// the bottom-left one GL wants, so it has to be the live height
+		mkStateSetViewport(glState, m_viewportOrigin.x, getWindowSize().y - (m_viewportOrigin.y + m_viewportSize.y),
+						   m_viewportSize.x, m_viewportSize.y);
+	}
 }
 
 void MikanViewport::onRenderingViewportApply(int x, int y, int width, int height)
@@ -116,6 +138,10 @@ bool MikanViewport::getRenderingViewport(glm::i32vec2& outOrigin, glm::i32vec2& 
 
 void MikanViewport::update(float deltaSeconds)
 {
+	// A viewport nothing shows takes no input, since its rect is stale
+	if (!m_bIsRenderingEnabled)
+		return;
+
 	// Don't process input if the cursor isn't in the viewport
 	glm::vec2 viewportLocation;
 	if (!getCursorViewportPixelPos(viewportLocation))
@@ -370,8 +396,18 @@ void MikanViewport::unbindInput()
 
 bool MikanViewport::getCursorViewportPixelPos(glm::vec2& outViewportLocation) const
 {
+	// The cursor in the rect's own space: desktop pixels against a panel's ImGui
+	// screen rect, which holds whichever OS window the panel is in, and window
+	// pixels against the back buffer's rect
 	int mouse_x, mouse_y;
-	m_ownerWindow->getInputManager()->getMouseScreenPosition(mouse_x, mouse_y);
+	if (m_renderTarget)
+	{
+		m_ownerWindow->getInputManager()->getMouseDesktopPosition(mouse_x, mouse_y);
+	}
+	else
+	{
+		m_ownerWindow->getInputManager()->getMouseScreenPosition(mouse_x, mouse_y);
+	}
 
 	const int min_x= m_viewportOrigin.x;
 	const int min_y= m_viewportOrigin.y;
@@ -390,6 +426,9 @@ bool MikanViewport::getCursorViewportPixelPos(glm::vec2& outViewportLocation) co
 
 void MikanViewport::onMouseMotion(int deltaX, int deltaY)
 {
+	if (!m_bIsRenderingEnabled)
+		return;
+
 	MikanCameraPtr camera= std::static_pointer_cast<MikanCamera>(getCurrentCamera());
 
 	if (camera)
@@ -471,6 +510,9 @@ void MikanViewport::onMouseMotion(int deltaX, int deltaY)
 
 void MikanViewport::onMouseButtonPressed(int button)
 {
+	if (!m_bIsRenderingEnabled)
+		return;
+
 	MikanCameraPtr camera= std::static_pointer_cast<MikanCamera>(getCurrentCamera());
 
 	glm::vec2 viewportPos;
@@ -516,6 +558,9 @@ void MikanViewport::onMouseButtonReleased(int button)
 
 void MikanViewport::onMouseWheel(int scrollAmount)
 {
+	if (!m_bIsRenderingEnabled)
+		return;
+
 	MikanCameraPtr camera= std::static_pointer_cast<MikanCamera>(getCurrentCamera());
 	if (!camera)
 		return;
@@ -525,6 +570,13 @@ void MikanViewport::onMouseWheel(int scrollAmount)
 		// Scrolling up zooms in (shrinks the visible extent), scrolling down zooms out.
 		const float zoomFactor= fmaxf(0.1f, 1.f - (float)scrollAmount * k_camera_mouse_zoom_scalar);
 		camera->setOrthoExtent(camera->getOrthoExtent() * zoomFactor);
+	}
+	else if (camera->getCameraMovementMode() == fly)
+	{
+		// Scrolling up dollies forward along the view direction, at the speed the fly keys use
+		auto editorObjectSystem= m_ownerWindow->getProjectManager()->getSystemOfType<EditorObjectSystem>();
+		const float cameraSpeed= editorObjectSystem->getEditorSystemConfig()->getCameraSpeed();
+		camera->adjustFlyForward((float)scrollAmount * cameraSpeed * k_camera_mouse_dolly_seconds);
 	}
 	else
 	{

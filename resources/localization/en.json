@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1217,
-		"translatedCount": 1217,
-		"reviewedCount": 1217
+		"stringCount": 1218,
+		"translatedCount": 1218,
+		"reviewedCount": 1218
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -315,7 +315,6 @@
 		"print_checkerboard": "Print Checkerboard",
 		"print_marker": "Print Marker",
 		"reset_settings": "Reset to Defaults",
-		"show_compositor_output": "Show Compositor Output",
 		"show_texture_source_settings": "Show Texture Source Settings",
 		"show_video_source_settings": "Show Video Source Settings",
 		"step_back": "Step Back",
@@ -483,8 +482,6 @@
 		"assetsTab": "Graph Assets",
 		"compositorGraphFilesFilterDescription": "Compositor Graph Files (*.compgraph)",
 		"compositorMenu": "Compositor",
-		"compositorOutputTitleFmt": "%s - Compositor Output",
-		"compositorOutputWindowTitle": "Compositor Output",
 		"delete": "Delete",
 		"details": "Details",
 		"disconnect": "Disconnect",
@@ -911,10 +908,12 @@
 		"outlinerTrackingGroup": "Tracking Volumes",
 		"outlinerUnparented": "Unparented",
 		"panelAssets": "Assets",
+		"panelCompositorOutput": "Compositor Output",
 		"panelCompositors": "Compositors",
 		"panelDMX": "DMX Panel",
 		"panelHttpTriggers": "HTTP Triggers",
 		"panelProject": "Project",
+		"panelScene": "Scene",
 		"panelScenes": "Scenes",
 		"panelSettings": "Settings",
 		"puckPoseValidFmt": "Puck pose valid: %s",
@@ -1289,6 +1288,7 @@
 		"addCompositor": "Add Compositor",
 		"assets": "Assets",
 		"cameraAlignmentDebug": "Camera Alignment Debug",
+		"compositorOutput": "Compositor Output",
 		"compositors": "Compositors",
 		"dmx": "DMX",
 		"httpTriggers": "HTTP Triggers",
@@ -1304,6 +1304,7 @@
 		"nodeVariablesPanel": "Variables",
 		"project": "Project",
 		"projectSettings": "Settings",
+		"scene": "Scene",
 		"scenes": "Scenes",
 		"selectCamera": "Select Camera"
 	}

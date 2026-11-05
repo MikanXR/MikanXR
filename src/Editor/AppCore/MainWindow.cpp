@@ -17,6 +17,7 @@
 #include "VideoSourceComponent.h"
 #include "EditorObjectSystem.h"
 #include "InputManager.h"
+#include "IMkFrameBuffer.h"
 #include "IMkGraphicsContext.h"
 #include "IMkWindowContext.h"
 #include "IMkState.h"
@@ -34,6 +35,7 @@
 #include "MkGuiDockspace.h"
 #include "MkGuiScopedUpdate.h"
 #include "MkGuiStyleManager.h"
+#include "MkScopedObjectBinding.h"
 #include "MkStateStack.h"
 #include "MkStateModifiers.h"
 #include "MikanTextRenderer.h"
@@ -50,6 +52,7 @@
 
 #include <chrono>
 #include <cstdlib>
+#include <optional>
 
 // App Stages
 #include "AlignmentCalibration/AppStage_AlignmentCalibration.h"
@@ -76,8 +79,6 @@
 //-- constants -----
 static const int k_window_pixel_width= 1280;
 static const int k_window_pixel_height= 720;
-
-static const glm::vec4 k_clear_color= glm::vec4(0.45f, 0.45f, 0.5f, 1.f);
 
 static const glm::vec3 k_frustum_color= glm::vec3(0.1f, 0.7f, 0.3f);
 
@@ -184,7 +185,8 @@ bool MainWindow::startup()
 	if (success)
 	{
 		bool ok= false;
-		MIKAN_TIMED_STARTUP("startupGuiContext", ok= startupGuiContext("main", /*bEnableDocking=*/true));
+		MIKAN_TIMED_STARTUP("startupGuiContext",
+							ok= startupGuiContext("main", /*bEnableDocking=*/true, /*bEnableViewports=*/true));
 		if (!ok)
 			success= false;
 	}
@@ -363,7 +365,7 @@ bool MainWindow::startup()
 		mkState->disableFlag(eMkStateFlagType::cullFace);
 
 		// Set the default clear color
-		mkStateSetClearColor(mkState, k_clear_color);
+		mkStateSetClearColor(mkState, k_clearColor);
 
 		// Default to the full window viewport
 		mkStateSetViewport(mkState, 0, 0, m_mkWindowContext->getWidth(), m_mkWindowContext->getHeight());
@@ -579,14 +581,25 @@ void MainWindow::render()
 
 		// Finalize rendering
 		m_graphicsContext->renderEnd();
+	}
 
+	// Render the OS windows panels are torn out into. ImGui requires this pass on
+	// every frame the GUI ran NewFrame, which update does whether or not a stage is
+	// current or the GUI is hidden.
+	m_guiContext->renderPlatformWindows(
+		[this](uint32_t viewportId, int drawableWidth, int drawableHeight)
+		{ m_automationServer->servicePendingViewportCapture(viewportId, drawableWidth, drawableHeight); });
+	m_automationServer->failUnservicedViewportCapture();
+
+	if (appStage != nullptr)
+	{
 		// Capture the finished frame for any pending automation screenshot, then present the
 		// rendered frame (may block on vsync or SteamVR overlay DWM handshake)
 		presentFrame();
 	}
 }
 
-void MainWindow::renderStageViewport(AppStage* appStage, IMkViewportPtr targetViewport)
+void MainWindow::renderStageViewport(AppStage* appStage, MikanViewportPtr targetViewport)
 {
 	EASY_FUNCTION();
 
@@ -597,6 +610,22 @@ void MainWindow::renderStageViewport(AppStage* appStage, IMkViewportPtr targetVi
 	// scoped state. Deregisters automatically via onRenderingViewportRevert when
 	// the scoped state pops at end of this function.
 	targetViewport->applyRenderingViewport(glState);
+
+	// A viewport with a render target draws into it rather than the back buffer.
+	// The binding lives until the end of this function, so the stage render and
+	// the line and text flushes below all land in the frame buffer. Its viewport
+	// rect nests inside the one applied above, so the rendering viewport reports
+	// the frame buffer's size while it is bound.
+	std::optional<MkScopedObjectBinding> renderTargetBinding;
+	if (IMkFrameBufferPtr renderTarget= targetViewport->getRenderTarget())
+	{
+		renderTargetBinding.emplace(glState, "appStage viewport render target", renderTarget);
+		if (!*renderTargetBinding)
+			return;
+
+		// The COLOR frame buffer type's bind clears colour only
+		mkStateClearBuffer(renderTargetBinding->getMkState(), eMkClearFlags::depth);
+	}
 
 	// Set window state flag that we are in the middle of rendering a stage
 	// Used for safety checks in the render functions
@@ -642,7 +671,9 @@ void MainWindow::renderStageUI(AppStage* appStage)
 		bRenderFrameRate= editorSystem->getEditorSettings().bRenderFrameRate;
 	}
 
-	if (bRenderFrameRate)
+	// A dockspace stage's viewport lives in a panel that draws its own readout,
+	// except while the UI is hidden and the viewport fills the window again
+	if (bRenderFrameRate && !(appStage->getUsesDockspace() && !m_bIsMainWindowGuiHidden))
 	{
 		// Stages without a viewport (the main menu) fall back to the window corner
 		glm::vec2 frameRateAnchor((float)getWidth() - 1.f, (float)getHeight() - 1.f);
@@ -765,9 +796,10 @@ bool MainWindow::onWindowEvent(const MkWindowEvent& event)
 	}
 
 	// Then see if the UI wants to handle the event
+	bool bGuiHandled= false;
 	if (!bHandled && !m_bIsMainWindowGuiHidden)
 	{
-		bHandled= m_guiContext->onWindowEvent(event);
+		bGuiHandled= m_guiContext->onWindowEvent(event);
 	}
 
 	// Then see if the current app stage wants to handle the event
@@ -777,12 +809,48 @@ bool MainWindow::onWindowEvent(const MkWindowEvent& event)
 		appStage->onWindowEvent(event);
 	}
 
-	// Then see if the main window object simulation wants to handle the event
+	// Then see if the main window object simulation wants to handle the event.
+	// ImGui reports capture over a panel presenting the stage's viewport, so the
+	// viewport takes mouse and key input while the stage says it is hovered or
+	// mid-drag, except for keys a focused text field is typing with.
 	if (!bHandled)
 	{
-		if (m_mkWindowContext->hasMouseFocus() || m_mkWindowContext->hasKeyboardFocus())
+		const bool bViewportWantsInput= !bGuiHandled || (appStage != nullptr && appStage->getViewportWantsInput());
+		const bool bWantsTextInput= !m_bIsMainWindowGuiHidden && m_guiContext->wantsTextInput();
+
+		bool bForwardToInput= false;
+		switch (eventType)
 		{
-			bHandled= m_inputManager->onWindowEvent(event);
+		case eMkWindowEventType::MouseButtonDown:
+		case eMkWindowEventType::MouseButtonUp:
+		case eMkWindowEventType::MouseMotion:
+		case eMkWindowEventType::MouseWheel:
+			bForwardToInput= bViewportWantsInput;
+			break;
+		case eMkWindowEventType::KeyDown:
+		case eMkWindowEventType::TextInput:
+			bForwardToInput= bViewportWantsInput && !bWantsTextInput;
+			break;
+		case eMkWindowEventType::KeyUp:
+			// A release reaches the input manager whatever took the press, or a key
+			// held while the cursor leaves the scene view stays pressed in it
+			bForwardToInput= true;
+			break;
+		default:
+			bForwardToInput= !bGuiHandled;
+			break;
+		}
+
+		// A torn-out panel's OS window holds the focus while the user works in it,
+		// so its events pass the gate this window's focus guards
+		const uint32_t eventWindowId= event.getWindowId();
+		const bool bFromChildWindow= eventWindowId != 0 && eventWindowId != (uint32_t)m_mkWindowContext->getWindowId();
+
+		bHandled= bGuiHandled;
+		if (bForwardToInput
+			&& (m_mkWindowContext->hasMouseFocus() || m_mkWindowContext->hasKeyboardFocus() || bFromChildWindow))
+		{
+			bHandled= m_inputManager->onWindowEvent(event) || bGuiHandled;
 		}
 	}
 
