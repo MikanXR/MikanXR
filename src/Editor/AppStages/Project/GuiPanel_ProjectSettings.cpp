@@ -254,6 +254,26 @@ void GuiPanel_ProjectSettings::onGui()
 			ImGui::SetTooltip("%s", locText("projectSettings.rulerSnapTooltip"));
 		}
 
+		float rotationSnapDegrees= editorConfig->getRotationSnapDegrees();
+		if (ImGui::InputFloat(locLabel("projectSettings.rotationSnapDegrees"), &rotationSnapDegrees, 1.f, 5.f, "%.1f"))
+		{
+			if (rotationSnapDegrees < 0.f)
+				rotationSnapDegrees= 0.f;
+			addDeferredGuiEvent(
+				[this, rotationSnapDegrees]()
+				{ m_editorSystem.lock()->getEditorSystemConfig()->setRotationSnapDegrees(rotationSnapDegrees); });
+		}
+
+		float scaleSnapIncrement= editorConfig->getScaleSnapIncrement();
+		if (ImGui::InputFloat(locLabel("projectSettings.scaleSnapIncrement"), &scaleSnapIncrement, 0.01f, 0.1f, "%.3f"))
+		{
+			if (scaleSnapIncrement < 0.f)
+				scaleSnapIncrement= 0.f;
+			addDeferredGuiEvent(
+				[this, scaleSnapIncrement]()
+				{ m_editorSystem.lock()->getEditorSystemConfig()->setScaleSnapIncrement(scaleSnapIncrement); });
+		}
+
 		int rulerUnitsIndex= (int)editorConfig->getRulerDisplayUnits();
 		const char* k_rulerUnitLabels[]= {locText("projectSettings.rulerUnitMeters"),
 										  locText("projectSettings.rulerUnitCentimeters"),

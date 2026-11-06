@@ -4073,6 +4073,36 @@ msgid "fx=%.1f  fy=%.1f"
 msgstr ""
 
 #. Section: project
+msgctxt "project.gizmoRotate"
+msgid "Rotate (R)"
+msgstr ""
+
+#. Section: project
+msgctxt "project.gizmoScale"
+msgid "Scale (Y)"
+msgstr ""
+
+#. Section: project
+msgctxt "project.gizmoSnap"
+msgid "Snap to the grid increment. Hold Shift to invert."
+msgstr ""
+
+#. Section: project
+msgctxt "project.gizmoSpaceLocal"
+msgid "Local space: the axes follow the object. Click for world space."
+msgstr ""
+
+#. Section: project
+msgctxt "project.gizmoSpaceWorld"
+msgid "World space: the axes follow the world. Click for local space."
+msgstr ""
+
+#. Section: project
+msgctxt "project.gizmoTranslate"
+msgid "Translate (T)"
+msgstr ""
+
+#. Section: project
 #, c-format
 msgctxt "project.hfovVfovFmt"
 msgid "hfov=%.2f  vfov=%.2f deg"
@@ -4577,6 +4607,11 @@ msgid "Reset to Defaults"
 msgstr ""
 
 #. Section: projectSettings
+msgctxt "projectSettings.rotationSnapDegrees"
+msgid "Rotation Snap (degrees)"
+msgstr ""
+
+#. Section: projectSettings
 msgctxt "projectSettings.rulerSnapToGridByDefault"
 msgid "Ruler Snap To Grid By Default"
 msgstr ""
@@ -4606,6 +4641,11 @@ msgstr ""
 #. Section: projectSettings
 msgctxt "projectSettings.rulerUnits"
 msgid "Ruler Units"
+msgstr ""
+
+#. Section: projectSettings
+msgctxt "projectSettings.scaleSnapIncrement"
+msgid "Scale Snap Increment"
 msgstr ""
 
 #. Section: projectSettings

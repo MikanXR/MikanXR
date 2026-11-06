@@ -7,7 +7,8 @@ struct ImVec2;
 
 // The project's 3d scene view. The viewport renders into a frame buffer this panel
 // owns, sized to the panel each frame, and the panel presents it as an image with
-// the view-mode selector and the frame rate readout drawn over it.
+// the view-mode selector, the gizmo toolbar, the transform gizmo, and the frame
+// rate readout drawn over it.
 class GuiPanel_SceneView : public GuiPanel
 {
 public:
@@ -28,7 +29,12 @@ public:
 
 private:
 	bool ensureFrameBuffer(int width, int height);
-	void drawViewModeCombo(const ImVec2& imagePos);
+	// The overlays reply whether one of their items is under the cursor
+	bool drawViewModeCombo(const ImVec2& imagePos);
+	bool drawGizmoToolbar(const ImVec2& imagePos);
+	// Draws the transform gizmo over the image, replying it for its hover and
+	// drag state this frame, or null when the stage has none
+	TransformGizmo* drawTransformGizmo(const ImVec2& imagePos, const ImVec2& imageSize);
 	void drawFrameRate(const ImVec2& imagePos, const ImVec2& imageSize);
 
 	MikanViewportPtr m_viewport;

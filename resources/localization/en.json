@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1218,
-		"translatedCount": 1218,
-		"reviewedCount": 1218
+		"stringCount": 1226,
+		"translatedCount": 1226,
+		"reviewedCount": 1226
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -859,6 +859,12 @@
 		"compositorListNoScene": "No active scene",
 		"cxCyFmt": "cx=%.1f  cy=%.1f",
 		"fxFyFmt": "fx=%.1f  fy=%.1f",
+		"gizmoRotate": "Rotate (R)",
+		"gizmoScale": "Scale (Y)",
+		"gizmoSnap": "Snap to the grid increment. Hold Shift to invert.",
+		"gizmoSpaceLocal": "Local space: the axes follow the object. Click for world space.",
+		"gizmoSpaceWorld": "World space: the axes follow the world. Click for local space.",
+		"gizmoTranslate": "Translate (T)",
 		"hfovVfovFmt": "hfov=%.2f  vfov=%.2f deg",
 		"liveResolutionFmt": "Live resolution:  %d x %d",
 		"no": "no",
@@ -958,12 +964,14 @@
 		"renderOrigin": "Render Origin",
 		"renderQuadStencils": "Render Quad Stencils",
 		"resetComponentNamePrefixes": "Reset to Defaults",
+		"rotationSnapDegrees": "Rotation Snap (degrees)",
 		"rulerSnapToGridByDefault": "Ruler Snap To Grid By Default",
 		"rulerSnapTooltip": "Hold Shift while measuring to invert snapping.\nOff (default): hold Shift to snap, release to move freely.",
 		"rulerUnitCentimeters": "Centimeters",
 		"rulerUnitMeters": "Meters",
 		"rulerUnitMillimeters": "Millimeters",
 		"rulerUnits": "Ruler Units",
+		"scaleSnapIncrement": "Scale Snap Increment",
 		"scriptEditorCommand": "Script Editor Command",
 		"scriptEditorCommandTooltip": "Placeholders: {project} the project folder, {file} the script path, {line} the line to open. A command without placeholders receives the project folder and the file as arguments.",
 		"sectionAssets": "Assets",

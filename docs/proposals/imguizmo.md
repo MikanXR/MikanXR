@@ -1,6 +1,6 @@
 # Proposal: ImGuizmo for the transform gizmo and the view cube
 
-Design decided. Part 1 is built; Parts 2 and 3 are not started. This document is the record of the design: the decisions, what exists today, the pieces in order, and what verifies them. A reader starting from it should not need the conversation that produced it.
+Design decided. Parts 1 and 2 are built; Part 3 is not started. This document is the record of the design: the decisions, what exists today, the pieces in order, and what verifies them. A reader starting from it should not need the conversation that produced it.
 
 ## Goal
 
@@ -58,13 +58,13 @@ The project viewport's transform gizmo is built from scene objects: a per-scene 
 
 ### Part 2: the transform gizmo
 
-- [ ] `TransformGizmo` in `src/Editor/ECS/Editor/`, owned by `EditorObjectSystem`, holding the binding and the mode, space, and snap state
-- [ ] Delete the gizmo components, `GizmoFwd.h`, the collider and mesh creation, the handle priorities, and `renderGizmo`
-- [ ] `GuiPanel_SceneView` draws the gizmo with `Manipulate` and applies the result to the target each frame, brackets the gesture on `IsUsing`, and reports gizmo capture in `wantsViewportInput`
-- [ ] Style thicknesses scaled by `MkGui::getUiScale()`, colors from the current gizmo, gizmo size matched by eye to today's
-- [ ] The toolbar strip and the `EditorSettings` fields for space and the two snap increments, with their localization keys
-- [ ] The `gizmo` automation namespace
-- [ ] objects.md selection section, transactions.md, automation.md
+- [x] `TransformGizmo` in `src/Editor/ECS/Editor/`, owned by `EditorObjectSystem`, holding the binding and the mode, space, and snap state
+- [x] Delete the gizmo components, `GizmoFwd.h`, the collider and mesh creation, the handle priorities, and `renderGizmo`
+- [x] `GuiPanel_SceneView` draws the gizmo with `Manipulate` and applies the result to the target each frame, brackets the gesture on `IsUsing`, and reports gizmo capture in `wantsViewportInput`
+- [x] Style thicknesses scaled by `MkGui::getUiScale()`, colors from the current gizmo, gizmo size matched by eye to today's
+- [x] The toolbar strip and the `EditorSettings` fields for space and the two snap increments, with their localization keys
+- [x] The `gizmo` automation namespace
+- [x] objects.md selection section, transactions.md, automation.md
 
 ### Part 3: the view cube
 

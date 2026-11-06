@@ -205,6 +205,17 @@ The editor transaction system's automation face ([transactions.md](./transaction
 
 A drive that mutates state can restore it exactly with `history undo` instead of hand-reverting property values, and a session that went wrong reads back from the log file even after a crash.
 
+### Transform gizmo (gizmo)
+
+The Scene panel's transform gizmo ([objects.md](./objects.md)). The verbs cover the state the toolbar and the T, R, and Y keys set, so a drive can put the gizmo in a known mode before injecting a handle drag and read the drag's effect back through `property get` on the target.
+
+- `gizmo info` replies `mode <translate|rotate|scale>`, `space <world|local>`, `snap <on|off>`, `target <system> <componentId>` (the owning system's class name and the root component's id, as the property verbs address it) or `target none`, `hovered <true|false>`, and `dragging <true|false>`
+- `gizmo mode <translate|rotate|scale>` selects the handles
+- `gizmo space <world|local>` selects the axes the translate and rotate handles follow
+- `gizmo snap <on|off>` sets the snap flag, which is the ruler's `snap_enabled` setting
+
+A handle drag follows the cursor position, so it drives through `input press`, `input move`, and `input release` over the Scene panel. The gizmo takes the mouse only while a handle is under the cursor, which ImGui judges from the previous frame, so move onto the handle, wait a frame, then press.
+
 ### Node graph editing (nodegraph)
 
 Drives the node editor window and its snapshot undo history ([transactions.md](./transactions.md)). One node editor window is targeted at a time; the commands answer an error when none is open.

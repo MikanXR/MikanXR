@@ -826,16 +826,16 @@ void AppStage_Project::render(IMkViewportPtr targetViewport)
 			spotLightSystem->renderConeVolumes(graphicsContext, viewportCamera);
 	}
 
-	// The selection outline and then the transform gizmo go after every piece of
-	// scene geometry, so their occluded passes see the finished depth buffer, and
-	// the gizmo draws over the outline. Both the scene and the stage view can hold
-	// a selection (stage lights and cameras are pickable in either).
+	// The selection outline goes after every piece of scene geometry, so its
+	// occluded pass sees the finished depth buffer. The transform gizmo is not
+	// drawn here: the Scene panel draws it over the presented image. Both the
+	// scene and the stage view can hold a selection (stage lights and cameras
+	// are pickable in either).
 	if (auto editorSystem= m_editorSystem.lock())
 	{
 		if (m_viewMode == eProjectViewMode::scene)
 		{
 			renderSelectionOutline(graphicsContext, viewportCamera, editorSystem);
-			editorSystem->renderGizmo(graphicsContext, viewportCamera);
 		}
 
 		// Draw the orthographic ruler overlay (no-op unless measuring in an ortho view)

@@ -1,13 +1,16 @@
 #include "GuiPanel_SceneView.h"
 #include "App.h"
 #include "EditorObjectSystem.h"
+#include "IconsForkAwesome.h"
 #include "IMkFrameBuffer.h"
 #include "IMkTexture.h"
 #include "LocText.h"
 #include "Logger.h"
 #include "MikanViewport.h"
 #include "MkGuiDrawUtils.h"
+#include "MkGuiScopedStyleColor.h"
 #include "Project/AppStage_Project.h"
+#include "TransformGizmo.h"
 
 #include "imgui.h"
 
@@ -22,6 +25,10 @@ namespace
 // Inset of the overlays from the image's corners
 const float k_viewModeComboInset= 8.f;
 const float k_viewModeComboWidth= 110.f;
+// The gizmo toolbar sits to the right of the view combo
+const float k_gizmoToolbarGap= 12.f;
+const float k_gizmoToolbarButtonSize= 24.f;
+const float k_gizmoToolbarButtonGap= 2.f;
 const float k_frameRateInset= 4.f;
 } // namespace
 
@@ -68,6 +75,9 @@ void GuiPanel_SceneView::onGui()
 {
 	EASY_FUNCTION();
 
+	// Whether the capture item still owned a press as of last frame
+	const bool bCaptureHeld= m_bActive;
+
 	m_bHovered= false;
 	m_bActive= false;
 
@@ -110,9 +120,29 @@ void GuiPanel_SceneView::onGui()
 	drawList->AddImage((ImTextureID)(intptr_t)colorTexture->getGlTextureId(), imagePos, imageMax, ImVec2(0.f, 1.f),
 					   ImVec2(1.f, 0.f));
 
-	// The overlays are submitted before the capture item below, so they win the hover
-	drawViewModeCombo(imagePos);
+	// The overlays are submitted before the capture item below, so they win the
+	// hover for their own behavior. IsItemHovered is rect based, so the capture
+	// item still reports hovered beneath them and their hover is subtracted below,
+	// or a click on an overlay would reach the viewport as a pick
+	const bool bComboHovered= drawViewModeCombo(imagePos);
+	const bool bToolbarHovered= drawGizmoToolbar(imagePos);
+	const bool bOverlayHovered= bComboHovered || bToolbarHovered;
 	drawFrameRate(imagePos, imageSize);
+
+	// The transform gizmo takes the mouse while a handle is under the cursor or a
+	// handle drag is held, and the panel then reports no hover and no press, which
+	// keeps viewport input out of the handle. A press the capture item already owns
+	// keeps it, so a camera drag passing over a handle carries on.
+	//
+	// ImGuizmo starts a drag only while no ImGui item is hovered, and ImGui counts
+	// last frame's hover, so the capture item is skipped while a handle is merely
+	// under the cursor. Once the drag is held the item is submitted again to own
+	// the press, or ImGui would move a floating panel along with the handle.
+	TransformGizmo* gizmo= drawTransformGizmo(imagePos, imageSize);
+	const bool bGizmoDragging= gizmo != nullptr && gizmo->isDragging();
+	const bool bGizmoHasMouse= gizmo != nullptr && (gizmo->isHovered() || bGizmoDragging) && !bCaptureHeld;
+	if (bGizmoHasMouse && !bGizmoDragging)
+		return;
 
 	// The press is owned by this item, so a left drag never starts an ImGui window
 	// move, and a drag that leaves the panel keeps the viewport's input until the
@@ -121,18 +151,86 @@ void GuiPanel_SceneView::onGui()
 	ImGui::InvisibleButton("##SceneViewCapture", imageSize,
 						   ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonMiddle
 							   | ImGuiButtonFlags_MouseButtonRight);
-	m_bHovered= ImGui::IsItemHovered();
-	m_bActive= ImGui::IsItemActive();
+	m_bHovered= ImGui::IsItemHovered() && !bOverlayHovered && !bGizmoHasMouse;
+	m_bActive= ImGui::IsItemActive() && !bGizmoHasMouse;
 }
 
-void GuiPanel_SceneView::drawViewModeCombo(const ImVec2& imagePos)
+bool GuiPanel_SceneView::drawGizmoToolbar(const ImVec2& imagePos)
+{
+	EditorObjectSystemPtr editorSystem= m_ownerAppStage->getObjectSystemOfType<EditorObjectSystem>();
+	TransformGizmo* gizmo= editorSystem ? editorSystem->getTransformGizmo() : nullptr;
+	if (gizmo == nullptr)
+		return false;
+
+	const float uiScale= MkGui::getUiScale();
+	const float buttonSize= k_gizmoToolbarButtonSize * uiScale;
+	const float buttonGap= k_gizmoToolbarButtonGap * uiScale;
+	ImGui::SetCursorScreenPos(
+		ImVec2(imagePos.x + (k_viewModeComboInset + k_viewModeComboWidth + k_gizmoToolbarGap) * uiScale,
+			   imagePos.y + k_viewModeComboInset * uiScale));
+
+	bool bAnyHovered= false;
+
+	// A square glyph button, drawn pressed while its state is the current one
+	auto drawToggle= [&](const char* fieldName, const char* glyph, const char* tooltipKey, bool bIsCurrent)
+	{
+		MkGuiScopedStyleColor buttonColor;
+		if (bIsCurrent)
+			buttonColor.push(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+
+		const std::string label= std::string(glyph) + "##" + fieldName;
+		const bool bClicked= ImGui::Button(label.c_str(), ImVec2(buttonSize, buttonSize));
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("%s", locText(tooltipKey));
+			bAnyHovered= true;
+		}
+		ImGui::SameLine(0.f, buttonGap);
+
+		return bClicked;
+	};
+
+	const eGizmoMode mode= gizmo->getMode();
+	if (drawToggle("gizmoTranslate", ICON_FK_ARROWS, "project.gizmoTranslate", mode == eGizmoMode::translate))
+		gizmo->setMode(eGizmoMode::translate);
+	if (drawToggle("gizmoRotate", ICON_FK_REPEAT, "project.gizmoRotate", mode == eGizmoMode::rotate))
+		gizmo->setMode(eGizmoMode::rotate);
+	if (drawToggle("gizmoScale", ICON_FK_EXPAND, "project.gizmoScale", mode == eGizmoMode::scale))
+		gizmo->setMode(eGizmoMode::scale);
+
+	// One button for the space, showing the space in effect
+	const bool bLocal= gizmo->getSpace() == eGizmoSpace::local;
+	if (drawToggle("gizmoSpace", bLocal ? ICON_FK_CUBE : ICON_FK_GLOBE,
+				   bLocal ? "project.gizmoSpaceLocal" : "project.gizmoSpaceWorld", bLocal))
+		gizmo->setSpace(bLocal ? eGizmoSpace::world : eGizmoSpace::local);
+
+	if (drawToggle("gizmoSnap", ICON_FK_MAGNET, "project.gizmoSnap", gizmo->getSnapEnabled()))
+		gizmo->setSnapEnabled(!gizmo->getSnapEnabled());
+	ImGui::NewLine();
+
+	return bAnyHovered;
+}
+
+TransformGizmo* GuiPanel_SceneView::drawTransformGizmo(const ImVec2& imagePos, const ImVec2& imageSize)
+{
+	EditorObjectSystemPtr editorSystem= m_ownerAppStage->getObjectSystemOfType<EditorObjectSystem>();
+	TransformGizmo* gizmo= editorSystem ? editorSystem->getTransformGizmo() : nullptr;
+	if (gizmo != nullptr)
+	{
+		gizmo->drawGui(imagePos, imageSize, m_viewport->getCurrentMikanCamera());
+	}
+
+	return gizmo;
+}
+
+bool GuiPanel_SceneView::drawViewModeCombo(const ImVec2& imagePos)
 {
 	AppStage_Project* projectStage= static_cast<AppStage_Project*>(m_ownerAppStage);
 
 	// Perspective / orthographic selector, editor camera only. Compositor cameras
 	// (pool index > 0) use real lens intrinsics and must not be switched.
 	if (m_viewport->getCurrentCameraIndex() != 0 || !m_viewport->getMikanCameraByIndex(0))
-		return;
+		return false;
 
 	const char* k_viewLabels[]= {locText("project.viewPerspective"), locText("project.viewTop"),
 								 locText("project.viewBottom"),      locText("project.viewFront"),
@@ -149,6 +247,8 @@ void GuiPanel_SceneView::drawViewModeCombo(const ImVec2& imagePos)
 	{
 		projectStage->applyCameraView(currentIndex);
 	}
+
+	return ImGui::IsItemHovered();
 }
 
 void GuiPanel_SceneView::drawFrameRate(const ImVec2& imagePos, const ImVec2& imageSize)

@@ -24,7 +24,7 @@ Object lifecycle capture uses two object system delegates: `OnNewObjectFinalized
 
 A burst of changes to one target merges into one transaction while consecutive changes arrive within 0.75 s. Gesture brackets (`beginGesture`/`endGesture`) override the window and group an entire interaction:
 
-- `EditorObjectSystem` brackets gizmo drags on mouse button down/up
+- `TransformGizmo` brackets a handle drag as `gizmo_drag` on the edges of `ImGuizmo::IsUsing`, and `EditorObjectSystem` brackets a collider grab as `mouse_drag` on mouse button down/up
 - the ImGui property panels bracket slider drags and typing via `ImGui::IsItemActive()` / `IsItemDeactivated()`, keeping per-frame value writes flowing for live preview
 - a script trigger run (the script panel button or the `script trigger` automation command) is bracketed as `script:<name>`, so its property writes coalesce. Object creates and destroys still seal on their own, so a trigger that spawns objects lands as several transactions.
 
