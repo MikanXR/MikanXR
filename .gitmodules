@@ -48,3 +48,6 @@
 [submodule "thirdparty/cgltf"]
 	path = thirdparty/cgltf
 	url = https://github.com/jkuhlmann/cgltf.git
+[submodule "thirdparty/ImGuizmo"]
+	path = thirdparty/ImGuizmo
+	url = https://github.com/CedricGuillemet/ImGuizmo.git

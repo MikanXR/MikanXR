@@ -3,6 +3,7 @@
 The living plan: what is in flight now, what comes next, and the open questions. Completed items are removed rather than checked off. Resolved questions are removed. Deferred work enters here at the moment of deferral.
 
 ## Now
+- [ ] ImGuizmo, [imguizmo.md](./proposals/imguizmo.md): the library in the build, the transform gizmo rebuilt on `Manipulate` with a toolbar strip and the `gizmo` verbs, then the view combo reduced to Perspective and Isometric with the view cube driving the camera and the `camera` verbs. Three commits, one pull request.
 - [ ] Verify `GenerateProjectFiles_X64_VS2022.bat` on a VS2022-only machine: configure, then build `build/Mikan.sln` in Visual Studio. The VS2022 compiler and headers are covered by CI's manual `vs=2022` run, but CI configures with Ninja, so the `Visual Studio 17 2022` generator itself has not run.
 - [ ] Node editor snapshot history commits a step on nearly every mouse release while the compositor runs, because a node's live `float_defaults/time` value serializes into the graph snapshot and the commit dedup sees a changed graph. A plain click on empty canvas after an undo adds a step. Keep runtime-fed values out of the snapshot, or dedup on the persisted fields only.
 - [ ] Cursor feedback in the interactive browser window: `CefDisplayHandler::OnCursorChange` fires but nothing consumes it, so the pointer stays an arrow over links and text fields. Deferred because it needs a new `IMkWindowContext::setCursor` plus an SDL system-cursor cache, and because ImGui's SDL2 backend calls `SDL_SetCursor` from `ImGui_ImplSDL2_UpdateMouseCursor` every `NewFrame` and would immediately overwrite it. Doing it means toggling `ImGuiConfigFlags_NoMouseCursorChange` on that window's io while the pointer is over the page area.
@@ -38,6 +39,7 @@ The living plan: what is in flight now, what comes next, and the open questions.
 
 
 ## Later
+- [ ] A curve asset for authoring lighting sequences, edited with ImGuizmo's `ImVectorEditor` in its own editor window. Adds `ImVectorEditor.cpp` to the `IMGUIZMO_SOURCE` list ([imguizmo.md](./proposals/imguizmo.md)).
 - [ ] Occlusion coverage feedback, the remaining parts of [occlusion-coverage-feedback.md](./proposals/occlusion-coverage-feedback.md). The editor parts are in, and a recording has run through the headless build. The phone parts were replaced by the live fusion below. Next:
 	- [ ] Parity check on a tabletop recording: `MikanCmd -occlusionMesh -coverage=<dir>` against the experiments repo's `tools/surface_coverage.py`, passing at 95% of the object's area in the same class.
 	- [ ] Drive the build stage on that recording: each preview view, the framing, the camera path, and a bounds box rebuild holding the 8 mm voxel.

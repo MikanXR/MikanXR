@@ -234,6 +234,16 @@ list(APPEND IMGUI_NODE_EDITOR_SOURCE
      ${IMGUI_NODE_EDITOR_DIR}/imgui_node_editor_api.cpp
 )
 
+# ImGuizmo (transform gizmo and view cube drawn through ImGui; submodule tracking
+# upstream master). Only the gizmo source is compiled; the repo's other widgets
+# (ImVectorEditor and friends) join this list when something uses them.
+set(IMGUIZMO_DIR ${ROOT_DIR}/thirdparty/ImGuizmo/src)
+set(IMGUIZMO_SOURCE "")
+list(APPEND IMGUIZMO_SOURCE
+     ${IMGUIZMO_DIR}/ImGuizmo.cpp
+)
+
+
 # IXWebSocket
 option(USE_ZLIB "Add ZLib support" FALSE)
 option(IXWEBSOCKET_INSTALL "Install IXWebSocket" FALSE)

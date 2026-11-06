@@ -15,6 +15,7 @@ file(GLOB MIKAN_GUI_PRIVATE_SRC
 file(GLOB MIKAN_GUI_SRC
 	${IMGUI_SOURCE}
 	${IMGUI_NODE_EDITOR_SOURCE}
+	${IMGUIZMO_SOURCE}
 	${MIKAN_GUI_HEADER}
 	${MIKAN_GUI_PRIVATE_SRC}
 )
@@ -24,6 +25,9 @@ source_group("ImGui" FILES ${IMGUI_SOURCE})
 
 # imgui-node-editor's source files are included in directly, rather than linking against a lib
 source_group("ImGuiNodeEditor" FILES ${IMGUI_NODE_EDITOR_SOURCE})
+
+# ImGuizmo's source file is included in directly as well
+source_group("ImGuizmo" FILES ${IMGUIZMO_SOURCE})
 
 source_group("Public" FILES ${MIKAN_GUI_HEADER})
 source_group("Private" FILES ${MIKAN_GUI_PRIVATE_SRC})
@@ -39,6 +43,7 @@ list(APPEND MIKAN_GUI_INCL_DIRS
 	${GLEW_INCLUDE_DIRS}
 	${IMGUI_DIR}
 	${IMGUI_NODE_EDITOR_DIR}
+	${IMGUIZMO_DIR}
 	${NLOHMANN_JSON_INCLUDE_DIR}
 	${SDL2_INCLUDE_DIR}
 	${SDL2_IMAGE_INCLUDE_DIR}
@@ -70,6 +75,7 @@ list(APPEND MIKAN_GUI_REQ_LIBS
 # Remove problematic files from the unity builds (header file inclusion ordering issues)
 set_source_files_properties(${IMGUI_SOURCE} PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 set_source_files_properties(${IMGUI_NODE_EDITOR_SOURCE} PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
+set_source_files_properties(${IMGUIZMO_SOURCE} PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 
 add_library(MikanGUI SHARED ${MIKAN_GUI_SRC})
 target_include_directories(MikanGUI PRIVATE ${MIKAN_GUI_INCL_DIRS})
