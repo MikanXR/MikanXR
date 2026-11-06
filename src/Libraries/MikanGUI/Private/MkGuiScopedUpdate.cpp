@@ -4,6 +4,7 @@
 #include "imgui.h"
 #include "backends/imgui_impl_sdl2.h"
 #include "backends/imgui_impl_opengl3.h"
+#include "ImGuizmo.h"
 
 MkGuiScopedUpdate::MkGuiScopedUpdate(MkGuiContext& context)
 	: MkGuiScopedContext(context)
@@ -15,6 +16,11 @@ MkGuiScopedUpdate::MkGuiScopedUpdate(MkGuiContext& context)
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplSDL2_NewFrame();
 	ImGui::NewFrame();
+
+	// ImGuizmo keeps one global context, so this resets its per-frame hover flags
+	// and binds its fallback draw list in whichever ImGui context is current,
+	// which lets any window draw a gizmo
+	ImGuizmo::BeginFrame();
 
 	// After NewFrame, which is where a settings load builds the dock nodes and
 	// window settings this re-proportions

@@ -1,13 +1,8 @@
 #include "AnchorObjectSystem.h"
 #include "App.h"
+#include "ColliderComponent.h"
 #include "Project/AppStage_Project.h"
-#include "BoxColliderComponent.h"
-#include "DiskColliderComponent.h"
 #include "EditorObjectSystem.h"
-#include "GizmoRotateComponent.h"
-#include "GizmoScaleComponent.h"
-#include "GizmoTransformComponent.h"
-#include "GizmoTranslateComponent.h"
 #include "MikanViewport.h"
 #include "MikanCamera.h"
 #include "MikanLineRenderer.h"
@@ -30,6 +25,7 @@
 #include "ProjectConfig.h"
 #include "SelectionComponent.h"
 #include "TransactionHistory.h"
+#include "TransformGizmo.h"
 #include "QuadStencilSystem.h"
 #include "BoxStencilSystem.h"
 #include "ModelStencilSystem.h"
@@ -53,6 +49,10 @@ const std::string EditorObjectSystemDefinition::k_gridExtentPropertyId= "grid_ex
 const std::string EditorObjectSystemDefinition::k_gridCellSizePropertyId= "grid_cell_size";
 const std::string EditorObjectSystemDefinition::k_snapIncrementPropertyId= "snap_increment";
 const std::string EditorObjectSystemDefinition::k_snapEnabledPropertyId= "snap_enabled";
+const std::string EditorObjectSystemDefinition::k_gizmoModePropertyId= "gizmo_mode";
+const std::string EditorObjectSystemDefinition::k_gizmoSpacePropertyId= "gizmo_space";
+const std::string EditorObjectSystemDefinition::k_rotationSnapDegreesPropertyId= "rotation_snap_degrees";
+const std::string EditorObjectSystemDefinition::k_scaleSnapIncrementPropertyId= "scale_snap_increment";
 const std::string EditorObjectSystemDefinition::k_rulerDisplayUnitsPropertyId= "ruler_display_units";
 const std::string EditorObjectSystemDefinition::k_debugCameraAlignmentPropertyId= "debug_camera_alignment";
 const std::string EditorObjectSystemDefinition::k_modelStencilDisplayModePropertyId= "model_stencil_display_mode";
@@ -63,13 +63,9 @@ const std::string EditorObjectSystemDefinition::k_editorCameraStatePropertyId= "
 const std::string EditorObjectSystemDefinition::k_outlinerOpenStatePropertyId= "outliner_open_state";
 const std::string EditorObjectSystemDefinition::k_outlinerTreeHeightPropertyId= "outliner_tree_height";
 
-// Viewpoint names used as the keys of the saved ortho views, in eCameraViewpoint order
-static const char* k_orthoViewpointStrings[EditorCameraState::k_orthoViewCount]= {"top",  "bottom", "front",
-																				  "back", "left",   "right"};
-
 // Keys within the saved camera state block
 static const char* k_cameraStatePerspectiveKey= "perspective";
-static const char* k_cameraStateOrthoViewsKey= "ortho_views";
+static const char* k_cameraStateOrthographicKey= "orthographic";
 static const char* k_cameraStateActiveViewKey= "active_view";
 static const char* k_cameraStatePositionKey= "position";
 static const char* k_cameraStateYawKey= "yaw_degrees";
@@ -77,18 +73,7 @@ static const char* k_cameraStatePitchKey= "pitch_degrees";
 static const char* k_cameraStateTargetKey= "target";
 static const char* k_cameraStateExtentKey= "extent";
 static const char* k_cameraStatePerspectiveViewName= "perspective";
-
-// The index of a saved view name, or -1 for the perspective view
-static int findCameraViewIndex(const std::string& viewName)
-{
-	for (int viewIndex= 0; viewIndex < EditorCameraState::k_orthoViewCount; ++viewIndex)
-	{
-		if (viewName == k_orthoViewpointStrings[viewIndex])
-			return viewIndex;
-	}
-
-	return -1;
-}
+static const char* k_cameraStateOrthographicViewName= "orthographic";
 
 static configuru::Config writeCameraStateToJSON(const EditorCameraState& cameraState)
 {
@@ -101,21 +86,16 @@ static configuru::Config writeCameraStateToJSON(const EditorCameraState& cameraS
 	perspectivePt[k_cameraStatePitchKey]= cameraState.perspectivePitchDegrees;
 	cameraPt[k_cameraStatePerspectiveKey]= perspectivePt;
 
-	configuru::Config orthoViewsPt= configuru::Config::object();
-	for (int viewIndex= 0; viewIndex < EditorCameraState::k_orthoViewCount; ++viewIndex)
-	{
-		configuru::Config viewPt= configuru::Config::object();
-		CommonConfig::writeVector3f(viewPt, k_cameraStateTargetKey,
-									glm_vec3_to_MikanVector3f(cameraState.orthoTargets[viewIndex]));
-		viewPt[k_cameraStateExtentKey]= cameraState.orthoExtents[viewIndex];
-		orthoViewsPt[k_orthoViewpointStrings[viewIndex]]= viewPt;
-	}
-	cameraPt[k_cameraStateOrthoViewsKey]= orthoViewsPt;
+	configuru::Config orthographicPt= configuru::Config::object();
+	orthographicPt[k_cameraStateYawKey]= cameraState.orthoYawDegrees;
+	orthographicPt[k_cameraStatePitchKey]= cameraState.orthoPitchDegrees;
+	CommonConfig::writeVector3f(orthographicPt, k_cameraStateTargetKey,
+								glm_vec3_to_MikanVector3f(cameraState.orthoTarget));
+	orthographicPt[k_cameraStateExtentKey]= cameraState.orthoExtent;
+	cameraPt[k_cameraStateOrthographicKey]= orthographicPt;
 
-	const bool bIsOrthoView=
-		cameraState.activeView >= 0 && cameraState.activeView < EditorCameraState::k_orthoViewCount;
 	cameraPt[k_cameraStateActiveViewKey]=
-		bIsOrthoView ? k_orthoViewpointStrings[cameraState.activeView] : k_cameraStatePerspectiveViewName;
+		cameraState.bOrthographic ? k_cameraStateOrthographicViewName : k_cameraStatePerspectiveViewName;
 
 	return cameraPt;
 }
@@ -136,37 +116,41 @@ static void readCameraStateFromJSON(const configuru::Config& cameraPt, EditorCam
 			perspectivePt.get_or<float>(k_cameraStatePitchKey, outCameraState.perspectivePitchDegrees);
 	}
 
-	if (cameraPt.has_key(k_cameraStateOrthoViewsKey))
+	if (cameraPt.has_key(k_cameraStateOrthographicKey))
 	{
-		const configuru::Config& orthoViewsPt= cameraPt[k_cameraStateOrthoViewsKey];
+		const configuru::Config& orthographicPt= cameraPt[k_cameraStateOrthographicKey];
 
-		for (int viewIndex= 0; viewIndex < EditorCameraState::k_orthoViewCount; ++viewIndex)
-		{
-			const char* viewName= k_orthoViewpointStrings[viewIndex];
-			if (!orthoViewsPt.has_key(viewName))
-				continue;
+		outCameraState.orthoYawDegrees=
+			orthographicPt.get_or<float>(k_cameraStateYawKey, outCameraState.orthoYawDegrees);
+		outCameraState.orthoPitchDegrees=
+			orthographicPt.get_or<float>(k_cameraStatePitchKey, outCameraState.orthoPitchDegrees);
 
-			const configuru::Config& viewPt= orthoViewsPt[viewName];
+		MikanVector3f target= glm_vec3_to_MikanVector3f(outCameraState.orthoTarget);
+		CommonConfig::readVector3f(orthographicPt, k_cameraStateTargetKey, target);
+		outCameraState.orthoTarget= MikanVector3f_to_glm_vec3(target);
 
-			MikanVector3f target= glm_vec3_to_MikanVector3f(outCameraState.orthoTargets[viewIndex]);
-			CommonConfig::readVector3f(viewPt, k_cameraStateTargetKey, target);
-			outCameraState.orthoTargets[viewIndex]= MikanVector3f_to_glm_vec3(target);
-
-			outCameraState.orthoExtents[viewIndex]=
-				viewPt.get_or<float>(k_cameraStateExtentKey, outCameraState.orthoExtents[viewIndex]);
-		}
+		outCameraState.orthoExtent= orthographicPt.get_or<float>(k_cameraStateExtentKey, outCameraState.orthoExtent);
 	}
 
+	// The active view is the projection name. A project saved with a pan and zoom
+	// per axis view named the face instead, which lands in the orthographic
+	// projection looking from that face, with the default target and extent.
 	const std::string activeViewName=
 		cameraPt.get_or<std::string>(k_cameraStateActiveViewKey, k_cameraStatePerspectiveViewName);
-	outCameraState.activeView= findCameraViewIndex(activeViewName);
+	outCameraState.bOrthographic= activeViewName != k_cameraStatePerspectiveViewName;
+	if (const MikanCameraAxisView* axisView= findCameraAxisView(activeViewName))
+	{
+		outCameraState.orthoYawDegrees= axisView->yawDegrees;
+		outCameraState.orthoPitchDegrees= axisView->pitchDegrees;
+	}
 }
 
 bool EditorCameraState::operator==(const EditorCameraState& other) const
 {
 	return perspectivePosition == other.perspectivePosition && perspectiveYawDegrees == other.perspectiveYawDegrees
-		   && perspectivePitchDegrees == other.perspectivePitchDegrees && orthoTargets == other.orthoTargets
-		   && orthoExtents == other.orthoExtents && activeView == other.activeView;
+		   && perspectivePitchDegrees == other.perspectivePitchDegrees && orthoYawDegrees == other.orthoYawDegrees
+		   && orthoPitchDegrees == other.orthoPitchDegrees && orthoTarget == other.orthoTarget
+		   && orthoExtent == other.orthoExtent && bOrthographic == other.bOrthographic;
 }
 
 configuru::Config EditorObjectSystemDefinition::writeToJSON()
@@ -186,6 +170,10 @@ configuru::Config EditorObjectSystemDefinition::writeToJSON()
 	pt[k_gridCellSizePropertyId]= m_editorSettings.gridCellSize;
 	pt[k_snapIncrementPropertyId]= m_editorSettings.snapIncrement;
 	pt[k_snapEnabledPropertyId]= m_editorSettings.bSnapEnabled;
+	pt[k_gizmoModePropertyId]= (int)m_editorSettings.gizmoMode;
+	pt[k_gizmoSpacePropertyId]= (int)m_editorSettings.gizmoSpace;
+	pt[k_rotationSnapDegreesPropertyId]= m_editorSettings.rotationSnapDegrees;
+	pt[k_scaleSnapIncrementPropertyId]= m_editorSettings.scaleSnapIncrement;
 	pt[k_rulerDisplayUnitsPropertyId]= (int)m_editorSettings.rulerDisplayUnits;
 	pt[k_debugCameraAlignmentPropertyId]= m_editorSettings.bDebugCameraAlignment;
 	pt[k_modelStencilDisplayModePropertyId]= (int)m_editorSettings.modelStencilDisplayMode;
@@ -229,6 +217,12 @@ void EditorObjectSystemDefinition::readFromJSON(const configuru::Config& pt)
 	m_editorSettings.gridCellSize= pt.get_or<float>(k_gridCellSizePropertyId, m_editorSettings.gridCellSize);
 	m_editorSettings.snapIncrement= pt.get_or<float>(k_snapIncrementPropertyId, m_editorSettings.snapIncrement);
 	m_editorSettings.bSnapEnabled= pt.get_or<bool>(k_snapEnabledPropertyId, m_editorSettings.bSnapEnabled);
+	m_editorSettings.gizmoMode= (eGizmoMode)pt.get_or<int>(k_gizmoModePropertyId, (int)m_editorSettings.gizmoMode);
+	m_editorSettings.gizmoSpace= (eGizmoSpace)pt.get_or<int>(k_gizmoSpacePropertyId, (int)m_editorSettings.gizmoSpace);
+	m_editorSettings.rotationSnapDegrees=
+		pt.get_or<float>(k_rotationSnapDegreesPropertyId, m_editorSettings.rotationSnapDegrees);
+	m_editorSettings.scaleSnapIncrement=
+		pt.get_or<float>(k_scaleSnapIncrementPropertyId, m_editorSettings.scaleSnapIncrement);
 	m_editorSettings.rulerDisplayUnits=
 		(eRulerDisplayUnits)pt.get_or<int>(k_rulerDisplayUnitsPropertyId, (int)m_editorSettings.rulerDisplayUnits);
 	m_editorSettings.bDebugCameraAlignment=
@@ -378,6 +372,42 @@ void EditorObjectSystemDefinition::setSnapEnabled(bool enabled)
 	}
 }
 
+void EditorObjectSystemDefinition::setGizmoMode(eGizmoMode mode)
+{
+	if (m_editorSettings.gizmoMode != mode)
+	{
+		m_editorSettings.gizmoMode= mode;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_gizmoModePropertyId));
+	}
+}
+
+void EditorObjectSystemDefinition::setGizmoSpace(eGizmoSpace space)
+{
+	if (m_editorSettings.gizmoSpace != space)
+	{
+		m_editorSettings.gizmoSpace= space;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_gizmoSpacePropertyId));
+	}
+}
+
+void EditorObjectSystemDefinition::setRotationSnapDegrees(float degrees)
+{
+	if (m_editorSettings.rotationSnapDegrees != degrees)
+	{
+		m_editorSettings.rotationSnapDegrees= degrees;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_rotationSnapDegreesPropertyId));
+	}
+}
+
+void EditorObjectSystemDefinition::setScaleSnapIncrement(float increment)
+{
+	if (m_editorSettings.scaleSnapIncrement != increment)
+	{
+		m_editorSettings.scaleSnapIncrement= increment;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_scaleSnapIncrementPropertyId));
+	}
+}
+
 void EditorObjectSystemDefinition::setRulerDisplayUnits(eRulerDisplayUnits units)
 {
 	if (m_editorSettings.rulerDisplayUnits != units)
@@ -496,7 +526,6 @@ bool EditorObjectSystem::init(MikanObjectSystemDefinitionPtr definitionPtr)
 	ownerWindow->OnAppStageEntered+= MakeDelegate(this, &EditorObjectSystem::onAppStageEntered);
 
 	SceneObjectSystemPtr sceneObjectSystem= getObjectSystemOfType<SceneObjectSystem>();
-	sceneObjectSystem->OnSceneActivated+= MakeDelegate(this, &EditorObjectSystem::onSceneActivated);
 	sceneObjectSystem->OnSceneDeactivated+= MakeDelegate(this, &EditorObjectSystem::onSceneDeactivated);
 
 	AnchorObjectSystemPtr anchorObjectSystem= getObjectSystemOfType<AnchorObjectSystem>();
@@ -515,110 +544,14 @@ bool EditorObjectSystem::init(MikanObjectSystemDefinitionPtr definitionPtr)
 	m_hoverComponentWeakPtr.reset();
 	m_selectedComponentWeakPtr.reset();
 
+	m_transformGizmo= std::make_unique<TransformGizmo>(this);
+
 	return true;
-}
-
-void EditorObjectSystem::createSceneTransformGizmo(SceneComponentPtr ownerScene)
-{
-	disposeSceneTransformGizmo();
-
-	m_gizmoObjectWeakPtr= newEmptyObject();
-	MikanObjectPtr gizmoObjectPtr= m_gizmoObjectWeakPtr.lock();
-	gizmoObjectPtr->setName("Gizmo");
-
-	GizmoTransformComponentPtr transformGizmoPtr= gizmoObjectPtr->addComponent<GizmoTransformComponent>();
-	transformGizmoPtr->setName("Gizmo");
-	gizmoObjectPtr->setRootComponent(transformGizmoPtr);
-	m_gizmoComponentWeakPtr= transformGizmoPtr;
-
-	gizmoObjectPtr->addComponent<SelectionComponent>();
-
-	const float W= GizmoTransformComponent::k_gizmoBaseWidth;
-	const float R= GizmoTransformComponent::k_gizmoBaseRadius;
-	const float P= R * 0.1f;
-
-	GizmoTranslateComponentPtr translateComponentPtr= gizmoObjectPtr->addComponent<GizmoTranslateComponent>();
-	createGizmoBoxCollider(gizmoObjectPtr, "xyTranslateHandle", glm::vec3(P, P, 0.f), glm::vec3(P, P, W * 0.1f), 3);
-	createGizmoBoxCollider(gizmoObjectPtr, "xzTranslateHandle", glm::vec3(P, 0.f, P), glm::vec3(P, W * 0.1f, P), 3);
-	createGizmoBoxCollider(gizmoObjectPtr, "yzTranslateHandle", glm::vec3(0.f, P, P), glm::vec3(W * 0.1f, P, P), 3);
-	createGizmoDiskCollider(gizmoObjectPtr, "viewPlaneTranslateHandle", glm::vec3(0.f), glm::vec3(0.f, 0.f, 1.f),
-							W * 2.5f, 2);
-	createGizmoBoxCollider(gizmoObjectPtr, "xAxisTranslateHandle", glm::vec3(R / 2.f, 0.f, 0.f),
-						   glm::vec3(R / 2.f, W, W), 1);
-	createGizmoBoxCollider(gizmoObjectPtr, "yAxisTranslateHandle", glm::vec3(0.f, R / 2.f, 0.f),
-						   glm::vec3(W, R / 2.f, W), 1);
-	createGizmoBoxCollider(gizmoObjectPtr, "zAxisTranslateHandle", glm::vec3(0.f, 0.f, R / 2.f),
-						   glm::vec3(W, W, R / 2.f), 1);
-
-	GizmoRotateComponentPtr rotateComponentPtr= gizmoObjectPtr->addComponent<GizmoRotateComponent>();
-	createGizmoDiskCollider(gizmoObjectPtr, "xAxisRotateHandle", glm::vec3(0.f), glm::vec3(1.f, 0.f, 0.f), R, 1);
-	createGizmoDiskCollider(gizmoObjectPtr, "yAxisRotateHandle", glm::vec3(0.f), glm::vec3(0.f, 1.f, 0.f), R, 1);
-	createGizmoDiskCollider(gizmoObjectPtr, "zAxisRotateHandle", glm::vec3(0.f), glm::vec3(0.f, 0.f, 1.f), R, 1);
-
-	GizmoScaleComponentPtr scaleComponentPtr= gizmoObjectPtr->addComponent<GizmoScaleComponent>();
-	createGizmoBoxCollider(gizmoObjectPtr, "centerScaleHandle", glm::vec3(0.f, 0.f, 0.f), glm::vec3(W, W, W), 1);
-	createGizmoBoxCollider(gizmoObjectPtr, "xAxisScaleHandle", glm::vec3(R, 0.f, 0.f), glm::vec3(W, W, W), 1);
-	createGizmoBoxCollider(gizmoObjectPtr, "yAxisScaleHandle", glm::vec3(0.f, R, 0.f), glm::vec3(W, W, W), 1);
-	createGizmoBoxCollider(gizmoObjectPtr, "zAxisScaleHandle", glm::vec3(0.f, 0.f, R), glm::vec3(W, W, W), 1);
-
-	gizmoObjectPtr->init();
-
-	// Attach the gizmo to the scene
-	gizmoObjectPtr->getRootComponent()->attachToComponent(ownerScene);
-}
-
-void EditorObjectSystem::disposeSceneTransformGizmo()
-{
-	MikanObjectPtr gizmoObjectPtr= m_gizmoObjectWeakPtr.lock();
-	if (gizmoObjectPtr)
-	{
-		// deleteObject, NOT gizmoObjectPtr->dispose(): the gizmo comes from
-		// newEmptyObject(), so the system's object list holds the only strong
-		// reference to it. Disposing it without also removing it from that list
-		// leaves a disposed object behind, which deleteAllObjects() then
-		// disposes a second time - tripping MikanObject::dispose's
-		// assert(!m_bIsDisposed) on shutdown - and leaks one object per scene
-		// switch, since a fresh gizmo is created on every scene activation.
-		deleteObject(gizmoObjectPtr);
-	}
-
-	m_gizmoObjectWeakPtr.reset();
-	m_gizmoComponentWeakPtr.reset();
-}
-
-void EditorObjectSystem::createGizmoBoxCollider(MikanObjectPtr gizmoObjectPtr, const std::string& name,
-												const glm::vec3& center, const glm::vec3& halfExtents,
-												const int priority)
-{
-	BoxColliderComponentPtr colliderPtr= gizmoObjectPtr->addComponent<BoxColliderComponent>(name);
-
-	colliderPtr->setName(name);
-	colliderPtr->setHalfExtents(halfExtents);
-	colliderPtr->setRelativeTransform(GlmTransform(center));
-	colliderPtr->attachToComponent(gizmoObjectPtr->getRootComponent());
-	colliderPtr->setEnabled(false);
-	colliderPtr->setPriority(priority);
-}
-
-void EditorObjectSystem::createGizmoDiskCollider(MikanObjectPtr gizmoObjectPtr, const std::string& name,
-												 const glm::vec3& center, const glm::vec3& normal, const float radius,
-												 const int priority)
-{
-	DiskColliderComponentPtr colliderPtr= gizmoObjectPtr->addComponent<DiskColliderComponent>(name);
-
-	glm::quat orientation= glm::quat(glm::vec3(0.f, 1.f, 0.f), normal);
-	colliderPtr->setRelativeTransform(GlmTransform(center, orientation));
-	colliderPtr->attachToComponent(gizmoObjectPtr->getRootComponent());
-	colliderPtr->setRadius(radius);
-	colliderPtr->setName(name);
-	colliderPtr->setEnabled(false);
-	colliderPtr->setPriority(priority);
 }
 
 void EditorObjectSystem::dispose()
 {
 	SceneObjectSystemPtr sceneObjectSystem= getObjectSystemOfType<SceneObjectSystem>();
-	sceneObjectSystem->OnSceneActivated-= MakeDelegate(this, &EditorObjectSystem::onSceneActivated);
 	sceneObjectSystem->OnSceneDeactivated-= MakeDelegate(this, &EditorObjectSystem::onSceneDeactivated);
 
 	AnchorObjectSystemPtr anchorObjectSystem= getObjectSystemOfType<AnchorObjectSystem>();
@@ -633,18 +566,14 @@ void EditorObjectSystem::dispose()
 	ModelStencilSystemPtr modelStencilSystem= getObjectSystemOfType<ModelStencilSystem>();
 	modelStencilSystem->OnComponentDisposed-= MakeDelegate(this, &EditorObjectSystem::onActorDisposed);
 
-	disposeSceneTransformGizmo();
+	// The gizmo's key bindings would outlive it in the window's input manager otherwise
+	if (m_transformGizmo)
+	{
+		m_transformGizmo->unbindInput();
+		m_transformGizmo.reset();
+	}
 
 	MikanObjectSystem::dispose();
-}
-
-void EditorObjectSystem::renderGizmo(IMkGraphicsContext* graphicsContext, MikanCameraPtr viewportCamera)
-{
-	GizmoTransformComponentPtr gizmoComponent= m_gizmoComponentWeakPtr.lock();
-	if (gizmoComponent)
-	{
-		gizmoComponent->customRender(graphicsContext, viewportCamera);
-	}
 }
 
 bool EditorObjectSystem::isRulerSnapActive(MikanViewportPtr targetViewport) const
@@ -843,10 +772,9 @@ void EditorObjectSystem::onAppStageEntered(class AppStage* oldAppStage, class Ap
 		inputManager->fetchOrAddKeyBindings(MkKey::BACKSPACE)->OnKeyPressed+=
 			MakeDelegate(this, &EditorObjectSystem::onDeletePressed);
 
-		auto gizmoComponent= m_gizmoComponentWeakPtr.lock();
-		if (gizmoComponent)
+		if (m_transformGizmo)
 		{
-			gizmoComponent->bindInput();
+			m_transformGizmo->bindInput(inputManager);
 		}
 	}
 }
@@ -859,14 +787,10 @@ void EditorObjectSystem::onDeletePressed()
 }
 
 // Object System Events
-void EditorObjectSystem::onSceneActivated(SceneComponentPtr newScene) { createSceneTransformGizmo(newScene); }
-
 void EditorObjectSystem::onSceneDeactivated(SceneComponentPtr oldScene)
 {
 	clearSelectedComponent();
 	clearHoveredComponent();
-
-	disposeSceneTransformGizmo();
 }
 
 void EditorObjectSystem::onActorDisposed(MikanObjectSystemPtr system, MikanComponentConstPtr component)
@@ -980,8 +904,8 @@ void EditorObjectSystem::onMouseRayChanged(const glm::vec3& rayOrigin, const glm
 	}
 	else if (newHoverColliderPtr != oldHoverColliderPtr && oldHoverComponentPtr)
 	{
-		// Same SelectionComponent but different collider — fire exit+enter so
-		// per-handle highlighting works (e.g. moving between gizmo handles).
+		// Same SelectionComponent but a different collider: fire exit then enter,
+		// so a listener that colors per collider sees the move
 		oldHoverComponentPtr->notifyHoverExit(prevRaycastResult);
 		if (newHoverColliderPtr)
 			oldHoverComponentPtr->notifyHoverEnter(m_lastestRaycastResult);
@@ -1023,43 +947,28 @@ void EditorObjectSystem::onMouseRayButtonUp(const glm::vec3& rayOrigin, const gl
 void EditorObjectSystem::onSelectionChanged(SelectionComponentPtr oldSelectedComponentPtr,
 											SelectionComponentPtr newSelectedComponentPtr)
 {
-	GizmoTransformComponentPtr gizmoComponentPtr= m_gizmoComponentWeakPtr.lock();
-
-	// Tell the old selection that it's getting unselected
+	// Tell the old selection that it is getting unselected
 	if (oldSelectedComponentPtr)
 	{
 		oldSelectedComponentPtr->notifyUnselected();
 	}
 
-	// Handle the new selection
+	// Tell the new selection that it is getting selected, and bind the gizmo to it
 	if (newSelectedComponentPtr)
 	{
-		// Tell the new selection that it's getting selected
 		newSelectedComponentPtr->notifySelected();
 
-		// The gizmo is built per activated scene, so a project with no scene yet
-		// has none. Is the component selected not owned by the gizmo object?
-		if (gizmoComponentPtr && newSelectedComponentPtr->getOwnerObject() != gizmoComponentPtr->getOwnerObject())
+		if (m_transformGizmo && m_transformGizmo->getSelectionTarget() != newSelectedComponentPtr)
 		{
-			SelectionComponentPtr oldGizmoTargetPtr= gizmoComponentPtr->getSelectionTarget();
-			SelectionComponentPtr newGizmoTargetPtr= newSelectedComponentPtr;
-
-			// Is the newly selected component not the one the transform gizmo is currently attached to?
-			if (newGizmoTargetPtr && oldGizmoTargetPtr != newGizmoTargetPtr)
-			{
-				// Snap gizmo to the newly selected component
-				gizmoComponentPtr->setSelectionTarget(newGizmoTargetPtr);
-			}
+			m_transformGizmo->setSelectionTarget(newSelectedComponentPtr);
 		}
 	}
-	else if (gizmoComponentPtr)
+	else if (m_transformGizmo)
 	{
-		// Clean up the gizmo
-		gizmoComponentPtr->clearSelectionTarget();
+		m_transformGizmo->clearSelectionTarget();
 	}
 
-	// Sent whether or not there is a gizmo: the outliner binds its component
-	// panels off this, and a project with no scene still has a selection
+	// The outliner binds its component panels off this
 	if (OnSelectionChanged)
 		OnSelectionChanged();
 }
@@ -1085,34 +994,15 @@ void EditorObjectSystem::setObjectSystemSelectionFilter(const std::set<const Mik
 	}
 }
 
-SelectionComponentPtr EditorObjectSystem::getSelectedSceneActor() const
-{
-	SelectionComponentPtr currentSelection= m_selectedComponentWeakPtr.lock();
-	if (!currentSelection)
-		return nullptr;
-
-	// If the selected component belongs to the gizmo, return what the gizmo is manipulating instead
-	MikanObjectPtr gizmoObject= m_gizmoObjectWeakPtr.lock();
-	if (gizmoObject && currentSelection->getOwnerObject() == gizmoObject)
-	{
-		GizmoTransformComponentPtr gizmoComponent= m_gizmoComponentWeakPtr.lock();
-		if (gizmoComponent)
-			return gizmoComponent->getSelectionTarget();
-		return nullptr;
-	}
-
-	return currentSelection;
-}
+SelectionComponentPtr EditorObjectSystem::getSelectedSceneActor() const { return m_selectedComponentWeakPtr.lock(); }
 
 void EditorObjectSystem::getSelectionOutlineTargets(const RenderableObjectFilter& objectFilter,
 													std::vector<SelectionOutlineTarget>& outTargets) const
 {
-	MikanObjectPtr gizmoObject= m_gizmoObjectWeakPtr.lock();
-
 	auto addObjectTargets= [&](SelectionComponentPtr selectionComponent, eSelectionOutlineState state)
 	{
 		MikanObjectPtr ownerObject= selectionComponent->getOwnerObject();
-		if (!ownerObject || ownerObject == gizmoObject || (objectFilter && !objectFilter(ownerObject)))
+		if (!ownerObject || (objectFilter && !objectFilter(ownerObject)))
 			return;
 
 		std::vector<IMkSceneRenderableConstPtr> renderables;

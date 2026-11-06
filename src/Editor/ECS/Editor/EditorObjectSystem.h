@@ -4,17 +4,19 @@
 #include "ColliderQuery.h"
 #include "CommonConfig.h"
 #include "ComponentFwd.h"
-#include "GizmoFwd.h"
 #include "MulticastDelegate.h"
 #include "ObjectSystemFwd.h"
 #include "ObjectSystemConfigFwd.h"
+#include "MikanCamera.h"
 #include "MikanRendererFwd.h"
 #include "ObjectSystemRenderQueries.h"
 #include "SceneFwd.h"
 #include "SelectionOutlineRenderer.h"
+#include "TransformGizmo.h"
 
 #include <array>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -37,23 +39,22 @@ enum class eStencilDisplayMode : int
 	both,      // solid mesh with wireframe overlaid
 };
 
-// Saved editor viewport camera poses: the perspective fly pose plus a pan and zoom
-// for each axis-aligned orthographic viewpoint, indexed in eCameraViewpoint order.
-// The defaults mirror the ones MikanCamera starts at, so a project with no saved
+// Saved editor viewport camera poses: the perspective fly pose, the orthographic
+// view's orientation, target, and extent, and which projection was active. The
+// defaults mirror the ones MikanCamera starts at, so a project with no saved
 // state opens exactly as it did before the poses were persisted.
 struct EditorCameraState
 {
-	static constexpr int k_orthoViewCount= 6;
-
 	glm::vec3 perspectivePosition= glm::vec3(0.f);
 	float perspectiveYawDegrees= 0.f;
 	float perspectivePitchDegrees= 0.f;
 
-	std::array<glm::vec3, k_orthoViewCount> orthoTargets= {};
-	std::array<float, k_orthoViewCount> orthoExtents= {5.f, 5.f, 5.f, 5.f, 5.f, 5.f};
+	float orthoYawDegrees= MikanCamera::k_default_ortho_yaw_degrees;
+	float orthoPitchDegrees= MikanCamera::k_default_ortho_pitch_degrees;
+	glm::vec3 orthoTarget= glm::vec3(0.f);
+	float orthoExtent= MikanCamera::k_default_ortho_extent;
 
-	// -1 for the perspective view, otherwise an eCameraViewpoint index
-	int activeView= -1;
+	bool bOrthographic= false;
 
 	bool operator==(const EditorCameraState& other) const;
 	bool operator!=(const EditorCameraState& other) const { return !(*this == other); }
@@ -75,7 +76,13 @@ struct EditorSettings
 	float gridExtent= 10.f;    // total width/depth of the floor grid
 	float gridCellSize= 0.5f;  // size of a single grid cell
 	float snapIncrement= 0.1f; // ruler / measurement snap increment
-	bool bSnapEnabled= false;  // ruler snap baseline; hold Shift while measuring to invert it
+	bool bSnapEnabled= false;  // ruler and gizmo snap baseline; hold Shift to invert it
+	// Transform gizmo: the handles it shows, the space its axes follow, and the
+	// steps its rotate and scale handles snap to (translate snaps to snapIncrement)
+	eGizmoMode gizmoMode= eGizmoMode::translate;
+	eGizmoSpace gizmoSpace= eGizmoSpace::world;
+	float rotationSnapDegrees= 15.f;
+	float scaleSnapIncrement= 0.1f;
 	eRulerDisplayUnits rulerDisplayUnits= eRulerDisplayUnits::millimeters; // ruler readout units
 	bool bDebugCameraAlignment= false; // draw the MR camera-alignment debug overlay in the compositor view
 	eStencilDisplayMode modelStencilDisplayMode= eStencilDisplayMode::both; // how model stencils are drawn
@@ -170,6 +177,22 @@ public:
 	bool getSnapEnabled() const { return m_editorSettings.bSnapEnabled; }
 	void setSnapEnabled(bool enabled);
 
+	static const std::string k_gizmoModePropertyId;
+	eGizmoMode getGizmoMode() const { return m_editorSettings.gizmoMode; }
+	void setGizmoMode(eGizmoMode mode);
+
+	static const std::string k_gizmoSpacePropertyId;
+	eGizmoSpace getGizmoSpace() const { return m_editorSettings.gizmoSpace; }
+	void setGizmoSpace(eGizmoSpace space);
+
+	static const std::string k_rotationSnapDegreesPropertyId;
+	float getRotationSnapDegrees() const { return m_editorSettings.rotationSnapDegrees; }
+	void setRotationSnapDegrees(float degrees);
+
+	static const std::string k_scaleSnapIncrementPropertyId;
+	float getScaleSnapIncrement() const { return m_editorSettings.scaleSnapIncrement; }
+	void setScaleSnapIncrement(float increment);
+
 	static const std::string k_rulerDisplayUnitsPropertyId;
 	eRulerDisplayUnits getRulerDisplayUnits() const { return m_editorSettings.rulerDisplayUnits; }
 	void setRulerDisplayUnits(eRulerDisplayUnits units);
@@ -228,10 +251,6 @@ public:
 	virtual bool init(MikanObjectSystemDefinitionPtr definitionPtr) override;
 	virtual void dispose() override;
 
-	// Draws the transform gizmo. Call after the scene geometry: the gizmo's
-	// occluded pass has to read through a finished depth buffer.
-	void renderGizmo(IMkGraphicsContext* graphicsContext, MikanCameraPtr viewportCamera);
-
 	// Draws the orthographic ruler/measurement overlay (no-op unless a measurement
 	// exists and the supplied camera is orthographic).
 	void renderRuler(IMkGraphicsContext* graphicsContext, MikanViewportPtr targetViewport);
@@ -264,7 +283,8 @@ public:
 	// selected row covers objects that have no selection component.
 	MulticastDelegate<void()> OnDeleteSelectionRequested;
 
-	inline MikanObjectPtr getGizmoObject() const { return m_gizmoObjectWeakPtr.lock(); }
+	// The transform gizmo bound to the selection, drawn by the scene panel
+	TransformGizmo* getTransformGizmo() const { return m_transformGizmo.get(); }
 	MikanViewportPtr getPrimaryViewport() const;
 	MikanCameraPtr getPrimaryCamera() const;
 
@@ -290,14 +310,12 @@ protected:
 	ColliderComponentWeakPtr m_hoverColliderWeakPtr;
 	SelectionComponentWeakPtr m_selectedComponentWeakPtr;
 
-	MikanObjectWeakPtr m_gizmoObjectWeakPtr;
-	GizmoTransformComponentWeakPtr m_gizmoComponentWeakPtr;
+	std::unique_ptr<TransformGizmo> m_transformGizmo;
 
 	// App Events
 	void onAppStageEntered(class AppStage* oldAppStage, class AppStage* newAppStage);
 
 	// Object System Events
-	void onSceneActivated(SceneComponentPtr newScene);
 	void onSceneDeactivated(SceneComponentPtr oldScene);
 	void onActorDisposed(MikanObjectSystemPtr system, MikanComponentConstPtr component);
 
@@ -312,12 +330,6 @@ protected:
 	void onSelectionChanged(SelectionComponentPtr oldComponentPtr, SelectionComponentPtr newComponentPtr);
 
 	// Helpers
-	void createSceneTransformGizmo(SceneComponentPtr ownerScene);
-	void disposeSceneTransformGizmo();
-	void createGizmoBoxCollider(MikanObjectPtr gizmoObjectPtr, const std::string& name, const glm::vec3& center,
-								const glm::vec3& halfExtents, const int priority);
-	void createGizmoDiskCollider(MikanObjectPtr gizmoObjectPtr, const std::string& name, const glm::vec3& center,
-								 const glm::vec3& normal, const float radius, const int priority);
 	SelectionComponentPtr findClosestSelectionTarget(const glm::vec3& rayOrigin, const glm::vec3& rayDir,
 													 ColliderRaycastHitResult& outRaycastResult) const;
 	void clearHoveredComponent();

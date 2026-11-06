@@ -10,6 +10,7 @@
 #include "ProjectAssetCatalog.h"
 #include "ProjectScriptContext.h"
 #include "CompositorObjectSystem.h"
+#include "EditorObjectSystem.h"
 #include "EditorWindow.h"
 #include "FunctionDatabaseEnumerator.h"
 #include "IMkTexture.h"
@@ -17,12 +18,14 @@
 #include "MkWindowEvent.h"
 #include "Logger.h"
 #include "MainWindow.h"
+#include "MikanCamera.h"
 #include "MikanComponent.h"
 #include "MikanFunctionDatabase.h"
 #include "MikanObject.h"
 #include "MikanObjectSystem.h"
 #include "MikanPropertyDatabase.h"
 #include "MikanServer.h"
+#include "MikanViewport.h"
 #include "MikanShaderConfig.h"
 #include "MkGuiContext.h"
 #include "PathUtils.h"
@@ -35,6 +38,7 @@
 #include "SharedTextureReader.h"
 #include "StringUtils.h"
 #include "TransactionHistory.h"
+#include "TransformGizmo.h"
 
 #include "Graphs/MaterialNodeGraph.h"
 #include "Graphs/NodeGraph.h"
@@ -69,6 +73,20 @@ bool parseComponentId(const std::string& token, int& outComponentId)
 		return false;
 
 	outComponentId= (int)parsed;
+	return true;
+}
+
+bool parseFloatToken(const std::string& token, float& outValue)
+{
+	if (token.empty())
+		return false;
+
+	char* end= nullptr;
+	const float parsed= strtof(token.c_str(), &end);
+	if (end == nullptr || *end != '\0')
+		return false;
+
+	outValue= parsed;
 	return true;
 }
 
@@ -541,6 +559,16 @@ void AutomationServer::registerCoreNamespaces()
 
 	registerCommandNamespace("gui", {"gui viewports", "gui float <windowId> <x> <y> [<width> <height>]"},
 							 std::bind(&AutomationServer::handleGuiCommand, this, _1, _2, _3));
+
+	registerCommandNamespace(
+		"gizmo",
+		{"gizmo info", "gizmo mode <translate|rotate|scale>", "gizmo space <world|local>", "gizmo snap <on|off>"},
+		std::bind(&AutomationServer::handleGizmoCommand, this, _1, _2, _3));
+
+	registerCommandNamespace("camera",
+							 {"camera info", "camera projection <perspective|orthographic>",
+							  "camera look <top|bottom|front|back|left|right>", "camera look <yaw> <pitch>"},
+							 std::bind(&AutomationServer::handleCameraCommand, this, _1, _2, _3));
 
 	registerCommandNamespace("window", {"window list", "window focus <windowIndex>"},
 							 std::bind(&AutomationServer::handleWindowCommand, this, _1, _2, _3));
@@ -2636,6 +2664,177 @@ bool AutomationServer::handleAssetsCommand(const std::vector<std::string>& args,
 		}
 
 		outLines.push_back(results[0]);
+		return true;
+	}
+
+	outError= "unknown verb '" + verb + "'";
+	return false;
+}
+
+bool AutomationServer::handleGizmoCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,
+										  std::string& outError)
+{
+	if (args.empty())
+	{
+		outError= "usage: gizmo info|mode|space|snap ...";
+		return false;
+	}
+
+	EditorObjectSystemPtr editorSystem= m_mainWindow->getProjectManager()->getSystemOfType<EditorObjectSystem>();
+	TransformGizmo* gizmo= editorSystem ? editorSystem->getTransformGizmo() : nullptr;
+	if (gizmo == nullptr)
+	{
+		outError= "no transform gizmo (no project loaded)";
+		return false;
+	}
+
+	static const char* k_modeNames[]= {"translate", "rotate", "scale"};
+	static const char* k_spaceNames[]= {"world", "local"};
+
+	const std::string& verb= args[0];
+	if (verb == "info")
+	{
+		outLines.push_back(std::string("mode ") + k_modeNames[(int)gizmo->getMode()]);
+		outLines.push_back(std::string("space ") + k_spaceNames[(int)gizmo->getSpace()]);
+		outLines.push_back(std::string("snap ") + (gizmo->getSnapEnabled() ? "on" : "off"));
+
+		// The target is addressed the way the property verbs address it: the owning
+		// system's class name and the root component's id
+		TransformComponentPtr target= gizmo->getTransformTarget();
+		MikanObjectPtr targetObject= target ? target->getOwnerObject() : nullptr;
+		MikanObjectSystemPtr targetSystem= targetObject ? targetObject->getOwnerSystem() : nullptr;
+		if (target && targetSystem)
+			outLines.push_back("target " + targetSystem->getObjectSystemClassName() + " "
+							   + std::to_string(target->getComponentId()));
+		else
+			outLines.push_back("target none");
+
+		outLines.push_back(std::string("hovered ") + (gizmo->isHovered() ? "true" : "false"));
+		outLines.push_back(std::string("dragging ") + (gizmo->isDragging() ? "true" : "false"));
+		return true;
+	}
+
+	if (args.size() < 2)
+	{
+		outError= "usage: gizmo " + verb + " <value>";
+		return false;
+	}
+	const std::string& value= args[1];
+
+	if (verb == "mode")
+	{
+		for (int modeIndex= 0; modeIndex < 3; ++modeIndex)
+		{
+			if (value == k_modeNames[modeIndex])
+			{
+				gizmo->setMode((eGizmoMode)modeIndex);
+				return true;
+			}
+		}
+		outError= "unknown mode '" + value + "'";
+		return false;
+	}
+	else if (verb == "space")
+	{
+		for (int spaceIndex= 0; spaceIndex < 2; ++spaceIndex)
+		{
+			if (value == k_spaceNames[spaceIndex])
+			{
+				gizmo->setSpace((eGizmoSpace)spaceIndex);
+				return true;
+			}
+		}
+		outError= "unknown space '" + value + "'";
+		return false;
+	}
+	else if (verb == "snap")
+	{
+		if (value != "on" && value != "off")
+		{
+			outError= "snap takes on or off, not '" + value + "'";
+			return false;
+		}
+		gizmo->setSnapEnabled(value == "on");
+		return true;
+	}
+
+	outError= "unknown verb '" + verb + "'";
+	return false;
+}
+
+bool AutomationServer::handleCameraCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,
+										   std::string& outError)
+{
+	if (args.empty())
+	{
+		outError= "usage: camera info|projection|look ...";
+		return false;
+	}
+
+	EditorObjectSystemPtr editorSystem= m_mainWindow->getProjectManager()->getSystemOfType<EditorObjectSystem>();
+	MikanViewportPtr viewport= editorSystem ? editorSystem->getPrimaryViewport() : nullptr;
+	MikanCameraPtr camera= viewport ? viewport->getMikanCameraByIndex(0) : nullptr;
+	if (!camera)
+	{
+		outError= "no editor camera (no project loaded)";
+		return false;
+	}
+
+	auto formatVector= [](const glm::vec3& v)
+	{ return std::to_string(v.x) + " " + std::to_string(v.y) + " " + std::to_string(v.z); };
+
+	const std::string& verb= args[0];
+	if (verb == "projection" || verb == "look")
+	{
+		if (args.size() < 2)
+		{
+			outError= "usage: camera " + verb + " <value...>";
+			return false;
+		}
+	}
+
+	if (verb == "info")
+	{
+		outLines.push_back(std::string("projection ") + (camera->isOrthographic() ? "orthographic" : "perspective"));
+		outLines.push_back("yaw " + std::to_string(camera->getEditorYawDegrees()));
+		outLines.push_back("pitch " + std::to_string(camera->getEditorPitchDegrees()));
+		outLines.push_back("position " + formatVector(camera->getCameraPositionFromViewMatrix()));
+		outLines.push_back("forward " + formatVector(camera->getCameraForwardFromViewMatrix()));
+		outLines.push_back("target " + formatVector(camera->getOrthoTargetPosition()));
+		outLines.push_back("extent " + std::to_string(camera->getOrthoExtent()));
+		return true;
+	}
+	else if (verb == "projection")
+	{
+		const std::string& value= args[1];
+		if (value != "perspective" && value != "orthographic")
+		{
+			outError= "unknown projection '" + value + "'";
+			return false;
+		}
+
+		// The switch the combo makes: the view direction carries across
+		camera->setEditorProjection(
+			value == "orthographic" ? eCameraProjectionMode::orthographic : eCameraProjectionMode::perspective, true);
+		return true;
+	}
+	else if (verb == "look")
+	{
+		if (const MikanCameraAxisView* axisView= findCameraAxisView(args[1]))
+		{
+			camera->setEditorViewDirection(axisView->yawDegrees, axisView->pitchDegrees);
+			return true;
+		}
+
+		float yawDegrees= 0.f;
+		float pitchDegrees= 0.f;
+		if (args.size() < 3 || !parseFloatToken(args[1], yawDegrees) || !parseFloatToken(args[2], pitchDegrees))
+		{
+			outError= "usage: camera look <top|bottom|front|back|left|right> or camera look <yaw> <pitch>";
+			return false;
+		}
+
+		camera->setEditorViewDirection(yawDegrees, pitchDegrees);
 		return true;
 	}
 

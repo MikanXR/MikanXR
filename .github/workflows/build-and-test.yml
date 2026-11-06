@@ -135,6 +135,7 @@ jobs:
             thirdparty/LuaBridge3 \
             thirdparty/imgui \
             thirdparty/imgui-node-editor \
+            thirdparty/ImGuizmo \
             thirdparty/fast_obj \
             thirdparty/cgltf \
             thirdparty/IXWebSocket \

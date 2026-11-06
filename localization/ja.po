@@ -4582,6 +4582,36 @@ msgid "fx=%.1f  fy=%.1f"
 msgstr "fx=%.1f  fy=%.1f"
 
 #. Section: project
+msgctxt "project.gizmoRotate"
+msgid "Rotate (R)"
+msgstr ""
+
+#. Section: project
+msgctxt "project.gizmoScale"
+msgid "Scale (Y)"
+msgstr ""
+
+#. Section: project
+msgctxt "project.gizmoSnap"
+msgid "Snap to the grid increment. Hold Shift to invert."
+msgstr ""
+
+#. Section: project
+msgctxt "project.gizmoSpaceLocal"
+msgid "Local space: the axes follow the object. Click for world space."
+msgstr ""
+
+#. Section: project
+msgctxt "project.gizmoSpaceWorld"
+msgid "World space: the axes follow the world. Click for local space."
+msgstr ""
+
+#. Section: project
+msgctxt "project.gizmoTranslate"
+msgid "Translate (T)"
+msgstr ""
+
+#. Section: project
 #, fuzzy, c-format
 msgctxt "project.hfovVfovFmt"
 msgid "hfov=%.2f  vfov=%.2f deg"
@@ -4950,46 +4980,15 @@ msgid "Tracking frame delay: %d"
 msgstr "トラッキングフレーム遅延: %d"
 
 #. Section: project
-#, fuzzy
-msgctxt "project.viewBack"
-msgid "Back"
-msgstr "背面"
-
-#. Section: project
-#, fuzzy
-msgctxt "project.viewBottom"
-msgid "Bottom"
-msgstr "底面"
-
-#. Section: project
-#, fuzzy
-msgctxt "project.viewFront"
-msgid "Front"
-msgstr "正面"
-
-#. Section: project
-#, fuzzy
-msgctxt "project.viewLeft"
-msgid "Left"
-msgstr "左面"
+msgctxt "project.viewIsometric"
+msgid "Isometric"
+msgstr ""
 
 #. Section: project
 #, fuzzy
 msgctxt "project.viewPerspective"
 msgid "Perspective"
 msgstr "透視投影"
-
-#. Section: project
-#, fuzzy
-msgctxt "project.viewRight"
-msgid "Right"
-msgstr "右面"
-
-#. Section: project
-#, fuzzy
-msgctxt "project.viewTop"
-msgid "Top"
-msgstr "上面"
 
 #. Section: project
 #, fuzzy
@@ -5171,6 +5170,11 @@ msgid "Reset to Defaults"
 msgstr ""
 
 #. Section: projectSettings
+msgctxt "projectSettings.rotationSnapDegrees"
+msgid "Rotation Snap (degrees)"
+msgstr ""
+
+#. Section: projectSettings
 #, fuzzy
 msgctxt "projectSettings.rulerSnapToGridByDefault"
 msgid "Ruler Snap To Grid By Default"
@@ -5209,6 +5213,11 @@ msgstr "ミリメートル"
 msgctxt "projectSettings.rulerUnits"
 msgid "Ruler Units"
 msgstr "ルーラー単位"
+
+#. Section: projectSettings
+msgctxt "projectSettings.scaleSnapIncrement"
+msgid "Scale Snap Increment"
+msgstr ""
 
 #. Section: projectSettings
 #, fuzzy
@@ -7102,3 +7111,33 @@ msgstr "カメラを選択"
 #~ msgctxt "nodeEditor.compositorOutputWindowTitle"
 #~ msgid "Compositor Output"
 #~ msgstr "コンポジター出力"
+
+#, fuzzy
+#~ msgctxt "project.viewBack"
+#~ msgid "Back"
+#~ msgstr "背面"
+
+#, fuzzy
+#~ msgctxt "project.viewBottom"
+#~ msgid "Bottom"
+#~ msgstr "底面"
+
+#, fuzzy
+#~ msgctxt "project.viewFront"
+#~ msgid "Front"
+#~ msgstr "正面"
+
+#, fuzzy
+#~ msgctxt "project.viewLeft"
+#~ msgid "Left"
+#~ msgstr "左面"
+
+#, fuzzy
+#~ msgctxt "project.viewRight"
+#~ msgid "Right"
+#~ msgstr "右面"
+
+#, fuzzy
+#~ msgctxt "project.viewTop"
+#~ msgid "Top"
+#~ msgstr "上面"

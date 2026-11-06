@@ -205,6 +205,27 @@ The editor transaction system's automation face ([transactions.md](./transaction
 
 A drive that mutates state can restore it exactly with `history undo` instead of hand-reverting property values, and a session that went wrong reads back from the log file even after a crash.
 
+### Transform gizmo (gizmo)
+
+The Scene panel's transform gizmo ([objects.md](./objects.md)). The verbs cover the state the toolbar and the T, R, and Y keys set, so a drive can put the gizmo in a known mode before injecting a handle drag and read the drag's effect back through `property get` on the target.
+
+- `gizmo info` replies `mode <translate|rotate|scale>`, `space <world|local>`, `snap <on|off>`, `target <system> <componentId>` (the owning system's class name and the root component's id, as the property verbs address it) or `target none`, `hovered <true|false>`, and `dragging <true|false>`
+- `gizmo mode <translate|rotate|scale>` selects the handles
+- `gizmo space <world|local>` selects the axes the translate and rotate handles follow
+- `gizmo snap <on|off>` sets the snap flag, which is the ruler's `snap_enabled` setting
+
+A handle drag follows the cursor position, so it drives through `input press`, `input move`, and `input release` over the Scene panel. The gizmo takes the mouse only while a handle is under the cursor, which ImGui judges from the previous frame, so move onto the handle, wait a frame, then press.
+
+### Editor camera (camera)
+
+The Scene panel's editor camera ([objects.md](./objects.md)). The verbs set the projection and the view direction the combo and the view cube set, so a drive can put the camera in a known pose and read a cube click's effect back.
+
+- `camera info` replies `projection <perspective|orthographic>`, `yaw` and `pitch` in degrees, `position`, `forward`, and the orthographic `target` and `extent`
+- `camera projection <perspective|orthographic>` switches the projection and carries the view direction across, as the combo does
+- `camera look <top|bottom|front|back|left|right>` turns to an axis view, and `camera look <yaw> <pitch>` to a direction in degrees, keeping the fly camera's position and the orthographic target
+
+The view cube drives through the input verbs over the image's top right corner. A click on a face, edge, or corner interpolates over forty frames, so read `camera info` about a second after it. A cube drag orbits under synthetic input too, since ImGuizmo reads the cursor delta ImGui computes from successive positions rather than the OS relative motion the viewport's own right drag depends on.
+
 ### Node graph editing (nodegraph)
 
 Drives the node editor window and its snapshot undo history ([transactions.md](./transactions.md)). One node editor window is targeted at a time; the commands answer an error when none is open.

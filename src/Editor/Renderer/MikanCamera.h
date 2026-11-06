@@ -6,7 +6,6 @@
 #include "glm/ext/matrix_float4x4.hpp"
 #include "glm/ext/vector_float3.hpp"
 
-#include <array>
 #include <string>
 
 enum eCameraMovementMode : int
@@ -23,25 +22,17 @@ enum class eCameraProjectionMode : int
 	orthographic,
 };
 
-// Axis-aligned orthographic viewpoints (UE-style)
-enum class eCameraViewpoint : int
+// The six axis-aligned look directions by name, as a yaw about +Y and a pitch,
+// for the camera verbs and for the view names older projects saved
+struct MikanCameraAxisView
 {
-	top,
-	bottom,
-	front,
-	back,
-	left,
-	right,
+	const char* name;
+	float yawDegrees;
+	float pitchDegrees;
 };
-constexpr int k_orthoViewpointCount= 6;
-
-// Pan and zoom for one axis-aligned viewpoint. Each viewpoint keeps its own,
-// so switching Top -> Front -> Top returns to the framing Top was left at.
-struct MikanOrthoViewState
-{
-	glm::vec3 target= glm::vec3(0.f);
-	float extent= 5.f; // half-height of the view in world meters
-};
+constexpr int k_cameraAxisViewCount= 6;
+extern const MikanCameraAxisView k_cameraAxisViews[k_cameraAxisViewCount];
+const MikanCameraAxisView* findCameraAxisView(const std::string& name);
 
 class MikanCamera : public IMkCamera
 {
@@ -76,18 +67,31 @@ public:
 	bool isOrthographic() const { return m_projectionMode == eCameraProjectionMode::orthographic; }
 	void setProjectionMode(eCameraProjectionMode mode);
 
-	// Orthographic viewpoint controls (these act on the current viewpoint)
-	eCameraViewpoint getOrthoViewpoint() const { return m_orthoViewpoint; }
-	void setOrthographicViewpoint(eCameraViewpoint viewpoint);
-	float getOrthoExtent() const { return getOrthoViewState(m_orthoViewpoint).extent; }
+	// The editor camera's two projections: perspective flies, orthographic looks
+	// at a target from its own yaw and pitch. The movement mode follows the
+	// projection. Carrying the view direction copies the outgoing projection's
+	// yaw and pitch into the incoming one, so a switch keeps the scene in view.
+	void setEditorProjection(eCameraProjectionMode mode, bool bCarryViewDirection);
+
+	// Orthographic view: one orientation (yaw about +Y, then pitch), one target,
+	// and one extent (the half-height of the view in world meters)
+	float getOrthoYawDegrees() const { return m_orthoYawDegrees; }
+	float getOrthoPitchDegrees() const { return m_orthoPitchDegrees; }
+	void setOrthoOrientation(float yawDegrees, float pitchDegrees);
+	float getOrthoExtent() const { return m_orthoExtent; }
 	void setOrthoExtent(float extent);
-	const glm::vec3& getOrthoTargetPosition() const { return getOrthoViewState(m_orthoViewpoint).target; }
+	const glm::vec3& getOrthoTargetPosition() const { return m_orthoTarget; }
 	void setOrthoTargetPosition(const glm::vec3& target);
 	void adjustOrthoTargetPosition(const glm::vec3& deltaTarget);
+	void setOrthoView(float yawDegrees, float pitchDegrees, const glm::vec3& target, float extent);
 
-	// Pan and zoom of any viewpoint, for seeding all of them from saved state
-	const MikanOrthoViewState& getOrthoViewState(eCameraViewpoint viewpoint) const;
-	void setOrthoViewState(eCameraViewpoint viewpoint, const glm::vec3& target, float extent);
+	// The yaw and pitch of whichever editor projection is active
+	float getEditorYawDegrees() const;
+	float getEditorPitchDegrees() const;
+	void setEditorViewDirection(float yawDegrees, float pitchDegrees);
+	// Takes a view matrix back from the view cube: the fly camera as its position
+	// plus yaw and pitch, the orthographic camera as yaw and pitch about its target
+	void setEditorViewMatrix(const glm::mat4& viewMatrix);
 
 	// Update the projection to match the actual viewport aspect ratio
 	void setViewportAspect(float aspectRatio);
@@ -129,7 +133,6 @@ protected:
 	void rebuildProjectionMatrix();
 	// Rebuild the fly transform rotation from the current yaw and pitch, keeping the position
 	void rebuildFlyTransform();
-	MikanOrthoViewState& getMutableOrthoViewState(eCameraViewpoint viewpoint);
 
 	const float k_default_aspect_ratio= 16.f / 9.f;
 	const float k_default_camera_vfov= 35.f;
@@ -137,6 +140,13 @@ protected:
 	const float k_default_camera_z_far= 5000.f;
 	const float k_camera_min_zoom= 0.01f;
 
+public:
+	// The orthographic view a fresh camera looks from: the isometric diagonal
+	static constexpr float k_default_ortho_yaw_degrees= 45.f;
+	static constexpr float k_default_ortho_pitch_degrees= -35.264f;
+	static constexpr float k_default_ortho_extent= 5.f;
+
+protected:
 	std::string m_cameraName;
 
 	float m_aspectRatio;
@@ -151,9 +161,11 @@ protected:
 	eCameraProjectionMode m_projectionMode= eCameraProjectionMode::perspective;
 	float m_viewportAspectRatio= 16.f / 9.f;
 
-	// Orthographic camera parameters, one pan/zoom per viewpoint (indexed by eCameraViewpoint)
-	eCameraViewpoint m_orthoViewpoint= eCameraViewpoint::top;
-	std::array<MikanOrthoViewState, k_orthoViewpointCount> m_orthoViewStates;
+	// Orthographic camera parameters
+	float m_orthoYawDegrees= k_default_ortho_yaw_degrees;
+	float m_orthoPitchDegrees= k_default_ortho_pitch_degrees;
+	glm::vec3 m_orthoTarget= glm::vec3(0.f);
+	float m_orthoExtent= k_default_ortho_extent;
 
 	// Stationary camera parameters
 	glm::mat4 m_stationaryTransform;

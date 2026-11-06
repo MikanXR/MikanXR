@@ -170,7 +170,7 @@ Release builds compile with `/Z7` and link with `/DEBUG:FULL /OPT:REF /OPT:ICF` 
 
 - `localization-check` (Linux, no build tree): `pip install polib`, then `python tools/localization.py check`. Fails when a committed string table is not what the generator produces from the catalogs, or when a translation breaks a loader rule. See [localization.md](./localization.md).
 
-- `build` (`windows-2025-vs2026`, Visual Studio 2026): initializes only the needed submodules, caches `deps/` keyed on the hash of `InitialSetup_x64.bat`, runs that script on a cache miss (it installs nothing system-wide, so no GStreamer), and configures with the Ninja generator instead of Visual Studio. Ninja is used specifically so `CMAKE_C/CXX_COMPILER_LAUNCHER=sccache` takes effect (the VS/MSBuild generator ignores compiler launchers). Key configure differences from local:
+- `build` (`windows-2025-vs2026`, Visual Studio 2026): initializes only the needed submodules (an explicit list in the workflow's `Init required submodules` step, so a submodule added to `.gitmodules` is added there too or the job fails on its first missing header), caches `deps/` keyed on the hash of `InitialSetup_x64.bat`, runs that script on a cache miss (it installs nothing system-wide, so no GStreamer), and configures with the Ninja generator instead of Visual Studio. Ninja is used specifically so `CMAKE_C/CXX_COMPILER_LAUNCHER=sccache` takes effect (the VS/MSBuild generator ignores compiler launchers). Key configure differences from local:
 
 ```
 -G "Ninja" -DCMAKE_BUILD_TYPE=Release

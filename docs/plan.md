@@ -38,6 +38,7 @@ The living plan: what is in flight now, what comes next, and the open questions.
 
 
 ## Later
+- [ ] A curve asset for authoring lighting sequences, edited with ImGuizmo's `ImVectorEditor` in its own editor window. Adds `ImVectorEditor.cpp` to the `IMGUIZMO_SOURCE` list ([imguizmo.md](./proposals/imguizmo.md)).
 - [ ] Occlusion coverage feedback, the remaining parts of [occlusion-coverage-feedback.md](./proposals/occlusion-coverage-feedback.md). The editor parts are in, and a recording has run through the headless build. The phone parts were replaced by the live fusion below. Next:
 	- [ ] Parity check on a tabletop recording: `MikanCmd -occlusionMesh -coverage=<dir>` against the experiments repo's `tools/surface_coverage.py`, passing at 95% of the object's area in the same class.
 	- [ ] Drive the build stage on that recording: each preview view, the framing, the camera path, and a bounds box rebuild holding the 8 mm voxel.

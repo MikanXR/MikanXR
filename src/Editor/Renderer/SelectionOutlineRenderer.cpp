@@ -21,7 +21,7 @@
 namespace
 {
 constexpr float k_outlineRadiusPx= 2.f;
-// Matches the transform gizmo's occluded pass, so occluded outlines read the same way
+// The brightness an occluded outline is faded to
 constexpr float k_outlineOccludedAlpha= 0.35f;
 
 // A mask code is (state * 2 + visible): the visible part of a target outranks its occluded

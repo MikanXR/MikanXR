@@ -634,33 +634,7 @@ void AppStage_Project::onViewModeChanged()
 	}
 }
 
-// Editor camera views
-void AppStage_Project::applyCameraView(int viewIndex)
-{
-	MikanCameraPtr camera= (m_viewport != nullptr) ? m_viewport->getMikanCameraByIndex(0) : MikanCameraPtr();
-	if (!camera)
-		return;
-
-	if (viewIndex >= 1 && viewIndex <= k_orthoViewpointCount)
-	{
-		camera->setOrthographicViewpoint((eCameraViewpoint)(viewIndex - 1));
-	}
-	else
-	{
-		camera->setProjectionMode(eCameraProjectionMode::perspective);
-		camera->setCameraMovementMode(eCameraMovementMode::fly);
-	}
-}
-
-int AppStage_Project::getCurrentCameraViewIndex() const
-{
-	MikanCameraPtr camera= (m_viewport != nullptr) ? m_viewport->getMikanCameraByIndex(0) : MikanCameraPtr();
-	if (!camera || camera->getProjectionMode() != eCameraProjectionMode::orthographic)
-		return 0;
-
-	return (int)camera->getOrthoViewpoint() + 1;
-}
-
+// Editor camera state
 bool AppStage_Project::captureCameraState(EditorCameraState& outCameraState) const
 {
 	MikanCameraPtr camera= (m_viewport != nullptr) ? m_viewport->getMikanCameraByIndex(0) : MikanCameraPtr();
@@ -671,16 +645,12 @@ bool AppStage_Project::captureCameraState(EditorCameraState& outCameraState) con
 	outCameraState.perspectiveYawDegrees= camera->getFlyYawDegrees();
 	outCameraState.perspectivePitchDegrees= camera->getFlyPitchDegrees();
 
-	for (int viewIndex= 0; viewIndex < EditorCameraState::k_orthoViewCount; ++viewIndex)
-	{
-		const MikanOrthoViewState& orthoViewState= camera->getOrthoViewState((eCameraViewpoint)viewIndex);
+	outCameraState.orthoYawDegrees= camera->getOrthoYawDegrees();
+	outCameraState.orthoPitchDegrees= camera->getOrthoPitchDegrees();
+	outCameraState.orthoTarget= camera->getOrthoTargetPosition();
+	outCameraState.orthoExtent= camera->getOrthoExtent();
 
-		outCameraState.orthoTargets[viewIndex]= orthoViewState.target;
-		outCameraState.orthoExtents[viewIndex]= orthoViewState.extent;
-	}
-
-	// The saved active view is an eCameraViewpoint index, or -1 for the perspective view
-	outCameraState.activeView= getCurrentCameraViewIndex() - 1;
+	outCameraState.bOrthographic= camera->isOrthographic();
 
 	return true;
 }
@@ -694,16 +664,13 @@ void AppStage_Project::restoreCameraState()
 
 	const EditorCameraState& cameraState= editorSystem->getEditorSystemConfig()->getEditorCameraState();
 
+	// Each projection gets its own saved direction back, so the switch carries nothing across
 	camera->setFlyPose(cameraState.perspectivePosition, cameraState.perspectiveYawDegrees,
 					   cameraState.perspectivePitchDegrees);
-
-	for (int viewIndex= 0; viewIndex < EditorCameraState::k_orthoViewCount; ++viewIndex)
-	{
-		camera->setOrthoViewState((eCameraViewpoint)viewIndex, cameraState.orthoTargets[viewIndex],
-								  cameraState.orthoExtents[viewIndex]);
-	}
-
-	applyCameraView(cameraState.activeView + 1);
+	camera->setOrthoView(cameraState.orthoYawDegrees, cameraState.orthoPitchDegrees, cameraState.orthoTarget,
+						 cameraState.orthoExtent);
+	camera->setEditorProjection(
+		cameraState.bOrthographic ? eCameraProjectionMode::orthographic : eCameraProjectionMode::perspective, false);
 
 	m_pendingCameraState= cameraState;
 	m_cameraStateIdleTimer= -1.f;
@@ -826,16 +793,16 @@ void AppStage_Project::render(IMkViewportPtr targetViewport)
 			spotLightSystem->renderConeVolumes(graphicsContext, viewportCamera);
 	}
 
-	// The selection outline and then the transform gizmo go after every piece of
-	// scene geometry, so their occluded passes see the finished depth buffer, and
-	// the gizmo draws over the outline. Both the scene and the stage view can hold
-	// a selection (stage lights and cameras are pickable in either).
+	// The selection outline goes after every piece of scene geometry, so its
+	// occluded pass sees the finished depth buffer. The transform gizmo is not
+	// drawn here: the Scene panel draws it over the presented image. Both the
+	// scene and the stage view can hold a selection (stage lights and cameras
+	// are pickable in either).
 	if (auto editorSystem= m_editorSystem.lock())
 	{
 		if (m_viewMode == eProjectViewMode::scene)
 		{
 			renderSelectionOutline(graphicsContext, viewportCamera, editorSystem);
-			editorSystem->renderGizmo(graphicsContext, viewportCamera);
 		}
 
 		// Draw the orthographic ruler overlay (no-op unless measuring in an ortho view)
