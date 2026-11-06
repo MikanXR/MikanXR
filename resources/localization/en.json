@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1226,
-		"translatedCount": 1226,
-		"reviewedCount": 1226
+		"stringCount": 1221,
+		"translatedCount": 1221,
+		"reviewedCount": 1221
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -927,13 +927,8 @@
 		"sceneListEmpty": "No scenes in the project",
 		"selectCalibrationCamera": "Select Calibration Camera",
 		"trackingFrameDelayFmt": "Tracking frame delay: %d",
-		"viewBack": "Back",
-		"viewBottom": "Bottom",
-		"viewFront": "Front",
-		"viewLeft": "Left",
+		"viewIsometric": "Isometric",
 		"viewPerspective": "Perspective",
-		"viewRight": "Right",
-		"viewTop": "Top",
 		"yes": "yes",
 		"znearZfarFmt": "znear=%.3f  zfar=%.1f m"
 	},

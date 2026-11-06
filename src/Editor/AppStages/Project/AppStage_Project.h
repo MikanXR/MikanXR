@@ -51,11 +51,6 @@ public:
 	virtual void onMenuBarGui() override;
 	virtual void onBuildDefaultDockLayout(unsigned int dockspaceId) override;
 
-	// Editor camera views, indexed as the view-mode combo lists them:
-	// 0 is the perspective view, 1..6 are the eCameraViewpoint orthographic views
-	void applyCameraView(int viewIndex);
-	int getCurrentCameraViewIndex() const;
-
 protected:
 	SceneComponentConstPtr getCurrentSceneConst() const;
 	StageComponentConstPtr getCurrentStageConst() const;

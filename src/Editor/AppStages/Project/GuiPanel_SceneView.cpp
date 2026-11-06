@@ -6,13 +6,21 @@
 #include "IMkTexture.h"
 #include "LocText.h"
 #include "Logger.h"
+#include "MikanCamera.h"
+#include "MikanObject.h"
 #include "MikanViewport.h"
 #include "MkGuiDrawUtils.h"
 #include "MkGuiScopedStyleColor.h"
 #include "Project/AppStage_Project.h"
+#include "SelectionComponent.h"
+#include "TransformComponent.h"
 #include "TransformGizmo.h"
 
 #include "imgui.h"
+#include "ImGuizmo.h"
+
+#include "glm/ext/matrix_clip_space.hpp"
+#include "glm/gtc/type_ptr.hpp"
 
 #include <easy/profiler.h>
 
@@ -29,6 +37,12 @@ const float k_viewModeComboWidth= 110.f;
 const float k_gizmoToolbarGap= 12.f;
 const float k_gizmoToolbarButtonSize= 24.f;
 const float k_gizmoToolbarButtonGap= 2.f;
+// The view cube sits in the image's top right corner
+const float k_viewCubeSize= 96.f;
+const ImU32 k_viewCubeBackground= IM_COL32(16, 16, 16, 16);
+// How far ahead the perspective camera orbits when nothing is selected
+const float k_viewCubeDefaultPivotDistance= 1.f;
+const float k_viewCubeMinPivotDistance= 0.05f;
 const float k_frameRateInset= 4.f;
 } // namespace
 
@@ -129,18 +143,25 @@ void GuiPanel_SceneView::onGui()
 	const bool bOverlayHovered= bComboHovered || bToolbarHovered;
 	drawFrameRate(imagePos, imageSize);
 
-	// The transform gizmo takes the mouse while a handle is under the cursor or a
-	// handle drag is held, and the panel then reports no hover and no press, which
-	// keeps viewport input out of the handle. A press the capture item already owns
-	// keeps it, so a camera drag passing over a handle carries on.
+	// The transform gizmo and the view cube take the mouse while a handle or the
+	// cube is under the cursor or a drag on one is held, and the panel then reports
+	// no hover and no press, which keeps viewport input out of them. A press the
+	// capture item already owns keeps it, so a camera drag passing over a handle
+	// carries on.
 	//
-	// ImGuizmo starts a drag only while no ImGui item is hovered, and ImGui counts
-	// last frame's hover, so the capture item is skipped while a handle is merely
-	// under the cursor. Once the drag is held the item is submitted again to own
-	// the press, or ImGui would move a floating panel along with the handle.
+	// ImGuizmo starts a drag only while no ImGui item is hovered or active, and
+	// ImGui counts last frame's hover, so the capture item is skipped while a
+	// handle or the cube is merely under the cursor. Once the drag is held the
+	// item is submitted again to own the press, or ImGui would move a floating
+	// panel along with the handle.
 	TransformGizmo* gizmo= drawTransformGizmo(imagePos, imageSize);
-	const bool bGizmoDragging= gizmo != nullptr && gizmo->isDragging();
-	const bool bGizmoHasMouse= gizmo != nullptr && (gizmo->isHovered() || bGizmoDragging) && !bCaptureHeld;
+	bool bCubeHovered= false;
+	bool bCubeUsing= false;
+	drawViewCube(imagePos, imageSize, bCubeHovered, bCubeUsing);
+
+	const bool bGizmoDragging= (gizmo != nullptr && gizmo->isDragging()) || bCubeUsing;
+	const bool bGizmoHovered= (gizmo != nullptr && gizmo->isHovered()) || bCubeHovered;
+	const bool bGizmoHasMouse= (bGizmoHovered || bGizmoDragging) && !bCaptureHeld;
 	if (bGizmoHasMouse && !bGizmoDragging)
 		return;
 
@@ -223,21 +244,83 @@ TransformGizmo* GuiPanel_SceneView::drawTransformGizmo(const ImVec2& imagePos, c
 	return gizmo;
 }
 
+void GuiPanel_SceneView::drawViewCube(const ImVec2& imagePos, const ImVec2& imageSize, bool& outHovered, bool& outUsing)
+{
+	outHovered= false;
+	outUsing= false;
+
+	// Editor camera only, like the combo: a compositor camera follows its tracked pose
+	if (m_viewport->getCurrentCameraIndex() != 0)
+		return;
+	MikanCameraPtr camera= m_viewport->getMikanCameraByIndex(0);
+	if (!camera)
+		return;
+
+	const float uiScale= MkGui::getUiScale();
+	const float cubeSize= k_viewCubeSize * uiScale;
+	const float inset= k_viewModeComboInset * uiScale;
+	const ImVec2 cubePos(imagePos.x + imageSize.x - cubeSize - inset, imagePos.y + inset);
+
+	// ImGuizmo reads the projection for its handedness only, and an orthographic
+	// projection reads as left handed to it, so the cube always sees a perspective one
+	const glm::mat4 handedness= glm::perspective(glm::radians(45.f), 1.f, 0.1f, 10.f);
+	glm::mat4 identity(1.f);
+	glm::mat4 view= camera->getViewMatrix();
+
+	ImGuizmo::SetDrawlist();
+	ImGuizmo::SetRect(imagePos.x, imagePos.y, imageSize.x, imageSize.y);
+	ImGuizmo::ViewManipulate(glm::value_ptr(view), glm::value_ptr(handedness), ImGuizmo::TRANSLATE, ImGuizmo::WORLD,
+							 glm::value_ptr(identity), computeViewCubePivotDistance(*camera), cubePos,
+							 ImVec2(cubeSize, cubeSize), k_viewCubeBackground);
+
+	outHovered= ImGuizmo::IsViewManipulateHovered();
+	outUsing= ImGuizmo::IsUsingViewManipulate();
+
+	// A drag or a face snap edits the view each frame, and the camera takes it back
+	if (outUsing && view != camera->getViewMatrix())
+	{
+		camera->setEditorViewMatrix(view);
+	}
+}
+
+float GuiPanel_SceneView::computeViewCubePivotDistance(const MikanCamera& camera) const
+{
+	const glm::vec3 cameraPosition= camera.getCameraPositionFromViewMatrix();
+
+	// The orthographic camera orbits its target
+	if (camera.isOrthographic())
+	{
+		return glm::length(camera.getOrthoTargetPosition() - cameraPosition);
+	}
+
+	// The perspective camera orbits the selection when there is one ahead of it,
+	// so a face click frames it, and a fixed distance ahead otherwise
+	EditorObjectSystemPtr editorSystem= m_ownerAppStage->getObjectSystemOfType<EditorObjectSystem>();
+	SelectionComponentPtr selection= editorSystem ? editorSystem->getSelectedSceneActor() : nullptr;
+	if (selection)
+	{
+		const glm::vec3 selectionPosition= selection->getOwnerObject()->getRootComponent()->getWorldLocation();
+		const float distanceAhead=
+			glm::dot(selectionPosition - cameraPosition, camera.getCameraForwardFromViewMatrix());
+		if (distanceAhead > k_viewCubeMinPivotDistance)
+			return distanceAhead;
+	}
+
+	return k_viewCubeDefaultPivotDistance;
+}
+
 bool GuiPanel_SceneView::drawViewModeCombo(const ImVec2& imagePos)
 {
-	AppStage_Project* projectStage= static_cast<AppStage_Project*>(m_ownerAppStage);
-
 	// Perspective / orthographic selector, editor camera only. Compositor cameras
-	// (pool index > 0) use real lens intrinsics and must not be switched.
-	if (m_viewport->getCurrentCameraIndex() != 0 || !m_viewport->getMikanCameraByIndex(0))
+	// (pool index > 0) use real lens intrinsics and must not be switched. The view
+	// direction comes from the cube, so a switch keeps the current one.
+	MikanCameraPtr camera= m_viewport->getCurrentCameraIndex() == 0 ? m_viewport->getMikanCameraByIndex(0) : nullptr;
+	if (!camera)
 		return false;
 
-	const char* k_viewLabels[]= {locText("project.viewPerspective"), locText("project.viewTop"),
-								 locText("project.viewBottom"),      locText("project.viewFront"),
-								 locText("project.viewBack"),        locText("project.viewLeft"),
-								 locText("project.viewRight")};
+	const char* k_viewLabels[]= {locText("project.viewPerspective"), locText("project.viewIsometric")};
 
-	int currentIndex= projectStage->getCurrentCameraViewIndex();
+	int currentIndex= camera->isOrthographic() ? 1 : 0;
 
 	const float uiScale= MkGui::getUiScale();
 	ImGui::SetCursorScreenPos(
@@ -245,7 +328,8 @@ bool GuiPanel_SceneView::drawViewModeCombo(const ImVec2& imagePos)
 	ImGui::SetNextItemWidth(k_viewModeComboWidth * uiScale);
 	if (ImGui::Combo("##ViewMode", &currentIndex, k_viewLabels, IM_ARRAYSIZE(k_viewLabels)))
 	{
-		projectStage->applyCameraView(currentIndex);
+		camera->setEditorProjection(
+			currentIndex == 1 ? eCameraProjectionMode::orthographic : eCameraProjectionMode::perspective, true);
 	}
 
 	return ImGui::IsItemHovered();

@@ -7,8 +7,8 @@ struct ImVec2;
 
 // The project's 3d scene view. The viewport renders into a frame buffer this panel
 // owns, sized to the panel each frame, and the panel presents it as an image with
-// the view-mode selector, the gizmo toolbar, the transform gizmo, and the frame
-// rate readout drawn over it.
+// the projection selector, the gizmo toolbar, the transform gizmo, the view cube,
+// and the frame rate readout drawn over it.
 class GuiPanel_SceneView : public GuiPanel
 {
 public:
@@ -35,6 +35,12 @@ private:
 	// Draws the transform gizmo over the image, replying it for its hover and
 	// drag state this frame, or null when the stage has none
 	TransformGizmo* drawTransformGizmo(const ImVec2& imagePos, const ImVec2& imageSize);
+	// Draws the view cube in the image's top right and writes its view back to the
+	// editor camera, replying whether the cube is under the cursor and whether a
+	// drag or a face snap is in progress
+	void drawViewCube(const ImVec2& imagePos, const ImVec2& imageSize, bool& outHovered, bool& outUsing);
+	// The distance ahead of the camera the view cube orbits about
+	float computeViewCubePivotDistance(const MikanCamera& camera) const;
 	void drawFrameRate(const ImVec2& imagePos, const ImVec2& imageSize);
 
 	MikanViewportPtr m_viewport;

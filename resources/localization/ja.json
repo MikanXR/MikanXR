@@ -2,8 +2,8 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1226,
-		"translatedCount": 897,
+		"stringCount": 1221,
+		"translatedCount": 891,
 		"reviewedCount": 0
 	},
 	"CEFTextureSourceComponent": {
@@ -927,13 +927,8 @@
 		"sceneListEmpty": "プロジェクトにシーンがありません",
 		"selectCalibrationCamera": "校正用カメラを選択",
 		"trackingFrameDelayFmt": "トラッキングフレーム遅延: %d",
-		"viewBack": "背面",
-		"viewBottom": "底面",
-		"viewFront": "正面",
-		"viewLeft": "左面",
+		"viewIsometric": "Isometric",
 		"viewPerspective": "透視投影",
-		"viewRight": "右面",
-		"viewTop": "上面",
 		"yes": "はい",
 		"znearZfarFmt": "znear=%.3f  zfar=%.1f m"
 	},

@@ -139,6 +139,8 @@ private:
 							 std::string& outError);
 	bool handleGizmoCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,
 							std::string& outError);
+	bool handleCameraCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,
+							 std::string& outError);
 	bool handleGuiCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,
 						  std::string& outError);
 

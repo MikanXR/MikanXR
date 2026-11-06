@@ -1,6 +1,6 @@
 # Proposal: ImGuizmo for the transform gizmo and the view cube
 
-Design decided. Parts 1 and 2 are built; Part 3 is not started. This document is the record of the design: the decisions, what exists today, the pieces in order, and what verifies them. A reader starting from it should not need the conversation that produced it.
+Design decided. All three parts are built. This document is the record of the design: the decisions, what exists today, the pieces in order, and what verifies them. A reader starting from it should not need the conversation that produced it.
 
 ## Goal
 
@@ -68,12 +68,12 @@ The project viewport's transform gizmo is built from scene objects: a per-scene 
 
 ### Part 3: the view cube
 
-- [ ] `MikanCamera` orthographic mode as one orientation, target, and extent, with `eCameraViewpoint` and the per-view state removed
-- [ ] `EditorCameraState`, its config keys, `captureCameraState` and `restoreCameraState`
-- [ ] The combo reduced to Perspective and Isometric, the six view keys removed from the localization sources and the tables regenerated
-- [ ] `ViewManipulate` in the scene panel, the write-back to the fly and orthographic cameras, the selection pivot, and the cube's share of `wantsViewportInput`
-- [ ] The `camera` automation namespace
-- [ ] objects.md camera state paragraph, automation.md
+- [x] `MikanCamera` orthographic mode as one orientation, target, and extent, with `eCameraViewpoint` and the per-view state removed
+- [x] `EditorCameraState`, its config keys, `captureCameraState` and `restoreCameraState`
+- [x] The combo reduced to Perspective and Isometric, the six view keys removed from the localization sources and the tables regenerated
+- [x] `ViewManipulate` in the scene panel, the write-back to the fly and orthographic cameras, the selection pivot, and the cube's share of `wantsViewportInput`
+- [x] The `camera` automation namespace
+- [x] objects.md camera state paragraph, automation.md
 
 ## Verification
 

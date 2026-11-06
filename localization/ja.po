@@ -4980,46 +4980,15 @@ msgid "Tracking frame delay: %d"
 msgstr "トラッキングフレーム遅延: %d"
 
 #. Section: project
-#, fuzzy
-msgctxt "project.viewBack"
-msgid "Back"
-msgstr "背面"
-
-#. Section: project
-#, fuzzy
-msgctxt "project.viewBottom"
-msgid "Bottom"
-msgstr "底面"
-
-#. Section: project
-#, fuzzy
-msgctxt "project.viewFront"
-msgid "Front"
-msgstr "正面"
-
-#. Section: project
-#, fuzzy
-msgctxt "project.viewLeft"
-msgid "Left"
-msgstr "左面"
+msgctxt "project.viewIsometric"
+msgid "Isometric"
+msgstr ""
 
 #. Section: project
 #, fuzzy
 msgctxt "project.viewPerspective"
 msgid "Perspective"
 msgstr "透視投影"
-
-#. Section: project
-#, fuzzy
-msgctxt "project.viewRight"
-msgid "Right"
-msgstr "右面"
-
-#. Section: project
-#, fuzzy
-msgctxt "project.viewTop"
-msgid "Top"
-msgstr "上面"
 
 #. Section: project
 #, fuzzy
@@ -7142,3 +7111,33 @@ msgstr "カメラを選択"
 #~ msgctxt "nodeEditor.compositorOutputWindowTitle"
 #~ msgid "Compositor Output"
 #~ msgstr "コンポジター出力"
+
+#, fuzzy
+#~ msgctxt "project.viewBack"
+#~ msgid "Back"
+#~ msgstr "背面"
+
+#, fuzzy
+#~ msgctxt "project.viewBottom"
+#~ msgid "Bottom"
+#~ msgstr "底面"
+
+#, fuzzy
+#~ msgctxt "project.viewFront"
+#~ msgid "Front"
+#~ msgstr "正面"
+
+#, fuzzy
+#~ msgctxt "project.viewLeft"
+#~ msgid "Left"
+#~ msgstr "左面"
+
+#, fuzzy
+#~ msgctxt "project.viewRight"
+#~ msgid "Right"
+#~ msgstr "右面"
+
+#, fuzzy
+#~ msgctxt "project.viewTop"
+#~ msgid "Top"
+#~ msgstr "上面"

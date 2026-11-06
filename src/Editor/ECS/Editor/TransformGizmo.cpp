@@ -185,6 +185,9 @@ void TransformGizmo::setDragging(bool bDragging)
 
 void TransformGizmo::drawGui(const ImVec2& rectPos, const ImVec2& rectSize, MikanCameraConstPtr camera)
 {
+	// The style also colors the view cube, which draws whether or not there is a target
+	applyGizmoStyle();
+
 	TransformComponentPtr target= m_transformTarget.lock();
 	if (!target || !camera)
 	{
@@ -192,8 +195,6 @@ void TransformGizmo::drawGui(const ImVec2& rectPos, const ImVec2& rectSize, Mika
 		m_bHovered= false;
 		return;
 	}
-
-	applyGizmoStyle();
 
 	ImGuizmo::SetDrawlist();
 	ImGuizmo::SetRect(rectPos.x, rectPos.y, rectSize.x, rectSize.y);

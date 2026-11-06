@@ -4419,38 +4419,13 @@ msgid "Tracking frame delay: %d"
 msgstr ""
 
 #. Section: project
-msgctxt "project.viewBack"
-msgid "Back"
-msgstr ""
-
-#. Section: project
-msgctxt "project.viewBottom"
-msgid "Bottom"
-msgstr ""
-
-#. Section: project
-msgctxt "project.viewFront"
-msgid "Front"
-msgstr ""
-
-#. Section: project
-msgctxt "project.viewLeft"
-msgid "Left"
+msgctxt "project.viewIsometric"
+msgid "Isometric"
 msgstr ""
 
 #. Section: project
 msgctxt "project.viewPerspective"
 msgid "Perspective"
-msgstr ""
-
-#. Section: project
-msgctxt "project.viewRight"
-msgid "Right"
-msgstr ""
-
-#. Section: project
-msgctxt "project.viewTop"
-msgid "Top"
 msgstr ""
 
 #. Section: project

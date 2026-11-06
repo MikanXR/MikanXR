@@ -7,6 +7,7 @@
 #include "MulticastDelegate.h"
 #include "ObjectSystemFwd.h"
 #include "ObjectSystemConfigFwd.h"
+#include "MikanCamera.h"
 #include "MikanRendererFwd.h"
 #include "ObjectSystemRenderQueries.h"
 #include "SceneFwd.h"
@@ -38,23 +39,22 @@ enum class eStencilDisplayMode : int
 	both,      // solid mesh with wireframe overlaid
 };
 
-// Saved editor viewport camera poses: the perspective fly pose plus a pan and zoom
-// for each axis-aligned orthographic viewpoint, indexed in eCameraViewpoint order.
-// The defaults mirror the ones MikanCamera starts at, so a project with no saved
+// Saved editor viewport camera poses: the perspective fly pose, the orthographic
+// view's orientation, target, and extent, and which projection was active. The
+// defaults mirror the ones MikanCamera starts at, so a project with no saved
 // state opens exactly as it did before the poses were persisted.
 struct EditorCameraState
 {
-	static constexpr int k_orthoViewCount= 6;
-
 	glm::vec3 perspectivePosition= glm::vec3(0.f);
 	float perspectiveYawDegrees= 0.f;
 	float perspectivePitchDegrees= 0.f;
 
-	std::array<glm::vec3, k_orthoViewCount> orthoTargets= {};
-	std::array<float, k_orthoViewCount> orthoExtents= {5.f, 5.f, 5.f, 5.f, 5.f, 5.f};
+	float orthoYawDegrees= MikanCamera::k_default_ortho_yaw_degrees;
+	float orthoPitchDegrees= MikanCamera::k_default_ortho_pitch_degrees;
+	glm::vec3 orthoTarget= glm::vec3(0.f);
+	float orthoExtent= MikanCamera::k_default_ortho_extent;
 
-	// -1 for the perspective view, otherwise an eCameraViewpoint index
-	int activeView= -1;
+	bool bOrthographic= false;
 
 	bool operator==(const EditorCameraState& other) const;
 	bool operator!=(const EditorCameraState& other) const { return !(*this == other); }

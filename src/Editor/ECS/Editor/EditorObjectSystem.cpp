@@ -63,13 +63,9 @@ const std::string EditorObjectSystemDefinition::k_editorCameraStatePropertyId= "
 const std::string EditorObjectSystemDefinition::k_outlinerOpenStatePropertyId= "outliner_open_state";
 const std::string EditorObjectSystemDefinition::k_outlinerTreeHeightPropertyId= "outliner_tree_height";
 
-// Viewpoint names used as the keys of the saved ortho views, in eCameraViewpoint order
-static const char* k_orthoViewpointStrings[EditorCameraState::k_orthoViewCount]= {"top",  "bottom", "front",
-																				  "back", "left",   "right"};
-
 // Keys within the saved camera state block
 static const char* k_cameraStatePerspectiveKey= "perspective";
-static const char* k_cameraStateOrthoViewsKey= "ortho_views";
+static const char* k_cameraStateOrthographicKey= "orthographic";
 static const char* k_cameraStateActiveViewKey= "active_view";
 static const char* k_cameraStatePositionKey= "position";
 static const char* k_cameraStateYawKey= "yaw_degrees";
@@ -77,18 +73,7 @@ static const char* k_cameraStatePitchKey= "pitch_degrees";
 static const char* k_cameraStateTargetKey= "target";
 static const char* k_cameraStateExtentKey= "extent";
 static const char* k_cameraStatePerspectiveViewName= "perspective";
-
-// The index of a saved view name, or -1 for the perspective view
-static int findCameraViewIndex(const std::string& viewName)
-{
-	for (int viewIndex= 0; viewIndex < EditorCameraState::k_orthoViewCount; ++viewIndex)
-	{
-		if (viewName == k_orthoViewpointStrings[viewIndex])
-			return viewIndex;
-	}
-
-	return -1;
-}
+static const char* k_cameraStateOrthographicViewName= "orthographic";
 
 static configuru::Config writeCameraStateToJSON(const EditorCameraState& cameraState)
 {
@@ -101,21 +86,16 @@ static configuru::Config writeCameraStateToJSON(const EditorCameraState& cameraS
 	perspectivePt[k_cameraStatePitchKey]= cameraState.perspectivePitchDegrees;
 	cameraPt[k_cameraStatePerspectiveKey]= perspectivePt;
 
-	configuru::Config orthoViewsPt= configuru::Config::object();
-	for (int viewIndex= 0; viewIndex < EditorCameraState::k_orthoViewCount; ++viewIndex)
-	{
-		configuru::Config viewPt= configuru::Config::object();
-		CommonConfig::writeVector3f(viewPt, k_cameraStateTargetKey,
-									glm_vec3_to_MikanVector3f(cameraState.orthoTargets[viewIndex]));
-		viewPt[k_cameraStateExtentKey]= cameraState.orthoExtents[viewIndex];
-		orthoViewsPt[k_orthoViewpointStrings[viewIndex]]= viewPt;
-	}
-	cameraPt[k_cameraStateOrthoViewsKey]= orthoViewsPt;
+	configuru::Config orthographicPt= configuru::Config::object();
+	orthographicPt[k_cameraStateYawKey]= cameraState.orthoYawDegrees;
+	orthographicPt[k_cameraStatePitchKey]= cameraState.orthoPitchDegrees;
+	CommonConfig::writeVector3f(orthographicPt, k_cameraStateTargetKey,
+								glm_vec3_to_MikanVector3f(cameraState.orthoTarget));
+	orthographicPt[k_cameraStateExtentKey]= cameraState.orthoExtent;
+	cameraPt[k_cameraStateOrthographicKey]= orthographicPt;
 
-	const bool bIsOrthoView=
-		cameraState.activeView >= 0 && cameraState.activeView < EditorCameraState::k_orthoViewCount;
 	cameraPt[k_cameraStateActiveViewKey]=
-		bIsOrthoView ? k_orthoViewpointStrings[cameraState.activeView] : k_cameraStatePerspectiveViewName;
+		cameraState.bOrthographic ? k_cameraStateOrthographicViewName : k_cameraStatePerspectiveViewName;
 
 	return cameraPt;
 }
@@ -136,37 +116,41 @@ static void readCameraStateFromJSON(const configuru::Config& cameraPt, EditorCam
 			perspectivePt.get_or<float>(k_cameraStatePitchKey, outCameraState.perspectivePitchDegrees);
 	}
 
-	if (cameraPt.has_key(k_cameraStateOrthoViewsKey))
+	if (cameraPt.has_key(k_cameraStateOrthographicKey))
 	{
-		const configuru::Config& orthoViewsPt= cameraPt[k_cameraStateOrthoViewsKey];
+		const configuru::Config& orthographicPt= cameraPt[k_cameraStateOrthographicKey];
 
-		for (int viewIndex= 0; viewIndex < EditorCameraState::k_orthoViewCount; ++viewIndex)
-		{
-			const char* viewName= k_orthoViewpointStrings[viewIndex];
-			if (!orthoViewsPt.has_key(viewName))
-				continue;
+		outCameraState.orthoYawDegrees=
+			orthographicPt.get_or<float>(k_cameraStateYawKey, outCameraState.orthoYawDegrees);
+		outCameraState.orthoPitchDegrees=
+			orthographicPt.get_or<float>(k_cameraStatePitchKey, outCameraState.orthoPitchDegrees);
 
-			const configuru::Config& viewPt= orthoViewsPt[viewName];
+		MikanVector3f target= glm_vec3_to_MikanVector3f(outCameraState.orthoTarget);
+		CommonConfig::readVector3f(orthographicPt, k_cameraStateTargetKey, target);
+		outCameraState.orthoTarget= MikanVector3f_to_glm_vec3(target);
 
-			MikanVector3f target= glm_vec3_to_MikanVector3f(outCameraState.orthoTargets[viewIndex]);
-			CommonConfig::readVector3f(viewPt, k_cameraStateTargetKey, target);
-			outCameraState.orthoTargets[viewIndex]= MikanVector3f_to_glm_vec3(target);
-
-			outCameraState.orthoExtents[viewIndex]=
-				viewPt.get_or<float>(k_cameraStateExtentKey, outCameraState.orthoExtents[viewIndex]);
-		}
+		outCameraState.orthoExtent= orthographicPt.get_or<float>(k_cameraStateExtentKey, outCameraState.orthoExtent);
 	}
 
+	// The active view is the projection name. A project saved with a pan and zoom
+	// per axis view named the face instead, which lands in the orthographic
+	// projection looking from that face, with the default target and extent.
 	const std::string activeViewName=
 		cameraPt.get_or<std::string>(k_cameraStateActiveViewKey, k_cameraStatePerspectiveViewName);
-	outCameraState.activeView= findCameraViewIndex(activeViewName);
+	outCameraState.bOrthographic= activeViewName != k_cameraStatePerspectiveViewName;
+	if (const MikanCameraAxisView* axisView= findCameraAxisView(activeViewName))
+	{
+		outCameraState.orthoYawDegrees= axisView->yawDegrees;
+		outCameraState.orthoPitchDegrees= axisView->pitchDegrees;
+	}
 }
 
 bool EditorCameraState::operator==(const EditorCameraState& other) const
 {
 	return perspectivePosition == other.perspectivePosition && perspectiveYawDegrees == other.perspectiveYawDegrees
-		   && perspectivePitchDegrees == other.perspectivePitchDegrees && orthoTargets == other.orthoTargets
-		   && orthoExtents == other.orthoExtents && activeView == other.activeView;
+		   && perspectivePitchDegrees == other.perspectivePitchDegrees && orthoYawDegrees == other.orthoYawDegrees
+		   && orthoPitchDegrees == other.orthoPitchDegrees && orthoTarget == other.orthoTarget
+		   && orthoExtent == other.orthoExtent && bOrthographic == other.bOrthographic;
 }
 
 configuru::Config EditorObjectSystemDefinition::writeToJSON()
