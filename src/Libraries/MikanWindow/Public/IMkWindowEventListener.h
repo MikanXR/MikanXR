@@ -1,10 +1,12 @@
 #pragma once
 
+#include "MkWindowExport.h"
+
 #include <stdint.h>
 
 class MkWindowEvent;
 
-class IMkWindowEventListener
+class MIKAN_WINDOW_CLASS IMkWindowEventListener
 {
 public:
 	virtual bool onWindowEvent(const MkWindowEvent& event)= 0;
