@@ -11,6 +11,7 @@
 #include "MikanViewport.h"
 #include "MkGuiDrawUtils.h"
 #include "MkGuiScopedStyleColor.h"
+#include "MkGuiScopedStyleVar.h"
 #include "Project/AppStage_Project.h"
 #include "SelectionComponent.h"
 #include "TransformComponent.h"
@@ -32,11 +33,21 @@ namespace
 {
 // Inset of the overlays from the image's corners
 const float k_viewModeComboInset= 8.f;
-const float k_viewModeComboWidth= 110.f;
 // The gizmo toolbar sits to the right of the view combo
 const float k_gizmoToolbarGap= 12.f;
-const float k_gizmoToolbarButtonSize= 24.f;
 const float k_gizmoToolbarButtonGap= 2.f;
+
+// The combo is sized to its widest label in the current font plus the frame
+// padding and the arrow button, so a translation never clips
+float computeViewModeComboWidth()
+{
+	const float labelWidth= std::max(ImGui::CalcTextSize(locText("project.viewPerspective")).x,
+									 ImGui::CalcTextSize(locText("project.viewIsometric")).x);
+	const ImGuiStyle& style= ImGui::GetStyle();
+
+	return labelWidth + style.FramePadding.x * 2.f + ImGui::GetFrameHeight();
+}
+
 // The view cube sits in the image's top right corner
 const float k_viewCubeSize= 96.f;
 const ImU32 k_viewCubeBackground= IM_COL32(16, 16, 16, 16);
@@ -184,10 +195,18 @@ bool GuiPanel_SceneView::drawGizmoToolbar(const ImVec2& imagePos)
 		return false;
 
 	const float uiScale= MkGui::getUiScale();
-	const float buttonSize= k_gizmoToolbarButtonSize * uiScale;
+	// Frame-height squares, so the strip shares the combo's row and height
+	const float buttonSize= ImGui::GetFrameHeight();
 	const float buttonGap= k_gizmoToolbarButtonGap * uiScale;
+
+	// ImGui centers a button's label only inside its padded rect and left-aligns
+	// one that is wider, which the theme's wide frame padding makes of a glyph in
+	// a square, so the padding is made square for the strip
+	MkGuiScopedStyleVar squarePadding;
+	const float paddingY= ImGui::GetStyle().FramePadding.y;
+	squarePadding.push(ImGuiStyleVar_FramePadding, ImVec2(paddingY, paddingY));
 	ImGui::SetCursorScreenPos(
-		ImVec2(imagePos.x + (k_viewModeComboInset + k_viewModeComboWidth + k_gizmoToolbarGap) * uiScale,
+		ImVec2(imagePos.x + (k_viewModeComboInset + k_gizmoToolbarGap) * uiScale + computeViewModeComboWidth(),
 			   imagePos.y + k_viewModeComboInset * uiScale));
 
 	bool bAnyHovered= false;
@@ -325,7 +344,7 @@ bool GuiPanel_SceneView::drawViewModeCombo(const ImVec2& imagePos)
 	const float uiScale= MkGui::getUiScale();
 	ImGui::SetCursorScreenPos(
 		ImVec2(imagePos.x + k_viewModeComboInset * uiScale, imagePos.y + k_viewModeComboInset * uiScale));
-	ImGui::SetNextItemWidth(k_viewModeComboWidth * uiScale);
+	ImGui::SetNextItemWidth(computeViewModeComboWidth());
 	if (ImGui::Combo("##ViewMode", &currentIndex, k_viewLabels, IM_ARRAYSIZE(k_viewLabels)))
 	{
 		camera->setEditorProjection(
