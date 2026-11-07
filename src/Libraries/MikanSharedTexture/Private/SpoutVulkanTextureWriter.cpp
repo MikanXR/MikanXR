@@ -15,13 +15,18 @@
 // -- SpoutVulkanTextureWriter -----
 // A Vulkan client cannot be a Spout sender directly, so each buffer is a D3D11 shared texture
 // (the kind Spout already sends) whose memory is imported into the client's VkDevice as a
-// "linked" image. A write blits the client's image into a linked image on the client's queue
-// and returns without waiting; the next write finds that blit's fence signaled and hands the
+// "linked" image. A write transfers the client's image into a linked image on the client's queue
+// and returns without waiting; the next write finds that transfer's fence signaled and hands the
 // D3D11 side of the same memory to Spout then. Two linked images per buffer alternate, so the
-// blit in flight and the image Spout copies from are never the same memory, and a client's
+// transfer in flight and the image Spout copies from are never the same memory, and a client's
 // frame never stalls on the GPU: the fence status is the synchronization between the two APIs,
 // at one frame of latency. Both sides must sit on one GPU, so the D3D11 device is created on
 // the adapter whose LUID the VkPhysicalDevice reports.
+//
+// The transfer verb follows what each sender's bytes mean. A copy carries the client image's
+// bytes as stored, so an sRGB-encoded color image crosses encoded, as an 8-bit color sender is
+// read. A blit converts between the two formats, and a blit out of an sRGB image decodes it on
+// the way, which is the linear multiplier a shadow sender is.
 class SpoutVulkanTextureWriter : public ISharedTextureWriterBackend
 {
 public:
@@ -188,14 +193,14 @@ public:
 	}
 
 	// Each write returns whether the client's image was accepted for the next send, not whether a send
-	// happened: the first write of a buffer sends nothing, and a write whose previous blit has not
+	// happened: the first write of a buffer sends nothing, and a write whose previous transfer has not
 	// retired yet sends nothing either (the frame after it sends both, oldest first).
 	bool writeColorFrameTexture(void* apiTexturePtr) override
 	{
 		if (!m_bIsColorFrameInitialized)
 			return false;
 
-		return writeThroughBuffer(m_colorBuffer, (const SharedVulkanTexture*)apiTexturePtr,
+		return writeThroughBuffer(m_colorBuffer, (const SharedVulkanTexture*)apiTexturePtr, SenderBytes::asStored,
 								  [this](ID3D11Texture2D* texture) { return m_spoutColorFrame.SendTexture(texture); });
 	}
 
@@ -205,7 +210,7 @@ public:
 			return false;
 
 		return writeThroughBuffer(
-			m_depthBuffer, (const SharedVulkanTexture*)apiTexturePtr,
+			m_depthBuffer, (const SharedVulkanTexture*)apiTexturePtr, SenderBytes::asStored,
 			[this, zNear, zFar](ID3D11Texture2D* texture)
 			{
 				if (m_depthTexturePacker != nullptr)
@@ -224,7 +229,7 @@ public:
 		if (!m_bIsShadowFrameInitialized)
 			return false;
 
-		return writeThroughBuffer(m_shadowBuffer, (const SharedVulkanTexture*)apiTexturePtr,
+		return writeThroughBuffer(m_shadowBuffer, (const SharedVulkanTexture*)apiTexturePtr, SenderBytes::linear,
 								  [this](ID3D11Texture2D* texture) { return m_spoutShadowFrame.SendTexture(texture); });
 	}
 
@@ -232,8 +237,15 @@ public:
 	void* getPackDepthTextureResourcePtr() const override { return nullptr; }
 
 private:
-	// One shared allocation: the D3D11 side Spout sends and the Vulkan side the client's blit fills,
-	// with the command buffer that records the blit and the fence that says it retired
+	// What a sender's bytes mean, which picks a write's transfer verb (see the class comment)
+	enum class SenderBytes
+	{
+		asStored, // the client image's bytes as they are: a copy where one is possible
+		linear,   // the linear value the client image stores: a blit, which decodes an sRGB source
+	};
+
+	// One shared allocation: the D3D11 side Spout sends and the Vulkan side the client's transfer fills,
+	// with the command buffer that records the transfer and the fence that says it retired
 	struct LinkedTexture
 	{
 		ID3D11Texture2D* d3d11Texture= nullptr;
@@ -249,7 +261,7 @@ private:
 		bool bInFlight= false;
 	};
 
-	// One buffer (color, depth, or shadow): two linked textures that alternate between the blit in
+	// One buffer (color, depth, or shadow): two linked textures that alternate between the transfer in
 	// flight and the one Spout sends from
 	struct LinkedBuffer
 	{
@@ -299,6 +311,34 @@ private:
 		}
 	}
 
+	// The bytes per texel of the formats a client image or a linked image takes, 0 for any other.
+	// A copy needs the two to agree.
+	static uint32_t texelSize(VkFormat format)
+	{
+		switch (format)
+		{
+		case VK_FORMAT_R8G8B8A8_UNORM:
+		case VK_FORMAT_R8G8B8A8_SRGB:
+		case VK_FORMAT_B8G8R8A8_UNORM:
+		case VK_FORMAT_B8G8R8A8_SRGB:
+		case VK_FORMAT_A8B8G8R8_UNORM_PACK32:
+		case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
+		case VK_FORMAT_R32_SFLOAT:
+			return 4;
+		case VK_FORMAT_R16G16B16A16_SFLOAT:
+		case VK_FORMAT_R16G16B16A16_UNORM:
+			return 8;
+		default:
+			return 0;
+		}
+	}
+
+	static bool isSrgbFormat(VkFormat format)
+	{
+		return format == VK_FORMAT_R8G8B8A8_SRGB || format == VK_FORMAT_B8G8R8A8_SRGB
+			   || format == VK_FORMAT_A8B8G8R8_SRGB_PACK32;
+	}
+
 	void logVulkanFailure(const char* what, VkResult result)
 	{
 		std::stringstream ss;
@@ -326,7 +366,7 @@ private:
 		// The import path is Vulkan 1.1 core (external memory, dedicated allocation, memory requirements 2)
 		if (vkGetPhysicalDeviceProperties2 == nullptr || vkGetPhysicalDeviceImageFormatProperties2 == nullptr
 			|| vkGetPhysicalDeviceMemoryProperties == nullptr || m_deviceTable.vkGetImageMemoryRequirements2 == nullptr
-			|| m_deviceTable.vkCmdBlitImage == nullptr)
+			|| m_deviceTable.vkCmdBlitImage == nullptr || m_deviceTable.vkCmdCopyImage == nullptr)
 		{
 			m_logger.log(SharedTextureLogLevel::error,
 						 "SpoutVulkanTextureWriter - The Vulkan instance and device must be at least version 1.1");
@@ -389,7 +429,7 @@ private:
 		return true;
 	}
 
-	// Wait for a slot's blit if one is in flight: only teardown and a re-link take this path
+	// Wait for a slot's transfer if one is in flight: only teardown and a re-link take this path
 	void waitSlot(LinkedTexture& slot)
 	{
 		if (slot.bInFlight && slot.fence != VK_NULL_HANDLE)
@@ -451,11 +491,11 @@ private:
 		buffer.nextSlot= 0;
 	}
 
-	// The deferred send, then this write's blit: every slot whose blit retired goes to Spout, oldest
-	// first, and the client's image is blitted into the slot that is free. A slot still in flight two
-	// writes later means the GPU is further behind than the two slots cover, and the write is dropped
-	// rather than waited for.
-	bool writeThroughBuffer(LinkedBuffer& buffer, const SharedVulkanTexture* texture,
+	// The deferred send, then this write's transfer: every slot whose transfer retired goes to Spout,
+	// oldest first, and the client's image is transferred into the slot that is free. A slot still in
+	// flight two writes later means the GPU is further behind than the two slots cover, and the write
+	// is dropped rather than waited for.
+	bool writeThroughBuffer(LinkedBuffer& buffer, const SharedVulkanTexture* texture, SenderBytes senderBytes,
 							const std::function<bool(ID3D11Texture2D*)>& send)
 	{
 		if (texture == nullptr || texture->image == nullptr || texture->width == 0 || texture->height == 0)
@@ -494,13 +534,13 @@ private:
 			if (m_droppedWrites++ == 0)
 			{
 				m_logger.log(SharedTextureLogLevel::info,
-							 "SpoutVulkanTextureWriter - A blit was still in flight two writes later; dropping the "
+							 "SpoutVulkanTextureWriter - A transfer was still in flight two writes later; dropping the "
 							 "write (logged once)");
 			}
 			return bSent;
 		}
 
-		if (!recordAndSubmitBlit(texture, current))
+		if (!recordAndSubmitTransfer(texture, current, senderBytes))
 			return false;
 
 		buffer.nextSlot= (buffer.nextSlot + 1) % LinkedBuffer::k_slotCount;
@@ -751,13 +791,28 @@ private:
 		linked.height= 0;
 	}
 
-	// Copy the client's image into a linked image on the client's queue, signaling the slot's fence.
+	// Transfer the client's image into a linked image on the client's queue, signaling the slot's fence.
 	// The image is read in the layout the client names and returned to it; a layout that cannot
 	// be returned to (undefined, preinitialized) is returned as general.
-	bool recordAndSubmitBlit(const SharedVulkanTexture* texture, LinkedTexture& linked)
+	bool recordAndSubmitTransfer(const SharedVulkanTexture* texture, LinkedTexture& linked, SenderBytes senderBytes)
 	{
 		const VkImage sourceImage= (VkImage)texture->image;
 		const VkImageLayout sourceLayout= (VkImageLayout)texture->layout;
+		const VkFormat sourceFormat= (VkFormat)texture->format;
+
+		// Bytes as stored cross by a copy, which needs the extents and the texel sizes to agree; a
+		// mismatch, or a client that named no format, falls back to the blit, whose scaling and
+		// conversion the write then takes, the decode of an sRGB source included (logged once).
+		const bool bSameExtent= texture->width == linked.width && texture->height == linked.height;
+		const bool bSameTexelSize= texelSize(sourceFormat) != 0 && texelSize(sourceFormat) == texelSize(linked.format);
+		const bool bCopy= senderBytes == SenderBytes::asStored && bSameExtent && bSameTexelSize;
+		if (senderBytes == SenderBytes::asStored && !bCopy && isSrgbFormat(sourceFormat) && !m_bLoggedConvertingBlit)
+		{
+			m_bLoggedConvertingBlit= true;
+			m_logger.log(SharedTextureLogLevel::info,
+						 "SpoutVulkanTextureWriter - An sRGB client image crosses by a converting blit, which decodes "
+						 "it, since its extent or texel size differs from the sender's (logged once)");
+		}
 		const VkImageLayout restoreLayout=
 			(sourceLayout == VK_IMAGE_LAYOUT_UNDEFINED || sourceLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
 				? VK_IMAGE_LAYOUT_GENERAL
@@ -799,14 +854,30 @@ private:
 		m_deviceTable.vkCmdPipelineBarrier(linked.commandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 										   VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 2, toTransfer);
 
-		VkImageBlit region= {};
-		region.srcSubresource.aspectMask= VK_IMAGE_ASPECT_COLOR_BIT;
-		region.srcSubresource.layerCount= 1;
-		region.srcOffsets[1]= {(int32_t)texture->width, (int32_t)texture->height, 1};
-		region.dstSubresource= region.srcSubresource;
-		region.dstOffsets[1]= {(int32_t)linked.width, (int32_t)linked.height, 1};
-		m_deviceTable.vkCmdBlitImage(linked.commandBuffer, sourceImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-									 linked.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_NEAREST);
+		VkImageSubresourceLayers colorLayers= {};
+		colorLayers.aspectMask= VK_IMAGE_ASPECT_COLOR_BIT;
+		colorLayers.layerCount= 1;
+
+		if (bCopy)
+		{
+			VkImageCopy region= {};
+			region.srcSubresource= colorLayers;
+			region.dstSubresource= colorLayers;
+			region.extent= {linked.width, linked.height, 1};
+			m_deviceTable.vkCmdCopyImage(linked.commandBuffer, sourceImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+										 linked.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+		}
+		else
+		{
+			VkImageBlit region= {};
+			region.srcSubresource= colorLayers;
+			region.srcOffsets[1]= {(int32_t)texture->width, (int32_t)texture->height, 1};
+			region.dstSubresource= colorLayers;
+			region.dstOffsets[1]= {(int32_t)linked.width, (int32_t)linked.height, 1};
+			m_deviceTable.vkCmdBlitImage(linked.commandBuffer, sourceImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+										 linked.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region,
+										 VK_FILTER_NEAREST);
+		}
 
 		// Back out: the client's image to its layout, the linked image to general for the D3D11 side
 		VkImageMemoryBarrier fromTransfer[2]= {};
@@ -866,6 +937,7 @@ private:
 	LinkedBuffer m_depthBuffer;
 	LinkedBuffer m_shadowBuffer;
 	uint64_t m_droppedWrites= 0;
+	bool m_bLoggedConvertingBlit= false;
 	SpoutDXDepthTexturePacker* m_depthTexturePacker= nullptr;
 	bool m_bIsColorFrameInitialized= false;
 	bool m_bIsDepthFrameInitialized= false;
