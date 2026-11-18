@@ -852,37 +852,1013 @@
     "ed4ca0b7-60ba-415e-a0ad-1860df8cf53c": {
       "label": "MikanXR energy/water usage badging",
       "firstActivity": "2026-09-13T04:41:39.804Z",
-      "lastActivity": "2026-09-13T08:09:05.335Z",
+      "lastActivity": "2026-09-13T08:19:03.955Z",
       "branch": "content-browser",
       "models": {
         "claude-opus-5": {
-          "calls": 72,
-          "input": 144,
+          "calls": 92,
+          "input": 184,
           "cacheWrite5m": 0,
-          "cacheWrite1h": 219132,
-          "cacheRead": 9140162,
-          "output": 62709
+          "cacheWrite1h": 231337,
+          "cacheRead": 12649567,
+          "output": 71886
         }
       }
     },
     "5e693a4d-6e17-4531-85d1-584b9d8e813b": {
       "label": "Localization contribution workflow",
       "firstActivity": "2026-09-13T06:41:37.836Z",
-      "lastActivity": "2026-09-13T07:13:36.493Z",
+      "lastActivity": "2026-09-13T20:38:07.644Z",
       "branch": "content-browser",
       "models": {
         "claude-opus-5": {
+          "calls": 228,
+          "input": 456,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 737681,
+          "cacheRead": 49805181,
+          "output": 142145
+        }
+      }
+    },
+    "03c75ca0-c418-4da1-be52-bfc54c380ec7": {
+      "label": "Component name prefixes standardization",
+      "firstActivity": "2026-09-13T21:24:41.569Z",
+      "lastActivity": "2026-09-14T05:20:06.875Z",
+      "branch": "ui-usability-fixes",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 315,
+          "input": 8664,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 2239057,
+          "cacheRead": 107734378,
+          "output": 281205
+        },
+        "claude-opus-5": {
+          "calls": 162,
+          "input": 324,
+          "cacheWrite5m": 609545,
+          "cacheWrite1h": 0,
+          "cacheRead": 13526299,
+          "output": 93275
+        }
+      }
+    },
+    "078ee3e9-5f24-4726-8ab2-c1c075ce63cb": {
+      "label": "MikanXR crash dump handler",
+      "firstActivity": "2026-09-14T05:31:16.480Z",
+      "lastActivity": "2026-09-15T03:00:06.157Z",
+      "branch": "crash-handler",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 153,
+          "input": 4032,
+          "cacheWrite5m": 115452,
+          "cacheWrite1h": 1144054,
+          "cacheRead": 43807682,
+          "output": 224140
+        },
+        "claude-opus-5": {
+          "calls": 115,
+          "input": 230,
+          "cacheWrite5m": 355677,
+          "cacheWrite1h": 0,
+          "cacheRead": 10143693,
+          "output": 98785
+        }
+      }
+    },
+    "41eb3a6e-fe8c-40b7-aa85-e2685032d5b7": {
+      "label": "Mikan automation server toggle",
+      "firstActivity": "2026-09-15T04:18:11.637Z",
+      "lastActivity": "2026-09-15T04:51:01.657Z",
+      "branch": "main",
+      "models": {
+        "claude-opus-5": {
+          "calls": 165,
+          "input": 330,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 220265,
+          "cacheRead": 26463080,
+          "output": 67121
+        }
+      }
+    },
+    "bf04f179-092c-4db3-acfa-df16b3f2f347": {
+      "label": "FileVideoSourceComponent with pose tracking",
+      "firstActivity": "2026-09-15T17:44:39.369Z",
+      "lastActivity": "2026-09-16T07:35:14.303Z",
+      "branch": "movie-source",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 497,
+          "input": 14104,
+          "cacheWrite5m": 998595,
+          "cacheWrite1h": 2603671,
+          "cacheRead": 200616950,
+          "output": 749540
+        },
+        "claude-opus-5": {
+          "calls": 296,
+          "input": 592,
+          "cacheWrite5m": 1373507,
+          "cacheWrite1h": 0,
+          "cacheRead": 28595143,
+          "output": 240283
+        }
+      }
+    },
+    "d083bd29-ffdd-4828-9e12-5e0f904544f4": {
+      "label": "Lua script reusability architecture",
+      "firstActivity": "2026-09-16T19:39:36.063Z",
+      "lastActivity": "2026-09-16T21:58:14.061Z",
+      "branch": "script-object",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 110,
+          "input": 3018,
+          "cacheWrite5m": 277026,
+          "cacheWrite1h": 1098401,
+          "cacheRead": 36371763,
+          "output": 304172
+        },
+        "claude-sonnet-5": {
+          "calls": 189,
+          "input": 378,
+          "cacheWrite5m": 697022,
+          "cacheWrite1h": 0,
+          "cacheRead": 17891063,
+          "output": 161727
+        }
+      }
+    },
+    "c06a7dd6-b580-4d9a-857d-28d1e2ff787c": {
+      "label": "Stage transform space assumptions",
+      "firstActivity": "2026-09-16T22:59:20.439Z",
+      "lastActivity": "2026-09-17T00:01:30.785Z",
+      "branch": "main",
+      "models": {
+        "claude-opus-5": {
+          "calls": 208,
+          "input": 416,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 363964,
+          "cacheRead": 53168441,
+          "output": 106400
+        }
+      }
+    },
+    "08d67f53-00f9-4627-b472-99b7e2dea06f": {
+      "label": "USB camera interaction issues",
+      "firstActivity": "2026-09-17T00:32:40.212Z",
+      "lastActivity": "2026-09-18T06:16:34.865Z",
+      "branch": "main",
+      "models": {
+        "claude-opus-5": {
+          "calls": 414,
+          "input": 828,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 878849,
+          "cacheRead": 140254095,
+          "output": 184661
+        }
+      }
+    },
+    "5b8cf83a-9bf7-402f-822d-d876e8b83cdd": {
+      "label": "Restore spout2 plugin and uassets",
+      "firstActivity": "2026-09-21T01:45:53.559Z",
+      "lastActivity": "2026-09-21T02:07:26.463Z",
+      "branch": "main",
+      "models": {
+        "claude-opus-5": {
+          "calls": 13,
+          "input": 26,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 31537,
+          "cacheRead": 658740,
+          "output": 6547
+        }
+      }
+    },
+    "0cf8eebd-f172-4d24-a5ef-211b2c9e9ab1": {
+      "label": "Scene rendering visibility in editor",
+      "firstActivity": "2026-09-21T02:06:56.909Z",
+      "lastActivity": "2026-09-21T08:04:07.236Z",
+      "branch": "main",
+      "models": {
+        "claude-opus-5": {
+          "calls": 753,
+          "input": 1506,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 889376,
+          "cacheRead": 378357955,
+          "output": 408465
+        }
+      }
+    },
+    "c80e5052-e9e5-4a15-b42d-14655f685faa": {
+      "label": "Mikan frame capture queue and sync flag",
+      "firstActivity": "2026-09-21T21:52:05.161Z",
+      "lastActivity": "2026-09-22T23:18:14.274Z",
+      "branch": "compositor-queue",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 168,
+          "input": 4276,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 2427218,
+          "cacheRead": 70916661,
+          "output": 264807
+        },
+        "claude-opus-5": {
+          "calls": 86,
+          "input": 172,
+          "cacheWrite5m": 300651,
+          "cacheWrite1h": 0,
+          "cacheRead": 10423530,
+          "output": 48840
+        }
+      }
+    },
+    "c1989449-a7e2-4791-b733-61d5adc91920": {
+      "label": "VSM vs CSM shadow maps in UE5",
+      "firstActivity": "2026-09-21T22:30:05.543Z",
+      "lastActivity": "2026-09-21T22:30:38.750Z",
+      "branch": "compositor-queue",
+      "models": {
+        "claude-opus-5": {
+          "calls": 1,
+          "input": 2,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 20370,
+          "cacheRead": 25185,
+          "output": 6891
+        }
+      }
+    },
+    "f75bf7ce-d12e-477b-8ff9-913cc43efcc4": {
+      "label": "Spout2 rendering thread ensure failure",
+      "firstActivity": "2026-09-22T22:34:40.921Z",
+      "lastActivity": "2026-09-23T01:50:50.941Z",
+      "branch": "compositor-queue",
+      "models": {
+        "claude-opus-5": {
+          "calls": 27,
+          "input": 54,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 108169,
+          "cacheRead": 1652831,
+          "output": 18823
+        }
+      }
+    },
+    "fc213e18-6208-4def-90ca-ef5b8bc1e2ae": {
+      "label": "Unreal client render target resolution",
+      "firstActivity": "2026-09-24T03:13:44.715Z",
+      "lastActivity": "2026-09-25T07:45:23.904Z",
+      "branch": "compositor-queue",
+      "models": {
+        "claude-opus-5": {
+          "calls": 633,
+          "input": 1266,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 2706787,
+          "cacheRead": 322232141,
+          "output": 367100
+        }
+      }
+    },
+    "cab79728-6e45-4636-94a8-c3537a2fca03": {
+      "label": "C++ reflection: refureku vs custom clang solution",
+      "firstActivity": "2026-09-24T21:18:54.572Z",
+      "lastActivity": "2026-09-25T21:41:00.804Z",
+      "branch": "reflection-refactor",
+      "models": {
+        "claude-opus-5": {
+          "calls": 450,
+          "input": 900,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 2345226,
+          "cacheRead": 177917729,
+          "output": 318161
+        }
+      }
+    },
+    "309bf19a-12a6-4ebf-9577-a697cac19639": {
+      "label": "Light and set design resources",
+      "firstActivity": "2026-10-07T08:57:20.150Z",
+      "lastActivity": "2026-10-07T08:57:33.211Z",
+      "branch": "main",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 1,
+          "input": 2,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 21901,
+          "cacheRead": 25317,
+          "output": 2248
+        }
+      }
+    },
+    "dd291076-1745-4d80-b7bc-afdbcf8b6c1a": {
+      "label": "Stash, pull, and restore files",
+      "firstActivity": "2026-10-13T17:44:32.068Z",
+      "lastActivity": "2026-10-13T18:01:47.355Z",
+      "branch": "main",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 21,
+          "input": 42,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 40542,
+          "cacheRead": 1245281,
+          "output": 4495
+        },
+        "claude-sonnet-5-5": {
+          "calls": 7,
+          "input": 14,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 26779,
+          "cacheRead": 322374,
+          "output": 2065
+        }
+      }
+    },
+    "75bb0716-70ba-4a3e-a29e-5f10a346720c": {
+      "label": "3D mesh reconstruction from video",
+      "firstActivity": "2026-10-13T18:14:24.138Z",
+      "lastActivity": "2026-10-14T15:58:46.737Z",
+      "branch": "occlusion-mesh",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 521,
+          "input": 15446,
+          "cacheWrite5m": 413066,
+          "cacheWrite1h": 2959286,
+          "cacheRead": 228940185,
+          "output": 553439
+        },
+        "claude-opus-5-5": {
+          "calls": 333,
+          "input": 668,
+          "cacheWrite5m": 1332965,
+          "cacheWrite1h": 0,
+          "cacheRead": 39352530,
+          "output": 68555
+        }
+      }
+    },
+    "4ab23d43-6e2a-4609-b8f3-b3bb2da893da": {
+      "label": "Virtual shadow map performance in Unreal5",
+      "firstActivity": "2026-10-13T23:54:31.092Z",
+      "lastActivity": "2026-10-14T00:11:14.815Z",
+      "branch": "occlusion-mesh",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 2,
+          "input": 4,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 23290,
+          "cacheRead": 80202,
+          "output": 6290
+        }
+      }
+    },
+    "9ada3693-9270-4ad4-9810-463c1193955d": {
+      "label": "Captures implementation plan",
+      "firstActivity": "2026-10-15T03:37:48.622Z",
+      "lastActivity": "2026-10-15T07:08:17.237Z",
+      "branch": "tar-format",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 156,
+          "input": 4542,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 1231610,
+          "cacheRead": 71309349,
+          "output": 541968
+        }
+      }
+    },
+    "dd062ec1-428a-40bd-83bb-5cada1c826a7": {
+      "label": "TSDF depth mesh texture and bounds",
+      "firstActivity": "2026-10-15T04:59:55.270Z",
+      "lastActivity": "2026-10-15T06:58:47.832Z",
+      "branch": "tar-format",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 138,
+          "input": 3876,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 504170,
+          "cacheRead": 50208644,
+          "output": 253305
+        },
+        "claude-opus-5-5": {
           "calls": 16,
           "input": 32,
+          "cacheWrite5m": 110870,
+          "cacheWrite1h": 0,
+          "cacheRead": 1077440,
+          "output": 10426
+        }
+      }
+    },
+    "138cdf79-701a-4850-9263-de1614be976a": {
+      "label": "MikanXR network discovery",
+      "firstActivity": "2026-10-15T07:11:34.502Z",
+      "lastActivity": "2026-10-15T07:39:39.213Z",
+      "branch": "tar-format",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 121,
+          "input": 246,
+          "cacheWrite5m": 80471,
+          "cacheWrite1h": 208707,
+          "cacheRead": 19797461,
+          "output": 73602
+        },
+        "claude-sonnet-5-5": {
+          "calls": 8,
+          "input": 16,
+          "cacheWrite5m": 73532,
+          "cacheWrite1h": 0,
+          "cacheRead": 426122,
+          "output": 236
+        }
+      }
+    },
+    "b4dd71b3-d098-466b-97d6-0d85cbddd338": {
+      "label": "GitHub Actions Ubuntu 26 migration",
+      "firstActivity": "2026-10-15T18:19:01.368Z",
+      "lastActivity": "2026-10-15T18:19:33.644Z",
+      "branch": "tar-format",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 7,
+          "input": 14,
           "cacheWrite5m": 0,
-          "cacheWrite1h": 127738,
-          "cacheRead": 1127725,
-          "output": 27634
+          "cacheWrite1h": 25791,
+          "cacheRead": 401929,
+          "output": 2520
+        }
+      }
+    },
+    "537f38ef-c05d-431c-84f7-2202e7260a80": {
+      "label": "MikanClient API protocol design",
+      "firstActivity": "2026-10-16T20:16:50.778Z",
+      "lastActivity": "2026-10-17T03:42:18.041Z",
+      "branch": "tar-format",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 33,
+          "input": 848,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 385321,
+          "cacheRead": 4453486,
+          "output": 82196
+        },
+        "claude-opus-5-5": {
+          "calls": 221,
+          "input": 442,
+          "cacheWrite5m": 663345,
+          "cacheWrite1h": 0,
+          "cacheRead": 32576155,
+          "output": 46664
+        }
+      }
+    },
+    "91a51ecc-ce78-4be7-a0cd-e1bd9d27b8f2": {
+      "label": "Mikan project switch crash",
+      "firstActivity": "2026-10-16T21:37:04.681Z",
+      "lastActivity": "2026-10-16T21:56:13.764Z",
+      "branch": "tar-format",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 37,
+          "input": 74,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 112455,
+          "cacheRead": 4040036,
+          "output": 16661
+        }
+      }
+    },
+    "f78dab8d-1d0b-4732-b5df-c8ee9320b476": {
+      "label": "Stencil mesh GLB/texture fetching",
+      "firstActivity": "2026-10-17T08:44:00.802Z",
+      "lastActivity": "2026-10-19T08:07:36.236Z",
+      "branch": "glb-over-http",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 390,
+          "input": 786,
+          "cacheWrite5m": 332996,
+          "cacheWrite1h": 1715226,
+          "cacheRead": 134416802,
+          "output": 271532
+        },
+        "claude-sonnet-5-5": {
+          "calls": 19,
+          "input": 38,
+          "cacheWrite5m": 135735,
+          "cacheWrite1h": 0,
+          "cacheRead": 979154,
+          "output": 232
+        }
+      }
+    },
+    "83b1b57f-f8a6-48d5-9a66-adfe1251168d": {
+      "label": "Still Camera recording stop button unresponsive",
+      "firstActivity": "2026-10-18T08:00:13.002Z",
+      "lastActivity": "2026-10-18T08:05:58.065Z",
+      "branch": "glb-over-http",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 18,
+          "input": 36,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 55411,
+          "cacheRead": 1243513,
+          "output": 6006
+        }
+      }
+    },
+    "c413cf3e-db81-4260-8997-1f8e3e600c17": {
+      "label": "Session mode runtime switching PR",
+      "firstActivity": "2026-10-26T05:10:48.380Z",
+      "lastActivity": "2026-10-27T19:25:21.316Z",
+      "branch": "main",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 86,
+          "input": 2302,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 406367,
+          "cacheRead": 14651381,
+          "output": 93730
+        }
+      }
+    },
+    "5075904e-eb7a-44d5-9e44-0490c48c0853": {
+      "label": "UE5 performance drop on moving geometry",
+      "firstActivity": "2026-10-26T20:57:17.763Z",
+      "lastActivity": "2026-10-26T22:44:55.254Z",
+      "branch": "warudo-plan-phase3-done",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 2,
+          "input": 4,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 65626,
+          "cacheRead": 56378,
+          "output": 6597
+        }
+      }
+    },
+    "62451c91-192e-42e0-b54d-3276c1a63571": {
+      "label": "MikanARStreamer compositor output streaming",
+      "firstActivity": "2026-10-26T23:46:59.665Z",
+      "lastActivity": "2026-10-27T21:01:22.694Z",
+      "branch": "main",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 343,
+          "input": 9316,
+          "cacheWrite5m": 285000,
+          "cacheWrite1h": 2226968,
+          "cacheRead": 146696585,
+          "output": 616510
+        },
+        "claude-opus-5-5": {
+          "calls": 743,
+          "input": 1488,
+          "cacheWrite5m": 1989820,
+          "cacheWrite1h": 0,
+          "cacheRead": 128340444,
+          "output": 506431
+        }
+      }
+    },
+    "494d93e8-dda9-4cc9-a51d-c6fcfced855d": {
+      "label": "Compositor graphs show video when no client renders",
+      "firstActivity": "2026-10-27T17:24:06.157Z",
+      "lastActivity": "2026-10-27T17:58:39.908Z",
+      "branch": "claude/affectionate-nash-ba9c35",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 57,
+          "input": 1584,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 217739,
+          "cacheRead": 11081627,
+          "output": 60219
+        }
+      }
+    },
+    "a629ebdb-8a70-4e41-9cd4-895c9e72aabe": {
+      "label": "Update the Unreal and Unity clients to the JSON-RPC client API",
+      "firstActivity": "2026-10-27T17:24:37.544Z",
+      "lastActivity": "2026-10-27T18:44:01.739Z",
+      "branch": "phone-return-feed",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 80,
+          "input": 2266,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 220812,
+          "cacheRead": 15015060,
+          "output": 64092
+        }
+      }
+    },
+    "306d78e6-51fc-405e-bd80-70736d05abaa": {
+      "label": "MikanXR client API integration update",
+      "firstActivity": "2026-10-27T19:28:09.568Z",
+      "lastActivity": "2026-10-27T23:32:09.090Z",
+      "branch": "main",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 350,
+          "input": 700,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 508460,
+          "cacheRead": 110977733,
+          "output": 200472
+        }
+      }
+    },
+    "5b8890e3-e9a0-4baf-934b-24d12e04516a": {
+      "label": "OpenRPC Inspector URL configuration",
+      "firstActivity": "2026-10-27T21:10:22.266Z",
+      "lastActivity": "2026-10-27T21:31:14.712Z",
+      "branch": "main",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 19,
+          "input": 38,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 54461,
+          "cacheRead": 1356912,
+          "output": 6851
+        }
+      }
+    },
+    "8bc86952-6a36-45c6-8681-6756f2a07321": {
+      "label": "MikanXR_UE",
+      "firstActivity": "2026-10-27T21:22:52.148Z",
+      "lastActivity": "2026-10-28T01:56:04.443Z",
+      "branch": "main",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 225,
+          "input": 460,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 393059,
+          "cacheRead": 49528380,
+          "output": 125532
+        }
+      }
+    },
+    "fdd76251-61cd-4a42-933e-5be9e2b82d9e": {
+      "label": "Silhouette masking with edge detection",
+      "firstActivity": "2026-10-28T05:01:05.392Z",
+      "lastActivity": "2026-10-28T22:29:36.167Z",
+      "branch": "occlusion-upsample",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 591,
+          "input": 1186,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 2447563,
+          "cacheRead": 269294894,
+          "output": 404859
+        }
+      }
+    },
+    "2e8d25a8-f51c-4568-868f-a9c1ba955734": {
+      "label": "iPhone occlusion coverage feedback",
+      "firstActivity": "2026-10-29T00:53:44.600Z",
+      "lastActivity": "2026-10-30T02:23:19.829Z",
+      "branch": "refined-track-output-only",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 869,
+          "input": 1754,
+          "cacheWrite5m": 1674399,
+          "cacheWrite1h": 3093847,
+          "cacheRead": 421916621,
+          "output": 874923
+        }
+      }
+    },
+    "b7090102-77c9-4e11-8b57-bba28860738c": {
+      "label": "iPhone occlusion coverage feedback",
+      "firstActivity": "2026-10-29T00:53:44.600Z",
+      "lastActivity": "2026-10-29T04:44:30.780Z",
+      "branch": "occlusion-quality-overlay",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 131,
+          "input": 262,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 609578,
+          "cacheRead": 35318939,
+          "output": 179147
+        }
+      }
+    },
+    "d9c97536-90a7-407a-a3eb-7a0ab6b1fd9f": {
+      "label": "iPhone occlusion coverage feedback",
+      "firstActivity": "2026-10-29T00:53:44.600Z",
+      "lastActivity": "2026-10-29T05:02:40.934Z",
+      "branch": "occlusion-quality-overlay",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 172,
+          "input": 344,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 722189,
+          "cacheRead": 54090477,
+          "output": 259684
+        }
+      }
+    },
+    "1f4e6ce5-5512-4a45-8138-07fcf98ca0fb": {
+      "label": "Mikan FileVideoSourceSystem error",
+      "firstActivity": "2026-10-29T18:21:01.693Z",
+      "lastActivity": "2026-10-29T19:23:16.718Z",
+      "branch": "main",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 61,
+          "input": 126,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 95647,
+          "cacheRead": 6009657,
+          "output": 20517
+        }
+      }
+    },
+    "d7a80ace-a80f-4088-8aa3-5c7df146d3b8": {
+      "label": "Real-time garbage matting with ML",
+      "firstActivity": "2026-10-29T22:45:26.311Z",
+      "lastActivity": "2026-10-31T00:28:10.793Z",
+      "branch": "garbage-matte",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 804,
+          "input": 22412,
+          "cacheWrite5m": 429571,
+          "cacheWrite1h": 2699464,
+          "cacheRead": 259352444,
+          "output": 998343
+        },
+        "claude-opus-5-5": {
+          "calls": 222,
+          "input": 444,
+          "cacheWrite5m": 1067325,
+          "cacheWrite1h": 0,
+          "cacheRead": 35732027,
+          "output": 166732
+        },
+        "claude-sonnet-5-5": {
+          "calls": 75,
+          "input": 150,
+          "cacheWrite5m": 448842,
+          "cacheWrite1h": 0,
+          "cacheRead": 4802118,
+          "output": 121794
+        }
+      }
+    },
+    "e6747ccb-d248-4cc1-84fb-7255be68aa1c": {
+      "label": "MikanStudio feature set discussion",
+      "firstActivity": "2026-10-30T18:11:28.080Z",
+      "lastActivity": "2026-11-05T05:18:37.459Z",
+      "branch": "main",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 2648,
+          "input": 78620,
+          "cacheWrite5m": 783082,
+          "cacheWrite1h": 13244438,
+          "cacheRead": 571477941,
+          "output": 3608551
+        },
+        "claude-opus-5-5": {
+          "calls": 1538,
+          "input": 3076,
+          "cacheWrite5m": 6882765,
+          "cacheWrite1h": 0,
+          "cacheRead": 170738297,
+          "output": 994961
+        },
+        "claude-sonnet-5-5": {
+          "calls": 21,
+          "input": 42,
+          "cacheWrite5m": 187806,
+          "cacheWrite1h": 0,
+          "cacheRead": 1341051,
+          "output": 29297
+        }
+      }
+    },
+    "9ab91bd9-be00-4795-97a7-49ee32ba4baa": {
+      "label": "Matte sidecar file compression",
+      "firstActivity": "2026-10-30T22:56:25.411Z",
+      "lastActivity": "2026-10-30T23:41:53.227Z",
+      "branch": "garbage-matte",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 110,
+          "input": 220,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 210231,
+          "cacheRead": 17762344,
+          "output": 83069
+        }
+      }
+    },
+    "250eaa25-551f-4037-bfb4-312dba9781af": {
+      "label": "HTTP compositor setup boilerplate",
+      "firstActivity": "2026-11-05T06:43:28.361Z",
+      "lastActivity": "2026-11-05T07:21:00.848Z",
+      "branch": "main",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 32,
+          "input": 64,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 68171,
+          "cacheRead": 2680170,
+          "output": 11718
+        }
+      }
+    },
+    "424c9ff5-1706-4f6b-944f-8b675f80e2d2": {
+      "label": "Compositor dockable window",
+      "firstActivity": "2026-11-05T07:25:18.348Z",
+      "lastActivity": "2026-11-06T07:18:47.396Z",
+      "branch": "dockable-compositor",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 164,
+          "input": 4084,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 1329635,
+          "cacheRead": 35414651,
+          "output": 156404
+        },
+        "claude-opus-5-5": {
+          "calls": 532,
+          "input": 1064,
+          "cacheWrite5m": 1896776,
+          "cacheWrite1h": 0,
+          "cacheRead": 88176420,
+          "output": 356002
+        },
+        "claude-sonnet-5-5": {
+          "calls": 32,
+          "input": 66,
+          "cacheWrite5m": 121471,
+          "cacheWrite1h": 0,
+          "cacheRead": 580662,
+          "output": 13042
+        }
+      }
+    },
+    "414ad833-7b4c-4db2-bf96-206d5085618e": {
+      "label": "MikanXR client API integration with VRChat",
+      "firstActivity": "2026-11-06T03:28:07.988Z",
+      "lastActivity": "2026-11-06T03:33:23.006Z",
+      "branch": "main",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 7,
+          "input": 164,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 74703,
+          "cacheRead": 547748,
+          "output": 9939
+        }
+      }
+    },
+    "ed96bee5-b239-48ed-8b98-2d1d26a51565": {
+      "label": "Imguizmo integration plan",
+      "firstActivity": "2026-11-06T07:14:28.237Z",
+      "lastActivity": "2026-11-06T10:12:45.109Z",
+      "branch": "imguizmo",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 250,
+          "input": 7286,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 1009905,
+          "cacheRead": 46792887,
+          "output": 304351
+        }
+      }
+    },
+    "11b6afd0-9b26-4146-a1ef-20a04c5a8584": {
+      "label": "MikanXR prior works disclosure",
+      "firstActivity": "2026-11-07T00:28:45.374Z",
+      "lastActivity": "2026-11-07T02:10:18.726Z",
+      "branch": "main",
+      "models": {
+        "claude-opus-5-5": {
+          "calls": 22,
+          "input": 48,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 118742,
+          "cacheRead": 2025534,
+          "output": 14480
+        }
+      }
+    },
+    "861f7f29-a8ce-4866-846e-d3f21b7c748e": {
+      "label": "Light-survival resolve decodes its fraction ahead of the sRGB target's encode",
+      "firstActivity": "2026-11-07T04:04:12.630Z",
+      "lastActivity": "2026-11-07T06:13:28.828Z",
+      "branch": "main",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 68,
+          "input": 1788,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 555018,
+          "cacheRead": 15556376,
+          "output": 88363
+        }
+      }
+    },
+    "ce17aac2-e74f-4808-b9e7-827c217493fd": {
+      "label": "Live2D/VRM rendering with shadows in MikanXR",
+      "firstActivity": "2026-11-16T06:14:33.751Z",
+      "lastActivity": "2026-11-16T23:43:32.861Z",
+      "branch": "main",
+      "models": {
+        "claude-fable-5-2": {
+          "calls": 52,
+          "input": 162,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 374210,
+          "cacheRead": 5410912,
+          "output": 37727
+        },
+        "claude-opus-5-5": {
+          "calls": 60,
+          "input": 120,
+          "cacheWrite5m": 193756,
+          "cacheWrite1h": 0,
+          "cacheRead": 7790483,
+          "output": 25008
+        }
+      }
+    },
+    "63649dab-77d4-4b26-b0c3-209405c1a532": {
+      "label": "MikanTrack token usage metrics",
+      "firstActivity": "2026-11-17T23:42:02.987Z",
+      "lastActivity": "2026-11-18T07:12:10.694Z",
+      "branch": "main",
+      "models": {
+        "claude-fable-5-2": {
+          "calls": 38,
+          "input": 88,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 277715,
+          "cacheRead": 5970993,
+          "output": 39229
         }
       }
     }
   },
   "excluded": {
+    "0099a0c3-0fef-4a60-ad8a-b49eabd28e09": {
+      "reason": "manual"
+    },
+    "00ba72cf-ba94-406c-a40b-8e11e2901afd": {
+      "reason": "manual"
+    },
+    "00ea6f9e-01ac-4295-9524-0ee9ea425be2": {
+      "reason": "manual"
+    },
+    "0b9cfef3-414e-4f4a-aa97-467952d58d3f": {
+      "reason": "outside-repo"
+    },
+    "0e386e6a-a1a2-4e71-80c4-bd2794b656bf": {
+      "reason": "manual"
+    },
+    "118b1f2c-ffdf-4336-9e2e-ffff61dea487": {
+      "reason": "manual"
+    },
+    "12bdab20-6b4b-4dcd-b442-6c0807ccbe72": {
+      "reason": "manual"
+    },
+    "18aa57d5-39ce-42f5-be9b-478e8f190f2d": {
+      "reason": "manual"
+    },
     "1ca1a79c-cc0f-40c8-bb95-5b5db469bac6": {
       "reason": "outside-repo"
     },
@@ -892,11 +1868,17 @@
     "21e4ad93-8563-4b6b-bcfa-1503591ecced": {
       "reason": "manual"
     },
+    "2535deb7-05ae-44fc-a2c8-9904c14291d1": {
+      "reason": "outside-repo"
+    },
     "27edf9b1-7c34-4dd4-9179-e604afb801c9": {
       "reason": "manual",
       "note": "MikanTrack work, counted in that repo"
     },
     "2dc53dce-c715-4265-82d3-88c5ad5ae604": {
+      "reason": "outside-repo"
+    },
+    "31713404-6cde-4c7b-8f27-42bbba12ab7e": {
       "reason": "outside-repo"
     },
     "356d659d-3cde-4c0b-bbc1-bef43a4d2f3a": {
@@ -905,16 +1887,70 @@
     "3b01234b-3dfa-43cd-a5bf-f2c43e241f02": {
       "reason": "manual"
     },
+    "3b28be91-f392-4cad-9f02-f7e096a7dc46": {
+      "reason": "manual"
+    },
+    "41304559-8643-438f-b3eb-01eff7a8c37a": {
+      "reason": "outside-repo"
+    },
+    "44ec34e0-9e36-48a2-98f0-cbcc3327d148": {
+      "reason": "manual"
+    },
+    "46de251d-0835-47e2-ac7a-eab22dfebe04": {
+      "reason": "manual"
+    },
+    "47c0a5db-65e3-42ed-b2c9-8f4d257eb842": {
+      "reason": "outside-repo"
+    },
     "4ac3774b-763d-45c3-a0ef-f1ca5753b894": {
       "reason": "manual",
       "note": "MikanTrack work, counted in that repo"
     },
+    "4c6030be-8098-4ec9-8a2a-a1aa3cf21985": {
+      "reason": "manual"
+    },
+    "4e04013b-a13c-4598-ae3e-c32c607f6211": {
+      "reason": "manual"
+    },
+    "52b809fb-ad48-435d-821b-fa801e0d6bfb": {
+      "reason": "manual"
+    },
+    "5400d132-c3f4-41b6-8630-a2aa2698fc56": {
+      "reason": "manual"
+    },
+    "5529ae5e-b5ee-41f1-93c8-b5a5a1788671": {
+      "reason": "manual"
+    },
+    "55e0ce28-cde0-4747-9dc4-05380bda8bc6": {
+      "reason": "manual"
+    },
     "58453e30-1564-46ea-8206-f7addea12b7f": {
       "reason": "outside-repo"
+    },
+    "584549cb-6d24-4673-bfff-f123f7cd9e2a": {
+      "reason": "outside-repo"
+    },
+    "59fbe4f2-02a5-45bd-b91c-f84f69298325": {
+      "reason": "manual"
+    },
+    "5d6fcfcd-81bd-4cf5-944c-9167919c76f7": {
+      "reason": "manual"
+    },
+    "5f25b0f0-c7f7-43a7-abdc-6f6ba32b84d3": {
+      "reason": "manual"
     },
     "656cf457-eae9-43c7-aa79-94da1af8abdd": {
       "reason": "manual",
       "note": "MikanTrack work, counted in that repo"
+    },
+    "66eac461-122e-448c-aade-bb2a2f0fb724": {
+      "reason": "outside-repo"
+    },
+    "67f5c0d1-134b-49d2-a807-be87df9259ec": {
+      "reason": "outside-repo"
+    },
+    "6d75f97c-a50c-424f-b49a-5496419956a8": {
+      "reason": "outside-repo"
     },
     "6d9efba5-aef0-4223-a72b-8b4e81b62cd1": {
       "reason": "manual"
@@ -922,29 +1958,89 @@
     "6f113e65-3d35-483b-ad9c-1e5ecbb32974": {
       "reason": "outside-repo"
     },
+    "751957a7-65fb-456e-a6ab-b145031fcb90": {
+      "reason": "outside-repo"
+    },
+    "75238c09-3eae-41ec-80dc-6811e260ec53": {
+      "reason": "manual"
+    },
+    "778c3b69-8589-4318-bd61-141fb40bbc7b": {
+      "reason": "manual"
+    },
+    "77ff4636-3b8c-4a3c-8f82-8ec6bb32b24a": {
+      "reason": "manual"
+    },
     "78c6231e-c773-425f-9035-3902d9a912e2": {
       "reason": "outside-repo"
+    },
+    "79ef0b01-ac11-4ae0-8943-970192fb1a65": {
+      "reason": "manual"
+    },
+    "7ba18944-6f7d-4887-8d7d-b10afca77d23": {
+      "reason": "manual"
     },
     "7d1bd754-bd18-405a-92cd-2316852369e8": {
       "reason": "manual",
       "note": "MikanTrack work, counted in that repo"
     },
+    "8758074f-b7db-4a8a-885f-5d49d49e1da1": {
+      "reason": "manual"
+    },
     "8859e189-cf8e-4d87-b0f0-34188008f1d0": {
+      "reason": "manual"
+    },
+    "8bad1dff-7860-4db9-8784-811ddd6ae2b3": {
       "reason": "manual"
     },
     "8f667e50-cf5d-4d36-8cd6-92b98572a026": {
       "reason": "manual",
       "note": "MikanTrack work, counted in that repo"
     },
+    "922d9caa-e568-4d6f-b421-917640263828": {
+      "reason": "outside-repo"
+    },
+    "976bf0e0-d48a-49ce-b2df-bae9588e4231": {
+      "reason": "manual"
+    },
+    "97bcfcf3-fa53-46f7-bfa0-68487a102365": {
+      "reason": "manual"
+    },
+    "9a05bee0-ed1a-4de6-825e-fc5d116b4344": {
+      "reason": "manual"
+    },
+    "9f52829b-46f0-4ca3-860d-baced4853c21": {
+      "reason": "manual"
+    },
+    "aa397588-4c29-4505-a29f-664c57d9e6f0": {
+      "reason": "outside-repo"
+    },
     "aa3a90ea-54b1-4179-bc80-4cb1994f004d": {
       "reason": "outside-repo"
+    },
+    "aa9e4459-7676-4bd1-8cd6-a4a2e789ac7b": {
+      "reason": "manual"
     },
     "af7ea373-96e6-4a6b-ac6d-5b23d382bfa1": {
       "reason": "outside-repo"
     },
+    "b208247e-da04-4aeb-b0b0-78e2b1c194f6": {
+      "reason": "manual"
+    },
+    "bb8a78e6-e81c-430d-ba7c-c34bb369de5e": {
+      "reason": "manual"
+    },
+    "beeb19c9-0a97-4270-947c-0d1dede93906": {
+      "reason": "manual"
+    },
     "bf1aab0e-ac0b-4510-a604-2f41651ed6a5": {
       "reason": "manual",
       "note": "MikanTrack work, counted in that repo"
+    },
+    "c79c3ed4-7eb9-420f-b10a-11a62d957b48": {
+      "reason": "manual"
+    },
+    "ce64b657-5f65-4fc1-b223-d017ae1aa10e": {
+      "reason": "outside-repo"
     },
     "d18154ee-9d4e-4179-944c-9b445bd03726": {
       "reason": "manual"
@@ -953,7 +2049,31 @@
       "reason": "manual",
       "note": "MikanTrack work, counted in that repo"
     },
+    "d623de1e-2326-4cd8-9f53-0f541b133211": {
+      "reason": "manual"
+    },
     "d99d2a0a-1479-45ba-ae73-4d9732bd54dc": {
+      "reason": "manual"
+    },
+    "da8b743c-63b3-4e1a-b099-4d73d5456c12": {
+      "reason": "manual"
+    },
+    "dbd310bc-1026-422c-852c-9016f3b4b980": {
+      "reason": "outside-repo"
+    },
+    "dbe15475-f346-42a4-8018-1a226721a497": {
+      "reason": "manual"
+    },
+    "dcacb744-993a-4607-af84-efc074bf5553": {
+      "reason": "outside-repo"
+    },
+    "dd7ee882-0c80-4c28-b631-317963728493": {
+      "reason": "manual"
+    },
+    "e069a3dd-d0a3-4d0b-b59a-e785a126adc6": {
+      "reason": "manual"
+    },
+    "e25777a8-ae0d-43cc-9cfd-dae72bf33b61": {
       "reason": "manual"
     },
     "e4fa6767-be6c-4bae-8461-d662357148a0": {
@@ -965,8 +2085,20 @@
     "e72f0682-9b15-4fc2-acd9-882c70a9964d": {
       "reason": "manual"
     },
+    "ea86ee1e-bccf-46b3-b617-6133963f2fce": {
+      "reason": "manual"
+    },
     "eeda76ac-a3bd-4ab5-8317-5e075fef93db": {
       "reason": "outside-repo"
+    },
+    "f0d55761-fa83-4bbb-83e3-dc2ec51049f9": {
+      "reason": "manual"
+    },
+    "f902f5dd-b6f3-4ea1-b2fc-f45be7138cb1": {
+      "reason": "manual"
+    },
+    "fde5afec-cb75-45e2-a019-be4a70e2c40e": {
+      "reason": "manual"
     },
     "ffe73a3e-3f94-47fa-aea8-66ea77f86f56": {
       "reason": "manual"
