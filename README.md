@@ -4,7 +4,7 @@ A simple tool for mixed reality camera calibration and video compositing
 Project site: [mikanxr.org](https://mikanxr.org)
 
 <!-- AI_USAGE_BADGES:BEGIN -->
-![AI tokens](https://img.shields.io/badge/AI_tokens-14M_out_%2F_5.5B_read-blueviolet) ![API-equiv. cost](https://img.shields.io/badge/API--equiv._cost-~$3.7k-green)
+![AI tokens](https://img.shields.io/badge/AI_tokens-36M_out_%2F_12B_read-blueviolet) ![API-equiv. cost](https://img.shields.io/badge/API--equiv._cost-~$7.3k-green)
 (cost is the API-equivalent at list prices, see [TOKEN_STATS.md](TOKEN_STATS.md))
 <!-- AI_USAGE_BADGES:END -->
 
