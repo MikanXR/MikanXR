@@ -6,7 +6,8 @@ and every assistant record carries the exact token counts the API metered. Those
 transcripts are local and get pruned, so they are a collection source rather than
 a source of truth. This script folds them into `docs/ai-usage.json`, a committed
 ledger whose counters only ever grow, then renders `TOKEN_STATS.md` and the
-README badge line from that ledger alone.
+README badge line from that ledger alone: the token totals, their API-equivalent
+cost at list prices, and an order-of-magnitude energy and water estimate.
 
     python tools/token_stats.py            scan transcripts, update the ledger, render
     python tools/token_stats.py --render   rewrite the ledger and the docs, do not scan
@@ -41,16 +42,48 @@ UNTITLED = "(untitled session)"
 # Token classes the transcripts expose, in the order they are stored and shown.
 COUNTERS = ("calls", "input", "cacheWrite5m", "cacheWrite1h", "cacheRead", "output")
 
-# Compute weighting per token class, expressed in output-equivalent tokens and
-# taken from Anthropic's price ratios (price being the closest public proxy for
-# serving cost). The ratios are the same for every Claude model, so one table
-# covers Opus and Fable alike. See TOKEN_STATS.md for the discussion.
+# Compute weighting per token class, expressed in output-equivalent tokens. A
+# fixed proxy for relative serving cost, taken from Anthropic's standard price
+# ratios (input 1, 5m write 1.25, 1h write 2, cache read 0.1, output 5). It is
+# one table for every model on purpose: the deeper cache-read discounts some
+# models carry are pricing decisions, and the energy estimate must not move
+# when pricing does. Cost uses PRICES_USD_PER_MTOK instead.
 WEIGHTS = {
     "output": 1.0,
     "input": 1 / 5,
     "cacheWrite1h": 2 / 5,
     "cacheWrite5m": 1 / 4,
     "cacheRead": 1 / 50,
+}
+
+
+def _price(base_input, output, read_ratio=0.1):
+    """One model's rates from its base input and output price, USD per MTok."""
+    return {
+        "input": base_input,
+        "cacheWrite5m": base_input * 1.25,
+        "cacheWrite1h": base_input * 2,
+        "cacheRead": base_input * read_ratio,
+        "output": output,
+    }
+
+
+# Anthropic first-party list prices in USD per million tokens, as published on
+# 2026-11-17. Fast mode and batch pricing are ignored: the cost is a way to read
+# the token counts in human terms, not an invoice. Haiku 5.5 is priced at its
+# up-to-100k-prompt rate, since the ledger holds no per-request prompt size.
+# A model missing from this table stops the render, so add it here first.
+PRICES_USD_PER_MTOK = {
+    "claude-fable-5": _price(10, 50),
+    "claude-fable-5-1": _price(10, 50, read_ratio=0.025),
+    "claude-fable-5-2": _price(8, 40, read_ratio=0.025),
+    "claude-haiku-4-5": _price(1, 5),
+    "claude-haiku-5-5": _price(0.10, 0.50),
+    "claude-opus-4-8": _price(5, 25),
+    "claude-opus-5": _price(5, 25),
+    "claude-opus-5-5": _price(4, 20, read_ratio=0.05),
+    "claude-sonnet-5": _price(2, 10),
+    "claude-sonnet-5-5": _price(2, 10, read_ratio=0.05),
 }
 
 # Energy per 1000 weighted (output-equivalent) tokens, Wh: low / central / high.
@@ -306,6 +339,17 @@ def weighted(counts):
     return sum(counts.get(k, 0) * w for k, w in WEIGHTS.items())
 
 
+def cost_usd(model, counts):
+    """API-equivalent cost of one model's counters at list prices."""
+    prices = PRICES_USD_PER_MTOK.get(model)
+    if prices is None:
+        raise SystemExit(
+            f"error: no list price for model {model!r}, add it to PRICES_USD_PER_MTOK "
+            f"in tools/token_stats.py"
+        )
+    return sum(counts.get(k, 0) * rate for k, rate in prices.items()) / 1e6
+
+
 def fmt(n):
     return f"{int(n):,}"
 
@@ -350,22 +394,27 @@ def render(ledger):
         )
 
     total_rows = [
-        "| Model | API calls | Input | Cache write | Cache read | Output | Weighted |",
-        "|---|---|---|---|---|---|---|",
+        "| Model | API calls | Input | Cache write | Cache read | Output | Weighted | API-equiv. cost |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     grand = collections.Counter()
+    total_cost = 0.0
     for model, counts in sorted(totals.items()):
         grand.update(counts)
+        cost = cost_usd(model, counts)
+        total_cost += cost
         writes = counts["cacheWrite5m"] + counts["cacheWrite1h"]
         total_rows.append(
             f"| {model} | {fmt(counts['calls'])} | {fmt(counts['input'])} | {fmt(writes)} "
-            f"| {fmt(counts['cacheRead'])} | {fmt(counts['output'])} | {fmt(weighted(counts))} |"
+            f"| {fmt(counts['cacheRead'])} | {fmt(counts['output'])} | {fmt(weighted(counts))} "
+            f"| ${cost:,.0f} |"
         )
     grand_writes = grand["cacheWrite5m"] + grand["cacheWrite1h"]
     gw = weighted(grand)
     total_rows.append(
         f"| **total** | {fmt(grand['calls'])} | {fmt(grand['input'])} | {fmt(grand_writes)} "
-        f"| {fmt(grand['cacheRead'])} | {fmt(grand['output'])} | **{fmt(gw)}** |"
+        f"| {fmt(grand['cacheRead'])} | {fmt(grand['output'])} | **{fmt(gw)}** "
+        f"| **${total_cost:,.0f}** |"
     )
 
     est_rows = [
@@ -397,11 +446,10 @@ def render(ledger):
         badge("AI tokens",
               f"{fmt_compact(grand['output'])} out / {fmt_compact(grand['cacheRead'])} read",
               "blueviolet"),
-        badge("est. energy", f"~{central_kwh:,.0f} kWh", "yellow"),
-        badge("est. water", f"~{central_kwh * WATER_TOTAL_L_PER_KWH:,.0f} L", "blue"),
-    ]) + "\n(estimates, see [TOKEN_STATS.md](TOKEN_STATS.md))"
+        badge("API-equiv. cost", f"~${fmt_compact(total_cost)}", "green"),
+    ]) + "\n(cost is the API-equivalent at list prices, see [TOKEN_STATS.md](TOKEN_STATS.md))"
 
-    return badge_block, stats_block, grand, gw, central_kwh
+    return badge_block, stats_block, grand, gw, central_kwh, total_cost
 
 
 def substitute(text, marker, content, path):
@@ -414,7 +462,7 @@ def substitute(text, marker, content, path):
 
 def rendered_files(ledger):
     """Map each generated file to the text it should hold for this ledger."""
-    badge_block, stats_block, _, _, _ = render(ledger)
+    badge_block, stats_block, _, _, _, _ = render(ledger)
     out = {}
     with open(STATS_MD, encoding="utf-8") as fh:
         stats = fh.read()
@@ -493,9 +541,10 @@ def main():
     # persisted by either one rather than only by a full scan.
     write_ledger(ledger)
     write_rendered(ledger)
-    _, _, grand, gw, central_kwh = render(ledger)
+    _, _, grand, gw, central_kwh, total_cost = render(ledger)
     print(f"total output {fmt(grand['output'])}, cache read {fmt(grand['cacheRead'])}, "
-          f"weighted {fmt(gw)}, central estimate {central_kwh:,.0f} kWh")
+          f"weighted {fmt(gw)}, API-equivalent cost ${total_cost:,.0f}, "
+          f"central estimate {central_kwh:,.0f} kWh")
 
 
 if __name__ == "__main__":

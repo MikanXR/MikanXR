@@ -1,11 +1,11 @@
 # AI Token Usage
 
 <!-- AI_USAGE_BADGES:BEGIN -->
-![AI tokens](https://img.shields.io/badge/AI_tokens-14M_out_%2F_5.5B_read-blueviolet) ![est. energy](https://img.shields.io/badge/est._energy-~303_kWh-yellow) ![est. water](https://img.shields.io/badge/est._water-~909_L-blue)
-(estimates, see [TOKEN_STATS.md](TOKEN_STATS.md))
+![AI tokens](https://img.shields.io/badge/AI_tokens-14M_out_%2F_5.5B_read-blueviolet) ![API-equiv. cost](https://img.shields.io/badge/API--equiv._cost-~$3.7k-green)
+(cost is the API-equivalent at list prices, see [TOKEN_STATS.md](TOKEN_STATS.md))
 <!-- AI_USAGE_BADGES:END -->
 
-MikanXR is developed almost entirely in Claude Code sessions, across whichever Claude models were current at the time. This document records the API token usage of that work and derives an order-of-magnitude estimate of the electricity and water the inference consumed.
+MikanXR is developed almost entirely in Claude Code sessions, across whichever Claude models were current at the time. This document records the API token usage of that work and what those tokens would cost at list prices. It also derives an order-of-magnitude estimate of the electricity and water the inference consumed.
 
 ## How the numbers are collected
 
@@ -27,15 +27,21 @@ Three properties make that safe to run at any cadence.
 
 The ledger stores no absolute paths. Session ids are opaque, and the script refuses to write any string that looks like a filesystem location, so the file carries no drive letter, home directory, or user name.
 
-The token counts are exact, because they are what the API metered. Everything under "Estimation methodology" is not.
+The token counts are exact, because they are what the API metered. The cost is those counts at list prices. Everything under "Energy and water methodology" is an estimate.
 
-## Estimation methodology
+## Cost estimate
+
+The cost column prices each model's counters at Anthropic's first-party list prices per token class: input, cache writes at each of the two cache lifetimes, cache reads, and output. The price table sits at the top of `tools/token_stats.py` with the date it was read, and a model missing from it stops the render, so a new model cannot go unpriced.
+
+It is an API-equivalent figure, a way to read the token counts in human terms. It is not what the work was billed, since most of it ran under a subscription. Fast mode and batch pricing are ignored, and Claude Haiku 5.5 is priced at its rate for prompts up to 100,000 tokens because the ledger holds no per-request prompt size.
+
+## Energy and water methodology
 
 Anthropic publishes no per-token energy figures, so the estimate chains public reference points with stated assumptions. Treat the result as order-of-magnitude.
 
-**Step 1: reduce the token classes to one.** The API meters classes that cost very different amounts of compute: fresh input, cache writes at each of the two cache lifetimes, cache reads, and output. They fold into "weighted output-equivalent tokens" using Anthropic's own price ratios as the compute proxy, since pricing is the closest public signal of relative serving cost. The ratios are the same across Claude models, so one table covers Opus and Fable alike.
+**Step 1: reduce the token classes to one.** The API meters classes that cost very different amounts of compute: fresh input, cache writes at each of the two cache lifetimes, cache reads, and output. They fold into "weighted output-equivalent tokens" using Anthropic's standard price ratios as the compute proxy, since pricing is the closest public signal of relative serving cost. The table is fixed and applies to every model. Some newer models discount cache reads further, which the cost above follows and this table deliberately does not, so the energy estimate does not move when pricing does.
 
-| Token class | Price relative to base input | Weight in output-equivalent tokens |
+| Token class | Standard price relative to base input | Weight in output-equivalent tokens |
 |---|---|---|
 | Output | 5 | 1 |
 | Input | 1 | 1/5 |
@@ -45,9 +51,17 @@ Anthropic publishes no per-token energy figures, so the estimate chains public r
 
 Note the consequence: cache reads dominate the weighted total even at 2 percent weight, because agentic coding re-reads the growing conversation context on every call. That is real work, attention over the cached context, and should not be dropped.
 
-**Step 2: energy per weighted token.** Public anchors: Google reported the median Gemini Apps text prompt at 0.24 Wh (Aug 2025 technical report), Epoch AI estimated roughly 0.3 Wh for a typical GPT-4o query, and Sam Altman quoted 0.34 Wh for an average ChatGPT query. A median chat prompt is a few hundred output-equivalent tokens, which lands those figures near 1 Wh per 1000 weighted tokens. The models used here are larger than what serves a median consumer prompt, so the central assumption is 2 Wh per 1000 weighted tokens, with 0.5 and 6 as low and high bounds. These constants sit at the top of `tools/token_stats.py`. Correct them as better data appears.
+**Step 2: energy per weighted token.** Public anchors: Google reported the median Gemini Apps text prompt at 0.24 Wh (Aug 2025 technical report), Epoch AI estimated roughly 0.3 Wh for a typical GPT-4o query, and Sam Altman quoted 0.34 Wh for an average ChatGPT query. A Microsoft study of inference at production scale ([Oviedo et al.](https://arxiv.org/abs/2509.20241), published in Joule in 2026) puts the median query to a frontier-scale model at 0.31 Wh, with an interquartile range of 0.16 to 0.60 Wh. A median chat prompt is a few hundred output-equivalent tokens, which lands those figures near 1 Wh per 1000 weighted tokens. The models used here are larger than what serves a median consumer prompt, so the central assumption is 2 Wh per 1000 weighted tokens, with 0.5 and 6 as low and high bounds. These constants sit at the top of `tools/token_stats.py`. Correct them as better data appears.
 
 **Step 3: water per kWh.** Onsite datacenter cooling runs about 1.1 L/kWh, consistent with Google's reported fleet WUE and their 0.26 mL figure for the 0.24 Wh prompt above. Including the water footprint of electricity generation raises it to roughly 3 L/kWh on a typical US grid mix.
+
+**Where the estimate is weakest.** Three simplifications carry most of the uncertainty.
+
+- Cache reads are about 70 percent of the weighted total, and their weight comes from a price ratio. Public measurement work has not yet established what a cached prefix costs in energy.
+
+- One energy rate covers every model. Measurement work models energy per token as a function of model size and treats input and output tokens separately, as in [Greenpixie's AI token methodology](https://arxiv.org/abs/2609.33965). That paper does not publish the per-model figures a size-aware rate would need.
+
+- Measured energy per token varies several-fold with hardware and serving configuration, none of which is known here.
 
 **What the estimate excludes:** model training, which is generally estimated to be small per query relative to inference at scale but is not zero, datacenter construction, the dev machine running Claude Code and the local builds, and the GPU time spent on the depth, lighting, and tracking model work this project exists for. It also cannot know Anthropic's actual serving efficiency, batching, or datacenter locations, which is why the range spans an order of magnitude.
 
@@ -111,14 +125,14 @@ Generated by `tools/token_stats.py` from `docs/ai-usage.json`, covering 46 sessi
 
 ## Totals per model
 
-| Model | API calls | Input | Cache write | Cache read | Output | Weighted |
-|---|---|---|---|---|---|---|
-| claude-fable-5 | 2,282 | 10,513 | 8,304,398 | 687,609,210 | 2,301,629 | 19,176,684 |
-| claude-fable-5-1 | 1,578 | 80,557 | 12,820,183 | 597,930,275 | 2,526,984 | 19,282,735 |
-| claude-opus-4-8 | 1,033 | 15,661 | 4,592,961 | 237,315,679 | 1,135,296 | 7,529,115 |
-| claude-opus-5 | 6,688 | 26,796 | 26,704,328 | 2,475,865,039 | 4,980,406 | 64,389,127 |
-| claude-sonnet-5 | 4,243 | 41,715 | 22,382,772 | 1,477,534,440 | 3,322,661 | 41,172,602 |
-| **total** | 15,824 | 175,242 | 74,804,642 | 5,476,254,643 | 14,266,976 | **151,550,265** |
+| Model | API calls | Input | Cache write | Cache read | Output | Weighted | API-equiv. cost |
+|---|---|---|---|---|---|---|---|
+| claude-fable-5 | 2,282 | 10,513 | 8,304,398 | 687,609,210 | 2,301,629 | 19,176,684 | $959 |
+| claude-fable-5-1 | 1,578 | 80,557 | 12,820,183 | 597,930,275 | 2,526,984 | 19,282,735 | $516 |
+| claude-opus-4-8 | 1,033 | 15,661 | 4,592,961 | 237,315,679 | 1,135,296 | 7,529,115 | $188 |
+| claude-opus-5 | 6,688 | 26,796 | 26,704,328 | 2,475,865,039 | 4,980,406 | 64,389,127 | $1,610 |
+| claude-sonnet-5 | 4,243 | 41,715 | 22,382,772 | 1,477,534,440 | 3,322,661 | 41,172,602 | $412 |
+| **total** | 15,824 | 175,242 | 74,804,642 | 5,476,254,643 | 14,266,976 | **151,550,265** | **$3,684** |
 
 ## Energy and water estimate
 
