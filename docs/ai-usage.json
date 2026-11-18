@@ -905,6 +905,30 @@
         }
       }
     },
+    "078ee3e9-5f24-4726-8ab2-c1c075ce63cb": {
+      "label": "MikanXR crash dump handler",
+      "firstActivity": "2026-09-14T05:31:16.480Z",
+      "lastActivity": "2026-09-15T03:00:06.157Z",
+      "branch": "crash-handler",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 153,
+          "input": 4032,
+          "cacheWrite5m": 115452,
+          "cacheWrite1h": 1144054,
+          "cacheRead": 43807682,
+          "output": 224140
+        },
+        "claude-opus-5": {
+          "calls": 115,
+          "input": 230,
+          "cacheWrite5m": 355677,
+          "cacheWrite1h": 0,
+          "cacheRead": 10143693,
+          "output": 98785
+        }
+      }
+    },
     "41eb3a6e-fe8c-40b7-aa85-e2685032d5b7": {
       "label": "Mikan automation server toggle",
       "firstActivity": "2026-09-15T04:18:11.637Z",
@@ -918,6 +942,30 @@
           "cacheWrite1h": 220265,
           "cacheRead": 26463080,
           "output": 67121
+        }
+      }
+    },
+    "bf04f179-092c-4db3-acfa-df16b3f2f347": {
+      "label": "FileVideoSourceComponent with pose tracking",
+      "firstActivity": "2026-09-15T17:44:39.369Z",
+      "lastActivity": "2026-09-16T07:35:14.303Z",
+      "branch": "movie-source",
+      "models": {
+        "claude-fable-5-1": {
+          "calls": 497,
+          "input": 14104,
+          "cacheWrite5m": 998595,
+          "cacheWrite1h": 2603671,
+          "cacheRead": 200616950,
+          "output": 749540
+        },
+        "claude-opus-5": {
+          "calls": 296,
+          "input": 592,
+          "cacheWrite5m": 1373507,
+          "cacheWrite1h": 0,
+          "cacheRead": 28595143,
+          "output": 240283
         }
       }
     },
@@ -1745,416 +1793,70 @@
         }
       }
     },
-    "5f25b0f0-c7f7-43a7-abdc-6f6ba32b84d3": {
-      "label": "MikanTrack expression remapping mechanism",
-      "firstActivity": "2026-11-07T09:06:57.562Z",
-      "lastActivity": "2026-11-07T21:21:31.685Z",
+    "ce17aac2-e74f-4808-b9e7-827c217493fd": {
+      "label": "Live2D/VRM rendering with shadows in MikanXR",
+      "firstActivity": "2026-11-16T06:14:33.751Z",
+      "lastActivity": "2026-11-16T23:43:32.861Z",
       "branch": "main",
       "models": {
-        "claude-opus-5-5": {
-          "calls": 48,
-          "input": 100,
-          "cacheWrite5m": 173854,
-          "cacheWrite1h": 115770,
-          "cacheRead": 5122476,
-          "output": 34768
-        }
-      }
-    },
-    "ea86ee1e-bccf-46b3-b617-6133963f2fce": {
-      "label": "Face expressions proposal review",
-      "firstActivity": "2026-11-07T23:52:05.741Z",
-      "lastActivity": "2026-11-09T07:26:59.529Z",
-      "branch": "main",
-      "models": {
-        "claude-fable-5-1": {
-          "calls": 105,
-          "input": 2830,
+        "claude-fable-5-2": {
+          "calls": 52,
+          "input": 162,
           "cacheWrite5m": 0,
-          "cacheWrite1h": 976431,
-          "cacheRead": 19263718,
-          "output": 134551
+          "cacheWrite1h": 374210,
+          "cacheRead": 5410912,
+          "output": 37727
         },
         "claude-opus-5-5": {
-          "calls": 214,
-          "input": 428,
-          "cacheWrite5m": 722459,
+          "calls": 60,
+          "input": 120,
+          "cacheWrite5m": 193756,
           "cacheWrite1h": 0,
-          "cacheRead": 23835496,
-          "output": 188798
-        }
-      }
-    },
-    "aa9e4459-7676-4bd1-8cd6-a4a2e789ac7b": {
-      "label": "VRM expression editor UI",
-      "firstActivity": "2026-11-09T07:42:33.187Z",
-      "lastActivity": "2026-11-10T05:51:45.043Z",
-      "branch": "main",
-      "models": {
-        "claude-fable-5-1": {
-          "calls": 137,
-          "input": 3912,
-          "cacheWrite5m": 125368,
-          "cacheWrite1h": 569982,
-          "cacheRead": 28156196,
-          "output": 249650
-        },
-        "claude-fable-5-2": {
-          "calls": 150,
-          "input": 318,
-          "cacheWrite5m": 0,
-          "cacheWrite1h": 601126,
-          "cacheRead": 36207377,
-          "output": 142275
-        },
-        "claude-opus-5-5": {
-          "calls": 96,
-          "input": 192,
-          "cacheWrite5m": 455135,
-          "cacheWrite1h": 0,
-          "cacheRead": 8070544,
-          "output": 69569
-        }
-      }
-    },
-    "dd7ee882-0c80-4c28-b631-317963728493": {
-      "label": "MikanTrack motion capture retargeting",
-      "firstActivity": "2026-11-10T00:46:21.184Z",
-      "lastActivity": "2026-11-11T08:38:34.613Z",
-      "branch": "main",
-      "models": {
-        "claude-fable-5-2": {
-          "calls": 523,
-          "input": 1188,
-          "cacheWrite5m": 250946,
-          "cacheWrite1h": 2081350,
-          "cacheRead": 232691239,
-          "output": 852770
-        },
-        "claude-opus-5-5": {
-          "calls": 2110,
-          "input": 4224,
-          "cacheWrite5m": 7563189,
-          "cacheWrite1h": 0,
-          "cacheRead": 424049014,
-          "output": 2090600
-        },
-        "claude-sonnet-5-5": {
-          "calls": 21,
-          "input": 42,
-          "cacheWrite5m": 287824,
-          "cacheWrite1h": 0,
-          "cacheRead": 1363258,
-          "output": 28466
-        }
-      }
-    },
-    "bb8a78e6-e81c-430d-ba7c-c34bb369de5e": {
-      "label": "Viseme weight meter alignment",
-      "firstActivity": "2026-11-10T00:49:00.958Z",
-      "lastActivity": "2026-11-10T05:47:16.184Z",
-      "branch": "main",
-      "models": {
-        "claude-opus-5-5": {
-          "calls": 21,
-          "input": 46,
-          "cacheWrite5m": 0,
-          "cacheWrite1h": 80255,
-          "cacheRead": 1283006,
-          "output": 5226
-        }
-      }
-    },
-    "5d6fcfcd-81bd-4cf5-944c-9167919c76f7": {
-      "label": "Camera frame synchronization in MikanTrack",
-      "firstActivity": "2026-11-10T08:28:06.982Z",
-      "lastActivity": "2026-11-10T10:04:38.394Z",
-      "branch": "main",
-      "models": {
-        "claude-opus-5-5": {
-          "calls": 8,
-          "input": 26,
-          "cacheWrite5m": 0,
-          "cacheWrite1h": 48719,
-          "cacheRead": 496790,
-          "output": 17707
-        }
-      }
-    },
-    "fde5afec-cb75-45e2-a019-be4a70e2c40e": {
-      "label": "Hand inference performance spikes",
-      "firstActivity": "2026-11-12T04:45:50.811Z",
-      "lastActivity": "2026-11-12T05:40:00.115Z",
-      "branch": "main",
-      "models": {
-        "claude-opus-5-5": {
-          "calls": 100,
-          "input": 212,
-          "cacheWrite5m": 0,
-          "cacheWrite1h": 217059,
-          "cacheRead": 16656215,
-          "output": 70121
-        }
-      }
-    },
-    "778c3b69-8589-4318-bd61-141fb40bbc7b": {
-      "label": "MikanTrack single camera model",
-      "firstActivity": "2026-11-12T05:01:45.675Z",
-      "lastActivity": "2026-11-12T07:11:58.250Z",
-      "branch": "main",
-      "models": {
-        "claude-opus-5-5": {
-          "calls": 51,
-          "input": 116,
-          "cacheWrite5m": 0,
-          "cacheWrite1h": 175537,
-          "cacheRead": 6075021,
-          "output": 34953
-        }
-      }
-    },
-    "0099a0c3-0fef-4a60-ad8a-b49eabd28e09": {
-      "label": "Whole-body landmarks plan review",
-      "firstActivity": "2026-11-12T07:15:39.001Z",
-      "lastActivity": "2026-11-13T03:27:25.195Z",
-      "branch": "main",
-      "models": {
-        "claude-fable-5-2": {
-          "calls": 451,
-          "input": 964,
-          "cacheWrite5m": 0,
-          "cacheWrite1h": 1355831,
-          "cacheRead": 179646142,
-          "output": 577628
-        }
-      }
-    },
-    "0e386e6a-a1a2-4e71-80c4-bd2794b656bf": {
-      "label": "Low-visibility landmark rendering toggle",
-      "firstActivity": "2026-11-12T22:14:02.858Z",
-      "lastActivity": "2026-11-12T22:26:29.035Z",
-      "branch": "main",
-      "models": {
-        "claude-opus-5-5": {
-          "calls": 43,
-          "input": 88,
-          "cacheWrite5m": 0,
-          "cacheWrite1h": 106039,
-          "cacheRead": 4296846,
-          "output": 26341
-        }
-      }
-    },
-    "8758074f-b7db-4a8a-885f-5d49d49e1da1": {
-      "label": "Proposal: per-frame hand label correction",
-      "firstActivity": "2026-11-12T23:53:16.160Z",
-      "lastActivity": "2026-11-13T11:22:15.302Z",
-      "branch": "main",
-      "models": {
-        "claude-fable-5-2": {
-          "calls": 395,
-          "input": 872,
-          "cacheWrite5m": 0,
-          "cacheWrite1h": 1124120,
-          "cacheRead": 90762226,
-          "output": 410869
-        }
-      }
-    },
-    "3b28be91-f392-4cad-9f02-f7e096a7dc46": {
-      "label": "Face-based camera calibration",
-      "firstActivity": "2026-11-13T06:50:00.833Z",
-      "lastActivity": "2026-11-15T09:21:19.347Z",
-      "branch": "main",
-      "models": {
-        "claude-fable-5-2": {
-          "calls": 745,
-          "input": 1668,
-          "cacheWrite5m": 0,
-          "cacheWrite1h": 2462466,
-          "cacheRead": 201007650,
-          "output": 876686
-        },
-        "claude-opus-5-5": {
-          "calls": 323,
-          "input": 646,
-          "cacheWrite5m": 1544549,
-          "cacheWrite1h": 0,
-          "cacheRead": 44310537,
-          "output": 220712
-        }
-      }
-    },
-    "46de251d-0835-47e2-ac7a-eab22dfebe04": {
-      "label": "MediaPipe vs RTMPose blink handling",
-      "firstActivity": "2026-11-13T09:57:49.031Z",
-      "lastActivity": "2026-11-13T19:47:45.758Z",
-      "branch": "main",
-      "models": {
-        "claude-opus-5-5": {
-          "calls": 224,
-          "input": 470,
-          "cacheWrite5m": 212950,
-          "cacheWrite1h": 589215,
-          "cacheRead": 37503538,
-          "output": 152789
-        }
-      }
-    },
-    "f902f5dd-b6f3-4ea1-b2fc-f45be7138cb1": {
-      "label": "MikanTrack hands stuck in frame",
-      "firstActivity": "2026-11-14T08:52:06.200Z",
-      "lastActivity": "2026-11-14T10:21:23.650Z",
-      "branch": "main",
-      "models": {
-        "claude-fable-5-2": {
-          "calls": 101,
-          "input": 222,
-          "cacheWrite5m": 0,
-          "cacheWrite1h": 309815,
-          "cacheRead": 25669433,
-          "output": 85492
-        }
-      }
-    },
-    "e25777a8-ae0d-43cc-9cfd-dae72bf33b61": {
-      "label": "MotionBERT 3D landmark lifting",
-      "firstActivity": "2026-11-14T09:00:18.439Z",
-      "lastActivity": "2026-11-14T10:57:16.713Z",
-      "branch": "main",
-      "models": {
-        "claude-fable-5-2": {
-          "calls": 30,
-          "input": 74,
-          "cacheWrite5m": 0,
-          "cacheWrite1h": 158837,
-          "cacheRead": 4039847,
-          "output": 51019
-        },
-        "claude-opus-5-5": {
-          "calls": 62,
-          "input": 124,
-          "cacheWrite5m": 374295,
-          "cacheWrite1h": 0,
-          "cacheRead": 7296186,
-          "output": 39244
-        }
-      }
-    },
-    "9a05bee0-ed1a-4de6-825e-fc5d116b4344": {
-      "label": "Kalidokit VRM model loading issue",
-      "firstActivity": "2026-11-14T21:44:25.484Z",
-      "lastActivity": "2026-11-14T21:47:27.413Z",
-      "branch": "main",
-      "models": {
-        "claude-opus-5-5": {
-          "calls": 20,
-          "input": 44,
-          "cacheWrite5m": 0,
-          "cacheWrite1h": 45172,
-          "cacheRead": 1298728,
-          "output": 5842
-        }
-      }
-    },
-    "18aa57d5-39ce-42f5-be9b-478e8f190f2d": {
-      "label": "MikanTrack profiler JSON-RPC connection error",
-      "firstActivity": "2026-11-15T07:51:03.952Z",
-      "lastActivity": "2026-11-15T07:53:24.146Z",
-      "branch": "main",
-      "models": {
-        "claude-opus-5-5": {
-          "calls": 5,
-          "input": 12,
-          "cacheWrite5m": 0,
-          "cacheWrite1h": 35193,
-          "cacheRead": 274240,
-          "output": 2159
-        }
-      }
-    },
-    "79ef0b01-ac11-4ae0-8943-970192fb1a65": {
-      "label": "MikanTrack profiling hot paths",
-      "firstActivity": "2026-11-15T08:15:03.441Z",
-      "lastActivity": "2026-11-15T22:25:39.947Z",
-      "branch": "main",
-      "models": {
-        "claude-opus-5-5": {
-          "calls": 229,
-          "input": 506,
-          "cacheWrite5m": 0,
-          "cacheWrite1h": 481045,
-          "cacheRead": 47737282,
-          "output": 162201
-        }
-      }
-    },
-    "52b809fb-ad48-435d-821b-fa801e0d6bfb": {
-      "label": "MikanTrack body tracking performance",
-      "firstActivity": "2026-11-15T21:27:17.805Z",
-      "lastActivity": "2026-11-16T05:06:19.651Z",
-      "branch": "main",
-      "models": {
-        "claude-fable-5-2": {
-          "calls": 127,
-          "input": 286,
-          "cacheWrite5m": 0,
-          "cacheWrite1h": 471882,
-          "cacheRead": 28753748,
-          "output": 111450
-        }
-      }
-    },
-    "4c6030be-8098-4ec9-8a2a-a1aa3cf21985": {
-      "label": "Character pose tracking quality issues",
-      "firstActivity": "2026-11-16T05:22:30.227Z",
-      "lastActivity": "2026-11-16T07:58:48.315Z",
-      "branch": "main",
-      "models": {
-        "claude-fable-5-2": {
-          "calls": 126,
-          "input": 278,
-          "cacheWrite5m": 0,
-          "cacheWrite1h": 410891,
-          "cacheRead": 38303324,
-          "output": 176012
+          "cacheRead": 7790483,
+          "output": 25008
         }
       }
     },
     "63649dab-77d4-4b26-b0c3-209405c1a532": {
       "label": "MikanTrack token usage metrics",
       "firstActivity": "2026-11-17T23:42:02.987Z",
-      "lastActivity": "2026-11-18T06:43:32.979Z",
+      "lastActivity": "2026-11-18T07:12:10.694Z",
       "branch": "main",
       "models": {
         "claude-fable-5-2": {
-          "calls": 18,
-          "input": 38,
+          "calls": 38,
+          "input": 88,
           "cacheWrite5m": 0,
-          "cacheWrite1h": 248771,
-          "cacheRead": 2167456,
-          "output": 21929
+          "cacheWrite1h": 277715,
+          "cacheRead": 5970993,
+          "output": 39229
         }
       }
     }
   },
   "excluded": {
+    "0099a0c3-0fef-4a60-ad8a-b49eabd28e09": {
+      "reason": "manual"
+    },
     "00ba72cf-ba94-406c-a40b-8e11e2901afd": {
       "reason": "manual"
     },
     "00ea6f9e-01ac-4295-9524-0ee9ea425be2": {
       "reason": "manual"
     },
-    "078ee3e9-5f24-4726-8ab2-c1c075ce63cb": {
-      "reason": "manual"
-    },
     "0b9cfef3-414e-4f4a-aa97-467952d58d3f": {
       "reason": "outside-repo"
+    },
+    "0e386e6a-a1a2-4e71-80c4-bd2794b656bf": {
+      "reason": "manual"
     },
     "118b1f2c-ffdf-4336-9e2e-ffff61dea487": {
       "reason": "manual"
     },
     "12bdab20-6b4b-4dcd-b442-6c0807ccbe72": {
+      "reason": "manual"
+    },
+    "18aa57d5-39ce-42f5-be9b-478e8f190f2d": {
       "reason": "manual"
     },
     "1ca1a79c-cc0f-40c8-bb95-5b5db469bac6": {
@@ -2185,10 +1887,16 @@
     "3b01234b-3dfa-43cd-a5bf-f2c43e241f02": {
       "reason": "manual"
     },
+    "3b28be91-f392-4cad-9f02-f7e096a7dc46": {
+      "reason": "manual"
+    },
     "41304559-8643-438f-b3eb-01eff7a8c37a": {
       "reason": "outside-repo"
     },
     "44ec34e0-9e36-48a2-98f0-cbcc3327d148": {
+      "reason": "manual"
+    },
+    "46de251d-0835-47e2-ac7a-eab22dfebe04": {
       "reason": "manual"
     },
     "47c0a5db-65e3-42ed-b2c9-8f4d257eb842": {
@@ -2198,7 +1906,13 @@
       "reason": "manual",
       "note": "MikanTrack work, counted in that repo"
     },
+    "4c6030be-8098-4ec9-8a2a-a1aa3cf21985": {
+      "reason": "manual"
+    },
     "4e04013b-a13c-4598-ae3e-c32c607f6211": {
+      "reason": "manual"
+    },
+    "52b809fb-ad48-435d-821b-fa801e0d6bfb": {
       "reason": "manual"
     },
     "5400d132-c3f4-41b6-8630-a2aa2698fc56": {
@@ -2217,6 +1931,12 @@
       "reason": "outside-repo"
     },
     "59fbe4f2-02a5-45bd-b91c-f84f69298325": {
+      "reason": "manual"
+    },
+    "5d6fcfcd-81bd-4cf5-944c-9167919c76f7": {
+      "reason": "manual"
+    },
+    "5f25b0f0-c7f7-43a7-abdc-6f6ba32b84d3": {
       "reason": "manual"
     },
     "656cf457-eae9-43c7-aa79-94da1af8abdd": {
@@ -2244,11 +1964,17 @@
     "75238c09-3eae-41ec-80dc-6811e260ec53": {
       "reason": "manual"
     },
+    "778c3b69-8589-4318-bd61-141fb40bbc7b": {
+      "reason": "manual"
+    },
     "77ff4636-3b8c-4a3c-8f82-8ec6bb32b24a": {
       "reason": "manual"
     },
     "78c6231e-c773-425f-9035-3902d9a912e2": {
       "reason": "outside-repo"
+    },
+    "79ef0b01-ac11-4ae0-8943-970192fb1a65": {
+      "reason": "manual"
     },
     "7ba18944-6f7d-4887-8d7d-b10afca77d23": {
       "reason": "manual"
@@ -2256,6 +1982,9 @@
     "7d1bd754-bd18-405a-92cd-2316852369e8": {
       "reason": "manual",
       "note": "MikanTrack work, counted in that repo"
+    },
+    "8758074f-b7db-4a8a-885f-5d49d49e1da1": {
+      "reason": "manual"
     },
     "8859e189-cf8e-4d87-b0f0-34188008f1d0": {
       "reason": "manual"
@@ -2276,6 +2005,9 @@
     "97bcfcf3-fa53-46f7-bfa0-68487a102365": {
       "reason": "manual"
     },
+    "9a05bee0-ed1a-4de6-825e-fc5d116b4344": {
+      "reason": "manual"
+    },
     "9f52829b-46f0-4ca3-860d-baced4853c21": {
       "reason": "manual"
     },
@@ -2285,16 +2017,19 @@
     "aa3a90ea-54b1-4179-bc80-4cb1994f004d": {
       "reason": "outside-repo"
     },
+    "aa9e4459-7676-4bd1-8cd6-a4a2e789ac7b": {
+      "reason": "manual"
+    },
     "af7ea373-96e6-4a6b-ac6d-5b23d382bfa1": {
       "reason": "outside-repo"
     },
     "b208247e-da04-4aeb-b0b0-78e2b1c194f6": {
       "reason": "manual"
     },
-    "beeb19c9-0a97-4270-947c-0d1dede93906": {
+    "bb8a78e6-e81c-430d-ba7c-c34bb369de5e": {
       "reason": "manual"
     },
-    "bf04f179-092c-4db3-acfa-df16b3f2f347": {
+    "beeb19c9-0a97-4270-947c-0d1dede93906": {
       "reason": "manual"
     },
     "bf1aab0e-ac0b-4510-a604-2f41651ed6a5": {
@@ -2302,9 +2037,6 @@
       "note": "MikanTrack work, counted in that repo"
     },
     "c79c3ed4-7eb9-420f-b10a-11a62d957b48": {
-      "reason": "manual"
-    },
-    "ce17aac2-e74f-4808-b9e7-827c217493fd": {
       "reason": "manual"
     },
     "ce64b657-5f65-4fc1-b223-d017ae1aa10e": {
@@ -2335,7 +2067,13 @@
     "dcacb744-993a-4607-af84-efc074bf5553": {
       "reason": "outside-repo"
     },
+    "dd7ee882-0c80-4c28-b631-317963728493": {
+      "reason": "manual"
+    },
     "e069a3dd-d0a3-4d0b-b59a-e785a126adc6": {
+      "reason": "manual"
+    },
+    "e25777a8-ae0d-43cc-9cfd-dae72bf33b61": {
       "reason": "manual"
     },
     "e4fa6767-be6c-4bae-8461-d662357148a0": {
@@ -2347,10 +2085,19 @@
     "e72f0682-9b15-4fc2-acd9-882c70a9964d": {
       "reason": "manual"
     },
+    "ea86ee1e-bccf-46b3-b617-6133963f2fce": {
+      "reason": "manual"
+    },
     "eeda76ac-a3bd-4ab5-8317-5e075fef93db": {
       "reason": "outside-repo"
     },
     "f0d55761-fa83-4bbb-83e3-dc2ec51049f9": {
+      "reason": "manual"
+    },
+    "f902f5dd-b6f3-4ea1-b2fc-f45be7138cb1": {
+      "reason": "manual"
+    },
+    "fde5afec-cb75-45e2-a019-be4a70e2c40e": {
       "reason": "manual"
     },
     "ffe73a3e-3f94-47fa-aea8-66ea77f86f56": {
