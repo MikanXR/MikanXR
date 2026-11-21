@@ -208,7 +208,7 @@ public:
 		}
 	}
 
-	template <typename t_value_type, int N>
+	template <typename t_value_type, size_t N>
 	static void writeStdArrayMap(configuru::Config& pt, const std::string& mapName,
 								 const std::map<std::string, std::array<t_value_type, N>>& nameValueMap)
 	{
@@ -223,7 +223,7 @@ public:
 		}
 	}
 
-	template <typename t_value_type, int N>
+	template <typename t_value_type, size_t N>
 	static void readStdArrayMap(const configuru::Config& pt, const std::string& mapName,
 								std::map<std::string, std::array<t_value_type, N>>& nameValueMap)
 	{
