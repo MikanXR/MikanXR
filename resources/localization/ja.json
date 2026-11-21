@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1221,
+		"stringCount": 1222,
 		"translatedCount": 891,
 		"reviewedCount": 0
 	},
@@ -925,6 +925,7 @@
 		"puckPoseValidFmt": "パックの姿勢が有効: %s",
 		"resolutionMismatch": "解像度が一致しません",
 		"sceneListEmpty": "プロジェクトにシーンがありません",
+		"scriptPathsRepairedFmt": "Some scripts in this project pointed at files that no longer exist. They were repointed to the matching files and the project was saved.\n%s",
 		"selectCalibrationCamera": "校正用カメラを選択",
 		"trackingFrameDelayFmt": "トラッキングフレーム遅延: %d",
 		"viewIsometric": "Isometric",

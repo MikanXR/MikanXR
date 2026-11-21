@@ -36,6 +36,7 @@
 #include "MkScene.h"
 #include "MkStateModifiers.h"
 #include "MkStateStack.h"
+#include "ModalMessageBox/ModalDialog_MessageBox.h"
 #include "ModalMessageBox/ModalDialog_ScriptErrors.h"
 #include "ProjectAssetCatalog.h"
 #include "ProjectConfig.h"
@@ -90,6 +91,18 @@ const char* AppStage_Project::APP_STAGE_NAME= "Compositor";
 // How long the editor camera has to sit still before its pose is written back to
 // the editor settings, matching the transaction system's coalescing window
 static const float k_cameraStateIdleDelay= 0.75f;
+
+// The repaired script paths as the notice lists them, one component per entry
+static std::string formatScriptPathRepairs(const std::vector<ScriptPathRepair>& repairs)
+{
+	std::string repairList;
+	for (const ScriptPathRepair& repair : repairs)
+	{
+		repairList+= "\n" + repair.componentName + "\n    " + repair.oldPath + "\n    -> " + repair.newPath + "\n";
+	}
+
+	return locFormat("project.scriptPathsRepairedFmt", repairList.c_str());
+}
 
 //-- public methods -----
 AppStage_Project::AppStage_Project(IEditorWindow* ownerWindow)
@@ -203,12 +216,30 @@ void AppStage_Project::enter()
 	setViewMode(eProjectViewMode::scene);
 
 	// The scripts loaded with the project, before this stage existed, so any
-	// load error from then is surfaced now
+	// path repair or load error from then is surfaced now
 	if (ScriptObjectSystemPtr scriptSystem= m_scriptObjectSystem.lock())
 	{
 		scriptSystem->OnScriptError+= MakeDelegate(this, &AppStage_Project::onScriptError);
 		scriptSystem->OnScriptsReloaded+= MakeDelegate(this, &AppStage_Project::onScriptsReloaded);
 
+		const std::vector<ScriptPathRepair> repairs= scriptSystem->takeScriptPathRepairs();
+		if (!repairs.empty())
+		{
+			// The load errors follow once the notice is closed, since a second modal would hide behind it
+			ModalDialog_MessageBox::showMessageBox(this, formatScriptPathRepairs(repairs), "",
+												   [this]() { showLastScriptLoadErrors(); });
+		}
+		else
+		{
+			showLastScriptLoadErrors();
+		}
+	}
+}
+
+void AppStage_Project::showLastScriptLoadErrors()
+{
+	if (ScriptObjectSystemPtr scriptSystem= m_scriptObjectSystem.lock())
+	{
 		for (const ScriptError& error : scriptSystem->getLastLoadErrors())
 		{
 			onScriptError(error);

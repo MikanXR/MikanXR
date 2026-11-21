@@ -233,6 +233,34 @@ std::filesystem::path resolveProjectResource(const std::filesystem::path& path)
 	return std::filesystem::path();
 }
 
+std::filesystem::path findRelocatedProjectResource(const std::filesystem::path& path)
+{
+	if (!path.is_absolute() || std::filesystem::exists(path))
+	{
+		return std::filesystem::path();
+	}
+
+	const std::filesystem::path relativePath= path.relative_path();
+	std::vector<std::filesystem::path> segments(relativePath.begin(), relativePath.end());
+
+	// Longest trailing part first, so the match keeps as much of the original layout as it can
+	for (size_t firstSegment= 0; firstSegment < segments.size(); ++firstSegment)
+	{
+		std::filesystem::path candidate;
+		for (size_t segment= firstSegment; segment < segments.size(); ++segment)
+		{
+			candidate/= segments[segment];
+		}
+
+		if (!candidate.empty() && !resolveProjectResource(candidate).empty())
+		{
+			return candidate;
+		}
+	}
+
+	return std::filesystem::path();
+}
+
 std::vector<std::string> listFilenamesInDirectory(const std::filesystem::path& path,
 												  const std::string& extension_filter)
 {

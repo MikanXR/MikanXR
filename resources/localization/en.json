@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1221,
-		"translatedCount": 1221,
-		"reviewedCount": 1221
+		"stringCount": 1222,
+		"translatedCount": 1222,
+		"reviewedCount": 1222
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -925,6 +925,7 @@
 		"puckPoseValidFmt": "Puck pose valid: %s",
 		"resolutionMismatch": "RESOLUTION MISMATCH",
 		"sceneListEmpty": "No scenes in the project",
+		"scriptPathsRepairedFmt": "Some scripts in this project pointed at files that no longer exist. They were repointed to the matching files and the project was saved.\n%s",
 		"selectCalibrationCamera": "Select Calibration Camera",
 		"trackingFrameDelayFmt": "Tracking frame delay: %d",
 		"viewIsometric": "Isometric",
