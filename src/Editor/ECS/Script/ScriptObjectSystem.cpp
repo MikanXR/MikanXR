@@ -3,6 +3,7 @@
 #include "MikanPropertyDatabase.h"
 #include "MikanServer.h"
 #include "PathUtils.h"
+#include "ProjectConfig.h"
 #include "ProjectScriptContext.h"
 #include "ScriptRequestHandler.h"
 
@@ -74,7 +75,53 @@ void ScriptObjectSystem::postInit()
 
 	// Every other system has loaded by now, so scripts can resolve objects by name
 	bindObjectLifecycleEvents();
+	repairMovedScriptPaths();
 	reloadAllScripts();
+}
+
+void ScriptObjectSystem::repairMovedScriptPaths()
+{
+	m_scriptPathRepairs.clear();
+
+	for (ScriptDefinitionPtr definition : getTypedDefinitionConst()->getAllDefinitions())
+	{
+		ScriptComponentPtr script= getTypedComponentById(definition->getScriptId());
+		if (!script || !definition->hasScriptPath() || !script->getResolvedScriptPath().empty())
+			continue;
+
+		const std::filesystem::path storedPath= definition->getScriptPath();
+		const std::filesystem::path relocatedPath= PathUtils::findRelocatedProjectResource(storedPath);
+		if (relocatedPath.empty())
+			continue;
+
+		ScriptPathRepair repair;
+		repair.componentName= definition->getComponentName();
+		repair.oldPath= PathUtils::pathToUtf8(storedPath);
+		definition->setScriptPath(relocatedPath);
+		repair.newPath= PathUtils::pathToUtf8(definition->getScriptPath());
+		m_scriptPathRepairs.push_back(repair);
+
+		MIKAN_LOG_WARNING("ScriptObjectSystem::repairMovedScriptPaths")
+			<< "Script " << repair.componentName << " path " << repair.oldPath << " no longer exists, repointed to "
+			<< repair.newPath;
+	}
+
+	// Auto-save is not enabled until the load finishes, so the repair is written now
+	// rather than repeated on every load
+	if (!m_scriptPathRepairs.empty())
+	{
+		if (ProjectConfigPtr projectConfig= getOwnerProjectManager()->getProjectConfig())
+		{
+			projectConfig->save();
+		}
+	}
+}
+
+std::vector<ScriptPathRepair> ScriptObjectSystem::takeScriptPathRepairs()
+{
+	std::vector<ScriptPathRepair> repairs;
+	repairs.swap(m_scriptPathRepairs);
+	return repairs;
 }
 
 void ScriptObjectSystem::dispose()
@@ -205,6 +252,28 @@ void ScriptObjectSystem::reloadAllScripts()
 	for (ScriptComponentPtr script : scripts)
 	{
 		const std::filesystem::path scriptPath= script->getResolvedScriptPath();
+		if (scriptPath.empty())
+		{
+			// Nothing to load, so the error names the component and the path it stores
+			const std::string storedPath= PathUtils::pathToUtf8(script->getScriptDefinition()->getScriptPath());
+
+			ScriptError error;
+			error.kind= eScriptErrorKind::load;
+			error.scriptId= script->getComponentId();
+			error.context= script->getScriptDefinition()->getComponentName();
+			error.message= "script file not found: " + storedPath
+						   + ". Pick the script again in this component's Script Path, or remove the component.";
+			onScriptError(error);
+
+			MIKAN_LOG_ERROR("ScriptObjectSystem::reloadAllScripts")
+				<< "Script " << script->getScriptDefinition()->getComponentName() << " path " << storedPath
+				<< " not found; project scripts unloaded";
+			m_scriptContext= nullptr;
+			if (OnScriptsReloaded)
+				OnScriptsReloaded(false);
+			return;
+		}
+
 		if (!m_scriptContext->loadBehavior(scriptPath, script->getComponentId(), script->getScriptDefinition().get()))
 		{
 			// The failing script disposed the whole state

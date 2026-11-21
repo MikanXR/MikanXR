@@ -95,6 +95,7 @@ protected:
 	void onScriptError(const ScriptError& error);
 	void onScriptsReloaded(bool bSuccess);
 	void onScriptErrorDialogDismissed();
+	void showLastScriptLoadErrors();
 
 	// Debug Rendering
 	void debugRenderOrigin() const;

@@ -4408,6 +4408,14 @@ msgid "No scenes in the project"
 msgstr ""
 
 #. Section: project
+#, c-format
+msgctxt "project.scriptPathsRepairedFmt"
+msgid ""
+"Some scripts in this project pointed at files that no longer exist. They were repointed to the matching files and the project was saved.\n"
+"%s"
+msgstr ""
+
+#. Section: project
 msgctxt "project.selectCalibrationCamera"
 msgid "Select Calibration Camera"
 msgstr ""

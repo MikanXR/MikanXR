@@ -48,6 +48,11 @@ MIKAN_UTILITY_FUNC(std::filesystem::path) getProjectsRootDirectory();
 /// Resolve a resource path: check project folder first, fall back to bundled resources/
 MIKAN_UTILITY_FUNC(std::filesystem::path) resolveProjectResource(const std::filesystem::path& path);
 
+/// The relative form of an absolute path that no longer exists, for a project moved
+/// from another folder: the longest trailing part of it that resolveProjectResource
+/// finds. Empty when the path is relative, still exists, or no trailing part resolves.
+MIKAN_UTILITY_FUNC(std::filesystem::path) findRelocatedProjectResource(const std::filesystem::path& path);
+
 /// Attempts to build a list of all of the files in a directory
 MIKAN_UTILITY_FUNC(std::vector<std::string>) listFilenamesInDirectory(
 	const std::filesystem::path& path, const std::string& extension_filter= std::string());

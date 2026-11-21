@@ -508,6 +508,29 @@ bool project_asset_catalog_test_asset_reference_stores_project_relative()
 	UNIT_TEST_COMPLETE()
 }
 
+bool project_asset_catalog_test_relocates_moved_project_paths()
+{
+	UNIT_TEST_BEGIN("missing absolute paths relocate into the project")
+
+	CatalogTestProject project;
+	const std::filesystem::path oldProjectDir= project.root / "old_project";
+
+	// The project's own copy wins, keeping the folder the path named
+	success&= PathUtils::findRelocatedProjectResource(oldProjectDir / "scripts" / "a.lua")
+			  == std::filesystem::path("scripts/a.lua");
+
+	// A file the project lacks falls back to the bundled resources
+	success&= PathUtils::findRelocatedProjectResource(oldProjectDir / "scripts" / "sequence_chase.lua")
+			  == std::filesystem::path("scripts/sequence_chase.lua");
+
+	// Nothing to relocate: a missing file anywhere, a path that exists, a relative path
+	success&= PathUtils::findRelocatedProjectResource(oldProjectDir / "scripts" / "missing.lua").empty();
+	success&= PathUtils::findRelocatedProjectResource(project.projectDir / "scripts" / "a.lua").empty();
+	success&= PathUtils::findRelocatedProjectResource("scripts/missing.lua").empty();
+
+	UNIT_TEST_COMPLETE()
+}
+
 bool run_project_asset_catalog_tests()
 {
 	UNIT_TEST_MODULE_BEGIN("project_asset_catalog")
@@ -519,5 +542,6 @@ bool run_project_asset_catalog_tests()
 	UNIT_TEST_MODULE_CALL_TEST(project_asset_catalog_test_bundled_overlay);
 	UNIT_TEST_MODULE_CALL_TEST(project_asset_catalog_test_delete_removes_files);
 	UNIT_TEST_MODULE_CALL_TEST(project_asset_catalog_test_asset_reference_stores_project_relative);
+	UNIT_TEST_MODULE_CALL_TEST(project_asset_catalog_test_relocates_moved_project_paths);
 	UNIT_TEST_MODULE_END()
 }

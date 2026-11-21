@@ -14,4 +14,6 @@
 //     the developer switch makes them writable
 //   - delete removes a file or a material folder and refuses bundled entries
 //   - AssetReference stores project-relative paths and writes them as UTF-8
+//   - a missing absolute path from another project folder relocates to the
+//     trailing part the project or the bundled resources hold
 bool run_project_asset_catalog_tests();
