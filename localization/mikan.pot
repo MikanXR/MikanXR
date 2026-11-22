@@ -4034,6 +4034,14 @@ msgstr ""
 
 #. Section: project
 #, c-format
+msgctxt "project.assetPathsRepairedFmt"
+msgid ""
+"Some files in this project were named by paths that no longer exist, likely because the project was moved. They were repointed to the matching files and the project was saved.\n"
+"%s"
+msgstr ""
+
+#. Section: project
+#, c-format
 msgctxt "project.calibResolutionFmt"
 msgid "Calib resolution: %d x %d"
 msgstr ""
@@ -4405,14 +4413,6 @@ msgstr ""
 #. Section: project
 msgctxt "project.sceneListEmpty"
 msgid "No scenes in the project"
-msgstr ""
-
-#. Section: project
-#, c-format
-msgctxt "project.scriptPathsRepairedFmt"
-msgid ""
-"Some scripts in this project pointed at files that no longer exist. They were repointed to the matching files and the project was saved.\n"
-"%s"
 msgstr ""
 
 #. Section: project

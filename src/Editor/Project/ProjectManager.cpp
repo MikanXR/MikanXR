@@ -352,9 +352,17 @@ bool ProjectManager::loadProject(const std::string& projectFilePath)
 	// create an empty project config
 	m_projectConfig= createEmptyProjectConfig();
 
-	// Attempt to load and init the new project
+	// Attempt to load and init the new project. Stored asset paths that a move left
+	// pointing into another folder are repaired as the file is read, before any
+	// component opens one.
 	auto loadStart= std::chrono::high_resolution_clock::now();
-	bool bSuccess= m_projectConfig->load(projectFilePath);
+	m_assetPathRepairs.clear();
+	bool bSuccess;
+	{
+		AssetPathRepairScope repairScope;
+		bSuccess= m_projectConfig->load(projectFilePath);
+		m_assetPathRepairs= repairScope.getRepairs();
+	}
 	auto loadEnd= std::chrono::high_resolution_clock::now();
 	MIKAN_LOG_INFO("ProjectManager::loadProject")
 		<< "Config load: " << std::chrono::duration_cast<std::chrono::milliseconds>(loadEnd - loadStart).count()
@@ -407,6 +415,13 @@ bool ProjectManager::loadProject(const std::string& projectFilePath)
 
 		// Enable auto-save
 		m_projectConfig->setAutoSaveCooldownDuration(PROJECT_SAVE_COOLDOWN);
+
+		// The repairs were made while reading, which marks nothing dirty, so they are
+		// written now rather than repeated on every load
+		if (!m_assetPathRepairs.empty())
+		{
+			m_projectConfig->save();
+		}
 	}
 	else
 	{
@@ -415,6 +430,13 @@ bool ProjectManager::loadProject(const std::string& projectFilePath)
 	}
 
 	return bSuccess;
+}
+
+std::vector<AssetPathRepair> ProjectManager::takeAssetPathRepairs()
+{
+	std::vector<AssetPathRepair> repairs;
+	repairs.swap(m_assetPathRepairs);
+	return repairs;
 }
 
 bool ProjectManager::saveProject(const std::string& projectFilePath)
@@ -450,4 +472,5 @@ void ProjectManager::unloadProject()
 	PathUtils::setProjectDirectory(std::filesystem::path());
 
 	m_projectConfig= nullptr;
+	m_assetPathRepairs.clear();
 }

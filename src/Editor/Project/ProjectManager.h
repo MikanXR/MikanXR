@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AssetPathRepair.h"
 #include "CommonConfigFwd.h"
 #include "ComponentFwd.h"
 #include "MikanTypeFwd.h"
@@ -94,6 +95,9 @@ public:
 	bool loadProject(const std::string& projectFilePath);
 	bool saveProject(const std::string& projectFilePath);
 	void unloadProject();
+	// The asset paths the last load repointed, handed over once so the notice shows
+	// once per load
+	std::vector<AssetPathRepair> takeAssetPathRepairs();
 
 	MulticastDelegate<void(ProjectManagerPtr oldProject)> OnProjectPreUnload;
 	MulticastDelegate<void(ProjectManagerPtr newProject)> OnProjectLoaded;
@@ -111,4 +115,5 @@ private:
 
 	// Project Config
 	ProjectConfigPtr m_projectConfig;
+	std::vector<AssetPathRepair> m_assetPathRepairs;
 };

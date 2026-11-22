@@ -5,6 +5,7 @@
 #include "lua.hpp"
 #include "LuaBridge/LuaBridge.h"
 
+#include "AssetPathRepair.h"
 #include "AssetReference.h"
 #include "AssetReferencePropertyMetaData.h"
 #include "ModelAssetReference.h"
@@ -58,7 +59,8 @@ void ModelShapeDefinition::readFromJSON(const configuru::Config& pt)
 {
 	ShapeComponentDefinition::readFromJSON(pt);
 
-	const std::string pathStr= pt.get_or<std::string>(k_modelPathPropertyId, "");
+	std::string pathStr= pt.get_or<std::string>(k_modelPathPropertyId, "");
+	AssetPathRepairScope::repairStoredPath(pathStr);
 	if (!pathStr.empty())
 	{
 		if (!m_modelAssetRefConfig)
