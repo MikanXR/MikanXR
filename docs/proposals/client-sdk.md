@@ -8,7 +8,7 @@ Design agreed. Parts 1 and 2 are implemented, and part 3 is implemented pending 
 
 Parts 1 and 2 together subsume the earlier option of moving `DiscreteGpuPreference.h` out of `MikanCoreApp/Public`: the SDK tree never ships `MikanCoreApp` headers, and the app tree stops shipping headers at all.
 
-The SDK has two consumers today, the Unreal plugin and the link-engine game `jasper-mozu-studio`, and a Unity plugin is planned. Breaking changes to how they consume it are acceptable.
+The SDK has two consumers today, the Unreal plugin and the link-engine game `mikan-studio`, and a Unity plugin is planned. Breaking changes to how they consume it are acceptable.
 
 ---
 
@@ -45,7 +45,7 @@ The Refureku `.rfkh.h` includes and `Refureku/*.h` includes in those headers sit
 The SDK also ships the other two `MikanClientCore` headers, which are outside that closure, bringing the set to 60:
 
 - `MikanCoreCAPI.h`: the core C API that the C# bindings P/Invoke into. It includes only `MikanCoreExport.h` and `MikanCoreTypes.h`.
-- `MikanCoreVulkanTypes.h`: the Vulkan render target contract. `jasper-mozu-studio` includes it, and so does `MikanClientTestCPP`. It includes `<vulkan/vulkan_core.h>`, so a client using it supplies its own Vulkan headers. The SDK does not ship them.
+- `MikanCoreVulkanTypes.h`: the Vulkan render target contract. `mikan-studio` includes it, and so does `MikanClientTestCPP`. It includes `<vulkan/vulkan_core.h>`, so a client using it supplies its own Vulkan headers. The SDK does not ship them.
 
 **Import libraries.** A client needs one only for a DLL whose exported symbols its code calls. The SDK headers export from three DLLs:
 
@@ -165,7 +165,7 @@ Both consumers change in lockstep with parts 1 and 2, and gain the release downl
 
 - The Unreal plugin (`MikanXR_UE`, and its vendored copy in client projects): `FetchMikan.bat` reads `dist/ClientSDK/Win64` and copies `include/`, `lib/`, and `bin/` whole. `PublicAdditionalLibraries` drops to `MikanClientAPI.lib`, `MikanClientCore.lib`, and `MikanSerialization.lib`. Both of its targets are built against the new tree.
 
-- `jasper-mozu-studio` (link-engine): `tools/fetch-mikan.mjs` defaults to `../MikanXR/dist/ClientSDK/Win64` and copies `include/`, `lib/`, and `bin/` whole instead of naming six libraries and three runtime DLLs. `source/CMakeLists.txt` declares imported targets for the three SDK import libraries only. Its runtime copy step already globs `bin/*.dll`, so it needs no change. It already supplies Vulkan headers for `MikanCoreVulkanTypes.h`.
+- `mikan-studio` (link-engine): `tools/fetch-mikan.mjs` defaults to `../MikanXR/dist/ClientSDK/Win64` and copies `include/`, `lib/`, and `bin/` whole instead of naming six libraries and three runtime DLLs. `source/CMakeLists.txt` declares imported targets for the three SDK import libraries only. Its runtime copy step already globs `bin/*.dll`, so it needs no change. It already supplies Vulkan headers for `MikanCoreVulkanTypes.h`.
 
 ---
 
