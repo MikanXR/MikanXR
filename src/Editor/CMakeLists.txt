@@ -1001,6 +1001,10 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   install(FILES "${SPOUT2_SHARED_LIBRARIES}"
       DESTINATION ${MIKAN_ARCH_INSTALL_PATH})
       
+  # Mikan.exe and MikanCmd.exe import onnxruntime.dll at load, and it loads DirectML.dll
+  install(FILES ${ONNXRUNTIME_SHARED_LIBRARIES}
+      DESTINATION ${MIKAN_ARCH_INSTALL_PATH})
+
   install(FILES "${LUA_SHARED_LIBRARIES}"
       DESTINATION ${MIKAN_ARCH_INSTALL_PATH})
 	  

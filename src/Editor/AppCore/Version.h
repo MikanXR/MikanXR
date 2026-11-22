@@ -7,8 +7,8 @@
 // ".1", ".2", ... for a same-day re-cut.
 // The release workflow refuses a tag that does not read "v" + this string.
 #define MIKAN_RELEASE_VERSION_YEAR "2026"
-#define MIKAN_RELEASE_VERSION_MONTH "09"
-#define MIKAN_RELEASE_VERSION_DAY "14"
+#define MIKAN_RELEASE_VERSION_MONTH "11"
+#define MIKAN_RELEASE_VERSION_DAY "21"
 #define MIKAN_RELEASE_VERSION_REVISION ""
 
 /// "YYYY.MM.DD" or "YYYY.MM.DD.N"

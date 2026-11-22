@@ -212,11 +212,4 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 ELSE() #Linux/Darwin
 ENDIF()
 
-# Install
-IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows") 
-  install(TARGETS MikanClientTestCPP
-      RUNTIME DESTINATION ${MIKAN_ARCH_INSTALL_PATH}
-      LIBRARY DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib
-      ARCHIVE DESTINATION ${MIKAN_ARCH_INSTALL_PATH}/lib)
-ELSE() #Linux/Darwin
-ENDIF()
+# No install rule: the client test harness runs from the build tree and is not part of the shipped app.
