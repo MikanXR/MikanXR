@@ -40,7 +40,6 @@ The living plan: what is in flight now, what comes next, and the open questions.
 	- [ ] MikanTrack publishes `MikanTrack_<version>_Win64.zip`
 	- [ ] MikanXR_VNyan and MikanXR_Warudo publish zips carrying the launcher's `plugin.json`
 	- [ ] MikanStudio publishes a zip and gets its entry in the launcher's `components.json`
-	- [ ] Decide whether the Steam copy of the app zip drops `unit_test_suite_cpp.exe`, `MikanClientTestCPP.exe` and `MikanClientCodeGen.exe`
 	- [ ] Upload to Steam from the packaging action
 
 
