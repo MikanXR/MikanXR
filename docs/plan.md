@@ -36,7 +36,6 @@ The living plan: what is in flight now, what comes next, and the open questions.
 - [ ] Client API protocol split, the remaining part: an OSCQuery facade over the property tree with LISTEN pushes, `_oscjson._tcp` discovery and transaction-captured OSC writes. Design in [client-api-protocols.md](./proposals/client-api-protocols.md).
 - [ ] Return feed on the phone, the measurements: glass-to-glass latency with a stopwatch in frame, and heat on a long take. After a lost packet the receiver drops frames until the next keyframe, and the sender keys once a second, so one lost packet on Wi-Fi freezes the picture for up to a second: weigh a shorter GOP or `nvcudah264enc` intra refresh against the bitrate. The feed shows whatever the display compositor composites, which for the client shadow graphs is black until their client connects: the phone could say so instead of showing black, given a compositor status it can read.
 - [ ] Steam package. The launcher lives in MikanXR/MikanLauncher (Rust with a Slint window), which also owns the action that assembles the package from each component's release zip. No component has a published release yet, so the package cannot be assembled from releases:
-	- [ ] MikanXR publishes a `v*` release, which `release.yml` leaves as a draft
 	- [ ] MikanTrack publishes `MikanTrack_<version>_Win64.zip`
 	- [ ] MikanXR_VNyan and MikanXR_Warudo publish zips carrying the launcher's `plugin.json`
 	- [ ] MikanStudio publishes a zip and gets its entry in the launcher's `components.json`
