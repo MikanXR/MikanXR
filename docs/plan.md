@@ -129,3 +129,5 @@ The living plan: what is in flight now, what comes next, and the open questions.
 - [ ] Client API trust: MikanStudio issues a per-plugin token after an in-app approval, persisted and revocable in its UI, over the same JSON-RPC envelope. The editor's client API is loopback-only with no auth. Once the studio's flow has run for a while, decide whether the editor adopts it, so a streamer's rig is protected from anything on the machine that can open the socket.
 
 ## Open questions
+
+- [ ] Whether the release keeps building the standalone setup exe now that MikanLauncher bundles the editor, or the installer moves into the launcher. Moving it depends on MikanStudio running outside Steam.
