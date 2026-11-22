@@ -3,7 +3,6 @@
 #include "MikanPropertyDatabase.h"
 #include "MikanServer.h"
 #include "PathUtils.h"
-#include "ProjectConfig.h"
 #include "ProjectScriptContext.h"
 #include "ScriptRequestHandler.h"
 
@@ -75,53 +74,7 @@ void ScriptObjectSystem::postInit()
 
 	// Every other system has loaded by now, so scripts can resolve objects by name
 	bindObjectLifecycleEvents();
-	repairMovedScriptPaths();
 	reloadAllScripts();
-}
-
-void ScriptObjectSystem::repairMovedScriptPaths()
-{
-	m_scriptPathRepairs.clear();
-
-	for (ScriptDefinitionPtr definition : getTypedDefinitionConst()->getAllDefinitions())
-	{
-		ScriptComponentPtr script= getTypedComponentById(definition->getScriptId());
-		if (!script || !definition->hasScriptPath() || !script->getResolvedScriptPath().empty())
-			continue;
-
-		const std::filesystem::path storedPath= definition->getScriptPath();
-		const std::filesystem::path relocatedPath= PathUtils::findRelocatedProjectResource(storedPath);
-		if (relocatedPath.empty())
-			continue;
-
-		ScriptPathRepair repair;
-		repair.componentName= definition->getComponentName();
-		repair.oldPath= PathUtils::pathToUtf8(storedPath);
-		definition->setScriptPath(relocatedPath);
-		repair.newPath= PathUtils::pathToUtf8(definition->getScriptPath());
-		m_scriptPathRepairs.push_back(repair);
-
-		MIKAN_LOG_WARNING("ScriptObjectSystem::repairMovedScriptPaths")
-			<< "Script " << repair.componentName << " path " << repair.oldPath << " no longer exists, repointed to "
-			<< repair.newPath;
-	}
-
-	// Auto-save is not enabled until the load finishes, so the repair is written now
-	// rather than repeated on every load
-	if (!m_scriptPathRepairs.empty())
-	{
-		if (ProjectConfigPtr projectConfig= getOwnerProjectManager()->getProjectConfig())
-		{
-			projectConfig->save();
-		}
-	}
-}
-
-std::vector<ScriptPathRepair> ScriptObjectSystem::takeScriptPathRepairs()
-{
-	std::vector<ScriptPathRepair> repairs;
-	repairs.swap(m_scriptPathRepairs);
-	return repairs;
 }
 
 void ScriptObjectSystem::dispose()

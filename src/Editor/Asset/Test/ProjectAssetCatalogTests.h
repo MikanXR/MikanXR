@@ -16,4 +16,7 @@
 //   - AssetReference stores project-relative paths and writes them as UTF-8
 //   - a missing absolute path from another project folder relocates to the
 //     trailing part the project or the bundled resources hold
+//   - an asset reference config read inside a repair scope takes the relocated
+//     path and the scope lists each repaired path once, and one read outside a
+//     scope keeps its path
 bool run_project_asset_catalog_tests();

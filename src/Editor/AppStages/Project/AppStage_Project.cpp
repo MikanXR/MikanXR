@@ -92,16 +92,16 @@ const char* AppStage_Project::APP_STAGE_NAME= "Compositor";
 // the editor settings, matching the transaction system's coalescing window
 static const float k_cameraStateIdleDelay= 0.75f;
 
-// The repaired script paths as the notice lists them, one component per entry
-static std::string formatScriptPathRepairs(const std::vector<ScriptPathRepair>& repairs)
+// The repaired asset paths as the notice lists them, one file per entry
+static std::string formatAssetPathRepairs(const std::vector<AssetPathRepair>& repairs)
 {
 	std::string repairList;
-	for (const ScriptPathRepair& repair : repairs)
+	for (const AssetPathRepair& repair : repairs)
 	{
-		repairList+= "\n" + repair.componentName + "\n    " + repair.oldPath + "\n    -> " + repair.newPath + "\n";
+		repairList+= "\n" + repair.oldPath + "\n    -> " + repair.newPath + "\n";
 	}
 
-	return locFormat("project.scriptPathsRepairedFmt", repairList.c_str());
+	return locFormat("project.assetPathsRepairedFmt", repairList.c_str());
 }
 
 //-- public methods -----
@@ -215,24 +215,24 @@ void AppStage_Project::enter()
 
 	setViewMode(eProjectViewMode::scene);
 
-	// The scripts loaded with the project, before this stage existed, so any
-	// path repair or load error from then is surfaced now
 	if (ScriptObjectSystemPtr scriptSystem= m_scriptObjectSystem.lock())
 	{
 		scriptSystem->OnScriptError+= MakeDelegate(this, &AppStage_Project::onScriptError);
 		scriptSystem->OnScriptsReloaded+= MakeDelegate(this, &AppStage_Project::onScriptsReloaded);
+	}
 
-		const std::vector<ScriptPathRepair> repairs= scriptSystem->takeScriptPathRepairs();
-		if (!repairs.empty())
-		{
-			// The load errors follow once the notice is closed, since a second modal would hide behind it
-			ModalDialog_MessageBox::showMessageBox(this, formatScriptPathRepairs(repairs), "",
-												   [this]() { showLastScriptLoadErrors(); });
-		}
-		else
-		{
-			showLastScriptLoadErrors();
-		}
+	// The project loaded before this stage existed, so any asset path repair or
+	// script load error from then is surfaced now
+	const std::vector<AssetPathRepair> repairs= m_ownerWindow->getProjectManager()->takeAssetPathRepairs();
+	if (!repairs.empty())
+	{
+		// The load errors follow once the notice is closed, since a second modal would hide behind it
+		ModalDialog_MessageBox::showMessageBox(this, formatAssetPathRepairs(repairs), "",
+											   [this]() { showLastScriptLoadErrors(); });
+	}
+	else
+	{
+		showLastScriptLoadErrors();
 	}
 }
 

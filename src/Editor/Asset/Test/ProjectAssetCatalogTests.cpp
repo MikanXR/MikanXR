@@ -1,6 +1,7 @@
 #include "ProjectAssetCatalogTests.h"
 #include "unit_test.h"
 
+#include "AssetPathRepair.h"
 #include "AssetReference.h"
 #include "AssetUploadRequestHandler.h"
 #include "CompositorMaterialAssetReference.h"
@@ -531,6 +532,41 @@ bool project_asset_catalog_test_relocates_moved_project_paths()
 	UNIT_TEST_COMPLETE()
 }
 
+bool project_asset_catalog_test_repair_scope_repairs_config_reads()
+{
+	UNIT_TEST_BEGIN("asset reference configs read in a repair scope are repaired")
+
+	CatalogTestProject project;
+	const std::string movedPath= PathUtils::pathToUtf8(project.root / "old_project" / "scripts" / "a.lua");
+
+	configuru::Config pt= configuru::Config::object();
+	pt["class_name"]= "ScriptAssetReference";
+	pt["asset_path"]= movedPath;
+
+	// Outside a scope the stored path is read as it is
+	AssetReferenceConfig outsideConfig;
+	outsideConfig.readFromJSON(pt);
+	success&= outsideConfig.assetPath == movedPath;
+
+	// Inside one it is repointed, and two references to one file list one repair
+	{
+		AssetPathRepairScope repairScope;
+
+		AssetReferenceConfig firstConfig;
+		firstConfig.readFromJSON(pt);
+		AssetReferenceConfig secondConfig;
+		secondConfig.readFromJSON(pt);
+
+		success&= firstConfig.assetPath == "scripts/a.lua";
+		success&= secondConfig.assetPath == "scripts/a.lua";
+		success&= repairScope.getRepairs().size() == 1;
+		success&= !repairScope.getRepairs().empty() && repairScope.getRepairs()[0].oldPath == movedPath
+				  && repairScope.getRepairs()[0].newPath == "scripts/a.lua";
+	}
+
+	UNIT_TEST_COMPLETE()
+}
+
 bool run_project_asset_catalog_tests()
 {
 	UNIT_TEST_MODULE_BEGIN("project_asset_catalog")
@@ -543,5 +579,6 @@ bool run_project_asset_catalog_tests()
 	UNIT_TEST_MODULE_CALL_TEST(project_asset_catalog_test_delete_removes_files);
 	UNIT_TEST_MODULE_CALL_TEST(project_asset_catalog_test_asset_reference_stores_project_relative);
 	UNIT_TEST_MODULE_CALL_TEST(project_asset_catalog_test_relocates_moved_project_paths);
+	UNIT_TEST_MODULE_CALL_TEST(project_asset_catalog_test_repair_scope_repairs_config_reads);
 	UNIT_TEST_MODULE_END()
 }

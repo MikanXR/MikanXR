@@ -4540,6 +4540,14 @@ msgid "  quat: w%.4f x%.4f y%.4f z%.4f"
 msgstr "  クォータニオン: w%.4f x%.4f y%.4f z%.4f"
 
 #. Section: project
+#, c-format
+msgctxt "project.assetPathsRepairedFmt"
+msgid ""
+"Some files in this project were named by paths that no longer exist, likely because the project was moved. They were repointed to the matching files and the project was saved.\n"
+"%s"
+msgstr ""
+
+#. Section: project
 #, fuzzy, c-format
 msgctxt "project.calibResolutionFmt"
 msgid "Calib resolution: %d x %d"
@@ -4966,14 +4974,6 @@ msgstr "解像度が一致しません"
 msgctxt "project.sceneListEmpty"
 msgid "No scenes in the project"
 msgstr "プロジェクトにシーンがありません"
-
-#. Section: project
-#, c-format
-msgctxt "project.scriptPathsRepairedFmt"
-msgid ""
-"Some scripts in this project pointed at files that no longer exist. They were repointed to the matching files and the project was saved.\n"
-"%s"
-msgstr ""
 
 #. Section: project
 #, fuzzy

@@ -27,14 +27,6 @@ private:
 	ScriptHttpRouteTable m_httpRoutes;
 };
 
-// A script path the project load repointed because the stored one no longer existed
-struct ScriptPathRepair
-{
-	std::string componentName;
-	std::string oldPath;
-	std::string newPath;
-};
-
 // Owns the project's one Lua state. Every script in the pool loads its
 // behavior into it in pool order, and any change to the pool or to a script's
 // path rebuilds it on the next update, never inside the change that requested
@@ -63,9 +55,6 @@ public:
 	void reloadAllScripts();
 	// The load errors of the last reload, for a listener that subscribed after it
 	inline const std::vector<ScriptError>& getLastLoadErrors() const { return m_lastLoadErrors; }
-	// The script paths the project load repointed, handed over once so the
-	// notice shows once per load
-	std::vector<ScriptPathRepair> takeScriptPathRepairs();
 
 	// Create an empty timestamped .lua under the project's scripts folder and
 	// register it
@@ -88,9 +77,6 @@ public:
 
 private:
 	void disposeScriptContext();
-	// Repoint absolute script paths that no longer exist to the project-relative
-	// file they name, for a project copied or moved from another folder
-	void repairMovedScriptPaths();
 	void onScriptError(const ScriptError& error);
 	void onDefinitionPropertyChanged(CommonConfigPtr configPtr, const ConfigPropertyChangeSet& changedPropertySet);
 	// Push the route table into the request handler, which installs the routes
@@ -105,7 +91,6 @@ private:
 
 	ProjectScriptContextPtr m_scriptContext;
 	std::vector<ScriptError> m_lastLoadErrors;
-	std::vector<ScriptPathRepair> m_scriptPathRepairs;
 	bool m_bReloadPending= false;
 	bool m_bLifecycleEventsBound= false;
 	bool m_bDefinitionEventsBound= false;

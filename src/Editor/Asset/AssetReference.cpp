@@ -1,3 +1,4 @@
+#include "AssetPathRepair.h"
 #include "AssetReference.h"
 #include "PathUtils.h"
 
@@ -21,6 +22,7 @@ void AssetReferenceConfig::readFromJSON(const configuru::Config& pt)
 
 	className= pt.get_or<std::string>("class_name", "AssetReference");
 	assetPath= pt.get_or<std::string>("asset_path", "");
+	AssetPathRepairScope::repairStoredPath(assetPath);
 }
 
 bool AssetReferenceConfig::isValid() const { return !className.empty() && !assetPath.empty(); }
