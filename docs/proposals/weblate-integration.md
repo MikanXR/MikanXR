@@ -8,7 +8,7 @@ The alternative evaluated alongside this one is in [crowdin-integration.md](./cr
 
 ## Why Weblate
 
-- The Libre plan is free for public projects under an OSI or FSF libre license, with the full feature set up to 160,000 hosted strings. MikanXR is MIT and has about 1,200 strings. The plan is requested from the project's billing page, and its current conditions are listed there.
+- The Libre plan is free for public projects under an OSI or FSF libre license, with the full feature set up to 160,000 hosted strings. MikanXR is MIT and has about 1,200 strings. The request and its conditions are under [Libre plan](#libre-plan).
 - Gettext PO is its native format, so `localization/*.po` needs no adaptation.
 - Weblate's "Needs editing" state is the gettext fuzzy flag. The provenance model already in place keeps working unchanged and `reviewedCount` keeps meaning what it means. A separate "Approved" state exists on top if a two-stage review is ever wanted.
 - Weblate is itself libre software. If the hosted terms change, the same instance can be self-hosted over the same PO files.
@@ -91,6 +91,28 @@ Settings that matter for this project:
 - **Do not enable "Squash Git commits".** It rewrites commits Weblate has already pushed, which has the same effect on the rebase as a squash merge.
 
 A project-scoped API token is enough to read the component's settings and repository state, and to trigger a commit without waiting out the 24 hour commit delay.
+
+---
+
+## Libre plan
+
+The project was created on a trial of the paid 640k plan (billing 12758), which expires on 2026-12-06. The billing page shows the Libre checklist and the "Request approval for Libre hosting" button only on a billing whose plan is free, and "Change plan" lists only paid plans. "Set up your libre project" on the hosting page creates a second billing and workspace rather than converting the existing one. So the switch goes through Weblate support.
+
+- [x] Project access control is Public. The Libre plan allows no private projects and no restricted components.
+- [x] `README.md` mentions Weblate and links the project.
+- [x] Support asked on 2026-11-23 to switch billing 12758 to the Libre plan.
+- [ ] Support approves the plan, or switches the billing to a Libre trial. In the second case the checklist on the billing page has to be all green, and the request is submitted there with a description of the project and the maintainer's relation to it.
+
+The conditions the request is judged on:
+
+- Translated content is under an OSI or FSF libre license, and each component has that license set.
+- All source code is libre licensed and public in a supported version control system.
+- Translations are in the same repository as the source, or under the same organization.
+- The upstream project has approved using Weblate, and the README mentions it.
+- The project has had active development for at least three months and receives a reasonable number of contributions.
+- The billing contains exactly one project, and the project has a website set.
+
+Weblate rechecks a Libre billing daily. A missing license, an unmet condition, or a repository that stays failing or out of sync brings a warning with 30 days to fix it before the billing falls back to a trial.
 
 ---
 
