@@ -28,7 +28,7 @@ The JSON tables keep the shape they have always had, so a build that predates th
 
 `tools/localization.py` is the only thing that writes the generated files. It needs `polib`, which `tools/SetupDevEnvironment.bat` installs into the repo's `.venv` from `tools/requirements.txt`. The `LocalizationSync`/`LocalizationCheck` targets and `SyncLocalizationFiles.bat` use that interpreter when it exists.
 
-- `sync`: normalize `en.json`, rebuild `mikan.pot`, merge it into every `.po`, then write each `<code>.json` and `manifest.json`. Idempotent, so running it twice writes nothing the second time.
+- `sync`: normalize `en.json`, rebuild `mikan.pot`, merge it into every `.po`, then write each `<code>.json` and `manifest.json`. Idempotent, so running it twice writes nothing the second time. A `.po` is compared by parsed content (each key's source, translation, flags and previous source) and rewritten only when that changes, so the wrapping and header of whichever gettext tool saved it last are left alone. The generated files are compared byte for byte.
 - `check`: run `sync` in memory and fail if any file on disk differs, or if any string breaks a rule. This is the CI gate, and it is what a translator runs locally.
 - `new <code> "<nativeName>"`: register a language and create its catalog. `--from-json <path>` seeds it from an existing table, flagging every seeded string fuzzy because a bulk import is machine output until a person reads it. `--reviewed` opts out of that flag.
 - `stats`: per-language translated and reviewed counts.
@@ -52,7 +52,7 @@ msgstr "原点マーカー検出: %s"
 - `#, fuzzy` means the string has not been vouched for by a person. POEdit shows it as "Needs work". Every machine translation carries it, and clearing it is the act of review.
 - `#, c-format` is emitted for any English text carrying printf specifiers. It turns on POEdit's own specifier checking, which catches a mismatch before the pull request exists.
 - `#. Section:` names the UI unit the key belongs to.
-- When the English text of a key changes, `sync` keeps the translation, sets fuzzy, and records the old source as `#| msgid` so the translator sees what moved.
+- When the English text of a key changes, `sync` keeps the translation, sets fuzzy, and records the old source as `#| msgid` so the translator sees what moved. The old source stays until the fuzzy flag is cleared.
 - A key English no longer defines becomes an obsolete `#~` entry rather than being deleted, so the work returns with the key.
 
 ---
@@ -116,3 +116,18 @@ Three layers, cheapest first.
 The CDN pin matters here. `LocalizationManager::startRemoteFetch` fetches from `@main` rather than a version tag, because jsDelivr caches a tag permanently and the point of remote localization is that a fix reaches users without a build. The consequence is that CI is the only gate between a merged typo and every installed build's next fetch.
 
 A parse failure degrades rather than breaking: `overlayLanguageFile` bails on a malformed cache file and the bundled table survives.
+
+---
+
+## The Weblate branches
+
+Two branches carry translations from a hosted Weblate project to `main`, each with one writer.
+
+- `weblate`: written only by Weblate, which commits translator edits to `localization/<code>.po` and pushes without force. Nothing else commits here, or its next push fails.
+- `weblate-sync`: written only by `.github/workflows/weblate-sync.yml`. It is `weblate` plus one commit from `sync`, force-pushed on each Weblate push. The pull request to `main` comes from this branch.
+
+The workflow pushes with the workflow token, and such a push starts no other workflow. It therefore dispatches `build-and-test.yml` on `weblate-sync` itself, which is how the required checks report on the pull request. `build-and-test.yml` skips pushes to `weblate`, whose tables are stale by construction.
+
+A translation pull request is merged with a merge commit, never squashed. Weblate rebases onto `main` afterwards and has to find its own commits there.
+
+The Weblate project settings are in [weblate-integration.md](../proposals/weblate-integration.md).

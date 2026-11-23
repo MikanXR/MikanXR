@@ -13,7 +13,8 @@ under resources/localization/ and are never hand-edited.
 English is the source language: developers add keys to
 resources/localization/en.json and run `sync`, which normalizes that file,
 rebuilds localization/mikan.pot, merges it into every .po, and rewrites the
-generated tables and manifest.
+generated tables and manifest. A .po is rewritten only when its entries change,
+so the formatting of whichever gettext tool last saved it is left alone.
 
 An entry whose English text changed keeps its translation but is flagged
 fuzzy, which POEdit shows as "Needs work". Fuzzy is also how a bulk machine
@@ -235,10 +236,13 @@ def validate_translation(code, key, english_text, translated, problems):
 
 
 # -- catalogs ----
-def make_catalog(code):
+def make_catalog(code, metadata=None):
+    """An empty catalog. A header another tool wrote is carried over whole, so
+    the translator credit and revision date it recorded survive a rewrite."""
     catalog = polib.POFile(wrapwidth=0)
     catalog.metadata = OrderedDict(
-        [
+        metadata
+        or [
             ("Project-Id-Version", "MikanXR"),
             ("Language", code),
             ("MIME-Version", "1.0"),
@@ -294,7 +298,7 @@ def merge_catalog(code, flat_english, previous):
             if entry.msgctxt:
                 existing[entry.msgctxt] = entry
 
-    catalog = make_catalog(code)
+    catalog = make_catalog(code, previous.metadata if previous is not None else None)
     for key, english_text in flat_english.items():
         is_c_format = has_printf_specs(english_text)
         entry = polib.POEntry(
@@ -314,6 +318,10 @@ def merge_catalog(code, flat_english, previous):
                 if old.msgid != english_text:
                     flags.add("fuzzy")
                     entry.previous_msgid = old.msgid
+                elif "fuzzy" in flags:
+                    # Still unreviewed since an earlier English edit: the old
+                    # source stays until a person clears the flag.
+                    entry.previous_msgid = old.previous_msgid
         entry.flags = order_flags(flags, is_c_format)
         catalog.append(entry)
 
@@ -332,6 +340,23 @@ def merge_catalog(code, flat_english, previous):
 
 def render_catalog(catalog):
     return str(catalog)
+
+
+def catalog_content(catalog):
+    """What a catalog says, apart from how it is written: each key's source
+    text, translation, flags and previous source. Wrapping, header fields,
+    comments and entry order are left out, so a catalog saved by another gettext
+    tool reads the same as one written here."""
+    return {
+        (bool(entry.obsolete), entry.msgctxt): (
+            entry.msgid,
+            entry.msgstr,
+            frozenset(entry.flags),
+            entry.previous_msgid or "",
+        )
+        for entry in catalog
+        if entry.msgctxt
+    }
 
 
 # -- generated tables ----
@@ -418,8 +443,17 @@ def build_outputs():
                 problems.append(f"{catalog_path.name}: missing (run `localization.py new {code} ...`)")
                 continue
 
+            # A catalog is rewritten only when the merge changed what it says.
+            # Translators save these files from POEdit and from the web editor,
+            # each with its own formatter, and none of them should be turned
+            # back into this tool's layout for a difference no reader can see.
+            # Taken before the merge, which reuses the entries it retires.
+            previous_content = catalog_content(previous)
             catalog = merge_catalog(code, flat_english, previous)
-            outputs[catalog_path] = render_catalog(catalog)
+            if catalog_content(catalog) != previous_content:
+                outputs[catalog_path] = render_catalog(catalog)
+            else:
+                outputs[catalog_path] = read_text(catalog_path)
 
             translations = {}
             for entry in catalog:
