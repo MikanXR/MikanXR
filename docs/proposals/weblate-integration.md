@@ -31,7 +31,7 @@ Weblate writes PO through its own formatter, which does not match polib's header
 
 Weblate edits `localization/<code>.po`. The JSON tables it does not touch are what jsDelivr serves and what CI checks, and hosted Weblate cannot run repo scripts. `.github/workflows/weblate-sync.yml` does the regeneration, over two branches with one writer each:
 
-- `weblate`: written only by Weblate. Its pushes are not forced, so a commit it does not have on this branch would make its next push fail.
+- `weblate`: written only by Weblate. It rebases its pending commits whenever `main` moves and force-pushes the result, so a commit added here by anything else would be discarded.
 - `weblate-sync`: written only by the workflow. It is `weblate` plus one commit that runs `python tools/localization.py sync`, force-pushed on every Weblate push.
 
 The workflow refuses to publish when `weblate` changes any file other than `localization/*.po`. It opens the pull request from `weblate-sync` to `main` when none is open.
@@ -76,6 +76,7 @@ Create the component from the "From version control" tab, or through the REST AP
 - Template for new translations: `localization/mikan.pot`
 - Translation license: MIT
 - Merge style: rebase
+- Force push: on (`git_force_push` in the version control parameters). A rebase gives Weblate's pending commits new hashes each time `main` moves, so without it the push to `weblate` is rejected as non-fast-forward and the component locks itself.
 - Push on commit: on
 - Long lines wrapping: wrap only at newlines, which is what `tools/localization.py` writes. The "no wrapping" option is different: it puts the whole PO header on one line.
 
@@ -98,7 +99,8 @@ A project-scoped API token is enough to read the component's settings and reposi
 - [x] An edit to one Japanese string in Weblate, with "Needs editing" cleared, is pushed to the `weblate` branch.
 - [x] The workflow pushes `weblate-sync` with a regenerated `resources/localization/ja.json` and opens a pull request.
 - [x] `ja.json` shows `reviewedCount` incremented by exactly one, and the diff of `ja.po` is the edited string rather than a whole-file reformat.
-- [ ] The required checks report on the pull request, with `build`, `format-check` and `ai-usage-check` skipped and `localization-check` passing.
+- [x] The required checks report on the pull request, with `build`, `format-check` and `ai-usage-check` skipped and `localization-check` passing.
+- [x] When `main` moves under a pending translation, Weblate rebases, force-pushes `weblate`, and the pull request updates.
 - [ ] After a merge with a merge commit, Weblate rebases onto `main` without reporting a conflict and a second edit pushes cleanly.
 - [ ] A translation containing `##`, entered through the Weblate editor, fails the `Weblate Sync` run naming the key and leaves the pull request at its last good state. Weblate's own checks should also flag it before it gets that far.
 - [ ] A translation containing a character outside the baked glyph ranges fails the same way.
