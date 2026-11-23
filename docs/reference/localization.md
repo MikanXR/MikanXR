@@ -122,7 +122,7 @@ Glyph coverage in Python reads `resources/font/ui_glyph_ranges.txt`, a text copy
 
 ### Translation-only changes skip the Windows build
 
-The `changes` job in `build-and-test.yml` classifies each run. When the diff against `main` touches only `localization/*.po` and the generated `resources/localization/<code>.json` tables, the `build`, `format-check` and `ai-usage-check` jobs are skipped, and `localization-check` is the whole gate. A skipped job satisfies a required check, so branch protection is unchanged.
+The `changes` job in `build-and-test.yml` classifies each run. When the diff against `main` touches only `localization/*.po` and the generated `resources/localization/<code>.json` tables, the `build`, `format-check` and `ai-usage-check` jobs are skipped, and `localization-check` is the whole gate. A skipped job satisfies a required check, so branch protection is unchanged. The same job skips them for changes under `docs/` (see [build.md](./build.md)).
 
 Three files keep the full run even though they sit beside the tables: `en.json` and `manifest.json`, because a new English string or a new language arrives with code, and `ui_glyph_ranges.txt`, because only the Windows job can verify it.
 

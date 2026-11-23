@@ -164,7 +164,11 @@ Release builds compile with `/Z7` and link with `/DEBUG:FULL /OPT:REF /OPT:ICF` 
 
 ## CI configuration
 
-`.github/workflows/build-and-test.yml` has three jobs:
+`.github/workflows/build-and-test.yml` has five jobs:
+
+- `changes` (Linux): classifies the diff against `main`. When it touches only files under `docs/`, translations, or both, the `build`, `format-check` and `ai-usage-check` jobs are skipped. A skipped job satisfies a required check, so branch protection is unchanged. `docs/ai-usage.json` keeps the full run because `ai-usage-check` reads it, and so does any change that reaches outside `docs/`, including the root `README.md`. Pushes to `main` and manual runs always run everything. The translation side is in [localization.md](./localization.md).
+
+- `ai-usage-check` (Linux, no build tree): `python tools/token_stats.py --check`. Fails when the README badges or `TOKEN_STATS.md` have drifted from `docs/ai-usage.json`.
 
 - `format-check` (Linux, no build tree): `pipx install clang-format==19.1.5`, then `cmake -P cmake/RunClangFormat.cmake -- --check`. The version matches the 19.1.5 that `InitialSetup_x64.bat` puts in `deps/clang-format`; other major versions format differently.
 
