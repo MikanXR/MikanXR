@@ -25,19 +25,22 @@ on:
 
 jobs:
   # -----------------------------------------------------------------
-  # Decides whether the change is a translation and nothing else: only
-  # gettext catalogs and the language tables generated from them. Such
-  # a change cannot affect the build, the source formatting or the AI
-  # usage ledger, and localization-check below covers everything the
-  # Windows job would test about it, including glyph coverage. The
-  # other three jobs are then skipped, and a skipped job satisfies a
-  # required check, so main's branch protection needs no change.
+  # Decides whether the change needs the build. Two kinds of file do
+  # not, alone or together: translations (gettext catalogs and the
+  # language tables generated from them) and anything under docs/.
+  # Such a change cannot affect the build, the source formatting or
+  # the AI usage ledger, and localization-check below covers
+  # everything the Windows job would test about a translation,
+  # including glyph coverage. The other three jobs are then skipped,
+  # and a skipped job satisfies a required check, so main's branch
+  # protection needs no change.
   #
   # en.json and manifest.json are left out on purpose. A new English
   # string or a new language arrives with code, and the Windows job is
   # what checks the code against them. So is the glyph range file: it
   # is what localization-check trusts, and only the Windows job can
-  # verify it against the baked ranges.
+  # verify it against the baked ranges. docs/ai-usage.json is left out
+  # too: it is the ledger ai-usage-check reads.
   #
   # Pushes to main and manual runs always do everything.
   # -----------------------------------------------------------------
@@ -59,8 +62,8 @@ jobs:
           code=true
           if [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
             changed=$(git diff --name-only origin/main...HEAD)
-            other=$(echo "$changed" | grep -v -E '^localization/[^/]+[.]po$' | grep -v -E '^resources/localization/[^/]+[.]json$' || true)
-            core=$(echo "$changed" | grep -E '^resources/localization/(en|manifest)[.]json$' || true)
+            other=$(echo "$changed" | grep -v -E '^localization/[^/]+[.]po$' | grep -v -E '^resources/localization/[^/]+[.]json$' | grep -v -E '^docs/' || true)
+            core=$(echo "$changed" | grep -E '^resources/localization/(en|manifest)[.]json$|^docs/ai-usage[.]json$' || true)
             if [ -n "$changed" ] && [ -z "$other" ] && [ -z "$core" ]; then
               code=false
             fi
