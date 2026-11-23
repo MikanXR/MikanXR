@@ -136,10 +136,10 @@ A parse failure degrades rather than breaking: `overlayLanguageFile` bails on a 
 
 Two branches carry translations from a hosted Weblate project to `main`, each with one writer.
 
-- `weblate`: written only by Weblate, which commits translator edits to `localization/<code>.po` and pushes without force. Nothing else commits here, or its next push fails.
+- `weblate`: written only by Weblate, which commits translator edits to `localization/<code>.po` and pushes without force. Nothing else commits here, or its next push fails. The workflow refuses to publish the branch if it changes any other file.
 - `weblate-sync`: written only by `.github/workflows/weblate-sync.yml`. It is `weblate` plus one commit from `sync`, force-pushed on each Weblate push. The pull request to `main` comes from this branch.
 
-The workflow pushes with the workflow token, and such a push starts no other workflow. It therefore dispatches `build-and-test.yml` on `weblate-sync` itself, which is how the required checks report on the pull request. `build-and-test.yml` skips pushes to `weblate`, whose tables are stale by construction.
+The workflow pushes and opens the pull request with the personal access token in the `WEBLATE_SYNC_TOKEN` secret. GitHub starts no workflow for anything done with a workflow's own token, so with that token the required checks would never run on the pull request. `build-and-test.yml` skips pushes to both branches: `weblate` has stale tables by construction, and `weblate-sync` is checked through its pull request.
 
 A translation pull request is merged with a merge commit, never squashed. Weblate rebases onto `main` afterwards and has to find its own commits there.
 

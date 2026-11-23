@@ -10,8 +10,9 @@ on:
   push:
     # The weblate branch is skipped: it holds translator commits whose JSON
     # tables are not regenerated yet, so it would fail localization-check by
-    # construction. The regenerated copy on weblate-sync is checked instead.
-    branches: [ '**', '!weblate' ]
+    # construction. The regenerated copy on weblate-sync is checked instead,
+    # by the pull request it always has, so its pushes are skipped too.
+    branches: [ '**', '!weblate', '!weblate-sync' ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:

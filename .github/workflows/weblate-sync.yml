@@ -12,6 +12,11 @@ name: Weblate Sync
 # have on `weblate` would make its next push fail, so Weblate is the only
 # writer of `weblate` and this workflow is the only writer of `weblate-sync`.
 #
+# The push and the pull request are made with the WEBLATE_SYNC_TOKEN secret, a
+# personal access token, not the workflow's own token. GitHub starts no
+# workflow for anything the workflow token does, so the checks main requires
+# would never run on the pull request.
+#
 # The pull request is merged with a merge commit, never squashed: Weblate
 # rebases onto main after the merge and needs to find its own commits there.
 #
@@ -22,9 +27,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
-  actions: write
+  contents: read
 
 concurrency:
   group: weblate-sync
@@ -34,14 +37,35 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.WEBLATE_SYNC_TOKEN }}
     steps:
+      - name: Check the token is configured
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::the WEBLATE_SYNC_TOKEN secret is missing or empty"
+            exit 1
+          fi
+
+      # The token given here is the one the push below is made with
       - name: Checkout the weblate branch
         uses: actions/checkout@v4
         with:
           ref: weblate
           fetch-depth: 0
           submodules: false
+          token: ${{ secrets.WEBLATE_SYNC_TOKEN }}
+
+      # Weblate writes the gettext catalogs and nothing else. A commit on this
+      # branch that touches any other file did not come from a translator, so
+      # nothing is published and the open pull request keeps its last state.
+      - name: Check the branch changes only the catalogs
+        run: |
+          unexpected=$(git diff --name-only origin/main...HEAD | grep -v -E '^localization/[^/]+[.]po$' || true)
+          if [ -n "$unexpected" ]; then
+            echo "::error::the weblate branch changes files other than localization/*.po"
+            echo "$unexpected"
+            exit 1
+          fi
 
       - name: Install polib
         run: pip install -r tools/requirements.txt
@@ -68,10 +92,8 @@ jobs:
             && [ "$(git rev-parse 'HEAD^{tree}')" = "$(git rev-parse 'origin/weblate-sync^{tree}')" ] \
             && git merge-base --is-ancestor origin/weblate origin/weblate-sync; then
             echo "weblate-sync is already current"
-            echo "pushed=false" >> "$GITHUB_OUTPUT"
           else
             git push --force origin HEAD:refs/heads/weblate-sync
-            echo "pushed=true" >> "$GITHUB_OUTPUT"
           fi
 
           if git diff --quiet origin/main HEAD; then
@@ -88,10 +110,3 @@ jobs:
               --title "Translations from Weblate" \
               --body "Translator edits from Weblate, with the localization tables regenerated. Merge with a merge commit, not a squash: Weblate rebases onto main afterwards and needs to find its own commits there."
           fi
-
-      # A push made with the workflow token starts no other workflow, so the
-      # checks main requires would never report on the commit pushed above.
-      # A dispatch is the one event the token is allowed to raise.
-      - name: Run the required checks on weblate-sync
-        if: steps.push.outputs.pushed == 'true' && steps.push.outputs.has_changes == 'true'
-        run: gh workflow run build-and-test.yml --ref weblate-sync
