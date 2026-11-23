@@ -4,7 +4,7 @@
 		"nativeName": "日本語",
 		"stringCount": 1222,
 		"translatedCount": 891,
-		"reviewedCount": 0
+		"reviewedCount": 1
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "ブラウザーウィンドウを表示"
@@ -12,7 +12,7 @@
 	"alignCameraByOriginMarker": {
 		"alignmentComplete": "カメラの位置合わせが完了しました！",
 		"alreadyHasTrackingMountError": "ターゲットカメラには既にトラッキングマウントが設定されています。標準の位置合わせ校正を使用してください。",
-		"begin": "開始",
+		"begin": "スタート",
 		"failedVideoStart": "エラー: 映像ストリームの開始に失敗しました。",
 		"invalidIntrinsicsError": "ターゲットカメラの開口部内部パラメーターが無効です。先にカメラの内部パラメーターを校正してください。",
 		"markerDetectedFmt": "原点マーカー検出: %s",
