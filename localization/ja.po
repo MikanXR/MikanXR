@@ -6,7 +6,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2026-11-23 19:04+0000\n"
+"PO-Revision-Date: 2026-11-23 19:20+0000\n"
 "Last-Translator: Brendan Walker <bwalker81@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Japanese <https://hosted.weblate.org/projects/mikanxr/mikanxr/ja/>\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -33,7 +33,7 @@ msgstr "ターゲットカメラには既にトラッキングマウントが設
 #. Section: alignCameraByOriginMarker
 msgctxt "alignCameraByOriginMarker.begin"
 msgid "Begin"
-msgstr "開始한"
+msgstr "開始"
 
 #. Section: alignCameraByOriginMarker
 #, fuzzy
