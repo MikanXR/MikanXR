@@ -25,4 +25,9 @@ MIKAN_GUI_FUNC(const ImWchar*) getUiGlyphRanges();
 // outBadCodepoint (when given) receives the first offending codepoint, or 0
 // when the text is not valid UTF-8.
 MIKAN_GUI_FUNC(bool) isTextRenderableWithUiGlyphs(const std::string& text, unsigned int* outBadCodepoint= nullptr);
+// The UI glyph ranges as text: comment lines, then one inclusive "XXXX-YYYY"
+// hex range per line, sorted, with touching ranges merged. This is the content
+// of resources/font/ui_glyph_ranges.txt, which lets a tool without the font
+// stack run the same coverage check.
+MIKAN_GUI_FUNC(std::string) formatUiGlyphRanges();
 } // namespace MkGuiTheme

@@ -10,8 +10,9 @@ on:
   push:
     # The weblate branch is skipped: it holds translator commits whose JSON
     # tables are not regenerated yet, so it would fail localization-check by
-    # construction. The regenerated copy on weblate-sync is checked instead.
-    branches: [ '**', '!weblate' ]
+    # construction. The regenerated copy on weblate-sync is checked instead,
+    # by the pull request it always has, so its pushes are skipped too.
+    branches: [ '**', '!weblate', '!weblate-sync' ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -23,6 +24,50 @@ on:
         default: '2026'
 
 jobs:
+  # -----------------------------------------------------------------
+  # Decides whether the change is a translation and nothing else: only
+  # gettext catalogs and the language tables generated from them. Such
+  # a change cannot affect the build, the source formatting or the AI
+  # usage ledger, and localization-check below covers everything the
+  # Windows job would test about it, including glyph coverage. The
+  # other three jobs are then skipped, and a skipped job satisfies a
+  # required check, so main's branch protection needs no change.
+  #
+  # en.json and manifest.json are left out on purpose. A new English
+  # string or a new language arrives with code, and the Windows job is
+  # what checks the code against them. So is the glyph range file: it
+  # is what localization-check trusts, and only the Windows job can
+  # verify it against the baked ranges.
+  #
+  # Pushes to main and manual runs always do everything.
+  # -----------------------------------------------------------------
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          submodules: false
+
+      - name: Classify the change
+        id: classify
+        run: |
+          code=true
+          if [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            changed=$(git diff --name-only origin/main...HEAD)
+            other=$(echo "$changed" | grep -v -E '^localization/[^/]+[.]po$' | grep -v -E '^resources/localization/[^/]+[.]json$' || true)
+            core=$(echo "$changed" | grep -E '^resources/localization/(en|manifest)[.]json$' || true)
+            if [ -n "$changed" ] && [ -z "$other" ] && [ -z "$core" ]; then
+              code=false
+            fi
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "code=$code"
+
   # -----------------------------------------------------------------
   # Fast, standalone style gate. Only needs the source tree under src/
   # and clang-format -- no MSVC toolchain, no deps, no submodules -- so
@@ -37,6 +82,8 @@ jobs:
   # backs the local `format-check` target (cmake/RunClangFormat.cmake).
   # -----------------------------------------------------------------
   format-check:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -62,10 +109,11 @@ jobs:
   # but the source tree, so a contributor gets an answer in under a
   # minute instead of waiting on the Windows build below.
   #
-  # Glyph coverage is deliberately NOT checked here. The baked font
-  # ranges live in MkGuiTheme, and localization_test_glyph_coverage in
-  # the Windows job owns that check rather than a second copy of the
-  # range table drifting in Python.
+  # Glyph coverage is checked here against resources/font/
+  # ui_glyph_ranges.txt, a text copy of the font ranges MkGuiTheme
+  # bakes. The Windows job fails when that copy falls behind the real
+  # ranges, which is what lets this job stand in for it on a
+  # translation-only change.
   # -----------------------------------------------------------------
   localization-check:
     runs-on: ubuntu-latest
@@ -91,6 +139,8 @@ jobs:
   # secrets, seconds long.
   # -----------------------------------------------------------------
   ai-usage-check:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -105,6 +155,8 @@ jobs:
   # Pushes and pull requests carry no inputs and get the Visual Studio 2026 image; the
   # explicit label keeps a future relabel of windows-2025 from changing the toolchain.
   build:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ${{ github.event.inputs.vs == '2022' && 'windows-2022' || 'windows-2025-vs2026' }}
 
     # Enable the sccache GitHub Actions cache backend for the whole job.

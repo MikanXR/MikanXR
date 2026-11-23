@@ -2,6 +2,7 @@
 #include "CrashHandler.h"
 #include "DepthMeshGenerator.h"
 #include "Logger.h"
+#include "MkGuiTheme.h"
 #include "ModelCatalog.h"
 #include "ModelDownloadTask.h"
 #include "ModelRepository.h"
@@ -83,6 +84,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <filesystem>
+#include <fstream>
 #include <limits>
 #include <numeric>
 #include <thread>
@@ -213,6 +215,10 @@ int CmdApp::exec(int argc, char** argv)
 	{
 		result= compileMaterial();
 	}
+	else if (!getCommandLineStringArg("writeUiGlyphRanges").empty())
+	{
+		result= writeUiGlyphRanges();
+	}
 	else if (hasCommandLineFlag("estimateLighting") || !getCommandLineStringArg("image").empty())
 	{
 		result= estimateLighting();
@@ -302,6 +308,9 @@ void CmdApp::printUsage() const
 			"               directory. Without -model every model is fetched. Passing\n"
 			"               the flag accepts the model licenses, which the editor's own\n"
 			"               download prompt presents instead. Models: %s\n"
+			"  -writeUiGlyphRanges=<path>\n"
+			"               Write the codepoint ranges the UI font stack is baked with, the\n"
+			"               content of resources/font/ui_glyph_ranges.txt in the source tree.\n"
 			"  -compileMaterial=<graph>\n"
 			"               Compile a material graph (.matgraph) and write its .vert, .frag\n"
 			"               and .compmat or .shapemat beside the graph file.\n"
@@ -443,6 +452,24 @@ int CmdApp::fetchModels() const
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	}
+}
+
+int CmdApp::writeUiGlyphRanges() const
+{
+	const std::filesystem::path outputPath= std::filesystem::absolute(getCommandLineStringArg("writeUiGlyphRanges"));
+
+	// Binary so the file carries the same bytes on every platform
+	std::ofstream outputFile(outputPath, std::ios::binary | std::ios::trunc);
+	if (!outputFile.is_open())
+	{
+		fprintf(stdout, "error: cannot write '%s'\n", outputPath.string().c_str());
+		return EXIT_FAILURE;
+	}
+
+	outputFile << MkGuiTheme::formatUiGlyphRanges();
+	fprintf(stdout, "wrote %s\n", outputPath.string().c_str());
+
+	return EXIT_SUCCESS;
 }
 
 int CmdApp::compileMaterial() const

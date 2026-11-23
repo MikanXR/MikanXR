@@ -33,6 +33,7 @@ private:
 	int buildOcclusionMatte() const;
 	int alignTake() const;
 	int compileMaterial() const;
+	int writeUiGlyphRanges() const;
 	int fetchModels() const;
 
 	// Command line arguments parsed at startup

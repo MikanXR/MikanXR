@@ -8,4 +8,6 @@
 //   - an unknown key passes through as the key itself, never a sentinel
 //   - every displayed codepoint sits inside the glyph ranges the font atlas
 //     actually bakes
+//   - the committed text copy of those ranges, which the Python localization
+//     check reads, matches them
 bool run_localization_unit_tests();

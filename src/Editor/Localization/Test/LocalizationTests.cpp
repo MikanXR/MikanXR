@@ -8,9 +8,13 @@
 
 #include "unit_test.h"
 
+#include <algorithm>
 #include <cassert>
+#include <filesystem>
+#include <fstream>
 #include <map>
 #include <set>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -182,6 +186,44 @@ bool localization_test_glyph_coverage()
 	UNIT_TEST_COMPLETE()
 }
 
+bool localization_test_glyph_ranges_file_is_current()
+{
+	UNIT_TEST_BEGIN("the committed glyph range file matches the baked ranges")
+
+	// The Python localization check reads this file to run the coverage test
+	// above without the font stack, so a file that has fallen behind the baked
+	// ranges would pass or reject strings the app treats differently
+	const std::filesystem::path rangesPath= PathUtils::getResourceDirectory() / "font" / "ui_glyph_ranges.txt";
+
+	std::ifstream rangesFile(rangesPath, std::ios::binary);
+	if (!rangesFile.is_open())
+	{
+		fprintf(stdout, "    FAILED: cannot read %s\n", rangesPath.string().c_str());
+		success= false;
+	}
+	else
+	{
+		std::stringstream contents;
+		contents << rangesFile.rdbuf();
+
+		// A Windows checkout may hold the file with CRLF line endings
+		std::string committedText= contents.str();
+		committedText.erase(std::remove(committedText.begin(), committedText.end(), '\r'), committedText.end());
+
+		if (committedText != MkGuiTheme::formatUiGlyphRanges())
+		{
+			fprintf(stdout,
+					"    FAILED: resources/font/ui_glyph_ranges.txt is stale, regenerate it in the source tree with\n"
+					"            MikanCmd -writeUiGlyphRanges=<repo>/resources/font/ui_glyph_ranges.txt\n");
+			success= false;
+		}
+	}
+
+	assert(success);
+
+	UNIT_TEST_COMPLETE()
+}
+
 bool localization_test_descriptor_labels_have_keys()
 {
 	UNIT_TEST_BEGIN("every descriptor label resolves to a key")
@@ -270,6 +312,7 @@ bool run_localization_unit_tests()
 	UNIT_TEST_MODULE_CALL_TEST(localization_test_window_titles_are_unique_ids);
 	UNIT_TEST_MODULE_CALL_TEST(localization_test_unknown_key_passes_through);
 	UNIT_TEST_MODULE_CALL_TEST(localization_test_glyph_coverage);
+	UNIT_TEST_MODULE_CALL_TEST(localization_test_glyph_ranges_file_is_current);
 	UNIT_TEST_MODULE_CALL_TEST(localization_test_descriptor_labels_have_keys);
 	UNIT_TEST_MODULE_END()
 }

@@ -209,6 +209,12 @@ cmake --build build --target LocalizationSync
 cmake --build build --target LocalizationCheck
 ```
 
+`check` tests glyph coverage against `resources/font/ui_glyph_ranges.txt`. Regenerate that file after changing the UI fonts or their glyph ranges, passing the path in the source tree:
+
+```
+build\bin\MikanCmd.exe -writeUiGlyphRanges=resources\font\ui_glyph_ranges.txt
+```
+
 ---
 
 ## Client bindings codegen
