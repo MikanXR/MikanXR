@@ -1,0 +1,97 @@
+name: Weblate Sync
+
+# Weblate commits translator edits to the gettext catalogs under localization/
+# and pushes them to the `weblate` branch. It cannot run repo scripts, so the
+# JSON tables under resources/localization/ that the app loads and the CDN
+# serves are stale on that branch, and a pull request made from it would fail
+# localization-check.
+#
+# This workflow builds the branch a pull request can be made from: `weblate`
+# plus one commit that regenerates the tables, force-pushed to `weblate-sync`.
+# Two branches because Weblate does not force its pushes. A commit it does not
+# have on `weblate` would make its next push fail, so Weblate is the only
+# writer of `weblate` and this workflow is the only writer of `weblate-sync`.
+#
+# The pull request is merged with a merge commit, never squashed: Weblate
+# rebases onto main after the merge and needs to find its own commits there.
+#
+# A manual run rebuilds `weblate-sync` from the current `weblate` branch.
+on:
+  push:
+    branches: [ weblate ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: weblate-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout the weblate branch
+        uses: actions/checkout@v4
+        with:
+          ref: weblate
+          fetch-depth: 0
+          submodules: false
+
+      - name: Install polib
+        run: pip install -r tools/requirements.txt
+
+      # A string that breaks a rule fails here, before anything is pushed, and
+      # the log names the key. The open pull request keeps its last good state.
+      - name: Regenerate localization tables
+        run: python tools/localization.py sync
+
+      - name: Push weblate-sync
+        id: push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add localization resources/localization
+          if ! git diff --cached --quiet; then
+            git commit -m "Localization tables regenerated from the Weblate catalogs"
+          fi
+
+          # Nothing to do when the published branch already holds this tree on
+          # top of the current weblate history.
+          if git rev-parse --verify --quiet origin/weblate-sync >/dev/null \
+            && [ "$(git rev-parse 'HEAD^{tree}')" = "$(git rev-parse 'origin/weblate-sync^{tree}')" ] \
+            && git merge-base --is-ancestor origin/weblate origin/weblate-sync; then
+            echo "weblate-sync is already current"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+          else
+            git push --force origin HEAD:refs/heads/weblate-sync
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          if git diff --quiet origin/main HEAD; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open the pull request if none is open
+        if: steps.push.outputs.has_changes == 'true'
+        run: |
+          if [ -z "$(gh pr list --head weblate-sync --base main --state open --json number --jq '.[].number')" ]; then
+            gh pr create --head weblate-sync --base main \
+              --title "Translations from Weblate" \
+              --body "Translator edits from Weblate, with the localization tables regenerated. Merge with a merge commit, not a squash: Weblate rebases onto main afterwards and needs to find its own commits there."
+          fi
+
+      # A push made with the workflow token starts no other workflow, so the
+      # checks main requires would never report on the commit pushed above.
+      # A dispatch is the one event the token is allowed to raise.
+      - name: Run the required checks on weblate-sync
+        if: steps.push.outputs.pushed == 'true' && steps.push.outputs.has_changes == 'true'
+        run: gh workflow run build-and-test.yml --ref weblate-sync

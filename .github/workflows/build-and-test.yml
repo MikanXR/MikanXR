@@ -8,7 +8,10 @@ name: Build and Test
 # gh workflow run build-and-test.yml -f vs=2022
 on:
   push:
-    branches: [ '**' ]
+    # The weblate branch is skipped: it holds translator commits whose JSON
+    # tables are not regenerated yet, so it would fail localization-check by
+    # construction. The regenerated copy on weblate-sync is checked instead.
+    branches: [ '**', '!weblate' ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
