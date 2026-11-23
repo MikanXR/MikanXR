@@ -3,6 +3,8 @@ A simple tool for mixed reality camera calibration and video compositing
 
 Project site: [mikanxr.org](https://mikanxr.org)
 
+[![Translation status](https://hosted.weblate.org/widget/mikanxr/svg-badge.svg)](https://hosted.weblate.org/engage/mikanxr/)
+
 <!-- AI_USAGE_BADGES:BEGIN -->
 ![AI tokens](https://img.shields.io/badge/AI_tokens-31M_out_%2F_10B_read-blueviolet) ![API-equiv. cost](https://img.shields.io/badge/API--equiv._cost-~$6.8k-green)
 (cost is the API-equivalent at list prices, see [TOKEN_STATS.md](TOKEN_STATS.md))
@@ -25,7 +27,7 @@ When MikanXR crashes it writes a report to `Documents\MikanXR\CrashReports` and 
 # Contributing
 Code under `src/` is formatted with clang-format and enforced by CI. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to format your changes (`cmake --build build --target FormatFix`).
 
-The app's UI text is currently machine translated. Fixing it needs no build and no C++, just [POEdit](https://poedit.net/) and a pull request: see [docs/TRANSLATING.md](docs/TRANSLATING.md).
+The app's UI text is currently machine translated. MikanXR uses [Weblate](https://weblate.org/) for translations: you can fix strings in the browser at [hosted.weblate.org/projects/mikanxr](https://hosted.weblate.org/projects/mikanxr/), with no build and no C++. Working offline with [POEdit](https://poedit.net/) and a pull request also works: see [docs/TRANSLATING.md](docs/TRANSLATING.md).
 
 # Documentation
 * General setup guides, troubleshooting and design docs can be found on the [wiki](https://github.com/MikanXR/MikanXR/wiki)

@@ -2,7 +2,26 @@
 
 Every translation in MikanXR started out machine generated. If you speak one of the supported languages, correcting those strings is one of the easiest ways to help, and you do not need to build anything or write any code.
 
-Translations are contributed as pull requests. Once merged, they reach people who already have MikanXR installed within a day, without them downloading a new build.
+There are two ways to contribute: in the browser with Weblate, or offline with a gettext editor and a pull request. Both end up in the same files. Once merged, translations reach people who already have MikanXR installed within a day, without them downloading a new build.
+
+---
+
+## Translating in the browser with Weblate
+
+MikanXR uses [Weblate](https://weblate.org/) for translations. The project is at [hosted.weblate.org/projects/mikanxr](https://hosted.weblate.org/projects/mikanxr/). This route needs no fork, no clone and no pull request.
+
+1. Sign in to Hosted Weblate. A GitHub account works.
+2. Open the MikanXR project and pick your language.
+3. Work through the strings marked **"Needs editing"**. That flag means the string is machine generated, or the English text changed after it was translated.
+4. Correct the translation, leave the "Needs editing" box unticked, and save.
+
+Saving with the box unticked is how you vouch for a string. It is what the app uses to tell users how much of their language has been reviewed.
+
+Weblate sends your saved strings to the repository on its own, and a pull request is opened for you. There is nothing else to do.
+
+The [three rules](#three-rules) below apply here too, and Weblate warns you when a placeholder does not match.
+
+The rest of this page describes the offline route.
 
 ---
 
@@ -48,7 +67,7 @@ Anything else is yours to phrase naturally. Short button labels should stay shor
 
 ## Finding which string is which
 
-If you spot a bad string while using the app and want to know which catalog entry it came from, press **F9** (or `View > Show String Keys`). Every piece of text turns into its key, in place. Press F9 again to switch back. Paste that key into POEdit's search box and you are on the right entry.
+If you spot a bad string while using the app and want to know which catalog entry it came from, press **F9** (or `View > Show String Keys`). Every piece of text turns into its key, in place. Press F9 again to switch back. Paste that key into the search box in Weblate or POEdit and you are on the right entry.
 
 ---
 
