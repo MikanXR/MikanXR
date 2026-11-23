@@ -29,7 +29,7 @@ The JSON tables keep the shape they have always had, so a build that predates th
 `tools/localization.py` is the only thing that writes the generated files. It needs `polib`, which `tools/SetupDevEnvironment.bat` installs into the repo's `.venv` from `tools/requirements.txt`. The `LocalizationSync`/`LocalizationCheck` targets and `SyncLocalizationFiles.bat` use that interpreter when it exists.
 
 - `sync`: normalize `en.json`, rebuild `mikan.pot`, merge it into every `.po`, then write each `<code>.json` and `manifest.json`. Idempotent, so running it twice writes nothing the second time. A `.po` is compared by parsed content (each key's source, translation, flags and previous source) and rewritten only when that changes, so the wrapping and header of whichever gettext tool saved it last are left alone. The generated files are compared byte for byte.
-- `check`: run `sync` in memory and fail if any file on disk differs, or if any string breaks a rule. This is the CI gate, and it is what a translator runs locally.
+- `check`: run `sync` in memory and fail if any file on disk differs, or if any string breaks a rule (the rules are listed under Gates). This is the CI gate, and it is what a translator runs locally.
 - `new <code> "<nativeName>"`: register a language and create its catalog. `--from-json <path>` seeds it from an existing table, flagging every seeded string fuzzy because a bulk import is machine output until a person reads it. `--reviewed` opts out of that flag.
 - `stats`: per-language translated and reviewed counts.
 
@@ -110,8 +110,21 @@ The CDN serves `resources/localization` off `main`, so a language merged there i
 Three layers, cheapest first.
 
 - POEdit checks format specifiers live, while the translator types.
-- `localization-check` in CI runs `tools/localization.py check` on Linux in under a minute: generated files current, no `##` in any string, printf specifiers matching English, non-empty and unique English text for every `windows.*` key.
-- `run_localization_unit_tests` in `MikanCmd -runTests` is the backstop and the authority. It loads the real tables through the real loader and additionally owns glyph coverage, which is not duplicated in Python because the range table lives in `MkGuiTheme` and a second copy would drift.
+- `localization-check` in CI runs `tools/localization.py check` on Linux in under a minute. It checks:
+	- generated files are current
+	- no `##` in any string
+	- printf specifiers match English
+	- every `windows.*` key has non-empty and unique English text
+	- every codepoint of every string and native name is inside the baked glyph ranges
+- `run_localization_unit_tests` in `MikanCmd -runTests` is the backstop and the authority. It loads the real tables through the real loader and runs the same rules against the real range table.
+
+Glyph coverage in Python reads `resources/font/ui_glyph_ranges.txt`, a text copy of `MkGuiTheme::getUiGlyphRanges` written by `MikanCmd -writeUiGlyphRanges=<path>`. The copy cannot drift unnoticed: `localization_test_glyph_ranges_file_is_current` fails the Windows job when it differs from the baked ranges. Regenerate it whenever the font stack or its ranges change.
+
+### Translation-only changes skip the Windows build
+
+The `changes` job in `build-and-test.yml` classifies each run. When the diff against `main` touches only `localization/*.po` and the generated `resources/localization/<code>.json` tables, the `build`, `format-check` and `ai-usage-check` jobs are skipped, and `localization-check` is the whole gate. A skipped job satisfies a required check, so branch protection is unchanged.
+
+Three files keep the full run even though they sit beside the tables: `en.json` and `manifest.json`, because a new English string or a new language arrives with code, and `ui_glyph_ranges.txt`, because only the Windows job can verify it.
 
 The CDN pin matters here. `LocalizationManager::startRemoteFetch` fetches from `@main` rather than a version tag, because jsDelivr caches a tag permanently and the point of remote localization is that a fix reaches users without a build. The consequence is that CI is the only gate between a merged typo and every installed build's next fetch.
 

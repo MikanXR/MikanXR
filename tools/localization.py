@@ -28,6 +28,7 @@ disk differs from what this tool would write.
 """
 
 import argparse
+import bisect
 import json
 import sys
 from collections import OrderedDict
@@ -43,6 +44,7 @@ SOURCE_DIR = REPO_ROOT / "localization"
 TABLE_DIR = REPO_ROOT / "resources" / "localization"
 LANGUAGES_FILE = SOURCE_DIR / "languages.json"
 TEMPLATE_FILE = SOURCE_DIR / "mikan.pot"
+GLYPH_RANGES_FILE = REPO_ROOT / "resources" / "font" / "ui_glyph_ranges.txt"
 ENGLISH_CODE = "en"
 
 PRINTF_FLAG_CHARS = "-+ #0"
@@ -232,6 +234,51 @@ def validate_translation(code, key, english_text, translated, problems):
             f"{code}: '{key}' printf specifiers do not match en "
             f"({''.join('%' + spec for spec in english_specs) or 'none'} vs "
             f"{''.join('%' + spec for spec in translated_specs) or 'none'})"
+        )
+
+
+# -- glyph coverage ----
+# Mirrors isTextRenderableWithUiGlyphs in src/Libraries/MikanGUI/Private/MkGuiTheme.cpp
+# over the ranges that file's formatUiGlyphRanges wrote out. The font atlas is
+# baked into the build, so a codepoint outside these ranges draws as an empty
+# box however correct the translation is.
+def load_glyph_ranges(problems):
+    """Return the baked ranges as parallel sorted lists (firsts, lasts)."""
+    if not GLYPH_RANGES_FILE.exists():
+        problems.append(f"{GLYPH_RANGES_FILE.name}: missing (write it with `MikanCmd -writeUiGlyphRanges=<path>`)")
+        return None
+
+    firsts = []
+    lasts = []
+    for line in read_text(GLYPH_RANGES_FILE).splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        first, _, last = line.partition("-")
+        firsts.append(int(first, 16))
+        lasts.append(int(last, 16))
+    return firsts, lasts
+
+
+def find_unrenderable_codepoint(text, glyph_ranges):
+    firsts, lasts = glyph_ranges
+    for character in text:
+        codepoint = ord(character)
+        if codepoint < 0x20:
+            continue  # control characters (a line break) are not glyphs
+        index = bisect.bisect_right(firsts, codepoint) - 1
+        if index < 0 or codepoint > lasts[index]:
+            return codepoint
+    return None
+
+
+def validate_glyphs(code, key, text, glyph_ranges, problems):
+    if glyph_ranges is None:
+        return
+    codepoint = find_unrenderable_codepoint(text, glyph_ranges)
+    if codepoint is not None:
+        problems.append(
+            f"{code}: '{key}' uses {chr(codepoint)} (U+{codepoint:04X}), which is outside the baked glyph ranges"
         )
 
 
@@ -425,6 +472,7 @@ def build_outputs():
 
     flat_english = flatten(sections)
     validate_english(flat_english, problems)
+    glyph_ranges = load_glyph_ranges(problems)
 
     outputs[TEMPLATE_FILE] = render_catalog(build_template(flat_english))
 
@@ -461,6 +509,11 @@ def build_outputs():
                     continue
                 validate_translation(code, entry.msgctxt, entry.msgid, entry.msgstr, problems)
                 translations[entry.msgctxt] = (entry.msgstr, "fuzzy" in entry.flags)
+
+        # The native name is drawn in the language picker, so it has to render too
+        validate_glyphs(code, "_meta.nativeName", native_name, glyph_ranges, problems)
+        for key, (translated, _) in translations.items():
+            validate_glyphs(code, key, translated, glyph_ranges, problems)
 
         text, language_counts = render_table(code, native_name, sections, translations)
         outputs[TABLE_DIR / f"{code}.json"] = text
