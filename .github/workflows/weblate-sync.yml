@@ -8,9 +8,10 @@ name: Weblate Sync
 #
 # This workflow builds the branch a pull request can be made from: `weblate`
 # plus one commit that regenerates the tables, force-pushed to `weblate-sync`.
-# Two branches because Weblate does not force its pushes. A commit it does not
-# have on `weblate` would make its next push fail, so Weblate is the only
-# writer of `weblate` and this workflow is the only writer of `weblate-sync`.
+# Two branches because Weblate rebases its pending commits whenever main moves
+# and force-pushes the result, which would discard a commit added to `weblate`
+# here. So Weblate is the only writer of `weblate` and this workflow is the only
+# writer of `weblate-sync`.
 #
 # The push and the pull request are made with the WEBLATE_SYNC_TOKEN secret, a
 # personal access token, not the workflow's own token. GitHub starts no
