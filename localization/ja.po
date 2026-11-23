@@ -1,11 +1,6 @@
 #
 msgid ""
-msgstr ""
-"Project-Id-Version: MikanXR\n"
-"Language: ja\n"
-"MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
-"Content-Transfer-Encoding: 8bit\n"
+msgstr "Project-Id-Version: MikanXR\nLanguage: ja\nMIME-Version: 1.0\nContent-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nPO-Revision-Date: 2026-11-23 08:41+0000\nLast-Translator: Brendan Walker <bwalker81@users.noreply.hosted.weblate.org>\nLanguage-Team: Japanese <https://hosted.weblate.org/projects/mikanxr/mikanxr/ja/>\nPlural-Forms: nplurals=1; plural=0;\nX-Generator: Weblate 2026.12.dev0\n"
 
 #. Section: CEFTextureSourceComponent
 #, fuzzy
@@ -26,10 +21,9 @@ msgid "Target camera already has a tracking mount. Use the standard alignment ca
 msgstr "ターゲットカメラには既にトラッキングマウントが設定されています。標準の位置合わせ校正を使用してください。"
 
 #. Section: alignCameraByOriginMarker
-#, fuzzy
 msgctxt "alignCameraByOriginMarker.begin"
 msgid "Begin"
-msgstr "開始"
+msgstr "スタート"
 
 #. Section: alignCameraByOriginMarker
 #, fuzzy
