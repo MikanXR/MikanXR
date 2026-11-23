@@ -1,6 +1,6 @@
 # Proposal: Hosted Weblate for community translations
 
-Accepted and in progress. The Weblate project is connected and a first translation has travelled from the web editor to a pull request. What remains is listed under Verifying it works. The existing workflow (clone, edit `localization/<code>.po` in POEdit, open a pull request) is described in [TRANSLATING.md](../TRANSLATING.md) and stays available either way.
+Accepted and in place. The Weblate project is connected and every step under Verifying it works has passed. What remains is the Libre plan request. The existing workflow (clone, edit `localization/<code>.po` in POEdit, open a pull request) is described in [TRANSLATING.md](../TRANSLATING.md) and stays available either way.
 
 The alternative evaluated alongside this one is in [crowdin-integration.md](./crowdin-integration.md).
 
@@ -123,9 +123,9 @@ Weblate rechecks a Libre billing daily. A missing license, an unmet condition, o
 - [x] `ja.json` shows `reviewedCount` incremented by exactly one, and the diff of `ja.po` is the edited string rather than a whole-file reformat.
 - [x] The required checks report on the pull request, with `build`, `format-check` and `ai-usage-check` skipped and `localization-check` passing.
 - [x] When `main` moves under a pending translation, Weblate rebases, force-pushes `weblate`, and the pull request updates.
-- [ ] After a merge with a merge commit, Weblate rebases onto `main` without reporting a conflict and a second edit pushes cleanly.
-- [ ] A translation containing `##`, entered through the Weblate editor, fails the `Weblate Sync` run naming the key and leaves the pull request at its last good state. Weblate's own checks should also flag it before it gets that far.
-- [ ] A translation containing a character outside the baked glyph ranges fails the same way.
+- [x] After a merge with a merge commit, Weblate rebases onto `main` without reporting a conflict and a second edit pushes cleanly.
+- [x] A translation containing `##`, entered through the Weblate editor, fails the `Weblate Sync` run naming the key and leaves the pull request at its last good state. Weblate's own checks should also flag it before it gets that far.
+- [x] A translation containing a character outside the baked glyph ranges fails the same way.
 
 ---
 
