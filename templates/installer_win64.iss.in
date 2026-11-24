@@ -16,6 +16,7 @@ AppUpdatesURL=https://github.com/MikanXR/MikanXR/releases
 DefaultDirName={autopf}\MikanXR
 DefaultGroupName=MikanXR
 LicenseFile=${APP_LICENSE_FILE}
+SetupIconFile=${APP_ICON_FILE}
 OutputDir=${APP_OUTPUT_DIR}
 OutputBaseFilename=Mikan_${APP_VERSION}_Win64_Setup
 Compression=lzma

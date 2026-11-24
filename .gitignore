@@ -67,6 +67,9 @@ dist*
 # Auto-downloaded Dependencies
 deps
 
+# The MikanXR branding checkout, which is not part of this repository
+/branding/official/
+
 #vscode
 .vs
 .vscode/*

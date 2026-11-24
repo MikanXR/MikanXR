@@ -92,6 +92,8 @@ bool SdlWindowContextManager::startup()
 
 void SdlWindowContextManager::shutdown()
 {
+	closeSplashWindow();
+
 	// Free cursors
 	if (cursor_default != nullptr)
 	{
@@ -144,6 +146,69 @@ void SdlWindowContextManager::pollEvents()
 	while (SDL_PollEvent(&event))
 	{
 		m_events.push_back(event);
+	}
+}
+
+void SdlWindowContextManager::pumpEvents()
+{
+	SDL_PumpEvents();
+
+	// The splash has no render loop, so put its image back after anything covered it
+	if (m_splashWindow != nullptr)
+	{
+		SDL_UpdateWindowSurface(m_splashWindow);
+	}
+}
+
+bool SdlWindowContextManager::openSplashWindow(const std::string& title, const uint8_t* rgbaPixels, int width,
+											   int height)
+{
+	assert(m_sdlInitialized);
+
+	closeSplashWindow();
+
+	const float displayScale= getPrimaryDisplayContentScale();
+	const SDL_WindowFlags windowFlags= (SDL_WindowFlags)(SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI);
+	m_splashWindow= SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+									 (int)(width * displayScale), (int)(height * displayScale), windowFlags);
+	if (m_splashWindow == nullptr)
+	{
+		MIKAN_LOG_WARNING("SdlWindowContextManager::openSplashWindow")
+			<< "Unable to create splash window: " << SDL_GetError();
+		return false;
+	}
+
+	// The surface only borrows the caller's pixels, and the blit below is the copy
+	SDL_Surface* imageSurface= SDL_CreateRGBSurfaceWithFormatFrom(const_cast<uint8_t*>(rgbaPixels), width, height, 32,
+																  width * 4, SDL_PIXELFORMAT_RGBA32);
+	SDL_Surface* windowSurface= SDL_GetWindowSurface(m_splashWindow);
+	const bool bDrawn= imageSurface != nullptr && windowSurface != nullptr
+					   && SDL_BlitScaled(imageSurface, nullptr, windowSurface, nullptr) == 0
+					   && SDL_UpdateWindowSurface(m_splashWindow) == 0;
+	if (imageSurface != nullptr)
+	{
+		SDL_FreeSurface(imageSurface);
+	}
+
+	if (!bDrawn)
+	{
+		MIKAN_LOG_WARNING("SdlWindowContextManager::openSplashWindow")
+			<< "Unable to draw splash image: " << SDL_GetError();
+		closeSplashWindow();
+		return false;
+	}
+
+	SDL_PumpEvents();
+
+	return true;
+}
+
+void SdlWindowContextManager::closeSplashWindow()
+{
+	if (m_splashWindow != nullptr)
+	{
+		SDL_DestroyWindow(m_splashWindow);
+		m_splashWindow= nullptr;
 	}
 }
 

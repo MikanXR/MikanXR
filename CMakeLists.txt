@@ -24,6 +24,7 @@ include(cmake/ThirdParty.cmake)
 # ARCH_LABEL set in Environment.cmake
 set(MIKAN_ARCH_INSTALL_PATH "${MIKAN_ROOT_INSTALL_PATH}/${ARCH_LABEL}")
 
+include(cmake/Branding.cmake)
 include(cmake/Installer.cmake)
 include(cmake/ClangFormat.cmake)
 include(cmake/Localization.cmake)

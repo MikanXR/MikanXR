@@ -46,6 +46,21 @@ void SdlWindowContext::useExistingGLContext()
 	m_bOwnsGLContext= false;
 }
 
+void SdlWindowContext::startHidden()
+{
+	assert(m_sdlWindow == nullptr); // must be called before startup()
+	m_bStartHidden= true;
+}
+
+void SdlWindowContext::show()
+{
+	if (m_sdlWindow != nullptr && !m_isShown)
+	{
+		SDL_ShowWindow(m_sdlWindow);
+		m_isShown= true;
+	}
+}
+
 void SdlWindowContext::setTitle(const std::string& title)
 {
 	m_title= title;
@@ -83,6 +98,10 @@ bool SdlWindowContext::startup()
 
 	SDL_WindowFlags window_flags=
 		(SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+	if (m_bStartHidden)
+	{
+		window_flags= (SDL_WindowFlags)(window_flags | SDL_WINDOW_HIDDEN);
+	}
 	m_sdlWindow= SDL_CreateWindow(m_title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, m_width, m_height,
 								  window_flags);
 	if (m_sdlWindow == nullptr)
@@ -152,7 +171,7 @@ bool SdlWindowContext::startup()
 	{
 		m_windowId= SDL_GetWindowID(m_sdlWindow);
 
-		m_isShown= true;
+		m_isShown= !m_bStartHidden;
 		m_hasMouseFocus= true;
 		m_hasKeyboardFocus= true;
 	}

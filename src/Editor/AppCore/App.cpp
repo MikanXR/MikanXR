@@ -42,6 +42,8 @@
 
 #include "MikanCefApp.h"
 
+#include "stb_image.h"
+
 #define SETTINGS_SAVE_COOLDOWN 3.f
 
 //-- static members -----
@@ -117,6 +119,8 @@ int App::exec(int argc, char** argv)
 
 		// The failure left no window to draw a modal in, so explain it with a native dialog.
 		// Dismissing it falls through to shutdown, closing the app.
+		m_windowManager->closeSplashWindow();
+
 		const std::string fatalMessage= buildFatalStartupErrorMessage(FatalStartupError::get());
 		if (!fatalMessage.empty())
 		{
@@ -243,6 +247,12 @@ bool App::startup(int argc, char** argv)
 
 	if (success)
 	{
+		// Up before the slow steps that follow, Chromium's startup and the project load
+		openSplashWindow();
+	}
+
+	if (success)
+	{
 		CefSettings settings;
 		settings.windowless_rendering_enabled= true;
 		settings.multi_threaded_message_loop= false;
@@ -354,6 +364,54 @@ void App::tick()
 
 	// Update app settings auto-save
 	m_appSettings->updateAutoSave(deltaSeconds);
+
+	// The first frame has been drawn, so the main window has something to show
+	if (!m_bMainWindowRevealed)
+	{
+		revealMainWindow();
+	}
+}
+
+void App::openSplashWindow()
+{
+#ifdef _WIN32
+	// The splash image is compiled into the executable by its resource script
+	const HMODULE module= GetModuleHandle(nullptr);
+	const HRSRC resourceInfo= FindResourceA(module, "MIKAN_SPLASH", MAKEINTRESOURCEA(10)); // RT_RCDATA
+	const HGLOBAL resourceHandle= resourceInfo != nullptr ? LoadResource(module, resourceInfo) : nullptr;
+	const void* encodedBytes= resourceHandle != nullptr ? LockResource(resourceHandle) : nullptr;
+	if (encodedBytes == nullptr)
+	{
+		MIKAN_LOG_WARNING("App::openSplashWindow") << "No splash image in the executable";
+		return;
+	}
+
+	int width= 0;
+	int height= 0;
+	int channelCount= 0;
+	stbi_uc* rgbaPixels= stbi_load_from_memory((const stbi_uc*)encodedBytes, (int)SizeofResource(module, resourceInfo),
+											   &width, &height, &channelCount, 4);
+	if (rgbaPixels == nullptr)
+	{
+		MIKAN_LOG_WARNING("App::openSplashWindow") << "Unable to decode the splash image: " << stbi_failure_reason();
+		return;
+	}
+
+	m_windowManager->openSplashWindow("MikanXR", rgbaPixels, width, height);
+	stbi_image_free(rgbaPixels);
+#endif //_WIN32
+}
+
+void App::revealMainWindow()
+{
+	m_bMainWindowRevealed= true;
+
+	if (m_mainWindow != nullptr)
+	{
+		m_mainWindow->getMkWindowContext()->show();
+	}
+
+	m_windowManager->closeSplashWindow();
 }
 
 void App::tickWindows(const float deltaSeconds)

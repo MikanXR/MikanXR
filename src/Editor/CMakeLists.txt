@@ -781,7 +781,10 @@ set_target_properties(MikanEditor PROPERTIES FOLDER MikanLibraries)
 
 # GUI application (WinMain entry point)
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-set(APP_RESOURCE_WINDOWS "${CMAKE_CURRENT_SOURCE_DIR}/winapp_resources.rc")
+# The resource script names the branding folder's icon and splash image
+set(APP_RESOURCE_WINDOWS "${CMAKE_CURRENT_BINARY_DIR}/winapp_resources.rc")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/winapp_resources.rc.in" "${APP_RESOURCE_WINDOWS}" @ONLY)
+set_source_files_properties("${APP_RESOURCE_WINDOWS}" PROPERTIES OBJECT_DEPENDS "${MIKAN_BRANDING_ICON};${MIKAN_BRANDING_SPLASH}")
 add_executable(Mikan WIN32 "${CMAKE_CURRENT_LIST_DIR}/AppCore/EntryPoint.cpp" ${APP_RESOURCE_WINDOWS})
 # Embed the application manifest so Windows reports the real OS version to all
 # CEF subprocess instances (which reuse Mikan.exe as the helper process).
@@ -799,7 +802,7 @@ target_link_libraries(Mikan PRIVATE MikanEditor)
 # Command-line tool (console subsystem, main() entry point).
 # Links the same editor object code but uses a stripped-down CmdApp that only
 # inits the logger + runs commands
-add_executable(MikanCmd "${CMAKE_CURRENT_LIST_DIR}/AppCore/CmdEntryPoint.cpp")
+add_executable(MikanCmd "${CMAKE_CURRENT_LIST_DIR}/AppCore/CmdEntryPoint.cpp" ${APP_RESOURCE_WINDOWS})
 target_link_libraries(MikanCmd PRIVATE MikanEditor)
 # Mikan and MikanCmd share an output directory, so only Mikan copies the runtime
 # DLLs (see copy_mikan_runtime_deps below). MikanCmd depends on Mikan so those

@@ -18,12 +18,16 @@ public:
 	virtual bool startup() override;
 	virtual void shutdown() override;
 	virtual void pollEvents() override;
+	virtual void pumpEvents() override;
 
 	virtual bool getIsInitialized() const override { return m_sdlInitialized; }
 	virtual const std::string& getGlslVersion() const override { return m_glslVersion; }
 	virtual float getPrimaryDisplayContentScale() const override;
 	virtual void setMouseCursor(const std::string& cursorName) override;
 	virtual void showErrorMessageBox(const std::string& title, const std::string& message) override;
+
+	virtual bool openSplashWindow(const std::string& title, const uint8_t* rgbaPixels, int width, int height) override;
+	virtual void closeSplashWindow() override;
 
 	virtual void pushCurrentWindowContext(IMkWindowContext* window) override;
 	virtual IMkWindowContext* getCurrentWindowContext() const override;
@@ -46,4 +50,6 @@ private:
 	SDL_Cursor* cursor_unavailable= nullptr;
 
 	std::vector<SDL_Event> m_events;
+
+	SDL_Window* m_splashWindow= nullptr;
 };
