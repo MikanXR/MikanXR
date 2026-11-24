@@ -120,6 +120,8 @@ public:
 protected:
 	bool startup(int argc, char** argv);
 	void shutdown();
+	void openSplashWindow();
+	void revealMainWindow();
 
 	void tick();
 	void tickWindows(const float deltaSeconds);
@@ -152,6 +154,9 @@ private:
 
 	// The main window for the application
 	MainWindow* m_mainWindow= nullptr;
+
+	// False until the main window, which starts hidden, has been shown in place of the splash
+	bool m_bMainWindowRevealed= false;
 
 	// Flag requesting that we exit the update loop
 	bool m_bShutdownRequested= false;

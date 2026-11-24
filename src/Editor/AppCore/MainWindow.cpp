@@ -172,9 +172,13 @@ bool MainWindow::startup()
 		auto _t0= std::chrono::high_resolution_clock::now();                                                           \
 		expr;                                                                                                          \
 		auto _t1= std::chrono::high_resolution_clock::now();                                                           \
+		m_ownerApp->getWindowManager()->pumpEvents();                                                                  \
 		MIKAN_LOG_INFO("MainWindow::startup")                                                                          \
 			<< label ": " << std::chrono::duration_cast<std::chrono::milliseconds>(_t1 - _t0).count() << "ms";         \
 	} while (0)
+
+	// The window stays hidden behind the splash until the app has drawn its first frame
+	m_mkWindowContext->startHidden();
 
 	auto windowTitle= StringUtils::stringify("MikanXR v", MIKAN_RELEASE_VERSION_STRING);
 	if (success && !startupWindow(windowTitle, k_window_pixel_width, k_window_pixel_height))

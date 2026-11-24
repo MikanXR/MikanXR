@@ -29,6 +29,8 @@ public:
 
 	virtual void enableGLDataSharing() {}  // enable GL resource sharing before startup()
 	virtual void useExistingGLContext() {} // attach to the currently active GL context instead of creating a new one
+	virtual void startHidden() {}          // create the window hidden, before startup()
+	virtual void show() {}                 // show a window that started hidden
 
 	virtual const char* getTitle() const= 0;
 	virtual float getWidth() const= 0;

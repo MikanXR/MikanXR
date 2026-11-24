@@ -38,6 +38,7 @@ The living plan: what is in flight now, what comes next, and the open questions.
 - [ ] Steam package. The launcher lives in MikanXR/MikanLauncher (Rust with a Slint window), which also owns the Package action. That action assembles the package from the release zips its `components.json` pins for MikanXR, MikanTrack, MikanStudio and the VNyan and Warudo plugins. Next:
 	- [ ] Upload to Steam from the Package action
 	- [ ] MikanStudio sets the package's Steam app id. It sets none, so a packaged run comes up under app 480
+	- [ ] The commissioned logo art replaces the placeholder in the private MikanXR/MikanBranding, tagged `v2`, and each app's pin moves to it
 
 
 ## Later

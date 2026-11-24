@@ -63,6 +63,8 @@ public:
 	virtual void enableGLDataSharing() override;
 	bool isGlDataSharingEnabled() const { return m_bGLDataSharingEnabled; }
 	virtual void useExistingGLContext() override;
+	virtual void startHidden() override;
+	virtual void show() override;
 
 	bool isMinimized() const { return m_isMinimized; }
 	bool isShown() const { return m_isShown; }
@@ -82,6 +84,7 @@ private:
 
 	bool m_bGLDataSharingEnabled= false;
 	bool m_bOwnsGLContext= true; // false when attaching to an existing GL context
+	bool m_bStartHidden= false;  // true when the window is created hidden and shown later
 
 	std::string m_title= "Mikan Window";
 

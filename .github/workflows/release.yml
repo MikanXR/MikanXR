@@ -29,6 +29,8 @@ jobs:
     # Otherwise the server can pin to local disk and nothing persists.
     env:
       SCCACHE_GHA_ENABLED: "true"
+      # A step cannot read a secret in its condition, so the branding checkout tests this
+      HAS_BRANDING_KEY: ${{ secrets.MIKAN_BRANDING_DEPLOY_KEY != '' }}
 
     steps:
       # ---------------------------------------------------------------
@@ -40,6 +42,30 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: false
+
+      # ---------------------------------------------------------------
+      # The MikanXR icon and splash art are not part of this repository.
+      # A run without the key, a fork's for one, builds with the generic
+      # set. The checkout sits outside deps/ so it never enters that cache.
+      # ---------------------------------------------------------------
+      - name: Checkout branding
+        if: env.HAS_BRANDING_KEY == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: MikanXR/MikanBranding
+          ref: v1
+          ssh-key: ${{ secrets.MIKAN_BRANDING_DEPLOY_KEY }}
+          path: branding/official
+          persist-credentials: false
+
+      - name: Require branding for a tagged release
+        if: github.repository_owner == 'MikanXR' && startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          if [ ! -f branding/official/mikanxr/icon.ico ]; then
+            echo "::error::A tagged MikanXR release needs the branding checkout, and it is missing. Check the MIKAN_BRANDING_DEPLOY_KEY secret."
+            exit 1
+          fi
 
       - name: Init required submodules
         shell: bash

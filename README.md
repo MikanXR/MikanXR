@@ -34,3 +34,5 @@ The app's UI text is currently machine translated. MikanXR uses [Weblate](https:
 
 # Usage in other projects
 Feel free to use this code as-is, modified or adapted in other projects (commercial or otherwise). It's currently intended to be a reference that I hope other can make use of in any way they see fit.
+
+The MikanXR name and logo are not covered by the code's license. A build from this repository uses a generic icon in their place.

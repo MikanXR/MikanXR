@@ -13,6 +13,7 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 		string(REPLACE "/" "\\" APP_PAYLOAD_DIR "${MIKAN_ARCH_INSTALL_PATH}")
 		string(REPLACE "/" "\\" APP_OUTPUT_DIR "${MIKAN_ROOT_INSTALL_PATH}")
 		string(REPLACE "/" "\\" APP_LICENSE_FILE "${ROOT_DIR}/LICENSE")
+		string(REPLACE "/" "\\" APP_ICON_FILE "${MIKAN_BRANDING_ICON}")
 		configure_file(${ROOT_DIR}/templates/installer_win64.iss.in ${CMAKE_CURRENT_BINARY_DIR}/installer_win64.iss)
 
 		# Create a simple cmake script that invokes the Inno Install script compiler
