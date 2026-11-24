@@ -1,6 +1,6 @@
 # Proposal: Hosted Weblate for community translations
 
-Accepted and in place. The Weblate project is connected and every step under Verifying it works has passed. What remains is the Libre plan request. The existing workflow (clone, edit `localization/<code>.po` in POEdit, open a pull request) is described in [TRANSLATING.md](../TRANSLATING.md) and stays available either way.
+Accepted and in place. The Weblate project is connected and every step under Verifying it works has passed. What remains is Weblate's approval of the Libre hosting request. The existing workflow (clone, edit `localization/<code>.po` in POEdit, open a pull request) is described in [TRANSLATING.md](../TRANSLATING.md) and stays available either way.
 
 The alternative evaluated alongside this one is in [crowdin-integration.md](./crowdin-integration.md).
 
@@ -96,12 +96,21 @@ A project-scoped API token is enough to read the component's settings and reposi
 
 ## Libre plan
 
-The project was created on a trial of the paid 640k plan (billing 12758), which expires on 2026-12-06. The billing page shows the Libre checklist and the "Request approval for Libre hosting" button only on a billing whose plan is free, and "Change plan" lists only paid plans. "Set up your libre project" on the hosting page creates a second billing and workspace rather than converting the existing one. So the switch goes through Weblate support.
+The project was created on a trial of the paid 640k plan (billing 12758). The billing page shows the Libre checklist and the "Request approval for Libre hosting" button only on a billing whose plan is free, and "Change plan" lists only paid plans. "Set up your libre project" on the hosting page creates a second billing and workspace rather than converting the existing one. So the switch went through Weblate support, who moved the billing to a Libre trial. The approval request is then made from the billing page.
 
 - [x] Project access control is Public. The Libre plan allows no private projects and no restricted components.
 - [x] `README.md` mentions Weblate and links the project.
 - [x] Support asked on 2026-11-23 to switch billing 12758 to the Libre plan.
-- [ ] Support approves the plan, or switches the billing to a Libre trial. In the second case the checklist on the billing page has to be all green, and the request is submitted there with a description of the project and the maintainer's relation to it.
+- [x] Support switched the billing to a Libre trial.
+- [x] The project has translation instructions set, which clears the one warning the billing page raised on the `MikanXR` component.
+- [x] Approval requested from the billing page on 2026-11-24, with a description of the project and the maintainer's relation to it.
+- [ ] Weblate approves the request. The review is manual and usually takes about a week.
+
+The billing page lists diagnostics per component, and the rest of them need no action:
+
+- The push URL and repository hook warnings sit on the `Glossary` component. Weblate keeps the glossary in a local repository of its own, so it has no remote.
+- The offer to migrate to the Weblate GitHub App is declined for the reason under [Weblate setup](#weblate-setup).
+- The "Update POT file" add-on stays off. `tools/localization.py` owns `mikan.pot`.
 
 The conditions the request is judged on:
 
