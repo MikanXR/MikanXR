@@ -51,7 +51,6 @@ struct MIKAN_API
 	FIELD() MikanStageID stage_id= INVALID_MIKAN_ID;
 	FIELD() MikanTrackingMountID tracking_mount_id= INVALID_MIKAN_ID;
 	FIELD() MikanVideoSourceID video_source_id= INVALID_MIKAN_ID;
-	FIELD() MikanLightID light_environment_id= INVALID_MIKAN_ID;
 	FIELD() int tracking_frame_delay= 0;
 	FIELD() MikanCameraFrameSyncMode frame_sync_mode= MikanCameraFrameSyncMode_Auto;
 	FIELD() bool pose_driven_per_frame= false; ///< read only: a tracking mount or frame-coupled source drives the pose

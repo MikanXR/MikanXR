@@ -41,7 +41,7 @@ Creation entry points: `addNewObjectByTypedDefinition(initFunc)` in C++, and `ad
 
 Primary component families (each with a matching `*Definition` config class):
 
-- Scene structure: `SceneComponent` and `StageComponent` (both extend `TransformComponent`; a scene attaches to a stage via `attachToStage` and names the camera it is shot through in `camera_id`, a stage references a tracking volume and stores stage bounds).
+- Scene structure: `SceneComponent` and `StageComponent` (both extend `TransformComponent`; a scene attaches to a stage via `attachToStage` names the camera it is shot through in `camera_id`, and names its lighting probe in `light_environment_id`, a stage references a tracking volume and stores stage bounds).
 - Spatial: `AnchorComponent`, `MarkerComponent` (ArUco id + physical length in mm), `TrackingMountComponent` (binds a VR device by path/socket), `TrackingVolumeComponent` with `VRTrackingVolumeComponent` / `MarkerTrackingVolumeComponent` subclasses, `VRDeviceComponent` (runtime-only, under `VRObjectSystem`).
 - Camera/video: `CameraComponent` (stage id, tracking mount id, video source id, aperture offset, frame sync mode, and the runtime-only pose-driven flag that resolves the mode's auto setting), `VideoSourceComponent` with `USBVideoSourceComponent` / `NetworkVideoSourceComponent` / `ARKitVideoSourceComponent` / `FileVideoSourceComponent` subclasses (see [videosources.md](./videosources.md)).
 - Compositing inputs: `CompositorComponent`, `TextureSourceComponent` with `ClientTextureSourceComponent` / `SpoutTextureSourceComponent` / `CEFTextureSourceComponent` (see [compositor.md](./compositor.md)).
@@ -78,7 +78,7 @@ The scene hierarchy is fixed by type, not by convention. `TransformComponent::ca
 | `CameraComponent` | `StageComponent` |
 | `SceneComponent` | `StageComponent` |
 | `DMXFixtureComponent` (`RGBSpotLightComponent`, `RGBPixelGridComponent`) | `StageComponent` |
-| `LightEnvironmentComponent` | `CameraComponent` |
+| `LightEnvironmentComponent` | `SceneComponent` |
 | `AnchorComponent`, `StencilComponent`, `ShapeComponent` | `SceneComponent`, or one another |
 
 The last row is the scene-actor rule, shared by the three types through `isValidSceneActorParent` (`src/Editor/ECS/Scene/SceneActorParenting.h`). Every other `TransformComponent` subclass keeps the permissive base: colliders, static meshes, gizmo handles and VR device sockets are attached internally to their own object's root and are not part of the authored hierarchy. Attaching into one's own subtree is refused for all of them.
@@ -89,11 +89,11 @@ A `CompositorComponent` is not a `TransformComponent`, so the parent table does 
 
 - `addNewScene` creates the scene and then its compositor inside one composite transaction ([transactions.md](./transactions.md)). The outliner's Add Scene, the client `SystemCreateObject` request, and `component create` all route through it
 
-- `deleteObject` clears `current_scene_id` when it names the scene, removes the compositor, then the scene, in one composite transaction
+- `deleteObject` clears `current_scene_id` when it names the scene, removes the compositor and the scene's lighting probe, then the scene, in one composite transaction
 
 - `CompositorObjectSystem` refuses the generic create paths and reports `allowsObjectDestroyRequests()` false, which the outliner, the client `SystemDestroyObject` request, and `component destroy` all honor. Undo and redo recreate and destroy a compositor by its saved definition and are not refused
 
-A project saved while a scene could hold several compositors is rewritten on load by `ProjectHierarchyMigration` (`src/Editor/Project/`), which runs on the raw JSON beside the legacy content and take migrations. Each scene keeps the compositor it displayed, or its first. Every other compositor moves to a new, empty scene on the same stage, named from the compositor, and `AppStage_Project` lists those moves in a message box on enter. The camera each compositor named then moves to its scene. The new scenes are empty because a compositor composites only its own scene's stencils and shapes (`CompositorComponent::ownsSceneObject`).
+A project saved while a scene could hold several compositors is rewritten on load by `ProjectHierarchyMigration` (`src/Editor/Project/`), which runs on the raw JSON beside the legacy content and take migrations. Each scene keeps the compositor it displayed, or its first. Every other compositor moves to a new, empty scene on the same stage, named from the compositor, and `AppStage_Project` lists those moves in a message box on enter. The camera each compositor named then moves to its scene, and each lighting probe moves from its camera to a scene shot through that camera (the current scene first). A probe left with no scene is dropped and listed in a second notice. The new scenes are empty because a compositor composites only its own scene's stencils and shapes (`CompositorComponent::ownsSceneObject`).
 
 ---
 
@@ -101,7 +101,7 @@ A project saved while a scene could hold several compositors is rewritten on loa
 
 Every stage draws in the project viewport, so two stages can be aligned against each other. Scene actors do not: a scene draws when it is the current scene, or when its `force_render` flag is set. Without that, two scenes on one stage stack their geometry on top of each other, which is unreadable in the editor and casts inactive-scene shadows on a client. `force_render` on the current scene is a no-op.
 
-`SceneComponent::shouldRender` states the rule and the free `isSceneGeometryRendered` (both in `src/Editor/ECS/Scene/SceneComponent.h`) applies it to one object, by walking its root component up the transform chain to the first `SceneComponent`. An object under no scene, which is every stage-parented camera, light and tracking volume, always draws.
+`SceneComponent::shouldRender` states the rule and the free `isSceneGeometryRendered` (both in `src/Editor/ECS/Scene/SceneComponent.h`) applies it to one object, by walking its root component up the transform chain to the first `SceneComponent`. An object under no scene, which is every stage-parented camera, light and tracking volume, always draws. A lighting probe is scene-parented, so `AppStage_Project::renderEnvironmentLightComponents` passes the same predicate and a probe draws only while its scene does.
 
 That predicate is passed at two seams, so nothing is drawn that cannot be clicked and nothing is clicked that is not drawn:
 

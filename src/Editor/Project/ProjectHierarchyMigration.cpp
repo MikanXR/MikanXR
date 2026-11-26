@@ -32,6 +32,13 @@ const char* const k_relativePositionKey= "relative_position";
 const char* const k_displayCompositorIdKey= "display_compositor_id";
 const char* const k_ownerSceneIdKey= "owner_scene_id";
 const char* const k_cameraIdKey= "camera_id";
+const char* const k_currentSceneIdKey= "current_scene_id";
+const char* const k_cameraSystemKey= "CameraObjectSystem";
+const char* const k_cameraPoolKey= "CameraComponentPool";
+const char* const k_cameraStageIdKey= "stage_id";
+const char* const k_lightEnvironmentSystemKey= "LightEnvironmentSystem";
+const char* const k_lightEnvironmentPoolKey= "LightEnvironmentComponentPool";
+const char* const k_lightEnvironmentIdKey= "light_environment_id";
 
 const int k_invalidId= -1;
 
@@ -128,6 +135,122 @@ configuru::Config makeScene(int sceneId, const std::string& sceneName, const con
 	}
 
 	return scene;
+}
+
+configuru::Config* findDefinitionById(configuru::Config& definitions, int componentId)
+{
+	for (configuru::Config& definition : definitions.as_array())
+	{
+		if (definition.get_or<int>(k_componentIdKey, k_invalidId) == componentId)
+			return &definition;
+	}
+
+	return nullptr;
+}
+
+// The scene a camera's probe goes to: a probe-less scene shot through the camera,
+// the current scene first, else a probe-less scene on the camera's stage
+configuru::Config* findSceneForCameraProbe(configuru::Config& scenes, int cameraId, int cameraStageId,
+										   int currentSceneId)
+{
+	configuru::Config* firstUser= nullptr;
+	configuru::Config* firstOnStage= nullptr;
+	for (configuru::Config& scene : scenes.as_array())
+	{
+		if (scene.get_or<int>(k_lightEnvironmentIdKey, k_invalidId) != k_invalidId)
+			continue;
+
+		if (scene.get_or<int>(k_cameraIdKey, k_invalidId) == cameraId)
+		{
+			if (scene.get_or<int>(k_componentIdKey, k_invalidId) == currentSceneId)
+				return &scene;
+			if (!firstUser)
+				firstUser= &scene;
+		}
+		else if (!firstOnStage && cameraStageId != k_invalidId
+				 && scene.get_or<int>(k_parentTransformIdKey, k_invalidId) == cameraStageId)
+		{
+			firstOnStage= &scene;
+		}
+	}
+
+	return firstUser ? firstUser : firstOnStage;
+}
+
+// Moves each camera's lighting probe to a scene. Returns true when anything changed.
+bool migrateLightingProbes(configuru::Config& projectJson, configuru::Config& scenes, Report& outReport)
+{
+	if (!hasDefinitions(projectJson, k_cameraSystemKey, k_cameraPoolKey))
+		return false;
+
+	bool bChanged= false;
+	const int currentSceneId= projectJson[k_sceneSystemKey].get_or<int>(k_currentSceneIdKey, k_invalidId);
+	configuru::Config& cameras= projectJson[k_cameraSystemKey][k_cameraPoolKey][k_definitionsKey];
+	configuru::Config* probes=
+		hasDefinitions(projectJson, k_lightEnvironmentSystemKey, k_lightEnvironmentPoolKey)
+			? &projectJson[k_lightEnvironmentSystemKey][k_lightEnvironmentPoolKey][k_definitionsKey]
+			: nullptr;
+
+	for (configuru::Config& camera : cameras.as_array())
+	{
+		if (!camera.has_key(k_lightEnvironmentIdKey))
+			continue;
+
+		const int probeId= camera.get_or<int>(k_lightEnvironmentIdKey, k_invalidId);
+		camera.erase(k_lightEnvironmentIdKey);
+		bChanged= true;
+
+		configuru::Config* probe= probes ? findDefinitionById(*probes, probeId) : nullptr;
+		if (!probe)
+			continue;
+
+		configuru::Config* scene=
+			findSceneForCameraProbe(scenes, camera.get_or<int>(k_componentIdKey, k_invalidId),
+									camera.get_or<int>(k_cameraStageIdKey, k_invalidId), currentSceneId);
+		if (scene)
+		{
+			const int sceneId= scene->get_or<int>(k_componentIdKey, k_invalidId);
+
+			(*scene)[k_lightEnvironmentIdKey]= probeId;
+			(*probe)[k_parentTransformIdKey]= sceneId;
+
+			MIKAN_LOG_INFO("ProjectHierarchyMigration")
+				<< "Moved lighting probe '" << probe->get_or<std::string>(k_componentNameKey, "") << "' to scene '"
+				<< scene->get_or<std::string>(k_componentNameKey, "") << "'";
+		}
+	}
+
+	// A probe no scene names has nothing to belong to
+	if (probes)
+	{
+		auto& probeArray= probes->as_array();
+		for (auto probe_it= probeArray.begin(); probe_it != probeArray.end();)
+		{
+			const int probeId= probe_it->get_or<int>(k_componentIdKey, k_invalidId);
+			bool bOwned= false;
+			for (const configuru::Config& scene : scenes.as_array())
+			{
+				bOwned|= scene.get_or<int>(k_lightEnvironmentIdKey, k_invalidId) == probeId
+						 && scene.get_or<int>(k_componentIdKey, k_invalidId)
+								== probe_it->get_or<int>(k_parentTransformIdKey, k_invalidId);
+			}
+
+			if (bOwned)
+			{
+				++probe_it;
+				continue;
+			}
+
+			const std::string probeName= probe_it->get_or<std::string>(k_componentNameKey, "");
+			outReport.droppedProbeNames.push_back(probeName);
+			MIKAN_LOG_INFO("ProjectHierarchyMigration")
+				<< "Dropped lighting probe '" << probeName << "', which no scene could take";
+			probe_it= probeArray.erase(probe_it);
+			bChanged= true;
+		}
+	}
+
+	return bChanged;
 }
 } // namespace
 
@@ -272,6 +395,9 @@ bool migrateProjectJson(configuru::Config& projectJson, Report& outReport)
 		compositor.erase(k_cameraIdKey);
 		bChanged= true;
 	}
+
+	// The lighting probes follow, once every scene knows its camera
+	bChanged|= migrateLightingProbes(projectJson, scenes, outReport);
 
 	// The saved counter moves only when an id was handed out
 	if (nextId != firstNewId)

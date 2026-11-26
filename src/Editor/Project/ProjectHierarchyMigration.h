@@ -18,6 +18,10 @@ class Config;
 //   - the scene's display compositor choice is dropped, since there is nothing
 //     left to choose
 //   - the camera a compositor named moves to the scene that owns it
+//   - a lighting probe moves from its camera to a scene shot through that camera:
+//     the current scene when it is one of them, else the first. A probe whose
+//     camera no scene uses goes to the first scene on that camera's stage. A probe
+//     left with no scene, or whose scene already has one, is dropped
 // Every step keys on the shape it repairs, so a current project is left untouched
 // and a project migrated once is not migrated again.
 namespace ProjectHierarchyMigration
@@ -37,8 +41,10 @@ struct SceneSplit
 struct Report
 {
 	std::vector<SceneSplit> sceneSplits;
+	// The names of the lighting probes that found no scene to belong to
+	std::vector<std::string> droppedProbeNames;
 
-	bool isEmpty() const { return sceneSplits.empty(); }
+	bool isEmpty() const { return sceneSplits.empty() && droppedProbeNames.empty(); }
 };
 
 // Migrates the parsed project JSON in place. Returns true when anything changed.

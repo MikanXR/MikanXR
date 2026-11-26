@@ -91,10 +91,10 @@ public:
 	/// what a renderer should consume.
 	SHLightingEnvironment getScaledLightingEnvironment() const;
 
-	/// Get the camera component that owns this light environment
-	CameraComponentConstPtr getOwnerCameraComponent() const;
+	/// The scene this probe was captured for
+	SceneComponentPtr getOwnerSceneComponent() const;
 
-	// Get the stage component that owns this light environment
+	/// The stage the owner scene sits on, whose space the readings are expressed in
 	StageComponentConstPtr getOwnerStageComponent() const;
 
 	// -- IEntityAccessor ----
@@ -106,9 +106,9 @@ public:
 	virtual bool setPropertyValue(const std::string& propertyName, const MikanVariant& inValue) override;
 
 	// -- IFunctionInterface --
-	/// Opens the scene lighting capture tool against this probe. Exposed as a
-	/// component function so it is reachable from the editor UI, from Lua, and
-	/// remotely over the client API.
+	/// Reopens the scene lighting capture tool for the owner scene, which writes
+	/// into this probe. Exposed as a component function so it is reachable from
+	/// the editor UI, from Lua, and remotely over the client API.
 	static const std::string k_captureSceneLightingFunctionId;
 	static void getFunctionDescriptors(std::vector<FunctionDescriptorConstPtr>& outDescriptors);
 	virtual bool invokeFunction(const std::string& functionName) override;

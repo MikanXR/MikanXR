@@ -2,6 +2,8 @@
 #include "CompositorComponent.h"
 #include "CompositorObjectSystem.h"
 #include "IEditorWindow.h"
+#include "LightEnvironmentComponent.h"
+#include "LightEnvironmentSystem.h"
 #include "MikanObject.h"
 #include "MikanPropertyDatabase.h"
 #include "SceneComponent.h"
@@ -168,6 +170,12 @@ bool SceneObjectSystem::deleteObject(MikanObjectPtr objectPtr)
 	{
 		getObjectSystemOfType<CompositorObjectSystem>()->removeObjectByPrimaryComponentId(
 			compositor->getCompositorId());
+	}
+
+	LightEnvironmentComponentPtr probe= scene->getLightEnvironment();
+	if (probe)
+	{
+		getObjectSystemOfType<LightEnvironmentSystem>()->removeObjectByPrimaryComponentId(probe->getComponentId());
 	}
 
 	return Super::deleteObject(objectPtr);

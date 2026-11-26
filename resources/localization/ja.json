@@ -2,7 +2,7 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1203,
+		"stringCount": 1205,
 		"translatedCount": 872,
 		"reviewedCount": 1
 	},
@@ -842,6 +842,7 @@
 		"cameraFallbackNameFmt": "カメラ %d",
 		"compositorFallbackNameFmt": "コンポジター %d",
 		"cxCyFmt": "cx=%.1f  cy=%.1f",
+		"droppedProbesFmt": "A lighting probe now belongs to a scene, one per scene. These probes had no scene to move to\nand were removed. Capture the scene lighting again from the scene that needs it.\n%s",
 		"fxFyFmt": "fx=%.1f  fy=%.1f",
 		"gizmoRotate": "Rotate (R)",
 		"gizmoScale": "Scale (Y)",
@@ -906,6 +907,7 @@
 		"panelSettings": "設定",
 		"puckPoseValidFmt": "パックの姿勢が有効: %s",
 		"resolutionMismatch": "解像度が一致しません",
+		"sceneCaptureNeedsCamera": "Assign a camera to the scene before capturing from it.",
 		"sceneListEmpty": "プロジェクトにシーンがありません",
 		"sceneSplitsFmt": "A scene now owns exactly one compositor. Each extra compositor was moved to a new scene on the same stage,\nand the project was saved. The new scenes hold no stencils, shapes or anchors,\nso move or rebuild what each compositor should draw.\n%s",
 		"selectCalibrationCamera": "校正用カメラを選択",

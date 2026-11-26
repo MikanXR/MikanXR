@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1203,
-		"translatedCount": 1203,
-		"reviewedCount": 1203
+		"stringCount": 1205,
+		"translatedCount": 1205,
+		"reviewedCount": 1205
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -842,6 +842,7 @@
 		"cameraFallbackNameFmt": "Camera %d",
 		"compositorFallbackNameFmt": "Compositor %d",
 		"cxCyFmt": "cx=%.1f  cy=%.1f",
+		"droppedProbesFmt": "A lighting probe now belongs to a scene, one per scene. These probes had no scene to move to\nand were removed. Capture the scene lighting again from the scene that needs it.\n%s",
 		"fxFyFmt": "fx=%.1f  fy=%.1f",
 		"gizmoRotate": "Rotate (R)",
 		"gizmoScale": "Scale (Y)",
@@ -906,6 +907,7 @@
 		"panelSettings": "Settings",
 		"puckPoseValidFmt": "Puck pose valid: %s",
 		"resolutionMismatch": "RESOLUTION MISMATCH",
+		"sceneCaptureNeedsCamera": "Assign a camera to the scene before capturing from it.",
 		"sceneListEmpty": "No scenes in the project",
 		"sceneSplitsFmt": "A scene now owns exactly one compositor. Each extra compositor was moved to a new scene on the same stage,\nand the project was saved. The new scenes hold no stencils, shapes or anchors,\nso move or rebuild what each compositor should draw.\n%s",
 		"selectCalibrationCamera": "Select Calibration Camera",

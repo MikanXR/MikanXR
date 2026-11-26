@@ -4499,6 +4499,15 @@ msgid "cx=%.1f  cy=%.1f"
 msgstr "cx=%.1f  cy=%.1f"
 
 #. Section: project
+#, c-format
+msgctxt "project.droppedProbesFmt"
+msgid ""
+"A lighting probe now belongs to a scene, one per scene. These probes had no scene to move to\n"
+"and were removed. Capture the scene lighting again from the scene that needs it.\n"
+"%s"
+msgstr ""
+
+#. Section: project
 #, fuzzy, c-format
 msgctxt "project.fxFyFmt"
 msgid "fx=%.1f  fy=%.1f"
@@ -4871,6 +4880,11 @@ msgstr "パックの姿勢が有効: %s"
 msgctxt "project.resolutionMismatch"
 msgid "RESOLUTION MISMATCH"
 msgstr "解像度が一致しません"
+
+#. Section: project
+msgctxt "project.sceneCaptureNeedsCamera"
+msgid "Assign a camera to the scene before capturing from it."
+msgstr ""
 
 #. Section: project
 #, fuzzy

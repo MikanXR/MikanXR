@@ -381,18 +381,14 @@ static bool deleteNodeComponent(ProjectManagerPtr projectManager, ProjectOutline
 	MikanComponentPtr component= node->component.lock();
 	if (!component || component->getWasDisposed())
 	{
-		// Already gone, e.g. an environment probe that died with its camera
+		// Already gone, e.g. an environment probe that died with its scene
 		return true;
 	}
 
-	// An environment probe is owned by its camera, so it is only ever deleted
-	// through the camera below, never as its own row
-	if (node->componentClassName == LightEnvironmentComponent::k_componentClassName)
-		return true;
-
-	// A compositor is owned by its scene the same way, and the scene system takes
-	// it down with the scene
-	if (node->componentClassName == CompositorComponent::k_componentClassName)
+	// An environment probe and a compositor are owned by their scene, and the
+	// scene system takes them down with it, never as their own rows
+	if (node->componentClassName == LightEnvironmentComponent::k_componentClassName
+		|| node->componentClassName == CompositorComponent::k_componentClassName)
 		return true;
 
 	if (node->kind == eOutlinerNodeKind::trackingMount)
@@ -403,16 +399,6 @@ static bool deleteNodeComponent(ProjectManagerPtr projectManager, ProjectOutline
 			volumeNode ? std::dynamic_pointer_cast<VRTrackingVolumeComponent>(volumeNode->component.lock()) : nullptr;
 		if (vrVolume)
 			vrVolume->getVRTrackingVolumeDefinition()->removeTrackingMountID(node->componentId);
-	}
-	else if (node->kind == eOutlinerNodeKind::camera)
-	{
-		// The camera's environment probe references it and dies with it
-		auto cameraComponent= std::dynamic_pointer_cast<CameraComponent>(component);
-		auto lightEnvironmentSystem= projectManager->getSystemOfType<LightEnvironmentSystem>();
-		const MikanLightID probeId=
-			cameraComponent ? cameraComponent->getCameraDefinition()->getLightEnvironmentId() : INVALID_MIKAN_ID;
-		if (probeId != INVALID_MIKAN_ID && lightEnvironmentSystem)
-			lightEnvironmentSystem->removeObjectByPrimaryComponentId(probeId);
 	}
 
 	MikanObjectPtr ownerObject= component->getOwnerObject();

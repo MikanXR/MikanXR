@@ -2,6 +2,7 @@
 
 #include "ComponentFwd.h"
 #include "ColliderQuery.h"
+#include "LightSystemFwd.h"
 #include "ObjectFwd.h"
 #include "MikanSceneTypes.h"
 #include "MikanRendererFwd.h"
@@ -27,12 +28,18 @@ public:
 	MikanCameraID getCameraId() const { return m_cameraId; }
 	void setCameraId(MikanCameraID cameraId);
 
+	// The lighting probe captured for the scene, at most one
+	static const std::string k_lightEnvironmentIdPropertyId;
+	MikanLightID getLightEnvironmentId() const { return m_lightEnvironmentId; }
+	void setLightEnvironmentId(MikanLightID lightEnvironmentId);
+
 	static const std::string k_forceRenderPropertyId;
 	bool getForceRender() const { return m_bForceRender; }
 	void setForceRender(bool bForceRender);
 
 protected:
 	MikanCameraID m_cameraId= INVALID_MIKAN_ID;
+	MikanLightID m_lightEnvironmentId= INVALID_MIKAN_ID;
 	bool m_bForceRender= false;
 };
 
@@ -62,6 +69,8 @@ public:
 
 	// -- IFunctionInterface ----
 	static const std::string k_activateSceneFunctionId;
+	static const std::string k_captureSceneLightingFunctionId;
+	static const std::string k_captureDepthMeshFunctionId;
 	static void getFunctionDescriptors(std::vector<FunctionDescriptorConstPtr>& outDescriptors);
 	virtual bool invokeFunction(const std::string& functionName) override;
 
@@ -79,6 +88,15 @@ public:
 	MikanStageID getParentStageId() const;
 	StageComponentPtr getParentStage() const;
 	CameraComponentPtr getCameraComponent() const;
+	LightEnvironmentComponentPtr getLightEnvironment() const;
+
+	// Opens the scene lighting capture tool through the scene's camera. The estimate
+	// lands in the scene's probe, which is created on the first capture and
+	// overwritten by every later one.
+	void captureSceneLighting();
+	// Opens the depth mesh capture tool through the scene's camera. The captured
+	// stencil is parented to this scene.
+	void captureDepthMesh();
 	// The scene's one compositor, the compositor whose owner scene this is. Null only
 	// between the scene's creation and its compositor's, and while an undo is mid-flight.
 	CompositorComponentPtr getCompositor() const;
@@ -86,6 +104,10 @@ public:
 	void activateScene();
 	void deactivateScene();
 	void refreshActiveCompositors();
+
+private:
+	// The scene's camera, or null after telling the user the scene has none
+	CameraComponentPtr requireCameraForCapture() const;
 };
 
 // Whether an object's geometry takes part in the project viewport this frame, from the

@@ -62,7 +62,7 @@ public:
 	virtual MikanComponentPtr addNewObjectByUntypedDefinition(const std::string& primaryComponentClass,
 															  Serialization::PolymorphicObjectPtr initParams) override;
 	virtual MikanComponentPtr addNewObjectWithDefaultDefinition(const std::string& primaryComponentClass) override;
-	// Destroys the scene's compositor with it, as one undo step
+	// Destroys the scene's compositor and lighting probe with it, as one undo step
 	virtual bool deleteObject(MikanObjectPtr objectPtr) override;
 
 	MikanSceneID getCurrentSceneId() const;

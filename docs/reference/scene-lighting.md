@@ -313,9 +313,9 @@ The plugin builds against a snapshot of the Mikan client SDK in `Plugins/MikanXR
 
 ## Capturing a probe in the editor
 
-`AppStage_SceneLightingCapture` is the capture tool. It is reached from a `LightEnvironmentComponent` via the **Capture Scene Lighting** component function, which is registered through `IFunctionInterface` and is therefore also reachable from Lua and remotely over the client API.
+`AppStage_SceneLightingCapture` is the capture tool. It is reached from a `SceneComponent` via the **Capture Scene Lighting** component function, which is registered through `IFunctionInterface` and is therefore also reachable from Lua and remotely over the client API. The scene supplies the camera (its `camera_id`, and the function refuses with a message box when it has none) and owns the probe: `SceneComponent::captureSceneLighting` creates a `LightEnvironmentComponent` parented to the scene on the first capture, stores its id in the scene's `light_environment_id`, and every later capture overwrites that one probe. The probe carries the same function, which reopens the tool through its scene. A probe draws and hides with its scene, and is destroyed with it.
 
-Flow: pick a camera → live video while framing the shot → **Capture** runs both models → the panel shows the estimate's confidence numbers alongside a verification render of the recovered environment → **Apply** writes it into the probe.
+Flow: live video from the scene's camera while framing the shot → **Capture** runs both models → the panel shows the estimate's confidence numbers alongside a verification render of the recovered environment → **Apply** writes it into the probe.
 
 Two deliberate choices:
 

@@ -223,6 +223,80 @@ bool project_hierarchy_migration_test_camera_moves_to_scene()
 	UNIT_TEST_COMPLETE()
 }
 
+bool project_hierarchy_migration_test_probes_move_to_scenes()
+{
+	UNIT_TEST_BEGIN("a lighting probe moves from its camera to a scene")
+	// Camera 30 is shot by scenes 10 and 11, and 11 is current. Camera 31 is shot by
+	// no scene but shares stage 5 with them. Camera 32 sits on a stage with no
+	// scene. Camera 33 names a probe that is gone. Probe 44 hangs under no camera.
+	configuru::Config projectJson= configuru::parse_string(R"({
+		"SceneObjectSystem": { "SceneComponentPool": { "component_definitions": [
+			{ "component_id": 10, "component_name": "SCN_A", "parent_transform_id": 5, "camera_id": 30,
+			  "relative_scale": [1.0, 1.0, 1.0], "relative_quaternion": [1.0, 0.0, 0.0, 0.0],
+			  "relative_position": [0.0, 0.0, 0.0], "force_render": false },
+			{ "component_id": 11, "component_name": "SCN_B", "parent_transform_id": 5, "camera_id": 30,
+			  "relative_scale": [1.0, 1.0, 1.0], "relative_quaternion": [1.0, 0.0, 0.0, 0.0],
+			  "relative_position": [0.0, 0.0, 0.0], "force_render": false } ] },
+			"current_scene_id": 11 },
+		"CompositorObjectSystem": { "CompositorComponentPool": { "component_definitions": [
+			{ "component_id": 20, "component_name": "COMP_A", "owner_scene_id": 10 },
+			{ "component_id": 21, "component_name": "COMP_B", "owner_scene_id": 11 } ] } },
+		"CameraObjectSystem": { "CameraComponentPool": { "component_definitions": [
+			{ "component_id": 30, "component_name": "CAM_Shared", "stage_id": 5, "light_environment_id": 40 },
+			{ "component_id": 31, "component_name": "CAM_Unused", "stage_id": 5, "light_environment_id": 41 },
+			{ "component_id": 32, "component_name": "CAM_Elsewhere", "stage_id": 6, "light_environment_id": 42 },
+			{ "component_id": 33, "component_name": "CAM_Stale", "stage_id": 5, "light_environment_id": 99 },
+			{ "component_id": 34, "component_name": "CAM_None", "stage_id": 5, "light_environment_id": -1 } ] } },
+		"LightEnvironmentSystem": { "LightEnvironmentComponentPool": { "component_definitions": [
+			{ "component_id": 40, "component_name": "ENV_Shared", "parent_transform_id": 30 },
+			{ "component_id": 41, "component_name": "ENV_Unused", "parent_transform_id": 31 },
+			{ "component_id": 42, "component_name": "ENV_Elsewhere", "parent_transform_id": 32 },
+			{ "component_id": 44, "component_name": "ENV_Loose", "parent_transform_id": -1 } ] } }
+	})",
+														   configuru::JSON, "probes");
+	ProjectHierarchyMigration::Report report;
+	success&= ProjectHierarchyMigration::migrateProjectJson(projectJson, report);
+
+	const configuru::Config& scenes= sceneDefinitions(projectJson);
+	const configuru::Config& probes=
+		projectJson["LightEnvironmentSystem"]["LightEnvironmentComponentPool"]["component_definitions"];
+	const configuru::Config* sceneA= findById(scenes, 10);
+	const configuru::Config* sceneB= findById(scenes, 11);
+	const configuru::Config* sharedProbe= findById(probes, 40);
+	const configuru::Config* unusedProbe= findById(probes, 41);
+
+	// The shared camera's probe goes to the current scene of the two
+	success&= sceneB && sceneB->get_or<int>("light_environment_id", -1) == 40;
+	success&= sharedProbe && sharedProbe->get_or<int>("parent_transform_id", -1) == 11;
+	// The camera no scene uses gives its probe to the scene left on its stage
+	success&= sceneA && sceneA->get_or<int>("light_environment_id", -1) == 41;
+	success&= unusedProbe && unusedProbe->get_or<int>("parent_transform_id", -1) == 10;
+
+	// The probe on a stage with no scene and the loose probe are dropped
+	success&= probes.array_size() == 2;
+	success&= report.droppedProbeNames.size() == 2;
+	if (report.droppedProbeNames.size() == 2)
+	{
+		success&= report.droppedProbeNames[0] == "ENV_Elsewhere";
+		success&= report.droppedProbeNames[1] == "ENV_Loose";
+	}
+	success&= report.sceneSplits.empty();
+
+	for (const configuru::Config& camera :
+		 projectJson["CameraObjectSystem"]["CameraComponentPool"]["component_definitions"].as_array())
+	{
+		success&= !camera.has_key("light_environment_id");
+	}
+
+	// A second pass moves and drops nothing
+	const std::string migratedText= configuru::dump_string(projectJson, configuru::JSON);
+	ProjectHierarchyMigration::Report secondReport;
+	success&= !ProjectHierarchyMigration::migrateProjectJson(projectJson, secondReport);
+	success&= secondReport.isEmpty();
+	success&= configuru::dump_string(projectJson, configuru::JSON) == migratedText;
+	UNIT_TEST_COMPLETE()
+}
+
 bool project_hierarchy_migration_test_new_ids()
 {
 	UNIT_TEST_BEGIN("new ids start past the saved counter and every id in the file")
@@ -275,6 +349,7 @@ bool run_project_hierarchy_migration_tests()
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_kept_and_split);
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_empty_scene_gains_compositor);
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_camera_moves_to_scene);
+	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_probes_move_to_scenes);
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_new_ids);
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_idempotent);
 	UNIT_TEST_MODULE_END()

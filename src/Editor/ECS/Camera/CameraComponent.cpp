@@ -9,13 +9,10 @@
 #include "AlignmentCalibration/AppStage_AlignmentCalibration.h"
 #include "AlignCameraByUtilityMarker/AppStage_AlignCameraByUtilityMarker.h"
 #include "AlignCameraByOriginMarker/AppStage_AlignCameraByOriginMarker.h"
-#include "DepthMeshCapture/AppStage_DepthMeshCapture.h"
 #include "ModalMessageBox/ModalDialog_MessageBox.h"
 #include "Colors.h"
 #include "EnumPropertyMetaData.h"
 #include "IEditorWindow.h"
-#include "LightEnvironmentSystem.h"
-#include "LightEnvironmentComponent.h"
 #include "MikanCameraEvents.h"
 #include "MikanLineRenderer.h"
 #include "MikanTextRenderer.h"
@@ -50,7 +47,6 @@
 const std::string CameraDefinition::k_ownerStageIdPropertyId= "stage_id";
 const std::string CameraDefinition::k_trackingMountIdPropertyId= "tracking_mount_id";
 const std::string CameraDefinition::k_videoSourceIdPropertyId= "video_source_id";
-const std::string CameraDefinition::k_lightEnvironmentIdPropertyId= "light_environment_id";
 const std::string CameraDefinition::k_trackingFrameDelayPropertyId= "tracking_frame_delay";
 const std::string CameraDefinition::k_frameSyncModePropertyId= "frame_sync_mode";
 const std::string CameraDefinition::k_poseDrivenPerFramePropertyId= "pose_driven_per_frame";
@@ -194,7 +190,6 @@ configuru::Config CameraDefinition::writeToJSON()
 	pt["stage_id"]= m_stageId;
 	pt["tracking_mount_id"]= m_trackingMountId;
 	pt["video_source_id"]= m_videoSourceId;
-	pt["light_environment_id"]= m_lightEnvionmentId;
 	pt["tracking_frame_delay"]= m_trackingFrameDelay;
 	pt[k_frameSyncModePropertyId]= k_frameSyncModeJsonStrings[(int)m_frameSyncMode];
 	pt[k_clientColorRenderScalePropertyId]= m_clientColorRenderScale;
@@ -218,7 +213,6 @@ void CameraDefinition::readFromJSON(const configuru::Config& pt)
 	m_stageId= pt.get_or<int>("stage_id", m_stageId);
 	m_trackingMountId= pt.get_or<int>("tracking_mount_id", m_trackingMountId);
 	m_videoSourceId= pt.get_or<int>("video_source_id", m_videoSourceId);
-	m_lightEnvionmentId= pt.get_or<int>("light_environment_id", m_lightEnvionmentId);
 	m_trackingFrameDelay= pt.get_or<int>("tracking_frame_delay", m_trackingFrameDelay);
 	m_frameSyncMode= frameSyncModeFromJsonString(
 		pt.get_or<std::string>(k_frameSyncModePropertyId.c_str(), k_frameSyncModeJsonStrings[(int)m_frameSyncMode]));
@@ -250,7 +244,6 @@ bool CameraDefinition::readFromInitParams(MikanObjectSystem* ownerObjectSystem,
 	{
 		m_stageId= componentValues->stage_id;
 		m_trackingMountId= componentValues->tracking_mount_id;
-		m_lightEnvionmentId= componentValues->light_environment_id;
 		m_videoSourceId= componentValues->video_source_id;
 		m_trackingFrameDelay= componentValues->tracking_frame_delay;
 		m_frameSyncMode= frameSyncModeFromInt((int)componentValues->frame_sync_mode);
@@ -324,15 +317,6 @@ void CameraDefinition::setVideoSourceId(MikanVideoSourceID videoSourceId)
 	{
 		m_videoSourceId= videoSourceId;
 		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_videoSourceIdPropertyId));
-	}
-}
-
-void CameraDefinition::setLightEnvironmentId(MikanLightID lightEnvironmentId)
-{
-	if (lightEnvironmentId != m_lightEnvionmentId)
-	{
-		m_lightEnvionmentId= lightEnvironmentId;
-		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_lightEnvironmentIdPropertyId));
 	}
 }
 
@@ -448,8 +432,6 @@ void CameraDefinition::clearAperturePoseOffset()
 
 // -- CameraComponent -----
 const std::string CameraComponent::k_alignCameraFunctionId= "align_camera";
-const std::string CameraComponent::k_captureSceneLightingFunctionId= "capture_scene_lighting";
-const std::string CameraComponent::k_captureDepthMeshFunctionId= "capture_depth_mesh";
 
 CameraComponent::CameraComponent(MikanObjectWeakPtr owner)
 	: TransformComponent(owner)
@@ -1173,10 +1155,6 @@ void CameraComponent::getPropertyDescriptors(std::vector<PropertyDescriptorConst
 			->setDefaultValue(-1)
 			->setUIHidden());
 	outDescriptors.push_back(
-		std::make_shared<PropertyDescriptor>(CameraDefinition::k_lightEnvironmentIdPropertyId, MikanVariantType::INT)
-			->setDefaultValue(-1)
-			->setUIHidden());
-	outDescriptors.push_back(
 		std::make_shared<PropertyDescriptor>(CameraDefinition::k_trackingFrameDelayPropertyId, MikanVariantType::INT)
 			->setDefaultValue(0));
 	outDescriptors.push_back(
@@ -1239,11 +1217,6 @@ bool CameraComponent::getPropertyValue(const std::string& propertyName, MikanVar
 	else if (propertyName == CameraDefinition::k_videoSourceIdPropertyId)
 	{
 		outValue= getCameraDefinition()->getVideoSourceId();
-		return true;
-	}
-	else if (propertyName == CameraDefinition::k_lightEnvironmentIdPropertyId)
-	{
-		outValue= getCameraDefinition()->getLightEnvironmentId();
 		return true;
 	}
 	else if (propertyName == CameraDefinition::k_trackingFrameDelayPropertyId)
@@ -1365,9 +1338,6 @@ void CameraComponent::getFunctionDescriptors(std::vector<FunctionDescriptorConst
 	MikanComponent::getFunctionDescriptors(outDescriptors);
 
 	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_alignCameraFunctionId, "Align Camera"));
-	outDescriptors.push_back(
-		std::make_shared<FunctionDescriptor>(k_captureSceneLightingFunctionId, "Capture Scene Lighting"));
-	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_captureDepthMeshFunctionId, "Capture Depth Mesh"));
 }
 
 bool CameraComponent::invokeFunction(const std::string& functionName)
@@ -1375,16 +1345,6 @@ bool CameraComponent::invokeFunction(const std::string& functionName)
 	if (functionName == CameraComponent::k_alignCameraFunctionId)
 	{
 		alignCamera();
-		return true;
-	}
-	else if (functionName == CameraComponent::k_captureSceneLightingFunctionId)
-	{
-		captureSceneLighting();
-		return true;
-	}
-	else if (functionName == CameraComponent::k_captureDepthMeshFunctionId)
-	{
-		captureDepthMesh();
 		return true;
 	}
 
@@ -1418,39 +1378,6 @@ void CameraComponent::alignCamera()
 	}
 }
 
-void CameraComponent::captureSceneLighting()
-{
-	auto lightEnvironmentSystem= getObjectSystemOfType<LightEnvironmentSystem>();
-	auto cameraDefinition= getCameraDefinition();
-
-	// Create a lighting environment component if one does not already exist for this camera
-	LightEnvironmentComponentPtr lightEnvironmentComponent=
-		lightEnvironmentSystem->getTypedComponentById(cameraDefinition->getLightEnvironmentId());
-	if (!lightEnvironmentComponent)
-	{
-		// Create a new light environment component and attach it to this camera
-		lightEnvironmentComponent= lightEnvironmentSystem->addNewObjectByTypedDefinition(
-			[this](auto def)
-			{
-				def->setParentTransformId(getCameraDefinition()->getComponentId());
-				def->setRelativeTransform(GlmTransform());
-				return true;
-			});
-
-		// Update the camera definition to reference the new light environment component
-		cameraDefinition->setLightEnvironmentId(lightEnvironmentComponent->getComponentId());
-	}
-
-	// Capture the scene lighting using the light environment component
-	lightEnvironmentComponent->captureSceneLighting();
-}
-
-void CameraComponent::captureDepthMesh()
-{
-	auto* captureStage= getOwnerEditorWindow()->pushAppStageOfType<AppStage_DepthMeshCapture>();
-	captureStage->setSourceCamera(getSelfPtr<CameraComponent>());
-}
-
 // -- Lua Binding ----
 void CameraComponent::bindLuaFunctions(struct lua_State* L)
 {
@@ -1461,16 +1388,12 @@ void CameraComponent::bindLuaFunctions(struct lua_State* L)
 			[](CameraComponent* c) -> int { return c->getCameraDefinition()->getTrackingFrameDelay(); },
 			[](CameraComponent* c, int v) { c->getCameraDefinition()->setTrackingFrameDelay(v); })
 		.addFunction("alignCamera", [](CameraComponent* c) { c->alignCamera(); })
-		.addFunction("captureSceneLighting", [](CameraComponent* c) { c->captureSceneLighting(); })
-		.addFunction("captureDepthMesh", [](CameraComponent* c) { c->captureDepthMesh(); })
 		.addProperty("ownerStageId",
 					 [](CameraComponent* c) -> int { return c->getCameraDefinition()->getOwnerStageId(); })
 		.addProperty("trackingMountId",
 					 [](CameraComponent* c) -> int { return c->getCameraDefinition()->getTrackingMountId(); })
 		.addProperty("videoSourceId",
 					 [](CameraComponent* c) -> int { return c->getCameraDefinition()->getVideoSourceId(); })
-		.addProperty("lightEnvionmentId",
-					 [](CameraComponent* c) -> int { return c->getCameraDefinition()->getLightEnvironmentId(); })
 		.addProperty("hasValidApertureOffset",
 					 [](CameraComponent* c) -> bool { return c->getCameraDefinition()->hasValidApertureOffset(); })
 		.addProperty("aperturePositionOffset",

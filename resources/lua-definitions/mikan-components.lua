@@ -50,11 +50,18 @@ local TransformComponent = {}
 ---@class SceneComponent : TransformComponent
 ---@field parentStageId integer ID of the parent stage (read-only)
 ---@field cameraId integer ID of the camera the scene is shot through (read/write)
+---@field lightEnvironmentId integer ID of the scene's lighting probe, -1 before the first capture (read-only)
 local SceneComponent = {}
 
 --- Get the parent StageComponent.
 ---@return StageComponent
 function SceneComponent:getParentStage() end
+
+--- Open the scene lighting capture tool through the scene's camera.
+function SceneComponent:captureSceneLighting() end
+
+--- Open the depth mesh capture tool through the scene's camera.
+function SceneComponent:captureDepthMesh() end
 
 --- Get the compositor this scene owns.
 ---@return CompositorComponent

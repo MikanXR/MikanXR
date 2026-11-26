@@ -118,6 +118,18 @@ static std::string formatSceneSplits(const std::vector<ProjectHierarchyMigration
 	return locFormat("project.sceneSplitsFmt", splitList.c_str());
 }
 
+// The lighting probes the hierarchy migration could not place under a scene
+static std::string formatDroppedProbes(const std::vector<std::string>& droppedProbeNames)
+{
+	std::string probeList;
+	for (const std::string& probeName : droppedProbeNames)
+	{
+		probeList+= "\n" + probeName;
+	}
+
+	return locFormat("project.droppedProbesFmt", probeList.c_str());
+}
+
 //-- public methods -----
 AppStage_Project::AppStage_Project(IEditorWindow* ownerWindow)
 	: AppStage(ownerWindow, AppStage_Project::APP_STAGE_NAME)
@@ -245,6 +257,10 @@ void AppStage_Project::enter()
 	if (!migrationReport.sceneSplits.empty())
 	{
 		m_pendingLoadNotices.push_back(formatSceneSplits(migrationReport.sceneSplits));
+	}
+	if (!migrationReport.droppedProbeNames.empty())
+	{
+		m_pendingLoadNotices.push_back(formatDroppedProbes(migrationReport.droppedProbeNames));
 	}
 	showNextLoadNotice();
 }
@@ -1201,8 +1217,13 @@ void AppStage_Project::renderEnvironmentLightComponents(IMkGraphicsContext* grap
 	if (viewportCamera->getProjectionMode() == eCameraProjectionMode::perspective)
 	{
 		getObjectSystemOfType<LightEnvironmentSystem>()->customRender(
-			graphicsContext, viewportCamera, [stageComponent](LightEnvironmentComponentPtr lightEnv)
-			{ return lightEnv->getOwnerStageComponent() == stageComponent; });
+			graphicsContext, viewportCamera,
+			[stageComponent](LightEnvironmentComponentPtr lightEnv)
+			{
+				// A probe belongs to a scene, so it draws only while that scene does
+				return lightEnv->getOwnerStageComponent() == stageComponent
+					   && isSceneGeometryRendered(lightEnv->getOwnerObject());
+			});
 	}
 }
 

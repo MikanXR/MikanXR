@@ -545,8 +545,8 @@ void GuiPanel_ProjectOutliner::drawSelectedNodeActions(ProjectOutlinerNodePtr se
 
 bool GuiPanel_ProjectOutliner::canDeleteNode(ProjectOutlinerNodePtr node) const
 {
-	// Environment probes are camera-owned and are deleted with their camera, and a
-	// compositor is scene-owned and is deleted with its scene
+	// An environment probe and a compositor are scene-owned and are deleted with
+	// their scene
 	return node && node->componentId != INVALID_MIKAN_ID
 		   && node->componentClassName != LightEnvironmentComponent::k_componentClassName
 		   && node->kind != eOutlinerNodeKind::compositor;
@@ -922,7 +922,7 @@ void GuiPanel_ProjectOutliner::onSystemConfigChanged(CommonConfigPtr configPtr,
 		|| changedPropertySet.hasPropertyName(TransformComponentDefinition::k_parentTransformIdPropertyId)
 		|| changedPropertySet.hasPropertyName(StageComponentDefinition::k_trackingVolumeIdPropertyId)
 		|| changedPropertySet.hasPropertyName(CameraDefinition::k_ownerStageIdPropertyId)
-		|| changedPropertySet.hasPropertyName(CameraDefinition::k_lightEnvironmentIdPropertyId)
+		|| changedPropertySet.hasPropertyName(SceneComponentDefinition::k_lightEnvironmentIdPropertyId)
 		|| changedPropertySet.hasPropertyName(CompositorDefinition::k_ownerScenePropertyId)
 		|| changedPropertySet.hasPropertyName(DMXFixtureComponentDefinition::k_ownerStageIdPropertyId)
 		|| changedPropertySet.hasPropertyName(DMXPresetDefinition::k_groupIdPropertyId)

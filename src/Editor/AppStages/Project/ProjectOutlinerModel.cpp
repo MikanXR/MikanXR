@@ -343,6 +343,17 @@ void ProjectOutlinerModel::rebuild(ProjectManagerPtr projectManager)
 			});
 	}
 
+	// A probe no scene names still needs a row to be found by
+	if (auto lightEnvironmentSystem= projectManager->getSystemOfType<LightEnvironmentSystem>())
+	{
+		lightEnvironmentSystem->visitComponents(
+			[&](LightEnvironmentComponentPtr probe)
+			{
+				if (!findNodeByComponentId(probe->getComponentId()))
+					addComponentNode(getOrCreateUnparentedGroup(), eOutlinerNodeKind::stageLight, probe);
+			});
+	}
+
 	// Scene actors no scene walk reached (legacy unparented shapes, dangling
 	// parents) collect in a synthetic group so they stay visible and can be
 	// dragged back into a scene. Subtrees start at their root-most orphan: a
@@ -397,18 +408,7 @@ void ProjectOutlinerModel::buildStageSubtree(ProjectManagerPtr projectManager, S
 									  { return camera->getCameraDefinition()->getOwnerStageId() == stageId; });
 	}
 
-	// Stage lights: environment probes, then the authored DMX fixtures
-	if (auto lightEnvironmentSystem= projectManager->getSystemOfType<LightEnvironmentSystem>())
-	{
-		lightEnvironmentSystem->visitComponents(
-			[&](LightEnvironmentComponentPtr light)
-			{ addComponentNode(lightsFolder, eOutlinerNodeKind::stageLight, light); },
-			[stageId](LightEnvironmentComponentPtr light)
-			{
-				StageComponentConstPtr ownerStage= light->getOwnerStageComponent();
-				return ownerStage && ownerStage->getComponentId() == stageId;
-			});
-	}
+	// Stage lights: the authored DMX fixtures. A lighting probe sits under its scene.
 	if (auto spotLightSystem= projectManager->getSystemOfType<RGBSpotLightSystem>())
 	{
 		spotLightSystem->visitComponents([&](RGBSpotLightComponentPtr light)
@@ -480,6 +480,12 @@ void ProjectOutlinerModel::buildSceneSubtree(SceneComponentPtr sceneComponent, P
 	if (CompositorComponentPtr compositor= sceneComponent->getCompositor())
 	{
 		addComponentNode(sceneNode, eOutlinerNodeKind::compositor, compositor);
+	}
+
+	// Then the lighting probe captured for the scene, when it has one
+	if (LightEnvironmentComponentPtr probe= sceneComponent->getLightEnvironment())
+	{
+		addComponentNode(sceneNode, eOutlinerNodeKind::stageLight, probe);
 	}
 
 	// Scene actors via the transform hierarchy

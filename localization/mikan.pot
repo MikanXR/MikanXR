@@ -3997,6 +3997,15 @@ msgstr ""
 
 #. Section: project
 #, c-format
+msgctxt "project.droppedProbesFmt"
+msgid ""
+"A lighting probe now belongs to a scene, one per scene. These probes had no scene to move to\n"
+"and were removed. Capture the scene lighting again from the scene that needs it.\n"
+"%s"
+msgstr ""
+
+#. Section: project
+#, c-format
 msgctxt "project.fxFyFmt"
 msgid "fx=%.1f  fy=%.1f"
 msgstr ""
@@ -4319,6 +4328,11 @@ msgstr ""
 #. Section: project
 msgctxt "project.resolutionMismatch"
 msgid "RESOLUTION MISMATCH"
+msgstr ""
+
+#. Section: project
+msgctxt "project.sceneCaptureNeedsCamera"
+msgid "Assign a camera to the scene before capturing from it."
 msgstr ""
 
 #. Section: project
