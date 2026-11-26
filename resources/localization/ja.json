@@ -2,8 +2,8 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1211,
-		"translatedCount": 880,
+		"stringCount": 1203,
+		"translatedCount": 872,
 		"reviewedCount": 1
 	},
 	"CEFTextureSourceComponent": {
@@ -183,7 +183,6 @@
 		"displayBuffer": "表示バッファ",
 		"displayBufferColor": "カラー",
 		"displayBufferDepth": "深度",
-		"displayCompositor": "表示コンポジター",
 		"dropAssetHint": "アセットパネルからアセットをドロップ",
 		"editGraph": "グラフを編集",
 		"editScript": "スクリプトを編集",
@@ -199,7 +198,6 @@
 		"intrinsicsResolutionMismatchFmt": "Calibrated at %dx%d but running at %dx%d. Recalibrate or return to the calibrated video mode.",
 		"intrinsicsUncalibrated": "Not calibrated. Run lens calibration before using this source for alignment or compositing.",
 		"noAsset": "<なし>",
-		"noCompositors": "No Compositors",
 		"noFixtureGroups": "No Fixture Groups",
 		"noParents": "No Parents",
 		"noStages": "No Stages",
@@ -836,7 +834,6 @@
 		"verifyInitialCameraSetup": "対象物がはっきり映るようトラッキングカメラを配置し、フィーチャー取得の範囲を選択してください。"
 	},
 	"project": {
-		"addCompositorToScene": "シーンにコンポジターを追加",
 		"apertureOffsetValidFmt": "アパーチャオフセット有効: %s",
 		"aperturePosFmt": "  位置 (mm): %.1f, %.1f, %.1f",
 		"apertureQuatFmt": "  クォータニオン: w%.4f x%.4f y%.4f z%.4f",
@@ -844,8 +841,6 @@
 		"calibResolutionFmt": "校正解像度: %d x %d",
 		"cameraFallbackNameFmt": "カメラ %d",
 		"compositorFallbackNameFmt": "コンポジター %d",
-		"compositorListEmpty": "アクティブなシーンにコンポジターがありません",
-		"compositorListNoScene": "アクティブなシーンがありません",
 		"cxCyFmt": "cx=%.1f  cy=%.1f",
 		"fxFyFmt": "fx=%.1f  fy=%.1f",
 		"gizmoRotate": "Rotate (R)",
@@ -867,7 +862,6 @@
 		"outlinerAddCEFSource": "ブラウザーテクスチャソースを追加",
 		"outlinerAddCamera": "カメラを追加",
 		"outlinerAddClientSource": "クライアントテクスチャソースを追加",
-		"outlinerAddCompositor": "コンポジターを追加",
 		"outlinerAddFileSource": "Add File Video Source",
 		"outlinerAddLightGroup": "ライトグループを追加",
 		"outlinerAddMarker": "Arucoマーカーを追加",
@@ -904,7 +898,6 @@
 		"outlinerUnparented": "親なし",
 		"panelAssets": "アセット",
 		"panelCompositorOutput": "Compositor Output",
-		"panelCompositors": "コンポジター",
 		"panelDMX": "DMX Panel",
 		"panelHttpTriggers": "HTTPトリガー",
 		"panelProject": "プロジェクト",
@@ -914,6 +907,7 @@
 		"puckPoseValidFmt": "パックの姿勢が有効: %s",
 		"resolutionMismatch": "解像度が一致しません",
 		"sceneListEmpty": "プロジェクトにシーンがありません",
+		"sceneSplitsFmt": "A scene now owns exactly one compositor. Each extra compositor was moved to a new scene on the same stage,\nand the project was saved. The new scenes hold no stencils, shapes or anchors,\nso move or rebuild what each compositor should draw.\n%s",
 		"selectCalibrationCamera": "校正用カメラを選択",
 		"trackingFrameDelayFmt": "トラッキングフレーム遅延: %d",
 		"viewIsometric": "Isometric",
@@ -1276,11 +1270,9 @@
 		"yes": "はい"
 	},
 	"windows": {
-		"addCompositor": "コンポジターを追加",
 		"assets": "アセット",
 		"cameraAlignmentDebug": "カメラ位置合わせデバッグ",
 		"compositorOutput": "Compositor Output",
-		"compositors": "コンポジター",
 		"dmx": "DMX",
 		"httpTriggers": "HTTPトリガー",
 		"log": "ログ",

@@ -161,7 +161,7 @@ bool CompositorDefinition::readFromInitParams(MikanObjectSystem* ownerObjectSyst
 		m_rtpOutputBitrateKbps= componentValues->rtp_output_bitrate_kbps;
 	}
 
-	if (componentValues->owner_scene_id == INVALID_MIKAN_ID)
+	if (m_ownerSceneId == INVALID_MIKAN_ID)
 	{
 		auto sceneObjectSystem= ownerObjectSystem->getObjectSystemOfType<SceneObjectSystem>();
 
@@ -949,7 +949,7 @@ const char* CompositorComponent::getRtpOutputStatusText() const
 	if (definition->getRtpOutputHost().empty() && !m_bHasRtpClientFeeds)
 		return "no destination";
 	if (!m_bOutputStreamingAllowed)
-		return "not the display compositor";
+		return "not the current scene";
 	if (!m_rtpOutput)
 		return "starting";
 
@@ -1229,6 +1229,7 @@ void CompositorComponent::getPropertyDescriptors(std::vector<PropertyDescriptorC
 	outDescriptors.push_back(
 		std::make_shared<PropertyDescriptor>(CompositorDefinition::k_ownerScenePropertyId, MikanVariantType::INT)
 			->setDefaultValue(-1)
+			->setReadOnly()
 			->setUIHidden());
 	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(CompositorDefinition::k_compositorGraphPathPropertyId,
 																  MikanVariantType::STRING)
@@ -1326,12 +1327,8 @@ bool CompositorComponent::setPropertyValue(const std::string& propertyName, cons
 		getCompositorDefinition()->setCameraId(cameraId);
 		return true;
 	}
-	else if (propertyName == CompositorDefinition::k_ownerScenePropertyId)
-	{
-		const MikanSceneID sceneId= inValue.getIntValue();
-		getCompositorDefinition()->setOwnerSceneId(sceneId);
-		return true;
-	}
+	// No owner scene id branch: a compositor belongs to the scene it was created
+	// with for life, and the scene system reaches setOwnerSceneId on the definition
 	else if (propertyName == CompositorDefinition::k_compositorGraphPathPropertyId)
 	{
 		const std::string fileString= inValue.getUtf8Value();

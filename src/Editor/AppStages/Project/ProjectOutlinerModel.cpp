@@ -476,8 +476,8 @@ void ProjectOutlinerModel::buildSceneSubtree(SceneComponentPtr sceneComponent, P
 {
 	ProjectOutlinerNodePtr sceneNode= addComponentNode(parentNode, eOutlinerNodeKind::scene, sceneComponent);
 
-	// The scene's compositors sit ahead of its actors: they are scene-level outputs
-	for (CompositorComponentPtr compositor : sceneComponent->getOutputCompositors())
+	// The scene's compositor sits ahead of its actors: it is the scene-level output
+	if (CompositorComponentPtr compositor= sceneComponent->getCompositor())
 	{
 		addComponentNode(sceneNode, eOutlinerNodeKind::compositor, compositor);
 	}

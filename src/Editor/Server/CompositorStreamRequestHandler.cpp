@@ -140,21 +140,13 @@ eCompositorStreamQueryResult CompositorStreamRequestHandler::queryNow(int compos
 	if (!compositorSystem)
 		return eCompositorStreamQueryResult::unknownCompositor;
 
-	if (compositorId < 0)
-	{
-		// Default to the project's single compositor; several need an explicit id
-		std::vector<int> compositorIds;
-		compositorSystem->getComponentIdList(CompositorComponent::k_componentClassName, compositorIds);
-		if (compositorIds.empty())
-			return eCompositorStreamQueryResult::unknownCompositor;
-		if (compositorIds.size() > 1)
-			return eCompositorStreamQueryResult::ambiguousCompositor;
-		compositorId= compositorIds[0];
-	}
-
-	CompositorComponentPtr compositor= compositorSystem->getCompositorById(compositorId);
+	// Default to the current scene's compositor, the one that publishes
+	CompositorComponentPtr compositor= compositorId < 0 ? compositorSystem->getCurrentSceneCompositor()
+														: compositorSystem->getCompositorById(compositorId);
 	if (!compositor)
 		return eCompositorStreamQueryResult::unknownCompositor;
+
+	compositorId= compositor->getCompositorId();
 
 	CompositorDefinitionConstPtr definition= compositor->getCompositorDefinition();
 	if (!definition->getIsRtpOutputStreaming() || definition->getRtpOutputHost().empty())

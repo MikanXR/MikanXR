@@ -948,12 +948,6 @@ msgstr "深度"
 
 #. Section: componentPanel
 #, fuzzy
-msgctxt "componentPanel.displayCompositor"
-msgid "Display Compositor"
-msgstr "表示コンポジター"
-
-#. Section: componentPanel
-#, fuzzy
 msgctxt "componentPanel.dropAssetHint"
 msgid "Drop an asset from the Assets panel"
 msgstr "アセットパネルからアセットをドロップ"
@@ -1039,11 +1033,6 @@ msgstr ""
 msgctxt "componentPanel.noAsset"
 msgid "<None>"
 msgstr "<なし>"
-
-#. Section: componentPanel
-msgctxt "componentPanel.noCompositors"
-msgid "No Compositors"
-msgstr ""
 
 #. Section: componentPanel
 msgctxt "componentPanel.noFixtureGroups"
@@ -4460,12 +4449,6 @@ msgid "Position the tracked camera so the physical object is clearly in view, th
 msgstr "対象物がはっきり映るようトラッキングカメラを配置し、フィーチャー取得の範囲を選択してください。"
 
 #. Section: project
-#, fuzzy
-msgctxt "project.addCompositorToScene"
-msgid "Add Compositor To Scene"
-msgstr "シーンにコンポジターを追加"
-
-#. Section: project
 #, fuzzy, c-format
 msgctxt "project.apertureOffsetValidFmt"
 msgid "Aperture offset valid: %s"
@@ -4508,18 +4491,6 @@ msgstr "カメラ %d"
 msgctxt "project.compositorFallbackNameFmt"
 msgid "Compositor %d"
 msgstr "コンポジター %d"
-
-#. Section: project
-#, fuzzy
-msgctxt "project.compositorListEmpty"
-msgid "No compositors in the active scene"
-msgstr "アクティブなシーンにコンポジターがありません"
-
-#. Section: project
-#, fuzzy
-msgctxt "project.compositorListNoScene"
-msgid "No active scene"
-msgstr "アクティブなシーンがありません"
 
 #. Section: project
 #, fuzzy, c-format
@@ -4640,12 +4611,6 @@ msgstr "カメラを追加"
 msgctxt "project.outlinerAddClientSource"
 msgid "Add Client Texture Source"
 msgstr "クライアントテクスチャソースを追加"
-
-#. Section: project
-#, fuzzy
-msgctxt "project.outlinerAddCompositor"
-msgid "Add Compositor"
-msgstr "コンポジターを追加"
 
 #. Section: project
 msgctxt "project.outlinerAddFileSource"
@@ -4862,12 +4827,6 @@ msgid "Compositor Output"
 msgstr ""
 
 #. Section: project
-#, fuzzy
-msgctxt "project.panelCompositors"
-msgid "Compositors"
-msgstr "コンポジター"
-
-#. Section: project
 msgctxt "project.panelDMX"
 msgid "DMX Panel"
 msgstr ""
@@ -4918,6 +4877,16 @@ msgstr "解像度が一致しません"
 msgctxt "project.sceneListEmpty"
 msgid "No scenes in the project"
 msgstr "プロジェクトにシーンがありません"
+
+#. Section: project
+#, c-format
+msgctxt "project.sceneSplitsFmt"
+msgid ""
+"A scene now owns exactly one compositor. Each extra compositor was moved to a new scene on the same stage,\n"
+"and the project was saved. The new scenes hold no stencils, shapes or anchors,\n"
+"so move or rebuild what each compositor should draw.\n"
+"%s"
+msgstr ""
 
 #. Section: project
 #, fuzzy
@@ -6901,12 +6870,6 @@ msgstr "はい"
 
 #. Section: windows
 #, fuzzy
-msgctxt "windows.addCompositor"
-msgid "Add Compositor"
-msgstr "コンポジターを追加"
-
-#. Section: windows
-#, fuzzy
 msgctxt "windows.assets"
 msgid "Assets"
 msgstr "アセット"
@@ -6921,12 +6884,6 @@ msgstr "カメラ位置合わせデバッグ"
 msgctxt "windows.compositorOutput"
 msgid "Compositor Output"
 msgstr ""
-
-#. Section: windows
-#, fuzzy
-msgctxt "windows.compositors"
-msgid "Compositors"
-msgstr "コンポジター"
 
 #. Section: windows
 msgctxt "windows.dmx"
@@ -7034,6 +6991,11 @@ msgstr "カメラを選択"
 #~ msgstr "新規マテリアル"
 
 #, fuzzy
+#~ msgctxt "componentPanel.displayCompositor"
+#~ msgid "Display Compositor"
+#~ msgstr "表示コンポジター"
+
+#, fuzzy
 #~ msgctxt "componentPanel.sequenceHandler"
 #~ msgid "Handler"
 #~ msgstr "ハンドラー"
@@ -7109,6 +7071,31 @@ msgstr "カメラを選択"
 #~ msgstr "コンポジター出力"
 
 #, fuzzy
+#~ msgctxt "project.addCompositorToScene"
+#~ msgid "Add Compositor To Scene"
+#~ msgstr "シーンにコンポジターを追加"
+
+#, fuzzy
+#~ msgctxt "project.compositorListEmpty"
+#~ msgid "No compositors in the active scene"
+#~ msgstr "アクティブなシーンにコンポジターがありません"
+
+#, fuzzy
+#~ msgctxt "project.compositorListNoScene"
+#~ msgid "No active scene"
+#~ msgstr "アクティブなシーンがありません"
+
+#, fuzzy
+#~ msgctxt "project.outlinerAddCompositor"
+#~ msgid "Add Compositor"
+#~ msgstr "コンポジターを追加"
+
+#, fuzzy
+#~ msgctxt "project.panelCompositors"
+#~ msgid "Compositors"
+#~ msgstr "コンポジター"
+
+#, fuzzy
 #~ msgctxt "project.viewBack"
 #~ msgid "Back"
 #~ msgstr "背面"
@@ -7142,3 +7129,13 @@ msgstr "カメラを選択"
 #~ msgctxt "properties.dmx_channel_count"
 #~ msgid "DMX Channel Count"
 #~ msgstr "DMX チャンネル数"
+
+#, fuzzy
+#~ msgctxt "windows.addCompositor"
+#~ msgid "Add Compositor"
+#~ msgstr "コンポジターを追加"
+
+#, fuzzy
+#~ msgctxt "windows.compositors"
+#~ msgid "Compositors"
+#~ msgstr "コンポジター"

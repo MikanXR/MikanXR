@@ -121,7 +121,7 @@ public:
 	bool getIsEditorHeld() const { return m_bEditorHeld; }
 	void setEditorHeld(bool bHeld);
 	// Whether the compositor may publish its output; the owning system grants it
-	// only to the scene's display compositor
+	// only to the current scene's compositor
 	void setOutputStreamingAllowed(bool bAllowed) { m_bOutputStreamingAllowed= bAllowed; }
 
 	inline static const std::string k_componentClassName= "CompositorComponent";

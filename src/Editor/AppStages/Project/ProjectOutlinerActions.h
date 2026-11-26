@@ -29,7 +29,6 @@ int addPixelGrid(ProjectManagerPtr projectManager, int stageId);
 int addLightGroup(ProjectManagerPtr projectManager, int stageId);
 int addPreset(ProjectManagerPtr projectManager, int groupId);
 int addSequence(ProjectManagerPtr projectManager, int groupId);
-int addCompositor(ProjectManagerPtr projectManager, int sceneId);
 int addAnchor(ProjectManagerPtr projectManager, int parentTransformId);
 int addStencil(ProjectManagerPtr projectManager, eStencilType stencilType, int parentTransformId);
 int addShape(ProjectManagerPtr projectManager, eShapeType shapeType, int parentTransformId);

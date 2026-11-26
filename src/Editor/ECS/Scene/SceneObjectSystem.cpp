@@ -1,9 +1,13 @@
 #include "App.h"
+#include "CompositorComponent.h"
+#include "CompositorObjectSystem.h"
+#include "IEditorWindow.h"
 #include "MikanObject.h"
 #include "MikanPropertyDatabase.h"
 #include "SceneComponent.h"
 #include "SceneObjectSystem.h"
 #include "ProjectConfig.h"
+#include "TransactionHistory.h"
 
 #include "lua.hpp"
 #include "LuaBridge/LuaBridge.h"
@@ -97,6 +101,76 @@ void SceneObjectSystem::dispose()
 	getOwnerProjectManager()->OnProjectLoaded-= MakeDelegate(this, &SceneObjectSystem::onProjectLoaded);
 
 	Super::dispose();
+}
+
+SceneComponentPtr SceneObjectSystem::addNewScene(DefinitionInitFunction definitionInit)
+{
+	IEditorWindow* ownerWindow= getOwnerWindow();
+	TransactionCompositeScope compositeScope(ownerWindow ? ownerWindow->getTransactionHistory() : nullptr);
+
+	SceneComponentPtr scene= addNewObjectByTypedDefinition(definitionInit);
+	if (!scene)
+		return scene;
+
+	const MikanSceneID sceneId= scene->getSceneId();
+	getObjectSystemOfType<CompositorObjectSystem>()->addNewObjectByTypedDefinition(
+		[sceneId](auto definition)
+		{
+			definition->setOwnerSceneId(sceneId);
+			return true;
+		});
+
+	if (scene->isCurrentScene())
+	{
+		scene->refreshActiveCompositors();
+	}
+
+	return scene;
+}
+
+MikanComponentPtr SceneObjectSystem::addNewObjectByUntypedDefinition(const std::string& primaryComponentClass,
+																	 Serialization::PolymorphicObjectPtr initParams)
+{
+	if (primaryComponentClass != SceneComponent::k_componentClassName)
+		return MikanComponentPtr();
+
+	MikanObjectSystem* ownerObjectSystem= this;
+
+	return addNewScene([ownerObjectSystem, &initParams](SceneComponentDefinitionPtr definition)
+					   { return definition->readFromInitParams(ownerObjectSystem, initParams); });
+}
+
+MikanComponentPtr SceneObjectSystem::addNewObjectWithDefaultDefinition(const std::string& primaryComponentClass)
+{
+	if (primaryComponentClass != SceneComponent::k_componentClassName)
+		return MikanComponentPtr();
+
+	return addNewScene();
+}
+
+bool SceneObjectSystem::deleteObject(MikanObjectPtr objectPtr)
+{
+	auto scene= objectPtr->getComponentOfType<SceneComponent>();
+	if (!scene)
+		return false;
+
+	IEditorWindow* ownerWindow= getOwnerWindow();
+	TransactionCompositeScope compositeScope(ownerWindow ? ownerWindow->getTransactionHistory() : nullptr);
+
+	// Never leave current_scene_id pointing at a dead scene
+	if (scene->isCurrentScene())
+	{
+		setCurrentSceneById(INVALID_MIKAN_ID);
+	}
+
+	CompositorComponentPtr compositor= scene->getCompositor();
+	if (compositor)
+	{
+		getObjectSystemOfType<CompositorObjectSystem>()->removeObjectByPrimaryComponentId(
+			compositor->getCompositorId());
+	}
+
+	return Super::deleteObject(objectPtr);
 }
 
 MikanSceneID SceneObjectSystem::getCurrentSceneId() const

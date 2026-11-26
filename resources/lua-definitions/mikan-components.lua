@@ -49,21 +49,15 @@ local TransformComponent = {}
 
 ---@class SceneComponent : TransformComponent
 ---@field parentStageId integer ID of the parent stage (read-only)
----@field displayCompositorId integer ID of the display compositor (read-only)
 local SceneComponent = {}
 
 --- Get the parent StageComponent.
 ---@return StageComponent
 function SceneComponent:getParentStage() end
 
---- Get the number of output compositors for this scene.
----@return integer
-function SceneComponent:getOutputCompositorCount() end
-
---- Get the output compositor at the given index.
----@param index integer Zero-based index
+--- Get the compositor this scene owns.
 ---@return CompositorComponent
-function SceneComponent:getOutputCompositorAtIndex(index) end
+function SceneComponent:getCompositor() end
 
 ------------------------------------------------------------------------
 -- StageComponent : TransformComponent

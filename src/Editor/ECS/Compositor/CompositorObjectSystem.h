@@ -45,8 +45,20 @@ public:
 		return Super::getTypedComponentByName(compositorName);
 	}
 	std::vector<MikanCompositorID> getCompositorIdListForStage(MikanStageID stageId) const;
+	// The one compositor a scene owns
+	CompositorComponentPtr getCompositorForScene(MikanSceneID sceneId) const;
+	// The current scene's compositor, the one that publishes output
+	CompositorComponentPtr getCurrentSceneCompositor() const;
 
-	// The scene's display compositors. A compositor runs when it is one of
+	// A compositor is created and destroyed only with its scene, through the scene
+	// system, so the generic create paths refuse and destroy requests are turned away
+	virtual MikanComponentPtr addNewObjectByUntypedDefinition(const std::string& primaryComponentClass,
+															  Serialization::PolymorphicObjectPtr initParams) override;
+	virtual MikanComponentPtr addNewObjectWithDefaultDefinition(const std::string& primaryComponentClass) override;
+	virtual MikanComponentPtr recreateObjectFromDefinitionJson(const configuru::Config& definitionConfig) override;
+	virtual bool allowsObjectDestroyRequests() const override { return false; }
+
+	// The current scene's compositor. A compositor runs when it is one of
 	// these or when a graph editor window holds it; only the scene's may
 	// publish output.
 	void setActiveCompositors(const std::vector<MikanCompositorID>& activeCompositorIdList);

@@ -36,6 +36,7 @@
 #include "LegacyTakeMigrationTests.h"
 #include "LightEnvironmentPersistenceTests.h"
 #include "LocalizationTests.h"
+#include "ProjectHierarchyMigrationTests.h"
 #include "MaterialCompilerTests.h"
 #include "MatteTrackTests.h"
 #include "MeshCoverageTests.h"
@@ -120,6 +121,7 @@ bool run_all_editor_unit_tests()
 	success&= run_jsonrpc_server_tests();
 	success&= run_legacy_content_migration_tests();
 	success&= run_legacy_take_migration_tests();
+	success&= run_project_hierarchy_migration_tests();
 	success&= run_light_environment_persistence_tests();
 	success&= run_localization_unit_tests();
 	success&= run_material_compiler_tests();

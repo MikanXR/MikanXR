@@ -28,7 +28,9 @@ A burst of changes to one target merges into one transaction while consecutive c
 - the ImGui property panels bracket slider drags and typing via `ImGui::IsItemActive()` / `IsItemDeactivated()`, keeping per-frame value writes flowing for live preview
 - a script trigger run (the script panel button or the `script trigger` automation command) is bracketed as `script:<name>`, so its property writes coalesce. Object creates and destroys still seal on their own, so a trigger that spawns objects lands as several transactions.
 
-A merge keeps the first old value and the latest new value. Undo/redo requests, create/destroy events, project unload, and any `history` automation command seal the open transaction immediately; a destroy composite seals at the frame boundary.
+A merge keeps the first old value and the latest new value. Undo/redo requests, create/destroy events outside a composite bracket, project unload, and any `history` automation command seal the open transaction immediately; a destroy composite seals at the frame boundary.
+
+A composite bracket (`beginComposite`/`endComposite`, or the `TransactionCompositeScope` guard) is the one way several objects land in one transaction. While it is open nothing seals: every create, destroy, and property change joins the open transaction in the order it happens, and a destroy's snapshot op is appended when the next destroy begins or the bracket ends, so it still follows the child updates its teardown fired. `SceneObjectSystem::addNewScene` and `SceneObjectSystem::deleteObject` bracket a scene with the compositor it owns, which is what keeps an undo from leaving a scene without one. Brackets nest and the outermost seals.
 
 ## Undo and redo
 

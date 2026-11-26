@@ -4,6 +4,8 @@
 #include "CompositorComponent.h"
 #include "CompositorObjectSystem.h"
 #include "ProjectConfig.h"
+#include "SceneComponent.h"
+#include "SceneObjectSystem.h"
 
 #include "lua.hpp"
 #include "LuaBridge/LuaBridge.h"
@@ -38,6 +40,48 @@ std::vector<MikanCompositorID> CompositorObjectSystem::getCompositorIdListForSta
 	return compositorIdList;
 }
 
+CompositorComponentPtr CompositorObjectSystem::getCompositorForScene(MikanSceneID sceneId) const
+{
+	if (sceneId == INVALID_MIKAN_ID)
+		return CompositorComponentPtr();
+
+	return getTypedComponentByPredicate(
+		[sceneId](ComponentConstPtr compositor)
+		{ return compositor->getCompositorDefinition()->getOwnerSceneId() == sceneId; });
+}
+
+CompositorComponentPtr CompositorObjectSystem::getCurrentSceneCompositor() const
+{
+	return getCompositorForScene(getObjectSystemOfType<SceneObjectSystem>()->getCurrentSceneId());
+}
+
+MikanComponentPtr CompositorObjectSystem::addNewObjectByUntypedDefinition(
+	const std::string& primaryComponentClass, Serialization::PolymorphicObjectPtr initParams)
+{
+	return MikanComponentPtr();
+}
+
+MikanComponentPtr CompositorObjectSystem::addNewObjectWithDefaultDefinition(const std::string& primaryComponentClass)
+{
+	return MikanComponentPtr();
+}
+
+MikanComponentPtr CompositorObjectSystem::recreateObjectFromDefinitionJson(const configuru::Config& definitionConfig)
+{
+	MikanComponentPtr component= Super::recreateObjectFromDefinitionJson(definitionConfig);
+
+	// An undo that brings back the current scene's compositor has to start it,
+	// since the scene was activated before its compositor existed again
+	auto compositor= std::static_pointer_cast<CompositorComponent>(component);
+	SceneComponentPtr ownerScene= compositor ? compositor->getOwnerSceneComponent() : nullptr;
+	if (ownerScene && ownerScene->isCurrentScene())
+	{
+		ownerScene->refreshActiveCompositors();
+	}
+
+	return component;
+}
+
 void CompositorObjectSystem::setActiveCompositors(const std::vector<MikanCompositorID>& activeCompositorIdList)
 {
 	m_sceneActiveCompositorIds= activeCompositorIdList;
@@ -54,7 +98,7 @@ void CompositorObjectSystem::refreshRunningCompositors()
 
 		if (compositor)
 		{
-			// The scene's display compositor runs and publishes. A compositor an
+			// The current scene's compositor runs and publishes. A compositor an
 			// editor holds runs for its frames and evaluation but keeps its output down.
 			const bool bSceneActive=
 				std::find(m_sceneActiveCompositorIds.begin(), m_sceneActiveCompositorIds.end(), compositorId)

@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1211,
-		"translatedCount": 1211,
-		"reviewedCount": 1211
+		"stringCount": 1203,
+		"translatedCount": 1203,
+		"reviewedCount": 1203
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -183,7 +183,6 @@
 		"displayBuffer": "Display Buffer",
 		"displayBufferColor": "Color",
 		"displayBufferDepth": "Depth",
-		"displayCompositor": "Display Compositor",
 		"dropAssetHint": "Drop an asset from the Assets panel",
 		"editGraph": "Edit Graph",
 		"editScript": "Edit Script",
@@ -199,7 +198,6 @@
 		"intrinsicsResolutionMismatchFmt": "Calibrated at %dx%d but running at %dx%d. Recalibrate or return to the calibrated video mode.",
 		"intrinsicsUncalibrated": "Not calibrated. Run lens calibration before using this source for alignment or compositing.",
 		"noAsset": "<None>",
-		"noCompositors": "No Compositors",
 		"noFixtureGroups": "No Fixture Groups",
 		"noParents": "No Parents",
 		"noStages": "No Stages",
@@ -836,7 +834,6 @@
 		"verifyInitialCameraSetup": "Position the tracked camera so the physical object is clearly in view, then choose how to restrict feature capture."
 	},
 	"project": {
-		"addCompositorToScene": "Add Compositor To Scene",
 		"apertureOffsetValidFmt": "Aperture offset valid: %s",
 		"aperturePosFmt": "  pos (mm): %.1f, %.1f, %.1f",
 		"apertureQuatFmt": "  quat: w%.4f x%.4f y%.4f z%.4f",
@@ -844,8 +841,6 @@
 		"calibResolutionFmt": "Calib resolution: %d x %d",
 		"cameraFallbackNameFmt": "Camera %d",
 		"compositorFallbackNameFmt": "Compositor %d",
-		"compositorListEmpty": "No compositors in the active scene",
-		"compositorListNoScene": "No active scene",
 		"cxCyFmt": "cx=%.1f  cy=%.1f",
 		"fxFyFmt": "fx=%.1f  fy=%.1f",
 		"gizmoRotate": "Rotate (R)",
@@ -867,7 +862,6 @@
 		"outlinerAddCEFSource": "Add Browser Texture Source",
 		"outlinerAddCamera": "Add Camera",
 		"outlinerAddClientSource": "Add Client Texture Source",
-		"outlinerAddCompositor": "Add Compositor",
 		"outlinerAddFileSource": "Add File Video Source",
 		"outlinerAddLightGroup": "Add Light Group",
 		"outlinerAddMarker": "Add Aruco Marker",
@@ -904,7 +898,6 @@
 		"outlinerUnparented": "Unparented",
 		"panelAssets": "Assets",
 		"panelCompositorOutput": "Compositor Output",
-		"panelCompositors": "Compositors",
 		"panelDMX": "DMX Panel",
 		"panelHttpTriggers": "HTTP Triggers",
 		"panelProject": "Project",
@@ -914,6 +907,7 @@
 		"puckPoseValidFmt": "Puck pose valid: %s",
 		"resolutionMismatch": "RESOLUTION MISMATCH",
 		"sceneListEmpty": "No scenes in the project",
+		"sceneSplitsFmt": "A scene now owns exactly one compositor. Each extra compositor was moved to a new scene on the same stage,\nand the project was saved. The new scenes hold no stencils, shapes or anchors,\nso move or rebuild what each compositor should draw.\n%s",
 		"selectCalibrationCamera": "Select Calibration Camera",
 		"trackingFrameDelayFmt": "Tracking frame delay: %d",
 		"viewIsometric": "Isometric",
@@ -1276,11 +1270,9 @@
 		"yes": "Yes"
 	},
 	"windows": {
-		"addCompositor": "Add Compositor",
 		"assets": "Assets",
 		"cameraAlignmentDebug": "Camera Alignment Debug",
 		"compositorOutput": "Compositor Output",
-		"compositors": "Compositors",
 		"dmx": "DMX",
 		"httpTriggers": "HTTP Triggers",
 		"log": "Log",

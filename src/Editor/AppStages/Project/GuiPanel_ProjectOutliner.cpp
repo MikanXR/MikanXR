@@ -522,18 +522,6 @@ void GuiPanel_ProjectOutliner::drawSelectedNodeActions(ProjectOutlinerNodePtr se
 		break;
 	}
 	case eOutlinerNodeKind::scene:
-	{
-		const int sceneId= selectedNode->componentId;
-		if (drawAddButton("outlinerAddCompositor", ICON_FK_CLONE, "project.outlinerAddCompositor"))
-		{
-			deferAddAction([sceneId](ProjectManagerPtr pm)
-						   { return ProjectOutlinerActions::addCompositor(pm, sceneId); });
-		}
-		// Its own row: the compositor is a scene-level output, and its button is
-		// sized for the glyph set rather than the taller actor icons
-		drawSceneActorAddButtons(selectedNode);
-		break;
-	}
 	case eOutlinerNodeKind::sceneActor:
 		drawSceneActorAddButtons(selectedNode);
 		break;
@@ -557,9 +545,11 @@ void GuiPanel_ProjectOutliner::drawSelectedNodeActions(ProjectOutlinerNodePtr se
 
 bool GuiPanel_ProjectOutliner::canDeleteNode(ProjectOutlinerNodePtr node) const
 {
-	// Environment probes are camera-owned and are deleted with their camera
+	// Environment probes are camera-owned and are deleted with their camera, and a
+	// compositor is scene-owned and is deleted with its scene
 	return node && node->componentId != INVALID_MIKAN_ID
-		   && node->componentClassName != LightEnvironmentComponent::k_componentClassName;
+		   && node->componentClassName != LightEnvironmentComponent::k_componentClassName
+		   && node->kind != eOutlinerNodeKind::compositor;
 }
 
 void GuiPanel_ProjectOutliner::handleDeleteShortcut()
@@ -903,9 +893,10 @@ bool GuiPanel_ProjectOutliner::isActiveHighlightNode(ProjectOutlinerNodePtr node
 
 	if (node->kind == eOutlinerNodeKind::compositor)
 	{
-		SceneComponentPtr currentScene= sceneSystem->getCurrentScene();
-		return currentScene
-			   && currentScene->getSceneComponentDefinition()->getDisplayCompositorId() == node->componentId;
+		// The current scene's compositor is the one running
+		auto compositor= std::dynamic_pointer_cast<CompositorComponent>(node->component.lock());
+		return compositor
+			   && compositor->getCompositorDefinition()->getOwnerSceneId() == sceneSystem->getCurrentSceneId();
 	}
 
 	return false;

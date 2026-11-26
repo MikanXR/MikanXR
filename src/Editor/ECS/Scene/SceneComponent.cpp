@@ -2,7 +2,6 @@
 #include "CompositorComponent.h"
 #include "ColliderComponent.h"
 #include "IMkSceneRenderable.h"
-#include "ModalSceneAddCompositor/ModalDialog_SceneAddCompositor.h"
 #include "MikanObject.h"
 #include "MikanSceneTypes.h"
 #include "MkScene.h"
@@ -26,7 +25,6 @@
 #include <queue>
 
 // -- SceneComponentDefinition -----
-const std::string SceneComponentDefinition::k_displayCompositorIdPropertyId= "display_compositor_id";
 const std::string SceneComponentDefinition::k_forceRenderPropertyId= "force_render";
 
 SceneComponentDefinition::SceneComponentDefinition()
@@ -43,7 +41,6 @@ configuru::Config SceneComponentDefinition::writeToJSON()
 {
 	configuru::Config pt= TransformComponentDefinition::writeToJSON();
 
-	pt[k_displayCompositorIdPropertyId]= m_displayCompositorId;
 	pt[k_forceRenderPropertyId]= m_bForceRender;
 
 	return pt;
@@ -53,7 +50,6 @@ void SceneComponentDefinition::readFromJSON(const configuru::Config& pt)
 {
 	TransformComponentDefinition::readFromJSON(pt);
 
-	m_displayCompositorId= pt.get_or<int>(k_displayCompositorIdPropertyId, INVALID_MIKAN_ID);
 	m_bForceRender= pt.get_or<bool>(k_forceRenderPropertyId, false);
 }
 
@@ -66,20 +62,10 @@ bool SceneComponentDefinition::readFromInitParams(MikanObjectSystem* ownerObject
 	const auto* componentValues= initParams.getTypedPointer<MikanSceneComponentValues>();
 	if (componentValues)
 	{
-		m_displayCompositorId= componentValues->display_compositor_id;
 		m_bForceRender= componentValues->force_render;
 	}
 
 	return true;
-}
-
-void SceneComponentDefinition::setDisplayCompositorId(MikanCompositorID compositorId)
-{
-	if (m_displayCompositorId != compositorId)
-	{
-		m_displayCompositorId= compositorId;
-		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_displayCompositorIdPropertyId));
-	}
 }
 
 void SceneComponentDefinition::setForceRender(bool bForceRender)
@@ -128,41 +114,9 @@ StageComponentPtr SceneComponent::getParentStage() const
 	return StageComponentPtr();
 }
 
-std::vector<MikanCompositorID> SceneComponent::getOutputCompositorIDs() const
+CompositorComponentPtr SceneComponent::getCompositor() const
 {
-	std::vector<MikanCompositorID> compositorIDs;
-
-	auto& componentMap= getObjectSystemOfType<CompositorObjectSystem>()->getComponentMap();
-	for (const auto& pair : componentMap)
-	{
-		CompositorComponentPtr compositor= pair.second.lock();
-
-		if (compositor && compositor->getCompositorDefinition()->getOwnerSceneId() == getSceneId())
-		{
-			compositorIDs.push_back(pair.first);
-		}
-	}
-
-	return compositorIDs;
-}
-
-std::vector<CompositorComponentPtr> SceneComponent::getOutputCompositors() const
-{
-	std::vector<CompositorComponentPtr> outputCompositors;
-
-	const std::vector<MikanCompositorID>& compositorIDs= getOutputCompositorIDs();
-	for (MikanCompositorID compositorId : compositorIDs)
-	{
-		auto compositorSystem= getObjectSystemOfType<CompositorObjectSystem>();
-		CompositorComponentPtr compositor= compositorSystem->getCompositorById(compositorId);
-
-		if (compositor)
-		{
-			outputCompositors.push_back(compositor);
-		}
-	}
-
-	return outputCompositors;
+	return getObjectSystemOfType<CompositorObjectSystem>()->getCompositorForScene(getSceneId());
 }
 
 // -- TransformComponent ----
@@ -191,20 +145,6 @@ void SceneComponent::attachToStage(MikanStageID newParentId)
 	}
 }
 
-void SceneComponent::onDefinitionMarkedDirty(CommonConfigPtr configPtr,
-											 const ConfigPropertyChangeSet& changedPropertySet)
-{
-	TransformComponent::onDefinitionMarkedDirty(configPtr, changedPropertySet);
-
-	// Only the current scene drives the active compositors. Another scene's choice
-	// takes effect when activateScene() runs on switching to it.
-	if (changedPropertySet.hasPropertyName(SceneComponentDefinition::k_displayCompositorIdPropertyId)
-		&& isCurrentScene())
-	{
-		refreshActiveCompositors();
-	}
-}
-
 void SceneComponent::activateScene() { refreshActiveCompositors(); }
 
 void SceneComponent::deactivateScene() {}
@@ -212,13 +152,13 @@ void SceneComponent::deactivateScene() {}
 void SceneComponent::refreshActiveCompositors()
 {
 	CompositorObjectSystemPtr compositorSystem= getObjectSystemOfType<CompositorObjectSystem>();
-	MikanCompositorID compositorId= getSceneComponentDefinition()->getDisplayCompositorId();
+	CompositorComponentPtr compositor= getCompositor();
 
 	std::vector<MikanCompositorID> activeCompositorIDs;
 
-	if (compositorId != INVALID_MIKAN_ID)
+	if (compositor)
 	{
-		activeCompositorIDs.push_back(compositorId);
+		activeCompositorIDs.push_back(compositor->getCompositorId());
 	}
 
 	// Set active compositors for this scene
@@ -229,11 +169,6 @@ void SceneComponent::getPropertyDescriptors(std::vector<PropertyDescriptorConstP
 {
 	TransformComponent::getPropertyDescriptors(outDescriptors);
 
-	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(
-								 SceneComponentDefinition::k_displayCompositorIdPropertyId, MikanVariantType::INT)
-								 ->setDefaultValue(-1)
-								 ->setUIHidden());
-
 	outDescriptors.push_back(
 		std::make_shared<PropertyDescriptor>(SceneComponentDefinition::k_forceRenderPropertyId, MikanVariantType::BOOL)
 			->setDefaultValue(false));
@@ -241,12 +176,6 @@ void SceneComponent::getPropertyDescriptors(std::vector<PropertyDescriptorConstP
 
 bool SceneComponent::getPropertyValue(const std::string& propertyName, MikanVariant& outValue) const
 {
-	if (propertyName == SceneComponentDefinition::k_displayCompositorIdPropertyId)
-	{
-		outValue= getSceneComponentDefinition()->getDisplayCompositorId();
-		return true;
-	}
-
 	if (propertyName == SceneComponentDefinition::k_forceRenderPropertyId)
 	{
 		outValue= getSceneComponentDefinition()->getForceRender();
@@ -258,14 +187,6 @@ bool SceneComponent::getPropertyValue(const std::string& propertyName, MikanVari
 
 bool SceneComponent::setPropertyValue(const std::string& propertyName, const MikanVariant& inValue)
 {
-	if (propertyName == SceneComponentDefinition::k_displayCompositorIdPropertyId)
-	{
-		MikanCompositorID compositorId= inValue.getIntValue();
-
-		getSceneComponentDefinition()->setDisplayCompositorId(compositorId);
-		return true;
-	}
-
 	if (propertyName == SceneComponentDefinition::k_forceRenderPropertyId)
 	{
 		getSceneComponentDefinition()->setForceRender(inValue.getBoolValue());
@@ -307,25 +228,14 @@ void SceneComponent::bindLuaFunctions(struct lua_State* L)
 		.deriveClass<SceneComponent, TransformComponent>(SceneComponent::k_componentClassName.c_str())
 		.addProperty("parentStageId", [](SceneComponent* component) -> int { return component->getParentStageId(); })
 		.addProperty(
-			"displayCompositorId", [](SceneComponent* component) -> int
-			{ return component->getSceneComponentDefinition()->getDisplayCompositorId(); },
-			[](SceneComponent* component, int compositorId)
-			{ component->getSceneComponentDefinition()->setDisplayCompositorId(compositorId); })
-		.addProperty(
 			"forceRender", [](SceneComponent* component) -> bool
 			{ return component->getSceneComponentDefinition()->getForceRender(); },
 			[](SceneComponent* component, bool bForceRender)
 			{ component->getSceneComponentDefinition()->setForceRender(bForceRender); })
 		.addProperty("isCurrentScene", [](SceneComponent* component) -> bool { return component->isCurrentScene(); })
 		.addFunction("getParentStage", [](SceneComponent* c) -> StageComponent* { return c->getParentStage().get(); })
-		.addFunction("getOutputCompositorCount",
-					 [](SceneComponent* c) -> int { return static_cast<int>(c->getOutputCompositors().size()); })
-		.addFunction("getOutputCompositorAtIndex",
-					 [](SceneComponent* c, int i) -> CompositorComponent*
-					 {
-						 auto v= c->getOutputCompositors();
-						 return (i >= 0 && i < static_cast<int>(v.size())) ? v[i].get() : nullptr;
-					 })
+		.addFunction("getCompositor",
+					 [](SceneComponent* c) -> CompositorComponent* { return c->getCompositor().get(); })
 		.endClass();
 }
 

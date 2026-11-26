@@ -149,7 +149,7 @@ int addScene(ProjectManagerPtr projectManager, int stageId)
 	if (!sys)
 		return INVALID_MIKAN_ID;
 
-	return componentIdOrInvalid(sys->addNewObjectByTypedDefinition(
+	return componentIdOrInvalid(sys->addNewScene(
 		[stageId](auto def)
 		{
 			def->setParentTransformId(stageId);
@@ -223,20 +223,6 @@ int addSequence(ProjectManagerPtr projectManager, int groupId)
 		return INVALID_MIKAN_ID;
 
 	return componentIdOrInvalid(sys->createSequence(groupId, ""));
-}
-
-int addCompositor(ProjectManagerPtr projectManager, int sceneId)
-{
-	auto sys= projectManager->getSystemOfType<CompositorObjectSystem>();
-	if (!sys)
-		return INVALID_MIKAN_ID;
-
-	return componentIdOrInvalid(sys->addNewObjectByTypedDefinition(
-		[sceneId](auto def)
-		{
-			def->setOwnerSceneId(sceneId);
-			return true;
-		}));
 }
 
 int addAnchor(ProjectManagerPtr projectManager, int parentTransformId)
@@ -404,14 +390,12 @@ static bool deleteNodeComponent(ProjectManagerPtr projectManager, ProjectOutline
 	if (node->componentClassName == LightEnvironmentComponent::k_componentClassName)
 		return true;
 
-	if (node->kind == eOutlinerNodeKind::scene)
-	{
-		// Never leave current_scene_id pointing at a dead scene
-		auto sceneSystem= projectManager->getSystemOfType<SceneObjectSystem>();
-		if (sceneSystem && sceneSystem->getCurrentSceneId() == node->componentId)
-			sceneSystem->setCurrentSceneById(INVALID_MIKAN_ID);
-	}
-	else if (node->kind == eOutlinerNodeKind::trackingMount)
+	// A compositor is owned by its scene the same way, and the scene system takes
+	// it down with the scene
+	if (node->componentClassName == CompositorComponent::k_componentClassName)
+		return true;
+
+	if (node->kind == eOutlinerNodeKind::trackingMount)
 	{
 		// Remove the back-reference from the owning VR volume
 		ProjectOutlinerNodePtr volumeNode= node->parent.lock();

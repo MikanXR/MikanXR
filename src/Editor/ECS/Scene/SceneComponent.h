@@ -22,16 +22,11 @@ public:
 
 	MikanSceneID getSceneId() const { return getComponentId(); }
 
-	static const std::string k_displayCompositorIdPropertyId;
-	MikanCompositorID getDisplayCompositorId() const { return m_displayCompositorId; }
-	void setDisplayCompositorId(MikanCompositorID compositorId);
-
 	static const std::string k_forceRenderPropertyId;
 	bool getForceRender() const { return m_bForceRender; }
 	void setForceRender(bool bForceRender);
 
 protected:
-	MikanCompositorID m_displayCompositorId= INVALID_MIKAN_ID;
 	bool m_bForceRender= false;
 };
 
@@ -77,16 +72,13 @@ public:
 
 	MikanStageID getParentStageId() const;
 	StageComponentPtr getParentStage() const;
-	std::vector<MikanCompositorID> getOutputCompositorIDs() const;
-	std::vector<CompositorComponentPtr> getOutputCompositors() const;
+	// The scene's one compositor, the compositor whose owner scene this is. Null only
+	// between the scene's creation and its compositor's, and while an undo is mid-flight.
+	CompositorComponentPtr getCompositor() const;
 	void attachToStage(MikanStageID newParentId);
 	void activateScene();
 	void deactivateScene();
 	void refreshActiveCompositors();
-
-protected:
-	virtual void onDefinitionMarkedDirty(CommonConfigPtr configPtr,
-										 const ConfigPropertyChangeSet& changedPropertySet) override;
 };
 
 // Whether an object's geometry takes part in the project viewport this frame, from the

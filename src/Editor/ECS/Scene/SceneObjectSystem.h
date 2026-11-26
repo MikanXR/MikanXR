@@ -56,6 +56,15 @@ public:
 	virtual bool init(MikanObjectSystemDefinitionPtr definitionPtr) override;
 	virtual void dispose() override;
 
+	// Creates a scene together with the compositor it owns, as one undo step. Every
+	// create path routes here, so no scene exists without its compositor.
+	SceneComponentPtr addNewScene(DefinitionInitFunction definitionInit= {});
+	virtual MikanComponentPtr addNewObjectByUntypedDefinition(const std::string& primaryComponentClass,
+															  Serialization::PolymorphicObjectPtr initParams) override;
+	virtual MikanComponentPtr addNewObjectWithDefaultDefinition(const std::string& primaryComponentClass) override;
+	// Destroys the scene's compositor with it, as one undo step
+	virtual bool deleteObject(MikanObjectPtr objectPtr) override;
+
 	MikanSceneID getCurrentSceneId() const;
 	SceneComponentPtr getCurrentScene() const;
 	void setCurrentScene(SceneComponentPtr scene);

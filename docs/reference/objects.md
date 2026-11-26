@@ -83,6 +83,18 @@ The scene hierarchy is fixed by type, not by convention. `TransformComponent::ca
 
 The last row is the scene-actor rule, shared by the three types through `isValidSceneActorParent` (`src/Editor/ECS/Scene/SceneActorParenting.h`). Every other `TransformComponent` subclass keeps the permissive base: colliders, static meshes, gizmo handles and VR device sockets are attached internally to their own object's root and are not part of the authored hierarchy. Attaching into one's own subtree is refused for all of them.
 
+### A scene owns one compositor
+
+A `CompositorComponent` is not a `TransformComponent`, so the parent table does not cover it. It belongs to a scene through `owner_scene_id`, which is read only and set once at creation, and a scene owns exactly one: `SceneComponent::getCompositor` finds it through `CompositorObjectSystem::getCompositorForScene`. Their lifetimes are tied in `SceneObjectSystem`:
+
+- `addNewScene` creates the scene and then its compositor inside one composite transaction ([transactions.md](./transactions.md)). The outliner's Add Scene, the client `SystemCreateObject` request, and `component create` all route through it
+
+- `deleteObject` clears `current_scene_id` when it names the scene, removes the compositor, then the scene, in one composite transaction
+
+- `CompositorObjectSystem` refuses the generic create paths and reports `allowsObjectDestroyRequests()` false, which the outliner, the client `SystemDestroyObject` request, and `component destroy` all honor. Undo and redo recreate and destroy a compositor by its saved definition and are not refused
+
+A project saved while a scene could hold several compositors is rewritten on load by `ProjectHierarchyMigration` (`src/Editor/Project/`), which runs on the raw JSON beside the legacy content and take migrations. Each scene keeps the compositor it displayed, or its first. Every other compositor moves to a new, empty scene on the same stage, named from the compositor, and `AppStage_Project` lists those moves in a message box on enter. The new scenes are empty because a compositor composites only its own scene's stencils and shapes (`CompositorComponent::ownsSceneObject`).
+
 ---
 
 ## Which scenes draw

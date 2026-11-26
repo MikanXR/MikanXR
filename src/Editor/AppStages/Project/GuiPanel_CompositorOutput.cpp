@@ -106,14 +106,6 @@ bool GuiPanel_CompositorOutput::init(IMkGraphicsContext* graphicsContext)
 
 void GuiPanel_CompositorOutput::dispose()
 {
-	// Unregister scene delegates before clearing the reference
-	SceneComponentPtr sceneComponent= m_sceneComponent.lock();
-	if (sceneComponent)
-	{
-		sceneComponent->getSceneComponentDefinition()->OnPropertyChanged-=
-			MakeDelegate(this, &GuiPanel_CompositorOutput::onSceneDefinitionChanged);
-	}
-
 	// Stop listening for scene activation and disposal
 	if (SceneObjectSystemPtr sceneSystem= m_sceneSystem.lock())
 	{
@@ -147,23 +139,11 @@ void GuiPanel_CompositorOutput::dispose()
 
 void GuiPanel_CompositorOutput::bindSceneComponent(SceneComponentPtr sceneComponent)
 {
-	// Unregister from old scene
-	SceneComponentPtr oldScene= m_sceneComponent.lock();
-	if (oldScene)
-	{
-		oldScene->getSceneComponentDefinition()->OnPropertyChanged-=
-			MakeDelegate(this, &GuiPanel_CompositorOutput::onSceneDefinitionChanged);
-	}
-
 	m_sceneComponent= sceneComponent;
 	m_compositorComponent.reset();
 
 	if (sceneComponent)
 	{
-		// Listen for display compositor changes on the new scene's definition
-		sceneComponent->getSceneComponentDefinition()->OnPropertyChanged+=
-			MakeDelegate(this, &GuiPanel_CompositorOutput::onSceneDefinitionChanged);
-
 		rebindCompositorFromScene();
 	}
 }
@@ -174,14 +154,7 @@ void GuiPanel_CompositorOutput::rebindCompositorFromScene()
 	if (!sceneComponent)
 		return;
 
-	MikanCompositorID compositorId= sceneComponent->getSceneComponentDefinition()->getDisplayCompositorId();
-
-	CompositorComponentPtr compositor;
-	if (compositorId != INVALID_MIKAN_ID)
-	{
-		if (CompositorObjectSystemPtr compositorSystem= m_compositorSystem.lock())
-			compositor= compositorSystem->getCompositorById(compositorId);
-	}
+	CompositorComponentPtr compositor= sceneComponent->getCompositor();
 
 	m_compositorComponent= compositor;
 
@@ -200,23 +173,12 @@ void GuiPanel_CompositorOutput::rebindCompositorFromScene()
 
 void GuiPanel_CompositorOutput::onSceneActivated(SceneComponentPtr newScene) { bindSceneComponent(newScene); }
 
-void GuiPanel_CompositorOutput::onSceneDefinitionChanged(CommonConfigPtr configPtr,
-														 const ConfigPropertyChangeSet& changedPropertySet)
-{
-	if (changedPropertySet.hasPropertyName(SceneComponentDefinition::k_displayCompositorIdPropertyId))
-	{
-		rebindCompositorFromScene();
-	}
-}
-
 void GuiPanel_CompositorOutput::onSceneComponentDisposed(MikanObjectSystemPtr objectSystem,
 														 MikanComponentConstPtr component)
 {
 	SceneComponentPtr sceneComponent= m_sceneComponent.lock();
 	if (sceneComponent && component->getComponentId() == sceneComponent->getComponentId())
 	{
-		sceneComponent->getSceneComponentDefinition()->OnPropertyChanged-=
-			MakeDelegate(this, &GuiPanel_CompositorOutput::onSceneDefinitionChanged);
 		m_sceneComponent.reset();
 		m_compositorComponent.reset();
 	}
@@ -240,6 +202,13 @@ void GuiPanel_CompositorOutput::onGui()
 		return;
 
 	updateViewCamera();
+
+	// A scene's compositor is created just after the scene, and an undo can bring
+	// one back under a scene that is already bound
+	if (m_compositorComponent.expired())
+	{
+		rebindCompositorFromScene();
+	}
 
 	// The frame buffer matches the composited frame, so resizing the panel never
 	// changes what the compositor outputs

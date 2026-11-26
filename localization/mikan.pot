@@ -821,11 +821,6 @@ msgid "Depth"
 msgstr ""
 
 #. Section: componentPanel
-msgctxt "componentPanel.displayCompositor"
-msgid "Display Compositor"
-msgstr ""
-
-#. Section: componentPanel
 msgctxt "componentPanel.dropAssetHint"
 msgid "Drop an asset from the Assets panel"
 msgstr ""
@@ -900,11 +895,6 @@ msgstr ""
 #. Section: componentPanel
 msgctxt "componentPanel.noAsset"
 msgid "<None>"
-msgstr ""
-
-#. Section: componentPanel
-msgctxt "componentPanel.noCompositors"
-msgid "No Compositors"
 msgstr ""
 
 #. Section: componentPanel
@@ -3956,11 +3946,6 @@ msgid "Position the tracked camera so the physical object is clearly in view, th
 msgstr ""
 
 #. Section: project
-msgctxt "project.addCompositorToScene"
-msgid "Add Compositor To Scene"
-msgstr ""
-
-#. Section: project
 #, c-format
 msgctxt "project.apertureOffsetValidFmt"
 msgid "Aperture offset valid: %s"
@@ -4002,16 +3987,6 @@ msgstr ""
 #, c-format
 msgctxt "project.compositorFallbackNameFmt"
 msgid "Compositor %d"
-msgstr ""
-
-#. Section: project
-msgctxt "project.compositorListEmpty"
-msgid "No compositors in the active scene"
-msgstr ""
-
-#. Section: project
-msgctxt "project.compositorListNoScene"
-msgid "No active scene"
 msgstr ""
 
 #. Section: project
@@ -4121,11 +4096,6 @@ msgstr ""
 #. Section: project
 msgctxt "project.outlinerAddClientSource"
 msgid "Add Client Texture Source"
-msgstr ""
-
-#. Section: project
-msgctxt "project.outlinerAddCompositor"
-msgid "Add Compositor"
 msgstr ""
 
 #. Section: project
@@ -4311,11 +4281,6 @@ msgid "Compositor Output"
 msgstr ""
 
 #. Section: project
-msgctxt "project.panelCompositors"
-msgid "Compositors"
-msgstr ""
-
-#. Section: project
 msgctxt "project.panelDMX"
 msgid "DMX Panel"
 msgstr ""
@@ -4359,6 +4324,16 @@ msgstr ""
 #. Section: project
 msgctxt "project.sceneListEmpty"
 msgid "No scenes in the project"
+msgstr ""
+
+#. Section: project
+#, c-format
+msgctxt "project.sceneSplitsFmt"
+msgid ""
+"A scene now owns exactly one compositor. Each extra compositor was moved to a new scene on the same stage,\n"
+"and the project was saved. The new scenes hold no stencils, shapes or anchors,\n"
+"so move or rebuild what each compositor should draw.\n"
+"%s"
 msgstr ""
 
 #. Section: project
@@ -6099,11 +6074,6 @@ msgid "Yes"
 msgstr ""
 
 #. Section: windows
-msgctxt "windows.addCompositor"
-msgid "Add Compositor"
-msgstr ""
-
-#. Section: windows
 msgctxt "windows.assets"
 msgid "Assets"
 msgstr ""
@@ -6116,11 +6086,6 @@ msgstr ""
 #. Section: windows
 msgctxt "windows.compositorOutput"
 msgid "Compositor Output"
-msgstr ""
-
-#. Section: windows
-msgctxt "windows.compositors"
-msgid "Compositors"
 msgstr ""
 
 #. Section: windows

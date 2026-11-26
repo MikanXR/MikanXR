@@ -348,6 +348,9 @@ bool ProjectManager::loadProject(const std::string& projectFilePath)
 	// Loose takes recorded before captures existed are packed once, after the
 	// captures folder exists to receive them
 	LegacyTakeMigration::migrateProject(projectDir, projectFilePath);
+	// A project saved under an older scene hierarchy is moved onto the current one
+	m_hierarchyMigrationReport= ProjectHierarchyMigration::Report();
+	ProjectHierarchyMigration::migrateProject(projectFilePath, m_hierarchyMigrationReport);
 
 	// create an empty project config
 	m_projectConfig= createEmptyProjectConfig();
@@ -437,6 +440,13 @@ std::vector<AssetPathRepair> ProjectManager::takeAssetPathRepairs()
 	std::vector<AssetPathRepair> repairs;
 	repairs.swap(m_assetPathRepairs);
 	return repairs;
+}
+
+ProjectHierarchyMigration::Report ProjectManager::takeHierarchyMigrationReport()
+{
+	ProjectHierarchyMigration::Report report;
+	std::swap(report, m_hierarchyMigrationReport);
+	return report;
 }
 
 bool ProjectManager::saveProject(const std::string& projectFilePath)
