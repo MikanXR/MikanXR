@@ -91,7 +91,7 @@ A recovered lighting environment is a spherical function stored as 27 coefficien
 A stage-space view matrix applied to world-space model matrices is the failure this split exists to prevent, so each consumer picks deliberately:
 
 - rendering takes world space: `getApertureViewMatrix` and `getApertureViewProjectionMatrix` are built on `getWorldSpaceAperturePose`, because every model matrix they multiply comes from `TransformComponent::getWorldTransform()`
-- calibration solves take world space, since their results are stored with `setWorldTransform` (`StencilAligner`, `AnchorTriangulator`, `LightFixtureTriangulator`, `NaturalFeatureCloudBuilder`, `AppStage_DepthMeshCapture`)
+- calibration solves take world space, since their results are stored with `setWorldTransform` (`StencilAligner`, `AnchorTriangulator`, `NaturalFeatureCloudBuilder`, `AppStage_DepthMeshCapture`)
 - the recenter and camera-alignment stages take stage space, because they draw the stage origin at identity to verify the calibration they just solved
 - `MikanCameraNewFrameEvent` and the scene lighting estimate take stage space, because a client anchors what it renders at the stage ([wire-protocol.md](./wire-protocol.md))
 

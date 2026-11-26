@@ -1502,11 +1502,6 @@ msgid "Test Intrinsics"
 msgstr ""
 
 #. Section: functions
-msgctxt "functions.triangulate_light"
-msgid "Triangulate Light"
-msgstr ""
-
-#. Section: functions
 msgctxt "functions.zero_all_channels"
 msgid "Zero All Channels"
 msgstr ""
@@ -1674,55 +1669,6 @@ msgstr ""
 #. Section: httpTriggers
 msgctxt "httpTriggers.serverPort"
 msgid "HTTP Trigger Server Port"
-msgstr ""
-
-#. Section: lightFixtureCalibration
-#, c-format
-msgctxt "lightFixtureCalibration.calibrationCompleteFmt"
-msgid "Fixture '%s' position calibrated successfully."
-msgstr ""
-
-#. Section: lightFixtureCalibration
-#, c-format
-msgctxt "lightFixtureCalibration.capturePosition1Fmt"
-msgid "Camera position 1: Click on the '%s' fixture in the image."
-msgstr ""
-
-#. Section: lightFixtureCalibration
-#, c-format
-msgctxt "lightFixtureCalibration.capturePosition2Fmt"
-msgid "Camera position 2: Click on the '%s' fixture in the image."
-msgstr ""
-
-#. Section: lightFixtureCalibration
-msgctxt "lightFixtureCalibration.failedVideoStart"
-msgid "Error: Failed to start video stream."
-msgstr ""
-
-#. Section: lightFixtureCalibration
-msgctxt "lightFixtureCalibration.moveCamera"
-msgid "Move the camera to a second position with a different angle to the fixture."
-msgstr ""
-
-#. Section: lightFixtureCalibration
-msgctxt "lightFixtureCalibration.pendingVideoStart"
-msgid "Waiting for video stream to start..."
-msgstr ""
-
-#. Section: lightFixtureCalibration
-msgctxt "lightFixtureCalibration.redo"
-msgid "Redo"
-msgstr ""
-
-#. Section: lightFixtureCalibration
-#, c-format
-msgctxt "lightFixtureCalibration.verifyInitialCameraSetupFmt"
-msgid "Fixture '%s' has been set to white. Position the camera so the fixture is visible and verify the video stream is running."
-msgstr ""
-
-#. Section: lightFixtureCalibration
-msgctxt "lightFixtureCalibration.verifyTriangulatedPosition"
-msgid "Verify the triangulated fixture position looks correct in the viewport."
 msgstr ""
 
 #. Section: logPanel
@@ -4922,11 +4868,6 @@ msgstr ""
 #. Section: properties
 msgctxt "properties.display_tracking_space"
 msgid "Display Tracking Space"
-msgstr ""
-
-#. Section: properties
-msgctxt "properties.dmx_channel_count"
-msgid "DMX Channel Count"
 msgstr ""
 
 #. Section: properties

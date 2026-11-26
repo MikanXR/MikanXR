@@ -1,6 +1,6 @@
 # Calibration
 
-The calibration subsystem in `src/Editor/Calibration`, built on OpenCV, plus the `src/Editor/AppStages` UI flows that drive it. Covers lens intrinsics, camera-to-tracker alignment, marker-based camera and stage alignment, and the triangulation/alignment tools for anchors, stencils, and light fixtures. See [videosources.md](./videosources.md) for the video frame pipeline these flows consume, [conventions.md](./conventions.md) for coordinate conventions, and [objects.md](./objects.md) for the components that store the results.
+The calibration subsystem in `src/Editor/Calibration`, built on OpenCV, plus the `src/Editor/AppStages` UI flows that drive it. Covers lens intrinsics, camera-to-tracker alignment, marker-based camera and stage alignment, and the triangulation/alignment tools for anchors and stencils. See [videosources.md](./videosources.md) for the video frame pipeline these flows consume, [conventions.md](./conventions.md) for coordinate conventions, and [objects.md](./objects.md) for the components that store the results.
 
 Two further consumers of a calibrated frame share this directory but not this doc, because their math is inference rather than geometry: `SceneLightingEstimator` with `MarigoldInference` ([scene-lighting.md](./scene-lighting.md)) and `DepthMeshGenerator` with `MoGeInference` ([depth-proxy-mesh.md](./depth-proxy-mesh.md)). They live here because both start from an undistorted frame plus its calibrated intrinsics, and one of them reuses the ArUco detection below.
 
@@ -44,11 +44,9 @@ A fourth flow uses `CalibrationPatternFinder_Aruco` directly rather than through
 
 ---
 
-## Point tools: anchors, light fixtures, stencils
+## Point tools: anchors, stencils
 
 - `AppStage_AnchorTriangulation` / `AnchorTriangulator`: the user clicks the same physical point from two tracked camera poses; `computeCameraRayAtPixel()` builds a stage-space ray per click and the triangulated point is the ray intersection. Three triangulated points (origin, +X, +Y by convention) define the anchor transform, applied via the anchor component/definition `setWorldTransform`/`setRelativeTransform`.
-
-- `AppStage_LightFixtureCalibration` / `LightFixtureTriangulator`: the same two-ray triangulation for a single point, positioning a `DMXFixtureComponent` in the stage.
 
 - `AppStage_StencilAlignment` / `StencilAligner`: the user pairs clicked video pixels with clicked model vertices on a `ModelStencilComponent`; `computeStencilTransform()` solves the model pose with `computeOpenCVCameraRelativePatternTransform()` (`cv::solvePnP` over the pixel/vertex correspondences).
 

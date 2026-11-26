@@ -25,8 +25,8 @@ enum class eOcclusionMatteModel : int
 {
 	INVALID= -1,
 
-	small,
-	tiny,
+	sam2Small,
+	sam2Tiny,
 
 	COUNT
 };

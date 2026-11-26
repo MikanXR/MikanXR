@@ -105,7 +105,7 @@ Subdirectories (each is a source group, not a separate target):
 
 - `AppCore`: `App` (GUI app object, state machine over `AppStages`), `CmdApp` (headless commands and `-runTests`), entry points, settings config, frame timer.
 
-- `AppStages` holds the modal UI screens, one folder per stage: calibration flows (`MonoLensCalibration`, `AlignmentCalibration`, `AnchorTriangulation`, `LightFixtureCalibration`, `PointCloudAlignment`, `StencilAlignment`, `AlignCameraByOriginMarker`, `AlignCameraByUtilityMarker`, `VRTrackingRecenter`), the ML capture tools (`SceneLightingCapture`, `DepthMeshCapture`), the occlusion mesh build (`OcclusionMeshBuild`), `MainMenu`, `Project`, settings and modal dialogs.
+- `AppStages` holds the modal UI screens, one folder per stage: calibration flows (`MonoLensCalibration`, `AlignmentCalibration`, `AnchorTriangulation`, `PointCloudAlignment`, `StencilAlignment`, `AlignCameraByOriginMarker`, `AlignCameraByUtilityMarker`, `VRTrackingRecenter`), the ML capture tools (`SceneLightingCapture`, `DepthMeshCapture`), the occlusion mesh build (`OcclusionMeshBuild`), `MainMenu`, `Project`, settings and modal dialogs.
 
 - `Asset`: asset references (models, materials, textures, node graphs) with `Import/` and `Export/` subfolders.
 

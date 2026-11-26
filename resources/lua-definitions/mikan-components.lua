@@ -194,9 +194,6 @@ local ModelShapeComponent = {}
 ---@field ownerStageId integer ID of the owning stage (read-only)
 local DMXFixtureComponent = {}
 
---- Triangulate the light position using camera data.
-function DMXFixtureComponent:triangulateLight() end
-
 --- Get the owning StageComponent.
 ---@return StageComponent
 function DMXFixtureComponent:getOwnerStage() end

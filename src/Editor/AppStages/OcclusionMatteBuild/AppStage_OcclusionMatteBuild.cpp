@@ -53,7 +53,7 @@ const float k_previewTintBlend= 0.6f;
 
 eModelId toModelId(eOcclusionMatteModel model)
 {
-	return model == eOcclusionMatteModel::tiny ? eModelId::sam2_tiny : eModelId::sam2_small;
+	return model == eOcclusionMatteModel::sam2Tiny ? eModelId::sam2_tiny : eModelId::sam2_small;
 }
 
 bool isGltfExtension(const std::filesystem::path& path)

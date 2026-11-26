@@ -28,7 +28,7 @@ struct CloudBuildStats
 };
 
 // Builds a sparse world-space point cloud from natural image features tracked across a moving,
-// pose-tracked camera. Mirrors the AnchorTriangulator / LightFixtureTriangulator pattern:
+// pose-tracked camera. Mirrors the AnchorTriangulator pattern:
 // a pimpl state struct, a ctor taking the camera + distortion view, and render* overlays.
 class NaturalFeatureCloudBuilder
 {

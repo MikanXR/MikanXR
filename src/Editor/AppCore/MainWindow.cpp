@@ -59,7 +59,6 @@
 #include "AlignCameraByUtilityMarker/AppStage_AlignCameraByUtilityMarker.h"
 #include "AlignCameraByOriginMarker/AppStage_AlignCameraByOriginMarker.h"
 #include "AnchorTriangulation/AppStage_AnchorTriangulation.h"
-#include "LightFixtureCalibration/AppStage_LightFixtureCalibration.h"
 #include "DepthMeshCapture/AppStage_DepthMeshCapture.h"
 #include "OcclusionMeshBuild/AppStage_OcclusionMeshBuild.h"
 #include "OcclusionMatteBuild/AppStage_OcclusionMatteBuild.h"
@@ -114,7 +113,6 @@ MainWindow::MainWindow(App* ownerApp)
 	m_appStageFactory.addAppStageConstructor<AppStage_DepthMeshCapture>();
 	m_appStageFactory.addAppStageConstructor<AppStage_OcclusionMeshBuild>();
 	m_appStageFactory.addAppStageConstructor<AppStage_OcclusionMatteBuild>();
-	m_appStageFactory.addAppStageConstructor<AppStage_LightFixtureCalibration>();
 	m_appStageFactory.addAppStageConstructor<AppStage_SceneLightingCapture>();
 	m_appStageFactory.addAppStageConstructor<AppStage_MainMenu>();
 	m_appStageFactory.addAppStageConstructor<AppStage_MonoLensCalibration>();

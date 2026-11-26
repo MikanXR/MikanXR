@@ -2,8 +2,8 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1222,
-		"translatedCount": 891,
+		"stringCount": 1211,
+		"translatedCount": 880,
 		"reviewedCount": 1
 	},
 	"CEFTextureSourceComponent": {
@@ -322,7 +322,6 @@
 		"stop": "Stop",
 		"stop_sequence": "停止",
 		"test_intrinsics": "内部パラメーターをテスト",
-		"triangulate_light": "ライトを三角測量",
 		"zero_all_channels": "全チャンネルをゼロに"
 	},
 	"graphProperties": {
@@ -361,17 +360,6 @@
 		"routes": "Routes",
 		"script": "Script",
 		"serverPort": "HTTPトリガーサーバーポート"
-	},
-	"lightFixtureCalibration": {
-		"calibrationCompleteFmt": "フィクスチャー「%s」の位置校正が完了しました。",
-		"capturePosition1Fmt": "カメラ位置1: 画像内の「%s」フィクスチャーをクリックしてください。",
-		"capturePosition2Fmt": "カメラ位置2: 画像内の「%s」フィクスチャーをクリックしてください。",
-		"failedVideoStart": "エラー: 映像ストリームの開始に失敗しました。",
-		"moveCamera": "フィクスチャーに対して異なる角度になるよう、カメラを2つ目の位置に移動してください。",
-		"pendingVideoStart": "映像ストリームの開始を待っています...",
-		"redo": "やり直し",
-		"verifyInitialCameraSetupFmt": "フィクスチャー「%s」を白色に設定しました。フィクスチャーが見える位置にカメラを配置し、映像ストリームが動作していることを確認してください。",
-		"verifyTriangulatedPosition": "三角測量されたフィクスチャーの位置がビューポート内で正しく見えるか確認してください。"
 	},
 	"logPanel": {
 		"autoScroll": "自動スクロール",
@@ -1028,7 +1016,6 @@
 		"device_path": "デバイスパス",
 		"directionality": "指向性",
 		"display_tracking_space": "表示トラッキング空間",
-		"dmx_channel_count": "DMX チャンネル数",
 		"dmx_priority": "DMX 優先度",
 		"dmx_start_channel": "DMX 開始チャンネル",
 		"dmx_universe": "DMX ユニバース",

@@ -2,13 +2,13 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: MikanXR\n"
+"PO-Revision-Date: 2026-11-23 19:20+0000\n"
+"Last-Translator: Brendan Walker <bwalker81@users.noreply.hosted.weblate.org>\n"
+"Language-Team: Japanese <https://hosted.weblate.org/projects/mikanxr/mikanxr/ja/>\n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2026-11-23 19:20+0000\n"
-"Last-Translator: Brendan Walker <bwalker81@users.noreply.hosted.weblate.org>\n"
-"Language-Team: Japanese <https://hosted.weblate.org/projects/mikanxr/mikanxr/ja/>\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "X-Generator: Weblate 2026.12.dev0\n"
 
@@ -1724,12 +1724,6 @@ msgstr "内部パラメーターをテスト"
 
 #. Section: functions
 #, fuzzy
-msgctxt "functions.triangulate_light"
-msgid "Triangulate Light"
-msgstr "ライトを三角測量"
-
-#. Section: functions
-#, fuzzy
 msgctxt "functions.zero_all_channels"
 msgid "Zero All Channels"
 msgstr "全チャンネルをゼロに"
@@ -1919,60 +1913,6 @@ msgstr ""
 msgctxt "httpTriggers.serverPort"
 msgid "HTTP Trigger Server Port"
 msgstr "HTTPトリガーサーバーポート"
-
-#. Section: lightFixtureCalibration
-#, fuzzy, c-format
-msgctxt "lightFixtureCalibration.calibrationCompleteFmt"
-msgid "Fixture '%s' position calibrated successfully."
-msgstr "フィクスチャー「%s」の位置校正が完了しました。"
-
-#. Section: lightFixtureCalibration
-#, fuzzy, c-format
-msgctxt "lightFixtureCalibration.capturePosition1Fmt"
-msgid "Camera position 1: Click on the '%s' fixture in the image."
-msgstr "カメラ位置1: 画像内の「%s」フィクスチャーをクリックしてください。"
-
-#. Section: lightFixtureCalibration
-#, fuzzy, c-format
-msgctxt "lightFixtureCalibration.capturePosition2Fmt"
-msgid "Camera position 2: Click on the '%s' fixture in the image."
-msgstr "カメラ位置2: 画像内の「%s」フィクスチャーをクリックしてください。"
-
-#. Section: lightFixtureCalibration
-#, fuzzy
-msgctxt "lightFixtureCalibration.failedVideoStart"
-msgid "Error: Failed to start video stream."
-msgstr "エラー: 映像ストリームの開始に失敗しました。"
-
-#. Section: lightFixtureCalibration
-#, fuzzy
-msgctxt "lightFixtureCalibration.moveCamera"
-msgid "Move the camera to a second position with a different angle to the fixture."
-msgstr "フィクスチャーに対して異なる角度になるよう、カメラを2つ目の位置に移動してください。"
-
-#. Section: lightFixtureCalibration
-#, fuzzy
-msgctxt "lightFixtureCalibration.pendingVideoStart"
-msgid "Waiting for video stream to start..."
-msgstr "映像ストリームの開始を待っています..."
-
-#. Section: lightFixtureCalibration
-#, fuzzy
-msgctxt "lightFixtureCalibration.redo"
-msgid "Redo"
-msgstr "やり直し"
-
-#. Section: lightFixtureCalibration
-#, fuzzy, c-format
-msgctxt "lightFixtureCalibration.verifyInitialCameraSetupFmt"
-msgid "Fixture '%s' has been set to white. Position the camera so the fixture is visible and verify the video stream is running."
-msgstr "フィクスチャー「%s」を白色に設定しました。フィクスチャーが見える位置にカメラを配置し、映像ストリームが動作していることを確認してください。"
-
-#. Section: lightFixtureCalibration
-#, fuzzy
-msgctxt "lightFixtureCalibration.verifyTriangulatedPosition"
-msgid "Verify the triangulated fixture position looks correct in the viewport."
-msgstr "三角測量されたフィクスチャーの位置がビューポート内で正しく見えるか確認してください。"
 
 #. Section: logPanel
 #, fuzzy
@@ -5573,12 +5513,6 @@ msgstr "表示トラッキング空間"
 
 #. Section: properties
 #, fuzzy
-msgctxt "properties.dmx_channel_count"
-msgid "DMX Channel Count"
-msgstr "DMX チャンネル数"
-
-#. Section: properties
-#, fuzzy
 msgctxt "properties.dmx_priority"
 msgid "DMX Priority"
 msgstr "DMX 優先度"
@@ -7110,9 +7044,59 @@ msgstr "カメラを選択"
 #~ msgstr "コンポジター出力を表示"
 
 #, fuzzy
+#~ msgctxt "functions.triangulate_light"
+#~ msgid "Triangulate Light"
+#~ msgstr "ライトを三角測量"
+
+#, fuzzy
 #~ msgctxt "httpTriggers.noRoutesRegistered"
 #~ msgid "No HTTP trigger routes registered"
 #~ msgstr "登録されたHTTPトリガールートがありません"
+
+#, fuzzy, c-format
+#~ msgctxt "lightFixtureCalibration.calibrationCompleteFmt"
+#~ msgid "Fixture '%s' position calibrated successfully."
+#~ msgstr "フィクスチャー「%s」の位置校正が完了しました。"
+
+#, fuzzy, c-format
+#~ msgctxt "lightFixtureCalibration.capturePosition1Fmt"
+#~ msgid "Camera position 1: Click on the '%s' fixture in the image."
+#~ msgstr "カメラ位置1: 画像内の「%s」フィクスチャーをクリックしてください。"
+
+#, fuzzy, c-format
+#~ msgctxt "lightFixtureCalibration.capturePosition2Fmt"
+#~ msgid "Camera position 2: Click on the '%s' fixture in the image."
+#~ msgstr "カメラ位置2: 画像内の「%s」フィクスチャーをクリックしてください。"
+
+#, fuzzy
+#~ msgctxt "lightFixtureCalibration.failedVideoStart"
+#~ msgid "Error: Failed to start video stream."
+#~ msgstr "エラー: 映像ストリームの開始に失敗しました。"
+
+#, fuzzy
+#~ msgctxt "lightFixtureCalibration.moveCamera"
+#~ msgid "Move the camera to a second position with a different angle to the fixture."
+#~ msgstr "フィクスチャーに対して異なる角度になるよう、カメラを2つ目の位置に移動してください。"
+
+#, fuzzy
+#~ msgctxt "lightFixtureCalibration.pendingVideoStart"
+#~ msgid "Waiting for video stream to start..."
+#~ msgstr "映像ストリームの開始を待っています..."
+
+#, fuzzy
+#~ msgctxt "lightFixtureCalibration.redo"
+#~ msgid "Redo"
+#~ msgstr "やり直し"
+
+#, fuzzy, c-format
+#~ msgctxt "lightFixtureCalibration.verifyInitialCameraSetupFmt"
+#~ msgid "Fixture '%s' has been set to white. Position the camera so the fixture is visible and verify the video stream is running."
+#~ msgstr "フィクスチャー「%s」を白色に設定しました。フィクスチャーが見える位置にカメラを配置し、映像ストリームが動作していることを確認してください。"
+
+#, fuzzy
+#~ msgctxt "lightFixtureCalibration.verifyTriangulatedPosition"
+#~ msgid "Verify the triangulated fixture position looks correct in the viewport."
+#~ msgstr "三角測量されたフィクスチャーの位置がビューポート内で正しく見えるか確認してください。"
 
 #, fuzzy, c-format
 #~ msgctxt "nodeEditor.compositorOutputTitleFmt"
@@ -7153,3 +7137,8 @@ msgstr "カメラを選択"
 #~ msgctxt "project.viewTop"
 #~ msgid "Top"
 #~ msgstr "上面"
+
+#, fuzzy
+#~ msgctxt "properties.dmx_channel_count"
+#~ msgid "DMX Channel Count"
+#~ msgstr "DMX チャンネル数"

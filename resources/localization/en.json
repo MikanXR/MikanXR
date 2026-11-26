@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1222,
-		"translatedCount": 1222,
-		"reviewedCount": 1222
+		"stringCount": 1211,
+		"translatedCount": 1211,
+		"reviewedCount": 1211
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -322,7 +322,6 @@
 		"stop": "Stop",
 		"stop_sequence": "Stop",
 		"test_intrinsics": "Test Intrinsics",
-		"triangulate_light": "Triangulate Light",
 		"zero_all_channels": "Zero All Channels"
 	},
 	"graphProperties": {
@@ -361,17 +360,6 @@
 		"routes": "Routes",
 		"script": "Script",
 		"serverPort": "HTTP Trigger Server Port"
-	},
-	"lightFixtureCalibration": {
-		"calibrationCompleteFmt": "Fixture '%s' position calibrated successfully.",
-		"capturePosition1Fmt": "Camera position 1: Click on the '%s' fixture in the image.",
-		"capturePosition2Fmt": "Camera position 2: Click on the '%s' fixture in the image.",
-		"failedVideoStart": "Error: Failed to start video stream.",
-		"moveCamera": "Move the camera to a second position with a different angle to the fixture.",
-		"pendingVideoStart": "Waiting for video stream to start...",
-		"redo": "Redo",
-		"verifyInitialCameraSetupFmt": "Fixture '%s' has been set to white. Position the camera so the fixture is visible and verify the video stream is running.",
-		"verifyTriangulatedPosition": "Verify the triangulated fixture position looks correct in the viewport."
 	},
 	"logPanel": {
 		"autoScroll": "Auto Scroll",
@@ -1028,7 +1016,6 @@
 		"device_path": "Device Path",
 		"directionality": "Directionality",
 		"display_tracking_space": "Display Tracking Space",
-		"dmx_channel_count": "DMX Channel Count",
 		"dmx_priority": "DMX Priority",
 		"dmx_start_channel": "DMX Start Channel",
 		"dmx_universe": "DMX Universe",
