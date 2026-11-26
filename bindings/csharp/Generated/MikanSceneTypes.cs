@@ -12,6 +12,7 @@ namespace MikanXR
 
 		public int camera_id;
 		public int light_environment_id;
+		public int lighting_preset_id;
 		public bool force_render;
 
 		public override string RuntimeClassName => "MikanSceneComponentValues";
@@ -21,6 +22,7 @@ namespace MikanXR
 			base.WriteFields(json);
 			json.Add("camera_id", MikanJson.WriteInt(this.camera_id));
 			json.Add("light_environment_id", MikanJson.WriteInt(this.light_environment_id));
+			json.Add("lighting_preset_id", MikanJson.WriteInt(this.lighting_preset_id));
 			json.Add("force_render", MikanJson.WriteBool(this.force_render));
 		}
 
@@ -29,6 +31,7 @@ namespace MikanXR
 			base.ReadFields(json);
 			this.camera_id = MikanJson.ReadInt(MikanJson.Field(json, "camera_id"));
 			this.light_environment_id = MikanJson.ReadInt(MikanJson.Field(json, "light_environment_id"));
+			this.lighting_preset_id = MikanJson.ReadInt(MikanJson.Field(json, "lighting_preset_id"));
 			this.force_render = MikanJson.ReadBool(MikanJson.Field(json, "force_render"));
 		}
 
@@ -38,6 +41,7 @@ namespace MikanXR
 			{
 				case "camera_id": value = this.camera_id; return true;
 				case "light_environment_id": value = this.light_environment_id; return true;
+				case "lighting_preset_id": value = this.lighting_preset_id; return true;
 				case "force_render": value = this.force_render; return true;
 			}
 			return base.TryGetField(fieldName, out value);
@@ -49,6 +53,7 @@ namespace MikanXR
 			{
 				case "camera_id": return MikanJson.TryAssign(value, ref this.camera_id);
 				case "light_environment_id": return MikanJson.TryAssign(value, ref this.light_environment_id);
+				case "lighting_preset_id": return MikanJson.TryAssign(value, ref this.lighting_preset_id);
 				case "force_render": return MikanJson.TryAssign(value, ref this.force_render);
 			}
 			return base.TrySetField(fieldName, value);

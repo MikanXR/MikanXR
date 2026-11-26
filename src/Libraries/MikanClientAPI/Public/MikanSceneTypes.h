@@ -40,6 +40,10 @@ struct MIKAN_API
 	// The lighting probe captured for the scene, or INVALID_MIKAN_ID before the first capture
 	FIELD() MikanLightID light_environment_id= INVALID_MIKAN_ID;
 
+	// The lighting preset the scene falls back to, or INVALID_MIKAN_ID for none. The editor
+	// applies it when the scene becomes current and when a sequence on the preset's group ends.
+	FIELD() MikanDMXPresetID lighting_preset_id= INVALID_MIKAN_ID;
+
 	// Draws this scene's geometry even while another scene is the current one.
 	// Without it only the current scene's subtree renders.
 	FIELD() bool force_render= false;

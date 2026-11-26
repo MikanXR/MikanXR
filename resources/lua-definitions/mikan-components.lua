@@ -51,6 +51,7 @@ local TransformComponent = {}
 ---@field parentStageId integer ID of the parent stage (read-only)
 ---@field cameraId integer ID of the camera the scene is shot through (read/write)
 ---@field lightEnvironmentId integer ID of the scene's lighting probe, -1 before the first capture (read-only)
+---@field lightingPresetId integer ID of the lighting preset the scene falls back to, -1 for none (read/write)
 local SceneComponent = {}
 
 --- Get the parent StageComponent.

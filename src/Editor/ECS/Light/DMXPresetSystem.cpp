@@ -1,4 +1,6 @@
 #include "DMXPresetSystem.h"
+#include "SceneComponent.h"
+#include "SceneObjectSystem.h"
 #include "DMXFixtureGroupSystem.h"
 #include "MikanObject.h"
 #include "ProjectManager.h"
@@ -16,6 +18,44 @@ DMXPresetSystemDefinition::DMXPresetSystemDefinition(const std::string& configNa
 DMXPresetSystem::DMXPresetSystem(ProjectManagerPtr ownerProjectManager)
 	: Super::MikanTypedObjectSystem(ownerProjectManager)
 {
+}
+
+void DMXPresetSystem::postInit()
+{
+	Super::postInit();
+
+	if (!m_bLifecycleEventsBound)
+	{
+		OnComponentDisposed+= MakeDelegate(this, &DMXPresetSystem::onPresetComponentDisposed);
+		m_bLifecycleEventsBound= true;
+	}
+}
+
+void DMXPresetSystem::dispose()
+{
+	// Unbound before the presets dispose with the project, which is not a destroy
+	// any scene should react to
+	if (m_bLifecycleEventsBound)
+	{
+		OnComponentDisposed-= MakeDelegate(this, &DMXPresetSystem::onPresetComponentDisposed);
+		m_bLifecycleEventsBound= false;
+	}
+
+	Super::dispose();
+}
+
+void DMXPresetSystem::onPresetComponentDisposed(MikanObjectSystemPtr objectSystem, MikanComponentConstPtr component)
+{
+	auto preset= std::dynamic_pointer_cast<const DMXPresetComponent>(component);
+	SceneObjectSystemPtr sceneSystem= getOwnerProjectManager()->getSystemOfType<SceneObjectSystem>();
+	if (!preset || !sceneSystem)
+		return;
+
+	const MikanDMXPresetID presetId= preset->getComponentId();
+	sceneSystem->visitComponents([](SceneComponentPtr scene)
+								 { scene->getSceneComponentDefinition()->setLightingPresetId(INVALID_MIKAN_ID); },
+								 [presetId](SceneComponentPtr scene)
+								 { return scene->getSceneComponentDefinition()->getLightingPresetId() == presetId; });
 }
 
 MikanComponentPtr DMXPresetSystem::addNewObjectWithDefaultDefinition(const std::string& primaryComponentClass)

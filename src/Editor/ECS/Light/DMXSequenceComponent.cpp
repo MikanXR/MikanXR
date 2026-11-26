@@ -1,4 +1,5 @@
 #include "DMXSequenceComponent.h"
+#include "SceneObjectSystem.h"
 #include "PlaybackTime.h"
 #include "ProjectScriptContext.h"
 #include "AssetReferencePropertyMetaData.h"
@@ -504,7 +505,8 @@ void DMXSequenceComponent::stop()
 	if (m_state == eDMXSequenceState::Stopped)
 		return;
 
-	// The last frame stays on the fixtures unless the handler writes another
+	// The last frame stays on the fixtures unless the handler writes another or
+	// the current scene's lighting preset takes them back below
 	m_state= eDMXSequenceState::Stopped;
 	m_timeSinceStart= 0.f;
 
@@ -518,6 +520,13 @@ void DMXSequenceComponent::stop()
 	if (hasScriptHandler() && callHandler(k_sequenceStopMethodName, false, 0.f))
 	{
 		applyFrameBuffer();
+	}
+
+	// The current scene's lighting preset takes the group back when it addresses
+	// it, after the handler's last frame. With none the last frame stays.
+	if (SceneObjectSystemPtr sceneSystem= getObjectSystemOfType<SceneObjectSystem>())
+	{
+		sceneSystem->applyCurrentSceneLightingPreset(getDMXSequenceDefinition()->getGroupId());
 	}
 }
 

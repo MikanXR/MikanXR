@@ -1,6 +1,10 @@
 #include "App.h"
 #include "CompositorComponent.h"
 #include "CompositorObjectSystem.h"
+#include "DMXPresetComponent.h"
+#include "DMXPresetSystem.h"
+#include "DMXSequenceComponent.h"
+#include "DMXSequenceSystem.h"
 #include "IEditorWindow.h"
 #include "LightEnvironmentComponent.h"
 #include "LightEnvironmentSystem.h"
@@ -179,6 +183,36 @@ bool SceneObjectSystem::deleteObject(MikanObjectPtr objectPtr)
 	}
 
 	return Super::deleteObject(objectPtr);
+}
+
+void SceneObjectSystem::applyCurrentSceneLightingPreset(MikanDMXFixtureGroupID groupId)
+{
+	SceneComponentPtr currentScene= getCurrentScene();
+	DMXPresetSystemPtr presetSystem= getObjectSystemOfType<DMXPresetSystem>();
+	if (!currentScene || !presetSystem)
+		return;
+
+	DMXPresetComponentPtr preset=
+		presetSystem->getPresetById(currentScene->getSceneComponentDefinition()->getLightingPresetId());
+	if (!preset)
+		return;
+
+	const MikanDMXFixtureGroupID presetGroupId= preset->getDMXPresetDefinition()->getGroupId();
+	if (groupId != INVALID_MIKAN_ID && groupId != presetGroupId)
+		return;
+
+	bool bGroupHasPlayingSequence= false;
+	if (DMXSequenceSystemPtr sequenceSystem= getObjectSystemOfType<DMXSequenceSystem>())
+	{
+		sequenceSystem->visitComponents(
+			[&bGroupHasPlayingSequence](DMXSequenceComponentPtr sequence) { bGroupHasPlayingSequence= true; },
+			[presetGroupId](DMXSequenceComponentPtr sequence)
+			{ return sequence->isPlaying() && sequence->getDMXSequenceDefinition()->getGroupId() == presetGroupId; });
+	}
+	if (bGroupHasPlayingSequence)
+		return;
+
+	preset->apply();
 }
 
 MikanSceneID SceneObjectSystem::getCurrentSceneId() const

@@ -9,11 +9,13 @@ export class MikanSceneComponentValues extends MikanTransformComponentValues {
   static readonly k_ownerSystemName = 'SceneObjectSystem';
   camera_id: number = -1;
   light_environment_id: number = -1;
+  lighting_preset_id: number = -1;
   force_render: boolean = false;
 
   static __serializationMetadata: SerializationField[] = [
     { name: 'camera_id', type: 'int32' },
     { name: 'light_environment_id', type: 'int32' },
+    { name: 'lighting_preset_id', type: 'int32' },
     { name: 'force_render', type: 'boolean' }
   ];
 }

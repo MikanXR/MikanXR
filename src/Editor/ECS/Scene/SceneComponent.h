@@ -33,11 +33,18 @@ public:
 	MikanLightID getLightEnvironmentId() const { return m_lightEnvironmentId; }
 	void setLightEnvironmentId(MikanLightID lightEnvironmentId);
 
+	// The lighting preset the scene falls back to: applied when the scene becomes
+	// current and whenever a sequence on the preset's group ends
+	static const std::string k_lightingPresetIdPropertyId;
+	MikanDMXPresetID getLightingPresetId() const { return m_lightingPresetId; }
+	void setLightingPresetId(MikanDMXPresetID lightingPresetId);
+
 	static const std::string k_forceRenderPropertyId;
 	bool getForceRender() const { return m_bForceRender; }
 	void setForceRender(bool bForceRender);
 
 protected:
+	MikanDMXPresetID m_lightingPresetId= INVALID_MIKAN_ID;
 	MikanCameraID m_cameraId= INVALID_MIKAN_ID;
 	MikanLightID m_lightEnvironmentId= INVALID_MIKAN_ID;
 	bool m_bForceRender= false;
@@ -104,6 +111,10 @@ public:
 	void activateScene();
 	void deactivateScene();
 	void refreshActiveCompositors();
+
+protected:
+	virtual void onDefinitionMarkedDirty(CommonConfigPtr configPtr,
+										 const ConfigPropertyChangeSet& changedPropertySet) override;
 
 private:
 	// The scene's camera, or null after telling the user the scene has none

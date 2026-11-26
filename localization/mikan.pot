@@ -893,6 +893,11 @@ msgid "Not calibrated. Run lens calibration before using this source for alignme
 msgstr ""
 
 #. Section: componentPanel
+msgctxt "componentPanel.lightingPreset"
+msgid "Lighting Preset"
+msgstr ""
+
+#. Section: componentPanel
 msgctxt "componentPanel.noAsset"
 msgid "<None>"
 msgstr ""

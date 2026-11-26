@@ -41,7 +41,7 @@ Creation entry points: `addNewObjectByTypedDefinition(initFunc)` in C++, and `ad
 
 Primary component families (each with a matching `*Definition` config class):
 
-- Scene structure: `SceneComponent` and `StageComponent` (both extend `TransformComponent`; a scene attaches to a stage via `attachToStage` names the camera it is shot through in `camera_id`, and names its lighting probe in `light_environment_id`, a stage references a tracking volume and stores stage bounds).
+- Scene structure: `SceneComponent` and `StageComponent` (both extend `TransformComponent`; a scene attaches to a stage via `attachToStage` names the camera it is shot through in `camera_id`, its lighting probe in `light_environment_id`, and the lighting preset it falls back to in `lighting_preset_id`, a stage references a tracking volume and stores stage bounds).
 - Spatial: `AnchorComponent`, `MarkerComponent` (ArUco id + physical length in mm), `TrackingMountComponent` (binds a VR device by path/socket), `TrackingVolumeComponent` with `VRTrackingVolumeComponent` / `MarkerTrackingVolumeComponent` subclasses, `VRDeviceComponent` (runtime-only, under `VRObjectSystem`).
 - Camera/video: `CameraComponent` (stage id, tracking mount id, video source id, aperture offset, frame sync mode, and the runtime-only pose-driven flag that resolves the mode's auto setting), `VideoSourceComponent` with `USBVideoSourceComponent` / `NetworkVideoSourceComponent` / `ARKitVideoSourceComponent` / `FileVideoSourceComponent` subclasses (see [videosources.md](./videosources.md)).
 - Compositing inputs: `CompositorComponent`, `TextureSourceComponent` with `ClientTextureSourceComponent` / `SpoutTextureSourceComponent` / `CEFTextureSourceComponent` (see [compositor.md](./compositor.md)).
@@ -95,6 +95,17 @@ A `CompositorComponent` is not a `TransformComponent`, so the parent table does 
 - `CompositorObjectSystem` refuses the generic create paths and reports `allowsObjectDestroyRequests()` false, which the outliner, the client `SystemDestroyObject` request, and `component destroy` all honor. Undo and redo recreate and destroy a compositor by its saved definition and are not refused
 
 A project saved while a scene could hold several compositors is rewritten on load by `ProjectHierarchyMigration` (`src/Editor/Project/`), which runs on the raw JSON beside the legacy content and take migrations. Each scene keeps the compositor it displayed, or its first. Every other compositor moves to a new, empty scene on the same stage, named from the compositor, and `AppStage_Project` lists those moves in a message box on enter. The camera each compositor named then moves to its scene, and each lighting probe moves from its camera to a scene shot through that camera (the current scene first). A probe left with no scene is dropped and listed in a second notice. The new scenes are empty because a compositor composites only its own scene's stencils and shapes (`CompositorComponent::ownsSceneObject`).
+
+### A scene's lighting preset
+
+A scene may name one `DMXPresetComponent` in `lighting_preset_id`, the look its fixtures return to. Only the current scene's preset is ever applied, through `SceneObjectSystem::applyCurrentSceneLightingPreset`, at four moments:
+
+- the scene becomes current (`SceneComponent::activateScene`, which also runs on project load)
+- a sequence on the preset's fixture group ends, whether it played out or was stopped (`DMXSequenceComponent::stop`, after a script's `SequenceStop` frame)
+- the current scene's `lighting_preset_id` changes
+- nothing else: a sequence on another group, or on a scene that is not current, leaves its last frame on the fixtures as before
+
+A sequence still playing on the preset's group holds the fixtures, so the preset waits for it to end. A preset addresses one group, so a scene's preset governs that group only. Destroying a preset clears it from every scene that named it: `DMXPresetSystem` does so on its own `OnComponentDisposed`, inside the destroy's transaction, and unbinds before a project unload disposes the presets. The scene panel's picker offers the presets whose group sits on the scene's stage, with a none entry.
 
 ---
 

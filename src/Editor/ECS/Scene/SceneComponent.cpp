@@ -38,6 +38,7 @@
 // -- SceneComponentDefinition -----
 const std::string SceneComponentDefinition::k_cameraIdPropertyId= "camera_id";
 const std::string SceneComponentDefinition::k_lightEnvironmentIdPropertyId= "light_environment_id";
+const std::string SceneComponentDefinition::k_lightingPresetIdPropertyId= "lighting_preset_id";
 const std::string SceneComponentDefinition::k_forceRenderPropertyId= "force_render";
 
 SceneComponentDefinition::SceneComponentDefinition()
@@ -56,6 +57,7 @@ configuru::Config SceneComponentDefinition::writeToJSON()
 
 	pt[k_cameraIdPropertyId]= m_cameraId;
 	pt[k_lightEnvironmentIdPropertyId]= m_lightEnvironmentId;
+	pt[k_lightingPresetIdPropertyId]= m_lightingPresetId;
 	pt[k_forceRenderPropertyId]= m_bForceRender;
 
 	return pt;
@@ -67,6 +69,7 @@ void SceneComponentDefinition::readFromJSON(const configuru::Config& pt)
 
 	m_cameraId= pt.get_or<int>(k_cameraIdPropertyId, INVALID_MIKAN_ID);
 	m_lightEnvironmentId= pt.get_or<int>(k_lightEnvironmentIdPropertyId, INVALID_MIKAN_ID);
+	m_lightingPresetId= pt.get_or<int>(k_lightingPresetIdPropertyId, INVALID_MIKAN_ID);
 	m_bForceRender= pt.get_or<bool>(k_forceRenderPropertyId, false);
 }
 
@@ -81,6 +84,7 @@ bool SceneComponentDefinition::readFromInitParams(MikanObjectSystem* ownerObject
 	{
 		m_cameraId= componentValues->camera_id;
 		m_lightEnvironmentId= componentValues->light_environment_id;
+		m_lightingPresetId= componentValues->lighting_preset_id;
 		m_bForceRender= componentValues->force_render;
 	}
 
@@ -102,6 +106,15 @@ void SceneComponentDefinition::setLightEnvironmentId(MikanLightID lightEnvironme
 	{
 		m_lightEnvironmentId= lightEnvironmentId;
 		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_lightEnvironmentIdPropertyId));
+	}
+}
+
+void SceneComponentDefinition::setLightingPresetId(MikanDMXPresetID lightingPresetId)
+{
+	if (m_lightingPresetId != lightingPresetId)
+	{
+		m_lightingPresetId= lightingPresetId;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_lightingPresetIdPropertyId));
 	}
 }
 
@@ -193,7 +206,26 @@ void SceneComponent::attachToStage(MikanStageID newParentId)
 	}
 }
 
-void SceneComponent::activateScene() { refreshActiveCompositors(); }
+void SceneComponent::onDefinitionMarkedDirty(CommonConfigPtr configPtr,
+											 const ConfigPropertyChangeSet& changedPropertySet)
+{
+	TransformComponent::onDefinitionMarkedDirty(configPtr, changedPropertySet);
+
+	// Only the current scene's preset is on the fixtures. Another scene's choice
+	// takes effect when activateScene() runs on switching to it.
+	if (changedPropertySet.hasPropertyName(SceneComponentDefinition::k_lightingPresetIdPropertyId) && isCurrentScene())
+	{
+		getObjectSystemOfType<SceneObjectSystem>()->applyCurrentSceneLightingPreset();
+	}
+}
+
+void SceneComponent::activateScene()
+{
+	refreshActiveCompositors();
+
+	// Each scene brings up its own look
+	getObjectSystemOfType<SceneObjectSystem>()->applyCurrentSceneLightingPreset();
+}
 
 void SceneComponent::deactivateScene() {}
 
@@ -227,6 +259,11 @@ void SceneComponent::getPropertyDescriptors(std::vector<PropertyDescriptorConstP
 								 ->setDefaultValue(-1)
 								 ->setUIHidden());
 
+	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(
+								 SceneComponentDefinition::k_lightingPresetIdPropertyId, MikanVariantType::INT)
+								 ->setDefaultValue(-1)
+								 ->setUIHidden());
+
 	outDescriptors.push_back(
 		std::make_shared<PropertyDescriptor>(SceneComponentDefinition::k_forceRenderPropertyId, MikanVariantType::BOOL)
 			->setDefaultValue(false));
@@ -243,6 +280,12 @@ bool SceneComponent::getPropertyValue(const std::string& propertyName, MikanVari
 	if (propertyName == SceneComponentDefinition::k_lightEnvironmentIdPropertyId)
 	{
 		outValue= getSceneComponentDefinition()->getLightEnvironmentId();
+		return true;
+	}
+
+	if (propertyName == SceneComponentDefinition::k_lightingPresetIdPropertyId)
+	{
+		outValue= getSceneComponentDefinition()->getLightingPresetId();
 		return true;
 	}
 
@@ -266,6 +309,12 @@ bool SceneComponent::setPropertyValue(const std::string& propertyName, const Mik
 	if (propertyName == SceneComponentDefinition::k_lightEnvironmentIdPropertyId)
 	{
 		getSceneComponentDefinition()->setLightEnvironmentId(inValue.getIntValue());
+		return true;
+	}
+
+	if (propertyName == SceneComponentDefinition::k_lightingPresetIdPropertyId)
+	{
+		getSceneComponentDefinition()->setLightingPresetId(inValue.getIntValue());
 		return true;
 	}
 
@@ -395,6 +444,11 @@ void SceneComponent::bindLuaFunctions(struct lua_State* L)
 			{ component->getSceneComponentDefinition()->setCameraId(cameraId); })
 		.addProperty("lightEnvironmentId", [](SceneComponent* component) -> int
 					 { return component->getSceneComponentDefinition()->getLightEnvironmentId(); })
+		.addProperty(
+			"lightingPresetId", [](SceneComponent* component) -> int
+			{ return component->getSceneComponentDefinition()->getLightingPresetId(); },
+			[](SceneComponent* component, int presetId)
+			{ component->getSceneComponentDefinition()->setLightingPresetId(presetId); })
 		.addProperty(
 			"forceRender", [](SceneComponent* component) -> bool
 			{ return component->getSceneComponentDefinition()->getForceRender(); },
