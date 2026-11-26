@@ -85,6 +85,17 @@ python tools/automate.py "app crash access"
 
 Kinds: `access`, `abort`, `terminate`, `purecall`, `invalidparam`, `stackoverflow`. The process exits with the exception code, and the automation client reports the connection closed, since the reply never comes. CI runs the `MikanCmd` form and requires the `.dmp` and `.txt` to appear.
 
+### Heap corruption
+
+A heap corruption fault (`0xC0000374`) is a `__fastfail` path, so the crash handler never sees it and the only record is a Windows Error Reporting dump under `%LOCALAPPDATA%\CrashDumps`. It also faults where the allocator notices the damage, usually during teardown, not where the bad write or the stale read happened. Full page heap moves the fault to the offending instruction, where it is an ordinary access violation the crash handler reports:
+
+```
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\Mikan.exe" /v GlobalFlag /t REG_DWORD /d 0x02000000 /f
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\Mikan.exe" /v PageHeapFlags /t REG_DWORD /d 0x3 /f
+```
+
+Both need an elevated prompt, and the key applies to every `Mikan.exe` on the machine until `reg delete` removes it. The editor runs several times slower while it is set, which also shifts thread timing enough to turn a rare race into a reliable one.
+
 ---
 
 ## Stall watchdogs and the delta clamp
