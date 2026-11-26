@@ -23,7 +23,7 @@ import { MikanDMXData, MikanDMXFixtureComponentValues, MikanDMXFixtureGroupCompo
 import { ArucoMarkerImageResponse, GetArucoMarkerImageRequest } from './MikanMarkerRequests.js';
 import { MikanMarkerComponentValues, MikanMarkerSystemValues } from './MikanMarkerTypes.js';
 import { MikanMatrix3d, MikanMatrix4d, MikanMatrix4f, MikanMatrix4x3d, MikanQuatd, MikanQuatf, MikanRotator3f, MikanTransform, MikanVector2d, MikanVector2f, MikanVector2i, MikanVector3d, MikanVector3f, MikanVector4d, MikanVector4f } from './MikanMathTypes.js';
-import { MikanOutputComponentValues, MikanSpoutOutputComponentValues } from './MikanOutputTypes.js';
+import { MikanOutputComponentValues, MikanRTPOutputComponentValues, MikanSpoutOutputComponentValues } from './MikanOutputTypes.js';
 import { MikanPropertyUpdateEvent } from './MikanPropertyEvents.js';
 import { ComponentGetValuesRequest, ComponentGetValuesResponse, ComponentListResponse, GetComponentListRequest, GetPropertyDescriptors, PropertyDescriptorResponse, PropertyGetValueRequest, PropertyGetValueResponse, PropertySetValueRequest, PropertySetValueResponse, SetPropertyNotifyMode, SystemCreateObjectRequest, SystemDestroyObjectRequest, SystemGetValuesRequest, SystemGetValuesResponse } from './MikanPropertyRequests.js';
 import { MikanPropertyDescriptor, MikanPropertyValue, MikanSystemValues } from './MikanPropertyTypes.js';
@@ -123,6 +123,7 @@ export function registerAllTypes(): void {
   TypeRegistry.register('MikanVector4d', MikanVector4d);
   TypeRegistry.register('MikanVector4f', MikanVector4f);
   TypeRegistry.register('MikanOutputComponentValues', MikanOutputComponentValues);
+  TypeRegistry.register('MikanRTPOutputComponentValues', MikanRTPOutputComponentValues);
   TypeRegistry.register('MikanSpoutOutputComponentValues', MikanSpoutOutputComponentValues);
   TypeRegistry.register('MikanPropertyUpdateEvent', MikanPropertyUpdateEvent);
   TypeRegistry.register('ComponentGetValuesRequest', ComponentGetValuesRequest);

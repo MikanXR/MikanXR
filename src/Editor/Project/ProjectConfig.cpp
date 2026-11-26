@@ -29,6 +29,7 @@
 #include "SceneObjectSystem.h"
 #include "ScriptObjectSystem.h"
 #include "StageObjectSystem.h"
+#include "RTPOutputSystem.h"
 #include "SpoutOutputSystem.h"
 #include "SpoutTextureSourceSystem.h"
 #include "CEFTextureSourceSystem.h"
@@ -105,6 +106,7 @@ ProjectConfig::ProjectConfig(const std::string& fnamebase)
 		addTypedDefinition<LightEnvironmentSystemDefinition, LightEnvironmentSystem>(persistentIDAllocator);
 	spoutOutputSystemDefinition=
 		addTypedDefinition<SpoutOutputSystemDefinition, SpoutOutputSystem>(persistentIDAllocator);
+	rtpOutputSystemDefinition= addTypedDefinition<RTPOutputSystemDefinition, RTPOutputSystem>(persistentIDAllocator);
 	scriptSystemDefinition= addTypedDefinition<ScriptObjectSystemDefinition, ScriptObjectSystem>(persistentIDAllocator);
 
 	// Create object system definitions for the runtime only components, using the transient ID allocator

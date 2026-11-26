@@ -24,6 +24,7 @@
 #include "LegacyTakeMigration.h"
 #include "SceneObjectSystem.h"
 #include "ScriptObjectSystem.h"
+#include "RTPOutputSystem.h"
 #include "SpoutOutputSystem.h"
 #include "SpoutTextureSourceSystem.h"
 #include "CEFTextureSourceSystem.h"
@@ -105,6 +106,7 @@ bool ProjectManager::startup(MainWindow* mainWindow)
 	addSystem<DMXPresetSystem>();
 	addSystem<LightEnvironmentSystem>();
 	addSystem<SpoutOutputSystem>();
+	addSystem<RTPOutputSystem>();
 	// Last: scripts look up the other systems' objects by name when they load
 	addSystem<ScriptObjectSystem>();
 

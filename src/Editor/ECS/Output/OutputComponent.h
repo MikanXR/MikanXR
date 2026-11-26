@@ -7,6 +7,16 @@
 
 #include <string>
 
+// One composited frame on its way to the project outputs
+struct OutputFrame
+{
+	IMkTexturePtr texture;
+	// The rate frames arrive at, which an encoder's rate control needs up front
+	float frameRate= 30.f;
+	// The compositor that composited it, the one publishing right now
+	MikanCompositorID compositorId= INVALID_MIKAN_ID;
+};
+
 // The persisted state every project output shares
 class OutputDefinition : public MikanComponentDefinition
 {
@@ -52,7 +62,7 @@ public:
 	// -- Output interface ----
 	// Takes one composited frame. Called once per composited frame while a
 	// compositor publishes, for an enabled output only.
-	virtual void writeFrame(IMkTexturePtr compositedTexture) {}
+	virtual void writeFrame(const OutputFrame& frame) {}
 	// Releases whatever the output holds open. Called when the output is disabled
 	// or disposed and when no compositor publishes any more. The next frame reopens it.
 	virtual void closeOutput() {}

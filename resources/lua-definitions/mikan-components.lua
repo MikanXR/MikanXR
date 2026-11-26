@@ -398,7 +398,6 @@ function MarkerComponent:printMarker() end
 ---@field cameraId integer ID of the owner scene's camera (read-only)
 ---@field ownerSceneId integer ID of the owning scene (read-only)
 ---@field ownerStageId integer ID of the owning stage (read-only)
----@field isRtpOutputStreaming boolean Whether RTP output streaming is active (read/write)
 local CompositorComponent = {}
 
 --- Open the compositor graph editor UI.
@@ -518,3 +517,13 @@ local OutputComponent = {}
 ---@field spoutOutputName string The name receivers find the sender by (read/write)
 ---@field isSenderOpen boolean Whether the Spout sender is open right now (read-only)
 local SpoutOutputComponent = {}
+
+------------------------------------------------------------------------
+-- RTPOutputComponent : OutputComponent
+------------------------------------------------------------------------
+
+---@class RTPOutputComponent : OutputComponent
+---@field rtpOutputHost string Where the RTP packets go, empty to send nothing (read/write)
+---@field rtpOutputPort integer Destination port (read/write)
+---@field statusText string What the stream reports, or why nothing streams (read-only)
+local RTPOutputComponent = {}

@@ -136,6 +136,16 @@ using OutputComponentPtr= std::shared_ptr<OutputComponent>;
 using OutputComponentConstPtr= std::shared_ptr<const OutputComponent>;
 using OutputComponentWeakPtr= std::weak_ptr<OutputComponent>;
 
+class RTPOutputDefinition;
+using RTPOutputDefinitionPtr= std::shared_ptr<RTPOutputDefinition>;
+using RTPOutputDefinitionConstPtr= std::shared_ptr<const RTPOutputDefinition>;
+using RTPOutputDefinitionWeakPtr= std::weak_ptr<RTPOutputDefinition>;
+
+class RTPOutputComponent;
+using RTPOutputComponentPtr= std::shared_ptr<RTPOutputComponent>;
+using RTPOutputComponentConstPtr= std::shared_ptr<const RTPOutputComponent>;
+using RTPOutputComponentWeakPtr= std::weak_ptr<RTPOutputComponent>;
+
 class SpoutOutputDefinition;
 using SpoutOutputDefinitionPtr= std::shared_ptr<SpoutOutputDefinition>;
 using SpoutOutputDefinitionConstPtr= std::shared_ptr<const SpoutOutputDefinition>;

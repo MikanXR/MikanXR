@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ComponentFwd.h"
-#include "MkRendererFwd.h"
 #include "ObjectSystemFwd.h"
 
 #include <functional>
@@ -11,9 +10,10 @@ namespace OutputQueries
 {
 void visitOutputs(ProjectManagerPtr projectManager, const std::function<void(OutputComponentPtr)>& visitFunc);
 
-// Hands one composited frame to every enabled output
-void writeFrameToOutputs(ProjectManagerPtr projectManager, IMkTexturePtr compositedTexture);
+// Hands one composited frame to every enabled output, and to the client return feed
+void writeFrameToOutputs(ProjectManagerPtr projectManager, const struct OutputFrame& frame);
 
-// Releases every output's sender, for when no compositor publishes any more
+// Releases every output's sender and the return feed's, for when no compositor
+// publishes any more
 void closeOutputs(ProjectManagerPtr projectManager);
 } // namespace OutputQueries

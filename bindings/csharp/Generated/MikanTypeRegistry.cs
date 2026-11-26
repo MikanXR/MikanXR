@@ -116,6 +116,7 @@ namespace MikanXR
 			Register("MikanRGBSpotLightComponentValues", () => new MikanRGBSpotLightComponentValues());
 			Register("MikanRGBSpotLightSystemValues", () => new MikanRGBSpotLightSystemValues());
 			Register("MikanRotator3f", () => new MikanRotator3f());
+			Register("MikanRTPOutputComponentValues", () => new MikanRTPOutputComponentValues());
 			Register("MikanSceneComponentValues", () => new MikanSceneComponentValues());
 			Register("MikanSceneSystemValues", () => new MikanSceneSystemValues());
 			Register("MikanScriptComponentValues", () => new MikanScriptComponentValues());

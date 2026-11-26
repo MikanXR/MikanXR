@@ -336,13 +336,14 @@ bool project_hierarchy_migration_test_spout_outputs()
 	success&= sharedOutput && previewOutput
 			  && sharedOutput->get_or<int>("component_id", -1) != previewOutput->get_or<int>("component_id", -1);
 
-	// The compositors keep everything but the Spout settings
+	// The compositors keep their identity and lose the Spout settings
 	for (const configuru::Config& compositor : compositorDefinitions(projectJson).as_array())
 	{
 		success&= !compositor.has_key("spout_enable_output") && !compositor.has_key("spout_output_name");
 	}
 	const configuru::Config* compositorA= findById(compositorDefinitions(projectJson), 20);
-	success&= compositorA && compositorA->has_key("rtp_enable_output");
+	success&= compositorA && compositorA->get_or<int>("owner_scene_id", -1) == 10
+			  && compositorA->get_or<std::string>("component_name", "") == "COMP_A";
 
 	// A second pass adds no output, and a user who deleted every output keeps none
 	ProjectHierarchyMigration::Report secondReport;
@@ -364,6 +365,81 @@ bool project_hierarchy_migration_test_spout_outputs()
 		success&= defaultOutputs[0].get_or<bool>("enabled", false);
 		success&= defaultOutputs[0].get_or<std::string>("spout_output_name", "") == "MikanXR";
 	}
+	UNIT_TEST_COMPLETE()
+}
+
+bool project_hierarchy_migration_test_rtp_outputs()
+{
+	UNIT_TEST_BEGIN("compositor RTP settings become project outputs")
+	// Two compositors send to one destination, the second enabled and with other
+	// picture settings. A third has its own port. A fourth names no host.
+	configuru::Config projectJson= configuru::parse_string(R"({
+		"SceneObjectSystem": { "SceneComponentPool": { "component_definitions": [
+			{ "component_id": 10, "component_name": "SCN_A", "parent_transform_id": 5 },
+			{ "component_id": 11, "component_name": "SCN_B", "parent_transform_id": 5 },
+			{ "component_id": 12, "component_name": "SCN_C", "parent_transform_id": 5 },
+			{ "component_id": 13, "component_name": "SCN_D", "parent_transform_id": 5 } ] } },
+		"CompositorObjectSystem": { "CompositorComponentPool": { "component_definitions": [
+			{ "component_id": 20, "component_name": "COMP_A", "owner_scene_id": 10, "rtp_enable_output": false,
+			  "rtp_output_host": "192.168.1.20", "rtp_output_port": 5004, "rtp_output_height": 1080,
+			  "rtp_output_bitrate_kbps": 8000 },
+			{ "component_id": 21, "component_name": "COMP_B", "owner_scene_id": 11, "rtp_enable_output": true,
+			  "rtp_output_host": "192.168.1.20", "rtp_output_port": 5004, "rtp_output_height": 720,
+			  "rtp_output_bitrate_kbps": 4000 },
+			{ "component_id": 22, "component_name": "COMP_C", "owner_scene_id": 12, "rtp_enable_output": false,
+			  "rtp_output_host": "192.168.1.20", "rtp_output_port": 5006, "rtp_output_height": 720,
+			  "rtp_output_bitrate_kbps": 4000 },
+			{ "component_id": 23, "component_name": "COMP_D", "owner_scene_id": 13, "rtp_enable_output": true,
+			  "rtp_output_host": "", "rtp_output_port": 5004, "rtp_output_height": 720,
+			  "rtp_output_bitrate_kbps": 4000 } ] } }
+	})",
+														   configuru::JSON, "rtp");
+	ProjectHierarchyMigration::Report report;
+	success&= ProjectHierarchyMigration::migrateProjectJson(projectJson, report);
+
+	const configuru::Config& outputs= projectJson["RTPOutputSystem"]["RTPOutputComponentPool"]["component_definitions"];
+	success&= outputs.array_size() == 2;
+	if (outputs.array_size() == 2)
+	{
+		// The shared destination is enabled because one compositor streamed to it,
+		// and keeps the first compositor's picture settings
+		success&= outputs[0].get_or<std::string>("rtp_output_host", "") == "192.168.1.20";
+		success&= outputs[0].get_or<int>("rtp_output_port", 0) == 5004;
+		success&= outputs[0].get_or<bool>("enabled", false);
+		success&= outputs[0].get_or<int>("rtp_output_height", 0) == 1080;
+		success&= outputs[0].get_or<int>("rtp_output_bitrate_kbps", 0) == 8000;
+		success&= outputs[1].get_or<int>("rtp_output_port", 0) == 5006;
+		success&= !outputs[1].get_or<bool>("enabled", true);
+		success&= outputs[0].get_or<int>("component_id", -1) != outputs[1].get_or<int>("component_id", -1);
+	}
+
+	for (const configuru::Config& compositor : compositorDefinitions(projectJson).as_array())
+	{
+		for (const char* key : {"rtp_enable_output", "rtp_output_host", "rtp_output_port", "rtp_output_height",
+								"rtp_output_bitrate_kbps"})
+		{
+			success&= !compositor.has_key(key);
+		}
+	}
+
+	// A second pass adds nothing
+	const std::string migratedText= configuru::dump_string(projectJson, configuru::JSON);
+	ProjectHierarchyMigration::Report secondReport;
+	success&= !ProjectHierarchyMigration::migrateProjectJson(projectJson, secondReport);
+	success&= configuru::dump_string(projectJson, configuru::JSON) == migratedText;
+
+	// A project whose compositors named no host gains no RTP output
+	configuru::Config noHostJson= configuru::parse_string(R"({
+		"SceneObjectSystem": { "SceneComponentPool": { "component_definitions": [
+			{ "component_id": 10, "component_name": "SCN_A", "parent_transform_id": 5 } ] } },
+		"CompositorObjectSystem": { "CompositorComponentPool": { "component_definitions": [
+			{ "component_id": 20, "component_name": "COMP_A", "owner_scene_id": 10, "rtp_enable_output": false,
+			  "rtp_output_host": "", "rtp_output_port": 5004 } ] } }
+	})",
+														  configuru::JSON, "noHost");
+	success&= ProjectHierarchyMigration::migrateProjectJson(noHostJson, secondReport);
+	success&= !noHostJson.has_key("RTPOutputSystem");
+	success&= !compositorDefinitions(noHostJson)[0].has_key("rtp_output_port");
 	UNIT_TEST_COMPLETE()
 }
 
@@ -423,6 +499,7 @@ bool run_project_hierarchy_migration_tests()
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_camera_moves_to_scene);
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_probes_move_to_scenes);
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_spout_outputs);
+	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_rtp_outputs);
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_new_ids);
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_idempotent);
 	UNIT_TEST_MODULE_END()

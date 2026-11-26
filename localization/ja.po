@@ -4693,6 +4693,11 @@ msgid "Add Quad Stencil"
 msgstr "クアッドステンシルを追加"
 
 #. Section: project
+msgctxt "project.outlinerAddRTPOutput"
+msgid "Add RTP Output"
+msgstr ""
+
+#. Section: project
 #, fuzzy
 msgctxt "project.outlinerAddScene"
 msgid "Add Scene"
@@ -5809,11 +5814,6 @@ msgstr "原点を表示"
 msgctxt "properties.render_quad_stencils"
 msgid "Render Quad Stencils"
 msgstr "クアッドステンシルを表示"
-
-#. Section: properties
-msgctxt "properties.rtp_enable_output"
-msgid "Enable RTP Output"
-msgstr ""
 
 #. Section: properties
 msgctxt "properties.rtp_output_bitrate_kbps"

@@ -51,6 +51,8 @@
 #include "ScriptObjectSystem.h"
 #include "SelectionComponent.h"
 #include "ShapeComponent.h"
+#include "RTPOutputComponent.h"
+#include "RTPOutputSystem.h"
 #include "SpoutOutputComponent.h"
 #include "SpoutOutputSystem.h"
 #include "SpoutTextureSourceComponent.h"
@@ -92,6 +94,8 @@ static const char* pickNodeIcon(eOutlinerNodeKind kind, const std::string& compo
 	// Outputs
 	if (componentClassName == SpoutOutputComponent::k_componentClassName)
 		return ICON_FK_SIGN_OUT;
+	if (componentClassName == RTPOutputComponent::k_componentClassName)
+		return ICON_FK_WIFI;
 
 	// Lights, replacing the old [Env]/[Spot]/[Grid] name prefixes
 	if (componentClassName == LightEnvironmentComponent::k_componentClassName)
@@ -323,6 +327,9 @@ void ProjectOutlinerModel::rebuild(ProjectManagerPtr projectManager)
 	// Project outputs
 	if (auto sys= projectManager->getSystemOfType<SpoutOutputSystem>())
 		sys->visitComponents([&](SpoutOutputComponentPtr comp)
+							 { addComponentNode(outputsFolder, eOutlinerNodeKind::output, comp); });
+	if (auto sys= projectManager->getSystemOfType<RTPOutputSystem>())
+		sys->visitComponents([&](RTPOutputComponentPtr comp)
 							 { addComponentNode(outputsFolder, eOutlinerNodeKind::output, comp); });
 
 	// Stages parent under their volume; one with a missing volume falls back to the root

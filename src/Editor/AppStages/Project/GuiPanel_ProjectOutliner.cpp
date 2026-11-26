@@ -62,6 +62,7 @@
 #include "Shared/GuiPanel_SceneComponent.h"
 #include "Shared/GuiPanel_ScriptComponent.h"
 #include "Shared/GuiPanel_ShapeComponent.h"
+#include "Shared/GuiPanel_RTPOutputComponent.h"
 #include "Shared/GuiPanel_SpoutOutputComponent.h"
 #include "Shared/GuiPanel_SpoutTextureSourceComponent.h"
 #include "Shared/GuiPanel_StageComponent.h"
@@ -69,6 +70,7 @@
 #include "Shared/GuiPanel_TrackingMountComponent.h"
 #include "Shared/GuiPanel_USBVideoSourceComponent.h"
 #include "Shared/GuiPanel_VRTrackingVolumeComponent.h"
+#include "RTPOutputComponent.h"
 #include "SpoutOutputComponent.h"
 #include "SpoutTextureSourceComponent.h"
 #include "StageComponent.h"
@@ -452,6 +454,8 @@ void GuiPanel_ProjectOutliner::drawSelectedNodeActions(ProjectOutlinerNodePtr se
 	case eOutlinerNodeKind::folderOutputs:
 		if (drawAddButton("outlinerAddSpoutOutput", ICON_FK_SIGN_OUT, "project.outlinerAddSpoutOutput"))
 			deferAddAction([](ProjectManagerPtr pm) { return ProjectOutlinerActions::addSpoutOutput(pm); });
+		if (drawAddButton("outlinerAddRTPOutput", ICON_FK_WIFI, "project.outlinerAddRTPOutput"))
+			deferAddAction([](ProjectManagerPtr pm) { return ProjectOutlinerActions::addRTPOutput(pm); });
 		break;
 	case eOutlinerNodeKind::trackingVolume:
 	{
@@ -818,6 +822,8 @@ GuiPanel_MikanComponent* GuiPanel_ProjectOutliner::getPanelForComponentClass(
 		return m_context->getScriptPanel();
 	if (componentClassName == SpoutOutputComponent::k_componentClassName)
 		return m_context->getSpoutOutputPanel();
+	if (componentClassName == RTPOutputComponent::k_componentClassName)
+		return m_context->getRTPOutputPanel();
 
 	return nullptr;
 }
@@ -854,6 +860,7 @@ void GuiPanel_ProjectOutliner::clearComponentPanels()
 	m_context->getModelShapePanel()->setComponent(nullptr);
 	m_context->getScriptPanel()->setComponent(nullptr);
 	m_context->getSpoutOutputPanel()->setComponent(nullptr);
+	m_context->getRTPOutputPanel()->setComponent(nullptr);
 }
 
 void GuiPanel_ProjectOutliner::drawComponentPanelForNode(ProjectOutlinerNodePtr node)

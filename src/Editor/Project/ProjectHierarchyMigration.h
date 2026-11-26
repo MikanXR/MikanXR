@@ -25,6 +25,8 @@ class Config;
 //   - the Spout output settings each compositor carried become project outputs,
 //     one per sender name. A project with no output system yet gets one enabled
 //     output under the default name when no compositor carried any
+//   - the RTP output settings each compositor carried become project outputs,
+//     one per destination host and port. A compositor with no host leaves none
 // Every step keys on the shape it repairs, so a current project is left untouched
 // and a project migrated once is not migrated again.
 namespace ProjectHierarchyMigration

@@ -1,6 +1,7 @@
 #include "OutputQueries.h"
 #include "OutputComponent.h"
 #include "ProjectManager.h"
+#include "RTPOutputSystem.h"
 #include "SpoutOutputSystem.h"
 
 namespace OutputQueries
@@ -14,25 +15,44 @@ void visitOutputs(ProjectManagerPtr projectManager, const std::function<void(Out
 	{
 		spoutOutputSystem->visitComponents([&visitFunc](SpoutOutputComponentPtr output) { visitFunc(output); });
 	}
+
+	if (auto rtpOutputSystem= projectManager->getSystemOfType<RTPOutputSystem>())
+	{
+		rtpOutputSystem->visitComponents([&visitFunc](RTPOutputComponentPtr output) { visitFunc(output); });
+	}
 }
 
-void writeFrameToOutputs(ProjectManagerPtr projectManager, IMkTexturePtr compositedTexture)
+void writeFrameToOutputs(ProjectManagerPtr projectManager, const OutputFrame& frame)
 {
-	if (!compositedTexture)
+	if (!projectManager || !frame.texture)
 		return;
 
 	visitOutputs(projectManager,
-				 [&compositedTexture](OutputComponentPtr output)
+				 [&frame](OutputComponentPtr output)
 				 {
 					 if (output->getOutputDefinition()->getIsEnabled())
 					 {
-						 output->writeFrame(compositedTexture);
+						 output->writeFrame(frame);
 					 }
 				 });
+
+	// The feeds clients asked for ride the same frame through a stream of their own
+	if (auto rtpOutputSystem= projectManager->getSystemOfType<RTPOutputSystem>())
+	{
+		rtpOutputSystem->writeReturnFeedFrame(frame);
+	}
 }
 
 void closeOutputs(ProjectManagerPtr projectManager)
 {
+	if (!projectManager)
+		return;
+
 	visitOutputs(projectManager, [](OutputComponentPtr output) { output->closeOutput(); });
+
+	if (auto rtpOutputSystem= projectManager->getSystemOfType<RTPOutputSystem>())
+	{
+		rtpOutputSystem->closeReturnFeed();
+	}
 }
 } // namespace OutputQueries

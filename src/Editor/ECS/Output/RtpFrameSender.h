@@ -8,11 +8,11 @@
 #include <string>
 #include <vector>
 
-// The compositor's network sink. Each composited frame is scaled into this object's
+// A network sink for the composited frame. Each frame is scaled into this object's
 // own framebuffer, streamed back through that framebuffer's pixel buffer objects, and
 // handed to an IRtpVideoSender from the GStreamer plugin. Every call runs on the main
 // thread with the GL context current.
-class CompositorRtpOutput
+class RtpFrameSender
 {
 public:
 	struct Settings
@@ -25,8 +25,8 @@ public:
 		float fps= 30.f;
 	};
 
-	CompositorRtpOutput(class IMkGraphicsContext* graphicsContext);
-	~CompositorRtpOutput();
+	RtpFrameSender(class IMkGraphicsContext* graphicsContext);
+	~RtpFrameSender();
 
 	// Opens the sender for a composited frame of the given size. The output owns the sender from here on.
 	bool start(IRtpVideoSenderPtr sender, const Settings& settings, int sourceWidth, int sourceHeight);
@@ -53,11 +53,6 @@ public:
 	// Width follows the source aspect, both dimensions even, floor 160x64
 	static void computeOutputSize(int sourceWidth, int sourceHeight, int requestedHeight, int& outWidth,
 								  int& outHeight);
-
-	// The persisted destinations followed by the client feeds, each host and port once,
-	// in first-seen order
-	static std::vector<RtpDestination> mergeDestinations(const std::vector<RtpDestination>& persisted,
-														 const std::vector<RtpDestination>& clientFeeds);
 
 private:
 	bool openSender(int sourceWidth, int sourceHeight);
@@ -86,4 +81,4 @@ private:
 	std::string m_unavailableReason;
 	std::string m_statusText;
 };
-using CompositorRtpOutputPtr= std::shared_ptr<CompositorRtpOutput>;
+using RtpFrameSenderPtr= std::shared_ptr<RtpFrameSender>;

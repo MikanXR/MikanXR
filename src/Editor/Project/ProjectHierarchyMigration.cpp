@@ -45,6 +45,13 @@ const char* const k_spoutOutputPoolKey= "SpoutOutputComponentPool";
 const char* const k_spoutEnableOutputKey= "spout_enable_output";
 const char* const k_spoutOutputNameKey= "spout_output_name";
 const char* const k_enabledKey= "enabled";
+const char* const k_rtpOutputSystemKey= "RTPOutputSystem";
+const char* const k_rtpOutputPoolKey= "RTPOutputComponentPool";
+const char* const k_rtpEnableOutputKey= "rtp_enable_output";
+const char* const k_rtpOutputHostKey= "rtp_output_host";
+const char* const k_rtpOutputPortKey= "rtp_output_port";
+const char* const k_rtpOutputHeightKey= "rtp_output_height";
+const char* const k_rtpOutputBitrateKbpsKey= "rtp_output_bitrate_kbps";
 
 const int k_invalidId= -1;
 
@@ -322,6 +329,88 @@ bool migrateSpoutOutputs(configuru::Config& projectJson, int& inOutNextId)
 	return true;
 }
 
+// Moves the RTP output settings each compositor carried onto project outputs, one
+// per destination. A compositor with no host named no destination and leaves
+// nothing behind. Returns true when anything changed.
+bool migrateRtpOutputs(configuru::Config& projectJson, int& inOutNextId)
+{
+	struct RtpSettings
+	{
+		std::string host;
+		int port;
+		int height;
+		int bitrateKbps;
+		bool bEnabled;
+	};
+	std::vector<RtpSettings> foundSettings;
+	bool bChanged= false;
+
+	if (hasDefinitions(projectJson, k_compositorSystemKey, k_compositorPoolKey))
+	{
+		for (configuru::Config& compositor :
+			 projectJson[k_compositorSystemKey][k_compositorPoolKey][k_definitionsKey].as_array())
+		{
+			bool bHadSettings= false;
+			for (const char* key : {k_rtpEnableOutputKey, k_rtpOutputHostKey, k_rtpOutputPortKey, k_rtpOutputHeightKey,
+									k_rtpOutputBitrateKbpsKey})
+			{
+				bHadSettings|= compositor.has_key(key);
+			}
+			if (!bHadSettings)
+				continue;
+
+			RtpSettings settings;
+			settings.host= compositor.get_or<std::string>(k_rtpOutputHostKey, "");
+			settings.port= compositor.get_or<int>(k_rtpOutputPortKey, DEFAULT_RTP_OUTPUT_PORT);
+			settings.height= compositor.get_or<int>(k_rtpOutputHeightKey, DEFAULT_RTP_OUTPUT_HEIGHT);
+			settings.bitrateKbps= compositor.get_or<int>(k_rtpOutputBitrateKbpsKey, DEFAULT_RTP_OUTPUT_BITRATE_KBPS);
+			settings.bEnabled= compositor.get_or<bool>(k_rtpEnableOutputKey, false);
+
+			if (!settings.host.empty())
+			{
+				// Compositors that sent to one destination share one output, enabled
+				// when any of them streamed to it, with the first one's picture settings
+				auto found_it=
+					std::find_if(foundSettings.begin(), foundSettings.end(), [&settings](const RtpSettings& found)
+								 { return found.host == settings.host && found.port == settings.port; });
+				if (found_it != foundSettings.end())
+					found_it->bEnabled|= settings.bEnabled;
+				else
+					foundSettings.push_back(settings);
+			}
+
+			for (const char* key : {k_rtpEnableOutputKey, k_rtpOutputHostKey, k_rtpOutputPortKey, k_rtpOutputHeightKey,
+									k_rtpOutputBitrateKbpsKey})
+			{
+				compositor.erase(key);
+			}
+			bChanged= true;
+		}
+	}
+
+	// A project that already has the output system keeps the outputs it has
+	if (foundSettings.empty() || projectJson.has_key(k_rtpOutputSystemKey))
+		return bChanged;
+
+	configuru::Config& outputs= ensureDefinitions(projectJson, k_rtpOutputSystemKey, k_rtpOutputPoolKey);
+	for (const RtpSettings& settings : foundSettings)
+	{
+		configuru::Config output= configuru::Config::object();
+		output[k_componentIdKey]= inOutNextId++;
+		output[k_componentNameKey]= "OUT_" + settings.host;
+		output[k_enabledKey]= settings.bEnabled;
+		output[k_rtpOutputHostKey]= settings.host;
+		output[k_rtpOutputPortKey]= settings.port;
+		output[k_rtpOutputHeightKey]= settings.height;
+		output[k_rtpOutputBitrateKbpsKey]= settings.bitrateKbps;
+		outputs.push_back(output);
+
+		MIKAN_LOG_INFO("ProjectHierarchyMigration") << "Added RTP output to " << settings.host << ":" << settings.port;
+	}
+
+	return true;
+}
+
 // One compositor per scene, the camera and the lighting probe on the scene.
 // Returns true when anything changed.
 bool migrateSceneHierarchy(configuru::Config& projectJson, int& nextId, Report& outReport)
@@ -477,6 +566,7 @@ bool migrateProjectJson(configuru::Config& projectJson, Report& outReport)
 		bChanged|= migrateSceneHierarchy(projectJson, nextId, outReport);
 	}
 	bChanged|= migrateSpoutOutputs(projectJson, nextId);
+	bChanged|= migrateRtpOutputs(projectJson, nextId);
 
 	// The saved counter moves only when an id was handed out
 	if (nextId != firstNewId)

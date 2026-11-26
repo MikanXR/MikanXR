@@ -80,6 +80,7 @@ const ComponentNamesEntry k_componentEntries[]= {
 	COMPONENT_NAMES(MikanTrackingMountComponentValues),
 	COMPONENT_NAMES(MikanScriptComponentValues),
 	COMPONENT_NAMES(MikanClientTextureSourceValues),
+	COMPONENT_NAMES(MikanRTPOutputComponentValues),
 	COMPONENT_NAMES(MikanSpoutOutputComponentValues),
 	COMPONENT_NAMES(MikanSpoutTextureSourceValues),
 	COMPONENT_NAMES(MikanCEFTextureSourceValues),

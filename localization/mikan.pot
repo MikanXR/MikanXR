@@ -4168,6 +4168,11 @@ msgid "Add Quad Stencil"
 msgstr ""
 
 #. Section: project
+msgctxt "project.outlinerAddRTPOutput"
+msgid "Add RTP Output"
+msgstr ""
+
+#. Section: project
 msgctxt "project.outlinerAddScene"
 msgid "Add Scene"
 msgstr ""
@@ -5132,11 +5137,6 @@ msgstr ""
 #. Section: properties
 msgctxt "properties.render_quad_stencils"
 msgid "Render Quad Stencils"
-msgstr ""
-
-#. Section: properties
-msgctxt "properties.rtp_enable_output"
-msgid "Enable RTP Output"
 msgstr ""
 
 #. Section: properties

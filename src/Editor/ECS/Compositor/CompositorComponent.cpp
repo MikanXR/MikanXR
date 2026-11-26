@@ -6,7 +6,6 @@
 #include "ClientSourceManager.h"
 #include "CompositorComponent.h"
 #include "CompositorObjectSystem.h"
-#include "CompositorRtpOutput.h"
 #include "PathUtils.h"
 #include "IMkState.h"
 #include "IMkTexture.h"
@@ -31,6 +30,7 @@
 #include "ProjectConfigConstants.h"
 #include "SceneComponent.h"
 #include "SceneObjectSystem.h"
+#include "OutputComponent.h"
 #include "OutputQueries.h"
 #include "StageComponent.h"
 #include "StageObjectSystem.h"
@@ -40,7 +40,6 @@
 #include "VideoSourceComponent.h"
 #include "Windows/CompositorNodeEditorWindow.h"
 #include "IMkWindowContext.h"
-#include "IRtpVideoSender.h"
 
 #include "AssetReferencePropertyMetaData.h"
 #include "Graphs/CompositorNodeGraph.h"
@@ -57,18 +56,10 @@
 // -- CompositorConfig -----
 const std::string CompositorDefinition::k_compositorGraphPathPropertyId= "compositor_graph_path";
 const std::string CompositorDefinition::k_ownerScenePropertyId= "owner_scene_id";
-const std::string CompositorDefinition::k_rtpEnableOutputPropertyId= "rtp_enable_output";
-const std::string CompositorDefinition::k_rtpOutputHostPropertyId= "rtp_output_host";
-const std::string CompositorDefinition::k_rtpOutputPortPropertyId= "rtp_output_port";
-const std::string CompositorDefinition::k_rtpOutputHeightPropertyId= "rtp_output_height";
-const std::string CompositorDefinition::k_rtpOutputBitrateKbpsPropertyId= "rtp_output_bitrate_kbps";
 
 CompositorDefinition::CompositorDefinition()
 	: MikanComponentDefinition()
 	, m_nodeGraphAssetRef(std::make_shared<AssetReferenceConfig>())
-	, m_rtpOutputPort(DEFAULT_RTP_OUTPUT_PORT)
-	, m_rtpOutputHeight(DEFAULT_RTP_OUTPUT_HEIGHT)
-	, m_rtpOutputBitrateKbps(DEFAULT_RTP_OUTPUT_BITRATE_KBPS)
 {
 }
 
@@ -76,9 +67,6 @@ CompositorDefinition::CompositorDefinition(MikanCompositorID compositorId)
 	: MikanComponentDefinition(compositorId, "")
 	, m_ownerSceneId(INVALID_MIKAN_ID)
 	, m_nodeGraphAssetRef(std::make_shared<AssetReferenceConfig>())
-	, m_rtpOutputPort(DEFAULT_RTP_OUTPUT_PORT)
-	, m_rtpOutputHeight(DEFAULT_RTP_OUTPUT_HEIGHT)
-	, m_rtpOutputBitrateKbps(DEFAULT_RTP_OUTPUT_BITRATE_KBPS)
 {
 }
 
@@ -87,11 +75,6 @@ configuru::Config CompositorDefinition::writeToJSON()
 	configuru::Config pt= MikanComponentDefinition::writeToJSON();
 
 	pt[k_ownerScenePropertyId]= m_ownerSceneId;
-	pt[k_rtpEnableOutputPropertyId]= m_bIsRtpOutputStreaming;
-	pt[k_rtpOutputHostPropertyId]= m_rtpOutputHost;
-	pt[k_rtpOutputPortPropertyId]= m_rtpOutputPort;
-	pt[k_rtpOutputHeightPropertyId]= m_rtpOutputHeight;
-	pt[k_rtpOutputBitrateKbpsPropertyId]= m_rtpOutputBitrateKbps;
 
 	if (m_nodeGraphAssetRef)
 	{
@@ -106,11 +89,6 @@ void CompositorDefinition::readFromJSON(const configuru::Config& pt)
 	MikanComponentDefinition::readFromJSON(pt);
 
 	m_ownerSceneId= pt.get_or<int>(k_ownerScenePropertyId, INVALID_MIKAN_ID);
-	m_bIsRtpOutputStreaming= pt.get_or<bool>(k_rtpEnableOutputPropertyId, m_bIsRtpOutputStreaming);
-	m_rtpOutputHost= pt.get_or<std::string>(k_rtpOutputHostPropertyId, m_rtpOutputHost);
-	m_rtpOutputPort= pt.get_or<int>(k_rtpOutputPortPropertyId, m_rtpOutputPort);
-	m_rtpOutputHeight= pt.get_or<int>(k_rtpOutputHeightPropertyId, m_rtpOutputHeight);
-	m_rtpOutputBitrateKbps= pt.get_or<int>(k_rtpOutputBitrateKbpsPropertyId, m_rtpOutputBitrateKbps);
 
 	m_nodeGraphAssetRef= CompositorGraphAssetReferenceFactory().allocateAssetReferenceConfig();
 	if (pt.has_key(k_compositorGraphPathPropertyId))
@@ -135,12 +113,6 @@ bool CompositorDefinition::readFromInitParams(MikanObjectSystem* ownerObjectSyst
 		{
 			setCompositorGraphPath(std::filesystem::path(graphPathString));
 		}
-
-		m_bIsRtpOutputStreaming= componentValues->rtp_enable_output;
-		m_rtpOutputHost= componentValues->rtp_output_host.getUtf8Value();
-		m_rtpOutputPort= componentValues->rtp_output_port;
-		m_rtpOutputHeight= componentValues->rtp_output_height;
-		m_rtpOutputBitrateKbps= componentValues->rtp_output_bitrate_kbps;
 	}
 
 	if (m_ownerSceneId == INVALID_MIKAN_ID)
@@ -178,51 +150,6 @@ void CompositorDefinition::setCompositorGraphPath(const std::filesystem::path& g
 	}
 }
 
-void CompositorDefinition::setIsRtpOutputStreaming(bool bIsStreaming)
-{
-	if (m_bIsRtpOutputStreaming != bIsStreaming)
-	{
-		m_bIsRtpOutputStreaming= bIsStreaming;
-		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_rtpEnableOutputPropertyId));
-	}
-}
-
-void CompositorDefinition::setRtpOutputHost(const std::string& host)
-{
-	if (m_rtpOutputHost != host)
-	{
-		m_rtpOutputHost= host;
-		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_rtpOutputHostPropertyId));
-	}
-}
-
-void CompositorDefinition::setRtpOutputPort(int port)
-{
-	if (m_rtpOutputPort != port)
-	{
-		m_rtpOutputPort= port;
-		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_rtpOutputPortPropertyId));
-	}
-}
-
-void CompositorDefinition::setRtpOutputHeight(int height)
-{
-	if (m_rtpOutputHeight != height)
-	{
-		m_rtpOutputHeight= height;
-		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_rtpOutputHeightPropertyId));
-	}
-}
-
-void CompositorDefinition::setRtpOutputBitrateKbps(int bitrateKbps)
-{
-	if (m_rtpOutputBitrateKbps != bitrateKbps)
-	{
-		m_rtpOutputBitrateKbps= bitrateKbps;
-		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_rtpOutputBitrateKbpsPropertyId));
-	}
-}
-
 // -- CompositorComponent -----
 CompositorComponent::CompositorComponent(MikanObjectWeakPtr owner)
 	: MikanComponent(owner)
@@ -243,9 +170,6 @@ void CompositorComponent::init()
 	m_viewportQuadMesh= createFullscreenQuadMesh(getGraphicsContext(), false);
 	m_nodeGraphAssetRef= std::static_pointer_cast<CompositorGraphAssetReference>(
 		CompositorGraphAssetReferenceFactory().allocateAssetReference());
-
-	// Listen for changes to the compositor definition
-	getCompositorDefinition()->OnPropertyChanged+= MakeDelegate(this, &CompositorComponent::onDefinitionChanged);
 }
 
 void CompositorComponent::postInit()
@@ -261,8 +185,6 @@ void CompositorComponent::dispose()
 	// Unsubscribes the distortion view from its video source before the view is
 	// freed, since the source's receive thread writes into it by raw pointer
 	stop();
-
-	getCompositorDefinition()->OnPropertyChanged-= MakeDelegate(this, &CompositorComponent::onDefinitionChanged);
 
 	m_nodeGraph= nullptr;
 	m_nodeGraphAssetRef= nullptr;
@@ -409,13 +331,6 @@ void CompositorComponent::update(float deltaSeconds)
 
 	// Update the video source streaming state in case settings changed
 	updateVideoSourceStreaming();
-
-	// Update the output streaming state in case it changed while we were stopped
-	updateRtpOutputStreaming();
-	if (m_rtpOutput)
-	{
-		m_rtpOutput->update(deltaSeconds);
-	}
 
 	// Wait until we have a valid distortion view with a known frame size
 	if (m_videoDistortionView)
@@ -600,12 +515,12 @@ void CompositorComponent::evaluateCompositorNodeGraph(CompositorNodeGraphPtr nod
 		// The current scene's compositor feeds every enabled project output
 		if (m_bOutputStreamingAllowed)
 		{
-			OutputQueries::writeFrameToOutputs(getOwnerProjectManager(), getCompositedFrameTextureMutable());
-		}
+			OutputFrame outputFrame;
+			outputFrame.texture= getCompositedFrameTextureMutable();
+			outputFrame.frameRate= getOutputFrameRate();
+			outputFrame.compositorId= getCompositorId();
 
-		if (getIsRtpOutputStreaming())
-		{
-			m_rtpOutput->writeFrame(getCompositedFrameTextureMutable());
+			OutputQueries::writeFrameToOutputs(getOwnerProjectManager(), outputFrame);
 		}
 	}
 
@@ -702,111 +617,9 @@ void CompositorComponent::startVideoSourceStreaming(VideoSourceComponentPtr vide
 	videoSource->startVideoStream(m_videoDistortionView.get());
 }
 
-void CompositorComponent::updateRtpOutputStreaming()
+float CompositorComponent::getOutputFrameRate() const
 {
-	CompositorDefinitionConstPtr definition= getCompositorDefinition();
-
-	// The persisted destination plus the return feeds connected clients asked for, so a
-	// client joining or leaving changes the receivers of one encode
-	std::vector<RtpDestination> persistedDestinations;
-	if (definition->getIsRtpOutputStreaming() && !definition->getRtpOutputHost().empty())
-	{
-		RtpDestination destination;
-		destination.host= definition->getRtpOutputHost();
-		destination.port= static_cast<uint16_t>(std::clamp(definition->getRtpOutputPort(), 0, 65535));
-		persistedDestinations.push_back(destination);
-	}
-
-	// MikanCmd runs no server
-	std::vector<RtpDestination> clientFeeds;
-	if (MikanServer* mikanServer= MikanServer::getInstance())
-	{
-		mikanServer->collectReturnFeedDestinations(getCompositorId(), m_bOutputStreamingAllowed, clientFeeds);
-	}
-	m_bHasRtpClientFeeds= !clientFeeds.empty();
-
-	const std::vector<RtpDestination> desiredDestinations=
-		CompositorRtpOutput::mergeDestinations(persistedDestinations, clientFeeds);
-	const bool bWantsOutput= m_bOutputStreamingAllowed && !desiredDestinations.empty();
-	const bool bIsStreaming= getIsRtpOutputStreaming();
-
-	// An output whose sender refused its settings or failed mid-stream is left as it is,
-	// showing the error, until the settings change and it is rebuilt
-	const bool bHasFailed= m_rtpOutput && m_rtpOutput->getHasFailed();
-
-	if (bWantsOutput && !bIsStreaming && !bHasFailed)
-	{
-		startRtpOutputStreaming(desiredDestinations);
-	}
-	else if (!bWantsOutput && m_rtpOutput)
-	{
-		stopRtpOutputStreaming();
-	}
-	else if (bWantsOutput && bIsStreaming && desiredDestinations != m_rtpOutput->getDestinations())
-	{
-		m_rtpOutput->setDestinations(desiredDestinations);
-	}
-}
-
-bool CompositorComponent::startRtpOutputStreaming(const std::vector<RtpDestination>& destinations)
-{
-	IMkTextureConstPtr compositorTexture= getCompositedFrameTexture();
-	if (compositorTexture == nullptr)
-		return false;
-
-	if (!m_rtpOutput)
-	{
-		m_rtpOutput= std::make_shared<CompositorRtpOutput>(getGraphicsContext());
-	}
-
-	// The sender comes from the GStreamer plugin, which the network video system owns
-	NetworkVideoSourceSystemPtr networkVideoSystem= getObjectSystemOfType<NetworkVideoSourceSystem>();
-	if (!networkVideoSystem)
-	{
-		m_rtpOutput->setUnavailable("no network video system");
-		return false;
-	}
-
-	std::string unavailableReason;
-	if (!networkVideoSystem->isRtpVideoSenderAvailable(unavailableReason))
-	{
-		m_rtpOutput->setUnavailable(unavailableReason);
-		return false;
-	}
-
-	IRtpVideoSenderPtr sender= networkVideoSystem->createRtpVideoSender();
-	if (!sender)
-	{
-		m_rtpOutput->setUnavailable("the GStreamer plugin provided no RTP sender");
-		return false;
-	}
-
-	CompositorDefinitionConstPtr definition= getCompositorDefinition();
-	CompositorRtpOutput::Settings settings;
-	settings.destinations= destinations;
-	settings.height= definition->getRtpOutputHeight();
-	settings.bitrateKbps= definition->getRtpOutputBitrateKbps();
-	settings.fps= getRtpOutputFrameRate();
-
-	return m_rtpOutput->start(sender, settings, compositorTexture->getTextureWidth(),
-							  compositorTexture->getTextureHeight());
-}
-
-bool CompositorComponent::getRtpOutputSize(int& outWidth, int& outHeight) const
-{
-	IMkTextureConstPtr compositorTexture= getCompositedFrameTexture();
-	if (compositorTexture == nullptr)
-		return false;
-
-	CompositorRtpOutput::computeOutputSize(compositorTexture->getTextureWidth(), compositorTexture->getTextureHeight(),
-										   getCompositorDefinition()->getRtpOutputHeight(), outWidth, outHeight);
-
-	return outWidth > 0 && outHeight > 0;
-}
-
-float CompositorComponent::getRtpOutputFrameRate() const
-{
-	// The source rate drives the encoder's rate control
+	// The source rate drives an encoding output's rate control
 	VideoSourceComponentPtr videoSource= getVideoSourceComponent();
 	float frameRate= 0.f;
 	if (!videoSource || !videoSource->getFrameRate(frameRate) || frameRate <= 1.f)
@@ -815,25 +628,6 @@ float CompositorComponent::getRtpOutputFrameRate() const
 	}
 
 	return frameRate;
-}
-
-bool CompositorComponent::getIsRtpOutputStreaming() const { return m_rtpOutput && m_rtpOutput->getIsStreaming(); }
-
-void CompositorComponent::stopRtpOutputStreaming() { m_rtpOutput= nullptr; }
-
-const char* CompositorComponent::getRtpOutputStatusText() const
-{
-	CompositorDefinitionConstPtr definition= getCompositorDefinition();
-	if (!definition->getIsRtpOutputStreaming() && !m_bHasRtpClientFeeds)
-		return "off";
-	if (definition->getRtpOutputHost().empty() && !m_bHasRtpClientFeeds)
-		return "no destination";
-	if (!m_bOutputStreamingAllowed)
-		return "not the current scene";
-	if (!m_rtpOutput)
-		return "starting";
-
-	return m_rtpOutput->getStatusText().c_str();
 }
 
 bool CompositorComponent::start()
@@ -867,8 +661,6 @@ void CompositorComponent::stop()
 	m_bIsRunning= false;
 
 	stopVideoSourceStreaming();
-	stopRtpOutputStreaming();
-	m_bHasRtpClientFeeds= false;
 
 	m_lastPublishedCameraProperties.reset();
 	if (bWasRunning)
@@ -1067,25 +859,7 @@ void CompositorComponent::handleCompositorNodeGraphChanged(const std::filesystem
 	m_lastNodeEvalErrors.clear();
 }
 
-void CompositorComponent::onDefinitionChanged(CommonConfigPtr configPtr,
-											  const ConfigPropertyChangeSet& changedPropertySet)
-{
-	// Any RTP setting rebuilds the output, since the sender's caps are fixed at open and a
-	// rebuild is what clears a failed sender
-	if (changedPropertySet.hasPropertyName(CompositorDefinition::k_rtpEnableOutputPropertyId)
-		|| changedPropertySet.hasPropertyName(CompositorDefinition::k_rtpOutputHostPropertyId)
-		|| changedPropertySet.hasPropertyName(CompositorDefinition::k_rtpOutputPortPropertyId)
-		|| changedPropertySet.hasPropertyName(CompositorDefinition::k_rtpOutputHeightPropertyId)
-		|| changedPropertySet.hasPropertyName(CompositorDefinition::k_rtpOutputBitrateKbpsPropertyId))
-	{
-		stopRtpOutputStreaming();
-		updateRtpOutputStreaming();
-	}
-}
-
 // -- IPropertyInterface ----
-const std::string CompositorComponent::k_rtpOutputStatusPropertyId= "rtp_output_status";
-
 void CompositorComponent::getPropertyDescriptors(std::vector<PropertyDescriptorConstPtr>& outDescriptors)
 {
 	MikanComponent::getPropertyDescriptors(outDescriptors);
@@ -1099,23 +873,6 @@ void CompositorComponent::getPropertyDescriptors(std::vector<PropertyDescriptorC
 																  MikanVariantType::STRING)
 								 ->addMetaData(std::make_shared<AssetReferenceFactoryMetaData>(
 									 AssetReferenceFactory::createFactory<CompositorGraphAssetReferenceFactory>())));
-	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(CompositorDefinition::k_rtpEnableOutputPropertyId,
-																  MikanVariantType::BOOL));
-	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(CompositorDefinition::k_rtpOutputHostPropertyId,
-																  MikanVariantType::STRING));
-	outDescriptors.push_back(
-		std::make_shared<PropertyDescriptor>(CompositorDefinition::k_rtpOutputPortPropertyId, MikanVariantType::INT)
-			->setDefaultValue(DEFAULT_RTP_OUTPUT_PORT));
-	outDescriptors.push_back(
-		std::make_shared<PropertyDescriptor>(CompositorDefinition::k_rtpOutputHeightPropertyId, MikanVariantType::INT)
-			->setDefaultValue(DEFAULT_RTP_OUTPUT_HEIGHT));
-	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(
-								 CompositorDefinition::k_rtpOutputBitrateKbpsPropertyId, MikanVariantType::INT)
-								 ->setDefaultValue(DEFAULT_RTP_OUTPUT_BITRATE_KBPS));
-	outDescriptors.push_back(
-		std::make_shared<PropertyDescriptor>(CompositorComponent::k_rtpOutputStatusPropertyId, MikanVariantType::STRING)
-			->setReadOnly()
-			->setClientAPIHidden());
 }
 
 bool CompositorComponent::getPropertyValue(const std::string& propertyName, MikanVariant& outValue) const
@@ -1128,36 +885,6 @@ bool CompositorComponent::getPropertyValue(const std::string& propertyName, Mika
 	else if (propertyName == CompositorDefinition::k_compositorGraphPathPropertyId)
 	{
 		outValue= getCompositorDefinition()->getCompositorGraphPath();
-		return true;
-	}
-	else if (propertyName == CompositorDefinition::k_rtpEnableOutputPropertyId)
-	{
-		outValue= getCompositorDefinition()->getIsRtpOutputStreaming();
-		return true;
-	}
-	else if (propertyName == CompositorDefinition::k_rtpOutputHostPropertyId)
-	{
-		outValue= getCompositorDefinition()->getRtpOutputHost().c_str();
-		return true;
-	}
-	else if (propertyName == CompositorDefinition::k_rtpOutputPortPropertyId)
-	{
-		outValue= getCompositorDefinition()->getRtpOutputPort();
-		return true;
-	}
-	else if (propertyName == CompositorDefinition::k_rtpOutputHeightPropertyId)
-	{
-		outValue= getCompositorDefinition()->getRtpOutputHeight();
-		return true;
-	}
-	else if (propertyName == CompositorDefinition::k_rtpOutputBitrateKbpsPropertyId)
-	{
-		outValue= getCompositorDefinition()->getRtpOutputBitrateKbps();
-		return true;
-	}
-	else if (propertyName == k_rtpOutputStatusPropertyId)
-	{
-		outValue= getRtpOutputStatusText();
 		return true;
 	}
 
@@ -1176,31 +903,6 @@ bool CompositorComponent::setPropertyValue(const std::string& propertyName, cons
 		// Route through the asset-path setter so the live node graph
 		// rebuilds along with the definition
 		setCompositorGraphAssetPath(filePath);
-		return true;
-	}
-	else if (propertyName == CompositorDefinition::k_rtpEnableOutputPropertyId)
-	{
-		getCompositorDefinition()->setIsRtpOutputStreaming(inValue.getBoolValue());
-		return true;
-	}
-	else if (propertyName == CompositorDefinition::k_rtpOutputHostPropertyId)
-	{
-		getCompositorDefinition()->setRtpOutputHost(inValue.getUtf8Value());
-		return true;
-	}
-	else if (propertyName == CompositorDefinition::k_rtpOutputPortPropertyId)
-	{
-		getCompositorDefinition()->setRtpOutputPort(inValue.getIntValue());
-		return true;
-	}
-	else if (propertyName == CompositorDefinition::k_rtpOutputHeightPropertyId)
-	{
-		getCompositorDefinition()->setRtpOutputHeight(inValue.getIntValue());
-		return true;
-	}
-	else if (propertyName == CompositorDefinition::k_rtpOutputBitrateKbpsPropertyId)
-	{
-		getCompositorDefinition()->setRtpOutputBitrateKbps(inValue.getIntValue());
 		return true;
 	}
 
@@ -1256,10 +958,6 @@ void CompositorComponent::bindLuaFunctions(struct lua_State* L)
 		.addProperty("ownerSceneId",
 					 [](CompositorComponent* c) -> int { return c->getCompositorDefinition()->getOwnerSceneId(); })
 		.addProperty("ownerStageId", [](CompositorComponent* c) -> int { return c->getOwnerStageId(); })
-		.addProperty(
-			"isRtpOutputStreaming",
-			[](CompositorComponent* c) -> bool { return c->getCompositorDefinition()->getIsRtpOutputStreaming(); },
-			[](CompositorComponent* c, bool v) { c->getCompositorDefinition()->setIsRtpOutputStreaming(v); })
 		.addFunction("editCompositorGraph", [](CompositorComponent* c) { c->editCompositorGraph(); })
 		.addFunction("getOwnerStage",
 					 [](CompositorComponent* c) -> StageComponent* { return c->getOwnerStageComponent().get(); })

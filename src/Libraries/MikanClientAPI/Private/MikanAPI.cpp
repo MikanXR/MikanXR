@@ -193,6 +193,9 @@ const char* MikanScriptComponentValues::k_ownerSystemName= "ScriptObjectSystem";
 const char* MikanClientTextureSourceValues::k_componentClassName= "ClientTextureSourceComponent";
 const char* MikanClientTextureSourceValues::k_ownerSystemName= "ClientTextureSourceSystem";
 
+const char* MikanRTPOutputComponentValues::k_componentClassName= "RTPOutputComponent";
+const char* MikanRTPOutputComponentValues::k_ownerSystemName= "RTPOutputSystem";
+
 const char* MikanSpoutOutputComponentValues::k_componentClassName= "SpoutOutputComponent";
 const char* MikanSpoutOutputComponentValues::k_ownerSystemName= "SpoutOutputSystem";
 

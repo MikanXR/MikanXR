@@ -85,8 +85,9 @@ void SpoutOutputComponent::onDefinitionMarkedDirty(CommonConfigPtr configPtr,
 }
 
 // -- Output interface ----
-void SpoutOutputComponent::writeFrame(IMkTexturePtr compositedTexture)
+void SpoutOutputComponent::writeFrame(const OutputFrame& frame)
 {
+	IMkTexturePtr compositedTexture= frame.texture;
 	if (!compositedTexture)
 		return;
 

@@ -31,6 +31,7 @@
 #include "RGBSpotLightSystem.h"
 #include "SceneObjectSystem.h"
 #include "ScriptObjectSystem.h"
+#include "RTPOutputSystem.h"
 #include "SpoutOutputSystem.h"
 #include "SpoutTextureSourceSystem.h"
 #include "StageObjectSystem.h"
@@ -366,6 +367,12 @@ int addScript(ProjectManagerPtr projectManager)
 int addSpoutOutput(ProjectManagerPtr projectManager)
 {
 	auto sys= projectManager->getSystemOfType<SpoutOutputSystem>();
+	return sys ? componentIdOrInvalid(sys->addNewObjectByTypedDefinition()) : INVALID_MIKAN_ID;
+}
+
+int addRTPOutput(ProjectManagerPtr projectManager)
+{
+	auto sys= projectManager->getSystemOfType<RTPOutputSystem>();
 	return sys ? componentIdOrInvalid(sys->addNewObjectByTypedDefinition()) : INVALID_MIKAN_ID;
 }
 

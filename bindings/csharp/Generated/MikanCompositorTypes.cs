@@ -12,11 +12,6 @@ namespace MikanXR
 
 		public int owner_scene_id;
 		public string compositor_graph_path;
-		public bool rtp_enable_output;
-		public string rtp_output_host;
-		public int rtp_output_port;
-		public int rtp_output_height;
-		public int rtp_output_bitrate_kbps;
 
 		public override string RuntimeClassName => "MikanCompositorComponentValues";
 
@@ -25,11 +20,6 @@ namespace MikanXR
 			base.WriteFields(json);
 			json.Add("owner_scene_id", MikanJson.WriteInt(this.owner_scene_id));
 			json.Add("compositor_graph_path", MikanJson.WriteString(this.compositor_graph_path));
-			json.Add("rtp_enable_output", MikanJson.WriteBool(this.rtp_enable_output));
-			json.Add("rtp_output_host", MikanJson.WriteString(this.rtp_output_host));
-			json.Add("rtp_output_port", MikanJson.WriteInt(this.rtp_output_port));
-			json.Add("rtp_output_height", MikanJson.WriteInt(this.rtp_output_height));
-			json.Add("rtp_output_bitrate_kbps", MikanJson.WriteInt(this.rtp_output_bitrate_kbps));
 		}
 
 		public override void ReadFields(JObject json)
@@ -37,11 +27,6 @@ namespace MikanXR
 			base.ReadFields(json);
 			this.owner_scene_id = MikanJson.ReadInt(MikanJson.Field(json, "owner_scene_id"));
 			this.compositor_graph_path = MikanJson.ReadString(MikanJson.Field(json, "compositor_graph_path"));
-			this.rtp_enable_output = MikanJson.ReadBool(MikanJson.Field(json, "rtp_enable_output"));
-			this.rtp_output_host = MikanJson.ReadString(MikanJson.Field(json, "rtp_output_host"));
-			this.rtp_output_port = MikanJson.ReadInt(MikanJson.Field(json, "rtp_output_port"));
-			this.rtp_output_height = MikanJson.ReadInt(MikanJson.Field(json, "rtp_output_height"));
-			this.rtp_output_bitrate_kbps = MikanJson.ReadInt(MikanJson.Field(json, "rtp_output_bitrate_kbps"));
 		}
 
 		public override bool TryGetField(string fieldName, out object value)
@@ -50,11 +35,6 @@ namespace MikanXR
 			{
 				case "owner_scene_id": value = this.owner_scene_id; return true;
 				case "compositor_graph_path": value = this.compositor_graph_path; return true;
-				case "rtp_enable_output": value = this.rtp_enable_output; return true;
-				case "rtp_output_host": value = this.rtp_output_host; return true;
-				case "rtp_output_port": value = this.rtp_output_port; return true;
-				case "rtp_output_height": value = this.rtp_output_height; return true;
-				case "rtp_output_bitrate_kbps": value = this.rtp_output_bitrate_kbps; return true;
 			}
 			return base.TryGetField(fieldName, out value);
 		}
@@ -65,11 +45,6 @@ namespace MikanXR
 			{
 				case "owner_scene_id": return MikanJson.TryAssign(value, ref this.owner_scene_id);
 				case "compositor_graph_path": return MikanJson.TryAssign(value, ref this.compositor_graph_path);
-				case "rtp_enable_output": return MikanJson.TryAssign(value, ref this.rtp_enable_output);
-				case "rtp_output_host": return MikanJson.TryAssign(value, ref this.rtp_output_host);
-				case "rtp_output_port": return MikanJson.TryAssign(value, ref this.rtp_output_port);
-				case "rtp_output_height": return MikanJson.TryAssign(value, ref this.rtp_output_height);
-				case "rtp_output_bitrate_kbps": return MikanJson.TryAssign(value, ref this.rtp_output_bitrate_kbps);
 			}
 			return base.TrySetField(fieldName, value);
 		}

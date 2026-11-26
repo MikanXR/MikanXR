@@ -421,3 +421,29 @@ function SpoutOutputSystem:getOutputCount() end
 ---@param index integer Zero-based index
 ---@return SpoutOutputComponent
 function SpoutOutputSystem:getOutputAtIndex(index) end
+
+------------------------------------------------------------------------
+-- RTPOutputSystem
+------------------------------------------------------------------------
+
+---@class RTPOutputSystem
+RTPOutputSystem = {}
+
+--- Get an RTP output by ID.
+---@param id integer
+---@return RTPOutputComponent
+function RTPOutputSystem:getOutputById(id) end
+
+--- Get an RTP output by component name.
+---@param name string
+---@return RTPOutputComponent
+function RTPOutputSystem:getOutputByName(name) end
+
+--- Get the number of RTP outputs.
+---@return integer
+function RTPOutputSystem:getOutputCount() end
+
+--- Get the RTP output at the given index.
+---@param index integer Zero-based index
+---@return RTPOutputComponent
+function RTPOutputSystem:getOutputAtIndex(index) end

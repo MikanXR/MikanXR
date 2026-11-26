@@ -18,6 +18,7 @@
 #include "Light/RGBPixelGridComponent.h"
 #include "Light/RGBSpotLightComponent.h"
 #include "Marker/MarkerComponent.h"
+#include "Output/RTPOutputComponent.h"
 #include "Output/SpoutOutputComponent.h"
 #include "Scene/SceneComponent.h"
 #include "Scene/TransformComponent.h"
@@ -177,6 +178,7 @@ static const GuardTestEntry k_guardTestEntries[]= {
 	GUARD_ENTRY(RGBSpotLightComponent, RGBSpotLightDefinition),
 	GUARD_ENTRY(MarkerComponent, MarkerDefinition),
 	GUARD_ENTRY(SceneComponent, SceneComponentDefinition),
+	GUARD_ENTRY(RTPOutputComponent, RTPOutputDefinition),
 	GUARD_ENTRY(SpoutOutputComponent, SpoutOutputDefinition),
 	GUARD_ENTRY(ScriptComponent, ScriptDefinition),
 	GUARD_ENTRY(StageComponent, StageComponentDefinition),

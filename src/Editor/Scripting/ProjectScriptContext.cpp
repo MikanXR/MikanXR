@@ -9,6 +9,8 @@
 #include "CameraComponent.h"
 #include "CompositorComponent.h"
 #include "OutputComponent.h"
+#include "RTPOutputComponent.h"
+#include "RTPOutputSystem.h"
 #include "SpoutOutputComponent.h"
 #include "SpoutOutputSystem.h"
 #include "DMXFixtureComponent.h"
@@ -104,6 +106,7 @@ bool ProjectScriptContext::bindContextFunctions()
 	AnchorObjectSystem::bindLuaFunctions(m_luaState);
 	CompositorObjectSystem::bindLuaFunctions(m_luaState);
 	SpoutOutputSystem::bindLuaFunctions(m_luaState);
+	RTPOutputSystem::bindLuaFunctions(m_luaState);
 	ModelStencilSystem::bindLuaFunctions(m_luaState);
 	BoxStencilSystem::bindLuaFunctions(m_luaState);
 	QuadStencilSystem::bindLuaFunctions(m_luaState);
@@ -116,6 +119,7 @@ bool ProjectScriptContext::bindContextFunctions()
 	CompositorComponent::bindLuaFunctions(m_luaState);
 	OutputComponent::bindLuaFunctions(m_luaState);
 	SpoutOutputComponent::bindLuaFunctions(m_luaState);
+	RTPOutputComponent::bindLuaFunctions(m_luaState);
 	TransformComponent::bindLuaFunctions(m_luaState);
 	SceneComponent::bindLuaFunctions(m_luaState);
 	StageComponent::bindLuaFunctions(m_luaState);
@@ -169,6 +173,7 @@ bool ProjectScriptContext::bindContextFunctions()
 	luabridge::setGlobal(m_luaState, projectManager->getSystemOfType<CompositorObjectSystem>().get(),
 						 "CompositorSystem");
 	luabridge::setGlobal(m_luaState, projectManager->getSystemOfType<SpoutOutputSystem>().get(), "SpoutOutputSystem");
+	luabridge::setGlobal(m_luaState, projectManager->getSystemOfType<RTPOutputSystem>().get(), "RTPOutputSystem");
 	luabridge::setGlobal(m_luaState, projectManager->getSystemOfType<StageObjectSystem>().get(), "StageSystem");
 	luabridge::setGlobal(m_luaState, projectManager->getSystemOfType<DMXObjectSystem>().get(), "DMXSystem");
 	luabridge::setGlobal(m_luaState, projectManager->getSystemOfType<RGBSpotLightSystem>().get(), "RGBSpotLightSystem");

@@ -1,7 +1,7 @@
 #include "CompositorStreamRouteTests.h"
 #include "unit_test.h"
 
-#include "CompositorRtpOutput.h"
+#include "RtpFrameSender.h"
 #include "CompositorStreamRequestHandler.h"
 #include "HttpInterprocessMessageServer.h"
 #include "IRtpVideoSender.h"
@@ -59,7 +59,7 @@ bool sizeIs(int sourceWidth, int sourceHeight, int requestedHeight, int expected
 {
 	int width= 0;
 	int height= 0;
-	CompositorRtpOutput::computeOutputSize(sourceWidth, sourceHeight, requestedHeight, width, height);
+	RtpFrameSender::computeOutputSize(sourceWidth, sourceHeight, requestedHeight, width, height);
 	const bool bMatches= (width == expectedWidth && height == expectedHeight);
 	if (!bMatches)
 	{
@@ -85,7 +85,6 @@ bool run_compositor_stream_route_tests()
 	UNIT_TEST_MODULE_CALL_TEST(compositor_stream_route_test_sdp);
 	UNIT_TEST_MODULE_CALL_TEST(compositor_stream_route_test_replies);
 	UNIT_TEST_MODULE_CALL_TEST(compositor_stream_route_test_destination_host);
-	UNIT_TEST_MODULE_CALL_TEST(compositor_stream_route_test_merge_destinations);
 	UNIT_TEST_MODULE_END()
 }
 
@@ -115,7 +114,7 @@ bool compositor_stream_route_test_sdp()
 	UNIT_TEST_BEGIN("the SDP names the destination, the port, the H.264 payload and the picture")
 
 	CompositorStreamInfo info;
-	info.compositorId= 7;
+	info.outputId= 7;
 	info.host= "192.168.1.50";
 	info.port= 5004;
 	info.width= 1280;
@@ -163,61 +162,61 @@ bool compositor_stream_route_test_replies()
 
 	// A stub editor with compositor 3 streaming and compositor 4 with its output off
 	std::atomic<bool> bAvailable{true};
-	std::atomic<int> compositorCount{2};
+	std::atomic<int> outputCount{2};
 	int lastQueriedId= -2;
-	success&= CompositorStreamRequestHandler::registerRoute(
-		&server,
-		[&](int compositorId, CompositorStreamInfo& outInfo)
-		{
-			lastQueriedId= compositorId;
-			if (!bAvailable)
-				return eCompositorStreamQueryResult::unavailable;
-			if (compositorId < 0)
-			{
-				if (compositorCount == 0)
-					return eCompositorStreamQueryResult::unknownCompositor;
-				if (compositorCount > 1)
-					return eCompositorStreamQueryResult::ambiguousCompositor;
-				compositorId= 3;
-			}
-			if (compositorId == 4)
-				return eCompositorStreamQueryResult::notStreaming;
-			if (compositorId != 3)
-				return eCompositorStreamQueryResult::unknownCompositor;
+	success&=
+		CompositorStreamRequestHandler::registerRoute(&server,
+													  [&](int outputId, CompositorStreamInfo& outInfo)
+													  {
+														  lastQueriedId= outputId;
+														  if (!bAvailable)
+															  return eCompositorStreamQueryResult::unavailable;
+														  if (outputId < 0)
+														  {
+															  if (outputCount == 0)
+																  return eCompositorStreamQueryResult::unknownOutput;
+															  if (outputCount > 1)
+																  return eCompositorStreamQueryResult::ambiguousOutput;
+															  outputId= 3;
+														  }
+														  if (outputId == 4)
+															  return eCompositorStreamQueryResult::notStreaming;
+														  if (outputId != 3)
+															  return eCompositorStreamQueryResult::unknownOutput;
 
-			outInfo.compositorId= compositorId;
-			outInfo.host= "10.0.0.9";
-			outInfo.port= 6000;
-			outInfo.width= 960;
-			outInfo.height= 720;
-			outInfo.fps= 29.97f;
-			return eCompositorStreamQueryResult::found;
-		});
+														  outInfo.outputId= outputId;
+														  outInfo.host= "10.0.0.9";
+														  outInfo.port= 6000;
+														  outInfo.width= 960;
+														  outInfo.height= 720;
+														  outInfo.fps= 29.97f;
+														  return eCompositorStreamQueryResult::found;
+													  });
 	// The same path cannot be registered twice
-	success&= !CompositorStreamRequestHandler::registerRoute(
-		&server, [](int, CompositorStreamInfo&) { return eCompositorStreamQueryResult::unknownCompositor; });
+	success&= !CompositorStreamRequestHandler::registerRoute(&server, [](int, CompositorStreamInfo&)
+															 { return eCompositorStreamQueryResult::unknownOutput; });
 
 	// Only GET, and only with a usable id
-	success&= (RequestOnWorker(port, "POST", "/compositor/stream.sdp?compositor=3").statusCode == 405);
-	success&= (RequestOnWorker(port, "GET", "/compositor/stream.sdp?compositor=abc").statusCode == 400);
-	success&= (RequestOnWorker(port, "GET", "/compositor/stream.sdp?compositor=-1").statusCode == 400);
+	success&= (RequestOnWorker(port, "POST", "/compositor/stream.sdp?output=3").statusCode == 405);
+	success&= (RequestOnWorker(port, "GET", "/compositor/stream.sdp?output=abc").statusCode == 400);
+	success&= (RequestOnWorker(port, "GET", "/compositor/stream.sdp?output=-1").statusCode == 400);
 
 	// No id with several compositors is ambiguous, with one it resolves
 	success&= (RequestOnWorker(port, "GET", "/compositor/stream.sdp").statusCode == 400);
 	success&= (lastQueriedId == -1);
-	compositorCount= 1;
+	outputCount= 1;
 	success&= (RequestOnWorker(port, "GET", "/compositor/stream.sdp").statusCode == 200);
-	compositorCount= 0;
+	outputCount= 0;
 	success&= (RequestOnWorker(port, "GET", "/compositor/stream.sdp").statusCode == 404);
 
 	// Unknown and not streaming are both 404
-	success&= (RequestOnWorker(port, "GET", "/compositor/stream.sdp?compositor=9").statusCode == 404);
+	success&= (RequestOnWorker(port, "GET", "/compositor/stream.sdp?output=9").statusCode == 404);
 	success&= (lastQueriedId == 9);
-	success&= (RequestOnWorker(port, "GET", "/compositor/stream.sdp?compositor=4").statusCode == 404);
+	success&= (RequestOnWorker(port, "GET", "/compositor/stream.sdp?output=4").statusCode == 404);
 
 	// A streaming compositor answers its SDP
 	{
-		RequestOnWorker streaming(port, "GET", "/compositor/stream.sdp?compositor=3");
+		RequestOnWorker streaming(port, "GET", "/compositor/stream.sdp?output=3");
 		success&= (streaming.statusCode == 200);
 		success&= (streaming.contentType.rfind("application/sdp", 0) == 0);
 		success&= (streaming.body.find("c=IN IP4 10.0.0.9\r\n") != std::string::npos);
@@ -227,7 +226,7 @@ bool compositor_stream_route_test_replies()
 
 	// An editor that does not answer is a 504
 	bAvailable= false;
-	success&= (RequestOnWorker(port, "GET", "/compositor/stream.sdp?compositor=3").statusCode == 504);
+	success&= (RequestOnWorker(port, "GET", "/compositor/stream.sdp?output=3").statusCode == 504);
 
 	server.dispose();
 
@@ -254,41 +253,6 @@ bool compositor_stream_route_test_destination_host()
 	success&= !isValidRtpDestinationHost("host port=5004");
 	success&= !isValidRtpDestinationHost("239.1.1.1");
 	success&= !isValidRtpDestinationHost("224.0.0.251");
-
-	UNIT_TEST_COMPLETE()
-}
-
-bool compositor_stream_route_test_merge_destinations()
-{
-	UNIT_TEST_BEGIN("the RTP destinations merge the persisted one with the client feeds, each once, in order")
-
-	const RtpDestination monitor= makeDestination("192.168.1.10", 5004);
-	const RtpDestination phone= makeDestination("192.168.1.50", 5006);
-	const RtpDestination tablet= makeDestination("192.168.1.51", 5006);
-
-	// The persisted destination leads, the client feeds follow in their order
-	{
-		const std::vector<RtpDestination> merged= CompositorRtpOutput::mergeDestinations({monitor}, {phone, tablet});
-		success&= merged == std::vector<RtpDestination>({monitor, phone, tablet});
-	}
-
-	// A client feed naming the persisted destination is sent once
-	{
-		const std::vector<RtpDestination> merged=
-			CompositorRtpOutput::mergeDestinations({monitor}, {phone, monitor, phone});
-		success&= merged == std::vector<RtpDestination>({monitor, phone});
-	}
-
-	// The same host on another port is another destination
-	{
-		const RtpDestination phoneOtherPort= makeDestination("192.168.1.50", 5008);
-		const std::vector<RtpDestination> merged= CompositorRtpOutput::mergeDestinations({}, {phone, phoneOtherPort});
-		success&= merged == std::vector<RtpDestination>({phone, phoneOtherPort});
-	}
-
-	// Either side may be empty
-	success&= CompositorRtpOutput::mergeDestinations({}, {}).empty();
-	success&= CompositorRtpOutput::mergeDestinations({monitor}, {}) == std::vector<RtpDestination>({monitor});
 
 	UNIT_TEST_COMPLETE()
 }

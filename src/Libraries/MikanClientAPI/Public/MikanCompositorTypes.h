@@ -23,11 +23,6 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanCompositorTypes"),
 
 	FIELD() MikanSceneID owner_scene_id= INVALID_MIKAN_ID;
 	FIELD() Serialization::String compositor_graph_path;
-	FIELD() bool rtp_enable_output= false;
-	FIELD() Serialization::String rtp_output_host;
-	FIELD() int rtp_output_port= 5004;
-	FIELD() int rtp_output_height= 720;
-	FIELD() int rtp_output_bitrate_kbps= 4000;
 
 #ifdef MIKANAPI_REFLECTION_ENABLED
 	MikanCompositorComponentValues_GENERATED

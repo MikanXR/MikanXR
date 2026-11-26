@@ -64,6 +64,7 @@ public:
 	QuadStencilSystemDefinitionPtr quadStencilSystemDefinition;
 	SceneObjectSystemDefinitionPtr sceneConfig;
 	SpoutOutputSystemDefinitionPtr spoutOutputSystemDefinition;
+	RTPOutputSystemDefinitionPtr rtpOutputSystemDefinition;
 	SpoutTextureSourceSystemDefinitionPtr spoutConfig;
 	CEFTextureSourceSystemDefinitionPtr cefConfig;
 	StageObjectSystemDefinitionPtr stageConfig;

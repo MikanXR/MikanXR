@@ -39,7 +39,7 @@ public:
 	virtual std::string getComponentClassName() const override { return k_componentClassName; }
 
 	// -- Output interface ----
-	virtual void writeFrame(IMkTexturePtr compositedTexture) override;
+	virtual void writeFrame(const OutputFrame& frame) override;
 	virtual void closeOutput() override;
 	bool getIsSenderOpen() const;
 
