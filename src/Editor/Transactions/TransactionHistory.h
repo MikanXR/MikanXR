@@ -47,6 +47,13 @@ public:
 	void beginGesture(const std::string& gestureId);
 	void endGesture();
 
+	/// Group every create, destroy, and property change captured between the
+	/// brackets into one transaction, in the order they happen, so an object
+	/// and the objects it owns are created or destroyed as one undo step.
+	/// Brackets nest; the transaction seals when the outermost one ends.
+	void beginComposite();
+	void endComposite();
+
 	bool canUndo() const { return m_cursor > 0; }
 	bool canRedo() const { return m_cursor < m_history.size(); }
 	bool undo();
@@ -75,6 +82,7 @@ private:
 	void onObjectWillBeDestroyed(MikanObjectSystemPtr system, MikanComponentPtr component);
 	void openNewTransaction();
 	void absorbOp(TransactionOp&& op);
+	void flushPendingDestroyOp();
 	void sealOpenTransaction();
 
 	// Application
@@ -106,6 +114,9 @@ private:
 	float m_secondsSinceLastAbsorb= 0.f;
 	std::string m_activeGestureId;
 
+	// Open beginComposite brackets. While any is open, nothing seals.
+	int m_compositeDepth= 0;
+
 	// A destroy in flight: the pre-destroy snapshot appended LAST at seal so
 	// reverse-order undo recreates the object before restoring its children
 	bool m_bDestroyCompositeOpen= false;
@@ -121,4 +132,28 @@ private:
 
 	// Once-per-name warnings for change-set names with no property descriptor
 	std::set<std::string> m_warnedPropertyKeys;
+};
+
+/// Brackets a composite for the life of the scope. A null history (the
+/// headless command line has none) makes it a no-op.
+class TransactionCompositeScope
+{
+public:
+	explicit TransactionCompositeScope(TransactionHistory* transactionHistory)
+		: m_transactionHistory(transactionHistory)
+	{
+		if (m_transactionHistory)
+			m_transactionHistory->beginComposite();
+	}
+	~TransactionCompositeScope()
+	{
+		if (m_transactionHistory)
+			m_transactionHistory->endComposite();
+	}
+
+	TransactionCompositeScope(const TransactionCompositeScope&)= delete;
+	TransactionCompositeScope& operator=(const TransactionCompositeScope&)= delete;
+
+private:
+	TransactionHistory* m_transactionHistory;
 };

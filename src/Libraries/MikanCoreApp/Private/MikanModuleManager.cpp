@@ -3,6 +3,7 @@
 
 #include <map>
 #include <memory>
+#include <mutex>
 
 #include "assert.h"
 
@@ -15,6 +16,8 @@ public:
 
 	void shutdown()
 	{
+		std::lock_guard<std::mutex> lock(m_modulesMutex);
+
 		// Unload all modules
 		for (auto& module : m_modules)
 		{
@@ -25,6 +28,9 @@ public:
 
 	virtual IMikanModule* getModule(const std::string& moduleName) override
 	{
+		// Held across the load as well, so two callers asking for one module get one copy
+		std::lock_guard<std::mutex> lock(m_modulesMutex);
+
 		// Return the module if it's already loaded
 		auto it= m_modules.find(moduleName);
 		if (it != m_modules.end())
@@ -42,11 +48,14 @@ public:
 		}
 
 		// Return nullptr if the module failed to load
+		delete module;
 		return nullptr;
 	}
 
 	virtual bool disposeModule(IMikanModule* moduleIterface) override
 	{
+		std::lock_guard<std::mutex> lock(m_modulesMutex);
+
 		for (auto it= m_modules.begin(); it != m_modules.end(); it++)
 		{
 			MikanModule* module= it->second;
@@ -70,6 +79,9 @@ public:
 	}
 
 private:
+	// The systems that own a plugin load and dispose it from their own worker
+	// threads, several at once at project load, so every access takes the lock
+	std::mutex m_modulesMutex;
 	std::map<std::string, MikanModule*> m_modules;
 };
 

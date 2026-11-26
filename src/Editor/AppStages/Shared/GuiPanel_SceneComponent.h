@@ -16,5 +16,8 @@ protected:
 	SceneComponentPtr getSceneComponent() const;
 
 private:
-	GuiDataSource_ComboBox m_compositorDataSource;
+	// The cameras on the scene's own stage
+	GuiDataSource_ComboBox m_cameraDataSource;
+	// The lighting presets whose fixture group sits on the scene's own stage
+	GuiDataSource_ComboBox m_lightingPresetDataSource;
 };

@@ -51,6 +51,10 @@
 #include "ScriptObjectSystem.h"
 #include "SelectionComponent.h"
 #include "ShapeComponent.h"
+#include "RTPOutputComponent.h"
+#include "RTPOutputSystem.h"
+#include "SpoutOutputComponent.h"
+#include "SpoutOutputSystem.h"
 #include "SpoutTextureSourceComponent.h"
 #include "SpoutTextureSourceSystem.h"
 #include "StageComponent.h"
@@ -86,6 +90,12 @@ static const char* pickNodeIcon(eOutlinerNodeKind kind, const std::string& compo
 		return ICON_FK_SHARE_ALT;
 	if (componentClassName == CEFTextureSourceComponent::k_componentClassName)
 		return ICON_FK_CHROME;
+
+	// Outputs
+	if (componentClassName == SpoutOutputComponent::k_componentClassName)
+		return ICON_FK_SIGN_OUT;
+	if (componentClassName == RTPOutputComponent::k_componentClassName)
+		return ICON_FK_WIFI;
 
 	// Lights, replacing the old [Env]/[Spot]/[Grid] name prefixes
 	if (componentClassName == LightEnvironmentComponent::k_componentClassName)
@@ -166,6 +176,9 @@ std::string ProjectOutlinerModel::getNodeStateKey(const ProjectOutlinerNode& nod
 	case eOutlinerNodeKind::folderScripts:
 		folderName= "scripts";
 		break;
+	case eOutlinerNodeKind::folderOutputs:
+		folderName= "outputs";
+		break;
 	case eOutlinerNodeKind::folderCameras:
 		folderName= "cameras";
 		break;
@@ -200,6 +213,7 @@ bool ProjectOutlinerModel::getNodeDefaultOpen(eOutlinerNodeKind kind)
 	case eOutlinerNodeKind::folderLightGroups:
 	case eOutlinerNodeKind::folderScenes:
 	case eOutlinerNodeKind::folderScripts:
+	case eOutlinerNodeKind::folderOutputs:
 	case eOutlinerNodeKind::trackingVolume:
 	case eOutlinerNodeKind::stage:
 	case eOutlinerNodeKind::scene:
@@ -245,6 +259,8 @@ void ProjectOutlinerModel::rebuild(ProjectManagerPtr projectManager)
 		addFolderNode(m_root, eOutlinerNodeKind::folderTrackingVolumes, "project.outlinerTrackingGroup");
 	ProjectOutlinerNodePtr scriptsFolder=
 		addFolderNode(m_root, eOutlinerNodeKind::folderScripts, "project.outlinerScriptsGroup");
+	ProjectOutlinerNodePtr outputsFolder=
+		addFolderNode(m_root, eOutlinerNodeKind::folderOutputs, "project.outlinerOutputsGroup");
 
 	// Video sources
 	if (auto sys= projectManager->getSystemOfType<USBVideoSourceSystem>())
@@ -308,6 +324,14 @@ void ProjectOutlinerModel::rebuild(ProjectManagerPtr projectManager)
 		sys->visitComponents([&](ScriptComponentPtr comp)
 							 { addComponentNode(scriptsFolder, eOutlinerNodeKind::script, comp); });
 
+	// Project outputs
+	if (auto sys= projectManager->getSystemOfType<SpoutOutputSystem>())
+		sys->visitComponents([&](SpoutOutputComponentPtr comp)
+							 { addComponentNode(outputsFolder, eOutlinerNodeKind::output, comp); });
+	if (auto sys= projectManager->getSystemOfType<RTPOutputSystem>())
+		sys->visitComponents([&](RTPOutputComponentPtr comp)
+							 { addComponentNode(outputsFolder, eOutlinerNodeKind::output, comp); });
+
 	// Stages parent under their volume; one with a missing volume falls back to the root
 	if (auto stageSystem= projectManager->getSystemOfType<StageObjectSystem>())
 	{
@@ -340,6 +364,17 @@ void ProjectOutlinerModel::rebuild(ProjectManagerPtr projectManager)
 			{
 				if (!findNodeByComponentId(compositor->getComponentId()))
 					addComponentNode(m_root, eOutlinerNodeKind::compositor, compositor);
+			});
+	}
+
+	// A probe no scene names still needs a row to be found by
+	if (auto lightEnvironmentSystem= projectManager->getSystemOfType<LightEnvironmentSystem>())
+	{
+		lightEnvironmentSystem->visitComponents(
+			[&](LightEnvironmentComponentPtr probe)
+			{
+				if (!findNodeByComponentId(probe->getComponentId()))
+					addComponentNode(getOrCreateUnparentedGroup(), eOutlinerNodeKind::stageLight, probe);
 			});
 	}
 
@@ -397,18 +432,7 @@ void ProjectOutlinerModel::buildStageSubtree(ProjectManagerPtr projectManager, S
 									  { return camera->getCameraDefinition()->getOwnerStageId() == stageId; });
 	}
 
-	// Stage lights: environment probes, then the authored DMX fixtures
-	if (auto lightEnvironmentSystem= projectManager->getSystemOfType<LightEnvironmentSystem>())
-	{
-		lightEnvironmentSystem->visitComponents(
-			[&](LightEnvironmentComponentPtr light)
-			{ addComponentNode(lightsFolder, eOutlinerNodeKind::stageLight, light); },
-			[stageId](LightEnvironmentComponentPtr light)
-			{
-				StageComponentConstPtr ownerStage= light->getOwnerStageComponent();
-				return ownerStage && ownerStage->getComponentId() == stageId;
-			});
-	}
+	// Stage lights: the authored DMX fixtures. A lighting probe sits under its scene.
 	if (auto spotLightSystem= projectManager->getSystemOfType<RGBSpotLightSystem>())
 	{
 		spotLightSystem->visitComponents([&](RGBSpotLightComponentPtr light)
@@ -476,10 +500,16 @@ void ProjectOutlinerModel::buildSceneSubtree(SceneComponentPtr sceneComponent, P
 {
 	ProjectOutlinerNodePtr sceneNode= addComponentNode(parentNode, eOutlinerNodeKind::scene, sceneComponent);
 
-	// The scene's compositors sit ahead of its actors: they are scene-level outputs
-	for (CompositorComponentPtr compositor : sceneComponent->getOutputCompositors())
+	// The scene's compositor sits ahead of its actors: it is the scene-level output
+	if (CompositorComponentPtr compositor= sceneComponent->getCompositor())
 	{
 		addComponentNode(sceneNode, eOutlinerNodeKind::compositor, compositor);
+	}
+
+	// Then the lighting probe captured for the scene, when it has one
+	if (LightEnvironmentComponentPtr probe= sceneComponent->getLightEnvironment())
+	{
+		addComponentNode(sceneNode, eOutlinerNodeKind::stageLight, probe);
 	}
 
 	// Scene actors via the transform hierarchy

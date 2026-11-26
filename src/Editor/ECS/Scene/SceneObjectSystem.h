@@ -56,6 +56,15 @@ public:
 	virtual bool init(MikanObjectSystemDefinitionPtr definitionPtr) override;
 	virtual void dispose() override;
 
+	// Creates a scene together with the compositor it owns, as one undo step. Every
+	// create path routes here, so no scene exists without its compositor.
+	SceneComponentPtr addNewScene(DefinitionInitFunction definitionInit= {});
+	virtual MikanComponentPtr addNewObjectByUntypedDefinition(const std::string& primaryComponentClass,
+															  Serialization::PolymorphicObjectPtr initParams) override;
+	virtual MikanComponentPtr addNewObjectWithDefaultDefinition(const std::string& primaryComponentClass) override;
+	// Destroys the scene's compositor and lighting probe with it, as one undo step
+	virtual bool deleteObject(MikanObjectPtr objectPtr) override;
+
 	MikanSceneID getCurrentSceneId() const;
 	SceneComponentPtr getCurrentScene() const;
 	void setCurrentScene(SceneComponentPtr scene);
@@ -66,6 +75,12 @@ public:
 	{
 		return Super::getTypedComponentByName(sceneName);
 	}
+
+	// Writes the current scene's lighting preset to its fixture group. With a group
+	// id it does so only when the preset addresses that group, which is how a
+	// sequence ending falls back to it. A sequence still playing on the preset's
+	// group holds the fixtures, so the preset waits for that one to end.
+	void applyCurrentSceneLightingPreset(MikanDMXFixtureGroupID groupId= INVALID_MIKAN_ID);
 
 	MulticastDelegate<void(SceneComponentPtr oldScene)> OnSceneDeactivated;
 	MulticastDelegate<void(SceneComponentPtr newScene)> OnSceneActivated;

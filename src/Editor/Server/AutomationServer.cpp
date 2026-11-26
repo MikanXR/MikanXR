@@ -130,7 +130,7 @@ std::string quoteTokenIfNeeded(const std::string& token)
 	return quoted;
 }
 
-// Resolves an optional compositor component id token, defaulting to the project's single
+// Resolves an optional compositor component id token, defaulting to the current scene's
 // compositor when the token is absent
 CompositorComponentPtr resolveCompositor(MainWindow* mainWindow, const std::vector<std::string>& args,
 										 size_t idArgIndex, std::string& outError)
@@ -151,15 +151,13 @@ CompositorComponentPtr resolveCompositor(MainWindow* mainWindow, const std::vect
 
 	if (compositorId == -1)
 	{
-		std::vector<int> compositorIds;
-		compositorSystem->getComponentIdList(CompositorComponent::k_componentClassName, compositorIds);
-		if (compositorIds.size() != 1)
+		CompositorComponentPtr compositor= compositorSystem->getCurrentSceneCompositor();
+		if (!compositor)
 		{
-			outError=
-				"give a compositor component id (project has " + std::to_string(compositorIds.size()) + " compositors)";
-			return CompositorComponentPtr();
+			outError= "give a compositor component id (no scene is current)";
 		}
-		compositorId= compositorIds[0];
+
+		return compositor;
 	}
 
 	CompositorComponentPtr compositor= compositorSystem->getCompositorById(compositorId);
@@ -851,6 +849,12 @@ bool AutomationServer::handleComponentCommand(const std::vector<std::string>& ar
 			return false;
 		}
 
+		if (!objectSystem->allowsObjectDestroyRequests())
+		{
+			outError= "system '" + systemName + "' objects are destroyed with their owner";
+			return false;
+		}
+
 		if (!component->destroyOwnerObject())
 		{
 			outError= "failed to destroy component " + std::to_string(componentId);
@@ -1036,24 +1040,13 @@ bool AutomationServer::handleScreenshotCommand(const std::vector<std::string>& a
 			return false;
 		}
 
-		if (compositorId == -1)
-		{
-			// Default to the project's single compositor; several need an explicit id
-			std::vector<int> compositorIds;
-			compositorSystem->getComponentIdList(CompositorComponent::k_componentClassName, compositorIds);
-			if (compositorIds.size() != 1)
-			{
-				outError= "give a compositor component id (project has " + std::to_string(compositorIds.size())
-						  + " compositors)";
-				return false;
-			}
-			compositorId= compositorIds[0];
-		}
-
-		CompositorComponentPtr compositor= compositorSystem->getCompositorById(compositorId);
+		// Default to the current scene's compositor
+		CompositorComponentPtr compositor= compositorId == -1 ? compositorSystem->getCurrentSceneCompositor()
+															  : compositorSystem->getCompositorById(compositorId);
 		if (!compositor)
 		{
-			outError= "no compositor with id " + std::to_string(compositorId);
+			outError= compositorId == -1 ? "give a compositor component id (no scene is current)"
+										 : "no compositor with id " + std::to_string(compositorId);
 			return false;
 		}
 

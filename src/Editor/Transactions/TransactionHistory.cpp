@@ -58,6 +58,9 @@ void TransactionHistory::update(float deltaSeconds)
 	// A destroy composite closes at the frame boundary; a quiet property
 	// burst seals once its coalescing window lapses. An active gesture
 	// holds its transaction open until endGesture.
+	if (m_compositeDepth > 0)
+		return;
+
 	if (m_bDestroyCompositeOpen
 		|| (m_openTransaction && m_activeGestureId.empty() && m_secondsSinceLastAbsorb > k_coalesceWindowSeconds))
 	{
@@ -373,8 +376,6 @@ void TransactionHistory::onNewObjectFinalized(MikanObjectSystemPtr system, Mikan
 	if (ProjectConfig::isTransientComponentId(componentId))
 		return;
 
-	sealOpenTransaction();
-
 	TransactionOp op;
 	op.kind= eTransactionOpKind::createObject;
 	op.systemName= system->getObjectSystemClassName();
@@ -382,9 +383,21 @@ void TransactionHistory::onNewObjectFinalized(MikanObjectSystemPtr system, Mikan
 	op.componentId= componentId;
 	op.definitionConfig= primaryComponent->getDefinition()->writeToJSON();
 
-	openNewTransaction();
-	m_openTransaction->ops.push_back(std::move(op));
-	sealOpenTransaction();
+	if (m_compositeDepth > 0)
+	{
+		// Joins the composite in order, after any destroy still pending
+		flushPendingDestroyOp();
+		if (!m_openTransaction)
+			openNewTransaction();
+		m_openTransaction->ops.push_back(std::move(op));
+	}
+	else
+	{
+		sealOpenTransaction();
+		openNewTransaction();
+		m_openTransaction->ops.push_back(std::move(op));
+		sealOpenTransaction();
+	}
 
 	seedComponentShadow(system->getObjectSystemClassName(), primaryComponent->getComponentClassName(), componentId);
 }
@@ -400,8 +413,12 @@ void TransactionHistory::onObjectWillBeDestroyed(MikanObjectSystemPtr system, Mi
 
 	// Snapshot the definition before dispose rewrites parenting on it.
 	// The child reparent property changes dispose fires fold into this
-	// composite; the destroy op is appended last at seal time.
-	sealOpenTransaction();
+	// composite; the destroy op is appended last at seal time. Inside a
+	// composite bracket the previous destroy lands in the same transaction.
+	if (m_compositeDepth > 0)
+		flushPendingDestroyOp();
+	else
+		sealOpenTransaction();
 
 	m_pendingDestroyOp= TransactionOp();
 	m_pendingDestroyOp.kind= eTransactionOpKind::destroyObject;
@@ -426,8 +443,9 @@ void TransactionHistory::openNewTransaction()
 void TransactionHistory::absorbOp(TransactionOp&& op)
 {
 	// While a destroy composite is open, everything the teardown cascade
-	// touches (children reparenting to the grandparent) joins it
-	if (m_bDestroyCompositeOpen)
+	// touches (children reparenting to the grandparent) joins it. A composite
+	// bracket takes every op the same way.
+	if (m_bDestroyCompositeOpen || m_compositeDepth > 0)
 	{
 		if (!m_openTransaction)
 			openNewTransaction();
@@ -471,7 +489,7 @@ void TransactionHistory::absorbOp(TransactionOp&& op)
 	m_openTransaction->ops.push_back(std::move(op));
 }
 
-void TransactionHistory::sealOpenTransaction()
+void TransactionHistory::flushPendingDestroyOp()
 {
 	// A destroy composite closes by appending its snapshot op LAST, so a
 	// reverse-order undo recreates the object before restoring its children
@@ -484,6 +502,11 @@ void TransactionHistory::sealOpenTransaction()
 		m_pendingDestroyOp= TransactionOp();
 		m_bDestroyCompositeOpen= false;
 	}
+}
+
+void TransactionHistory::sealOpenTransaction()
+{
+	flushPendingDestroyOp();
 
 	if (!m_openTransaction)
 		return;
@@ -553,6 +576,24 @@ void TransactionHistory::endGesture()
 {
 	sealOpenTransaction();
 	m_activeGestureId.clear();
+}
+
+void TransactionHistory::beginComposite()
+{
+	// A composite never merges into the burst before it
+	if (m_compositeDepth == 0)
+		sealOpenTransaction();
+
+	++m_compositeDepth;
+}
+
+void TransactionHistory::endComposite()
+{
+	if (m_compositeDepth == 0)
+		return;
+
+	if (--m_compositeDepth == 0)
+		sealOpenTransaction();
 }
 
 // ---- Undo / redo ---------------------------------------------------------------

@@ -73,6 +73,7 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 		"${_sdk_client_api_dir}/MikanSceneTypes.h"
 		"${_sdk_client_api_dir}/MikanScriptEvents.h"
 		"${_sdk_client_api_dir}/MikanScriptRequests.h"
+		"${_sdk_client_api_dir}/MikanOutputTypes.h"
 		"${_sdk_client_api_dir}/MikanScriptTypes.h"
 		"${_sdk_client_api_dir}/MikanShapeTypes.h"
 		"${_sdk_client_api_dir}/MikanStageTypes.h"

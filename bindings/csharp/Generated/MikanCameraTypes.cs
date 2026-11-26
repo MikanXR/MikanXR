@@ -92,7 +92,6 @@ namespace MikanXR
 		public int stage_id;
 		public int tracking_mount_id;
 		public int video_source_id;
-		public int light_environment_id;
 		public int tracking_frame_delay;
 		public MikanCameraFrameSyncMode frame_sync_mode;
 		public bool pose_driven_per_frame;
@@ -111,7 +110,6 @@ namespace MikanXR
 			json.Add("stage_id", MikanJson.WriteInt(this.stage_id));
 			json.Add("tracking_mount_id", MikanJson.WriteInt(this.tracking_mount_id));
 			json.Add("video_source_id", MikanJson.WriteInt(this.video_source_id));
-			json.Add("light_environment_id", MikanJson.WriteInt(this.light_environment_id));
 			json.Add("tracking_frame_delay", MikanJson.WriteInt(this.tracking_frame_delay));
 			json.Add("frame_sync_mode", MikanCameraFrameSyncModeJson.ToJson(this.frame_sync_mode));
 			json.Add("pose_driven_per_frame", MikanJson.WriteBool(this.pose_driven_per_frame));
@@ -129,7 +127,6 @@ namespace MikanXR
 			this.stage_id = MikanJson.ReadInt(MikanJson.Field(json, "stage_id"));
 			this.tracking_mount_id = MikanJson.ReadInt(MikanJson.Field(json, "tracking_mount_id"));
 			this.video_source_id = MikanJson.ReadInt(MikanJson.Field(json, "video_source_id"));
-			this.light_environment_id = MikanJson.ReadInt(MikanJson.Field(json, "light_environment_id"));
 			this.tracking_frame_delay = MikanJson.ReadInt(MikanJson.Field(json, "tracking_frame_delay"));
 			this.frame_sync_mode = MikanCameraFrameSyncModeJson.FromJson(MikanJson.Field(json, "frame_sync_mode"));
 			this.pose_driven_per_frame = MikanJson.ReadBool(MikanJson.Field(json, "pose_driven_per_frame"));
@@ -148,7 +145,6 @@ namespace MikanXR
 				case "stage_id": value = this.stage_id; return true;
 				case "tracking_mount_id": value = this.tracking_mount_id; return true;
 				case "video_source_id": value = this.video_source_id; return true;
-				case "light_environment_id": value = this.light_environment_id; return true;
 				case "tracking_frame_delay": value = this.tracking_frame_delay; return true;
 				case "frame_sync_mode": value = this.frame_sync_mode; return true;
 				case "pose_driven_per_frame": value = this.pose_driven_per_frame; return true;
@@ -169,7 +165,6 @@ namespace MikanXR
 				case "stage_id": return MikanJson.TryAssign(value, ref this.stage_id);
 				case "tracking_mount_id": return MikanJson.TryAssign(value, ref this.tracking_mount_id);
 				case "video_source_id": return MikanJson.TryAssign(value, ref this.video_source_id);
-				case "light_environment_id": return MikanJson.TryAssign(value, ref this.light_environment_id);
 				case "tracking_frame_delay": return MikanJson.TryAssign(value, ref this.tracking_frame_delay);
 				case "frame_sync_mode": return MikanJson.TryAssign(value, ref this.frame_sync_mode);
 				case "pose_driven_per_frame": return MikanJson.TryAssign(value, ref this.pose_driven_per_frame);

@@ -821,11 +821,6 @@ msgid "Depth"
 msgstr ""
 
 #. Section: componentPanel
-msgctxt "componentPanel.displayCompositor"
-msgid "Display Compositor"
-msgstr ""
-
-#. Section: componentPanel
 msgctxt "componentPanel.dropAssetHint"
 msgid "Drop an asset from the Assets panel"
 msgstr ""
@@ -898,13 +893,13 @@ msgid "Not calibrated. Run lens calibration before using this source for alignme
 msgstr ""
 
 #. Section: componentPanel
-msgctxt "componentPanel.noAsset"
-msgid "<None>"
+msgctxt "componentPanel.lightingPreset"
+msgid "Lighting Preset"
 msgstr ""
 
 #. Section: componentPanel
-msgctxt "componentPanel.noCompositors"
-msgid "No Compositors"
+msgctxt "componentPanel.noAsset"
+msgid "<None>"
 msgstr ""
 
 #. Section: componentPanel
@@ -1502,11 +1497,6 @@ msgid "Test Intrinsics"
 msgstr ""
 
 #. Section: functions
-msgctxt "functions.triangulate_light"
-msgid "Triangulate Light"
-msgstr ""
-
-#. Section: functions
 msgctxt "functions.zero_all_channels"
 msgid "Zero All Channels"
 msgstr ""
@@ -1674,55 +1664,6 @@ msgstr ""
 #. Section: httpTriggers
 msgctxt "httpTriggers.serverPort"
 msgid "HTTP Trigger Server Port"
-msgstr ""
-
-#. Section: lightFixtureCalibration
-#, c-format
-msgctxt "lightFixtureCalibration.calibrationCompleteFmt"
-msgid "Fixture '%s' position calibrated successfully."
-msgstr ""
-
-#. Section: lightFixtureCalibration
-#, c-format
-msgctxt "lightFixtureCalibration.capturePosition1Fmt"
-msgid "Camera position 1: Click on the '%s' fixture in the image."
-msgstr ""
-
-#. Section: lightFixtureCalibration
-#, c-format
-msgctxt "lightFixtureCalibration.capturePosition2Fmt"
-msgid "Camera position 2: Click on the '%s' fixture in the image."
-msgstr ""
-
-#. Section: lightFixtureCalibration
-msgctxt "lightFixtureCalibration.failedVideoStart"
-msgid "Error: Failed to start video stream."
-msgstr ""
-
-#. Section: lightFixtureCalibration
-msgctxt "lightFixtureCalibration.moveCamera"
-msgid "Move the camera to a second position with a different angle to the fixture."
-msgstr ""
-
-#. Section: lightFixtureCalibration
-msgctxt "lightFixtureCalibration.pendingVideoStart"
-msgid "Waiting for video stream to start..."
-msgstr ""
-
-#. Section: lightFixtureCalibration
-msgctxt "lightFixtureCalibration.redo"
-msgid "Redo"
-msgstr ""
-
-#. Section: lightFixtureCalibration
-#, c-format
-msgctxt "lightFixtureCalibration.verifyInitialCameraSetupFmt"
-msgid "Fixture '%s' has been set to white. Position the camera so the fixture is visible and verify the video stream is running."
-msgstr ""
-
-#. Section: lightFixtureCalibration
-msgctxt "lightFixtureCalibration.verifyTriangulatedPosition"
-msgid "Verify the triangulated fixture position looks correct in the viewport."
 msgstr ""
 
 #. Section: logPanel
@@ -4010,11 +3951,6 @@ msgid "Position the tracked camera so the physical object is clearly in view, th
 msgstr ""
 
 #. Section: project
-msgctxt "project.addCompositorToScene"
-msgid "Add Compositor To Scene"
-msgstr ""
-
-#. Section: project
 #, c-format
 msgctxt "project.apertureOffsetValidFmt"
 msgid "Aperture offset valid: %s"
@@ -4059,19 +3995,18 @@ msgid "Compositor %d"
 msgstr ""
 
 #. Section: project
-msgctxt "project.compositorListEmpty"
-msgid "No compositors in the active scene"
-msgstr ""
-
-#. Section: project
-msgctxt "project.compositorListNoScene"
-msgid "No active scene"
+#, c-format
+msgctxt "project.cxCyFmt"
+msgid "cx=%.1f  cy=%.1f"
 msgstr ""
 
 #. Section: project
 #, c-format
-msgctxt "project.cxCyFmt"
-msgid "cx=%.1f  cy=%.1f"
+msgctxt "project.droppedProbesFmt"
+msgid ""
+"A lighting probe now belongs to a scene, one per scene. These probes had no scene to move to\n"
+"and were removed. Capture the scene lighting again from the scene that needs it.\n"
+"%s"
 msgstr ""
 
 #. Section: project
@@ -4178,11 +4113,6 @@ msgid "Add Client Texture Source"
 msgstr ""
 
 #. Section: project
-msgctxt "project.outlinerAddCompositor"
-msgid "Add Compositor"
-msgstr ""
-
-#. Section: project
 msgctxt "project.outlinerAddFileSource"
 msgid "Add File Video Source"
 msgstr ""
@@ -4243,6 +4173,11 @@ msgid "Add Quad Stencil"
 msgstr ""
 
 #. Section: project
+msgctxt "project.outlinerAddRTPOutput"
+msgid "Add RTP Output"
+msgstr ""
+
+#. Section: project
 msgctxt "project.outlinerAddScene"
 msgid "Add Scene"
 msgstr ""
@@ -4260,6 +4195,11 @@ msgstr ""
 #. Section: project
 msgctxt "project.outlinerAddSpotLight"
 msgid "Add Spot Light"
+msgstr ""
+
+#. Section: project
+msgctxt "project.outlinerAddSpoutOutput"
+msgid "Add Spout Output"
 msgstr ""
 
 #. Section: project
@@ -4325,6 +4265,11 @@ msgid "Markers"
 msgstr ""
 
 #. Section: project
+msgctxt "project.outlinerOutputsGroup"
+msgid "Outputs"
+msgstr ""
+
+#. Section: project
 msgctxt "project.outlinerRoot"
 msgid "Project"
 msgstr ""
@@ -4362,11 +4307,6 @@ msgstr ""
 #. Section: project
 msgctxt "project.panelCompositorOutput"
 msgid "Compositor Output"
-msgstr ""
-
-#. Section: project
-msgctxt "project.panelCompositors"
-msgid "Compositors"
 msgstr ""
 
 #. Section: project
@@ -4411,8 +4351,23 @@ msgid "RESOLUTION MISMATCH"
 msgstr ""
 
 #. Section: project
+msgctxt "project.sceneCaptureNeedsCamera"
+msgid "Assign a camera to the scene before capturing from it."
+msgstr ""
+
+#. Section: project
 msgctxt "project.sceneListEmpty"
 msgid "No scenes in the project"
+msgstr ""
+
+#. Section: project
+#, c-format
+msgctxt "project.sceneSplitsFmt"
+msgid ""
+"A scene now owns exactly one compositor. Each extra compositor was moved to a new scene on the same stage,\n"
+"and the project was saved. The new scenes hold no stencils, shapes or anchors,\n"
+"so move or rebuild what each compositor should draw.\n"
+"%s"
 msgstr ""
 
 #. Section: project
@@ -4925,11 +4880,6 @@ msgid "Display Tracking Space"
 msgstr ""
 
 #. Section: properties
-msgctxt "properties.dmx_channel_count"
-msgid "DMX Channel Count"
-msgstr ""
-
-#. Section: properties
 msgctxt "properties.dmx_priority"
 msgid "DMX Priority"
 msgstr ""
@@ -4947,6 +4897,11 @@ msgstr ""
 #. Section: properties
 msgctxt "properties.duration_seconds"
 msgid "Duration (s)"
+msgstr ""
+
+#. Section: properties
+msgctxt "properties.enabled"
+msgid "Enabled"
 msgstr ""
 
 #. Section: properties
@@ -5190,11 +5145,6 @@ msgid "Render Quad Stencils"
 msgstr ""
 
 #. Section: properties
-msgctxt "properties.rtp_enable_output"
-msgid "Enable RTP Output"
-msgstr ""
-
-#. Section: properties
 msgctxt "properties.rtp_output_bitrate_kbps"
 msgid "RTP Output Bitrate (kbps)"
 msgstr ""
@@ -5267,11 +5217,6 @@ msgstr ""
 #. Section: properties
 msgctxt "properties.socket_names"
 msgid "Socket Names"
-msgstr ""
-
-#. Section: properties
-msgctxt "properties.spout_enable_output"
-msgid "Enable Spout Output"
 msgstr ""
 
 #. Section: properties
@@ -6158,11 +6103,6 @@ msgid "Yes"
 msgstr ""
 
 #. Section: windows
-msgctxt "windows.addCompositor"
-msgid "Add Compositor"
-msgstr ""
-
-#. Section: windows
 msgctxt "windows.assets"
 msgid "Assets"
 msgstr ""
@@ -6175,11 +6115,6 @@ msgstr ""
 #. Section: windows
 msgctxt "windows.compositorOutput"
 msgid "Compositor Output"
-msgstr ""
-
-#. Section: windows
-msgctxt "windows.compositors"
-msgid "Compositors"
 msgstr ""
 
 #. Section: windows

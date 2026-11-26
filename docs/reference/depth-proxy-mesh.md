@@ -49,7 +49,7 @@ The captured frame is saved as `<name>.png` next to the OBJ and referenced by a 
 
 ## The capture tool
 
-`AppStage_DepthMeshCapture`, reached from a camera's **Capture Depth Mesh** component function (registered through `IFunctionInterface`, so also reachable from Lua and remotely). Same shape as the scene-lighting capture stage:
+`AppStage_DepthMeshCapture`, reached from a scene's **Capture Depth Mesh** component function (registered through `IFunctionInterface`, so also reachable from Lua and remotely). The scene supplies its camera, refusing with a message box when it has none, and the captured stencil is parented to that scene whichever scene is current. Same shape as the scene-lighting capture stage:
 
 pick camera -> live video while framing -> **Capture** runs the model -> the panel shows mesh statistics and a depth overlay (red = near, blue = far) drawn over the frame so silhouette alignment can be judged -> **Create Stencil** writes the mesh and registers it.
 
@@ -69,7 +69,7 @@ What Create Stencil does:
 
 - Writes `<project>/models/DepthProxy_<timestamp>.obj`. The name is unique per capture because the model resource cache keys on the file path - regenerating under a reused path would serve the stale mesh.
 
-- Creates a `ModelStencilComponent` through `ModelStencilSystem::addNewObjectByTypedDefinition` with the **absolute** OBJ path (the importer loads the stored path verbatim; a relative one silently fails to resolve), **parented under the active scene** so it lands in that scene's subtree in the project outliner. With no active scene it falls back to the camera's stage, which files it in the outliner's unparented tray.
+- Creates a `ModelStencilComponent` through `ModelStencilSystem::addNewObjectByTypedDefinition` with the **absolute** OBJ path (the importer loads the stored path verbatim; a relative one silently fails to resolve), **parented under the scene the capture was started from** so it lands in that scene's subtree in the project outliner and its compositor draws it. With no target scene it falls back to the camera's stage, which files it in the outliner's unparented tray.
 
 - Sets the stencil's world transform to the capturing camera's `getStageSpaceAperturePose` (back-solved into a stage-relative transform by `setWorldTransform`). The vertices are camera-local, so the stencil rides the camera pose and the OBJ stays reusable.
 

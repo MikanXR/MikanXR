@@ -93,6 +93,7 @@ namespace MikanXR
 			Register("MikanModelStencilSystemValues", () => new MikanModelStencilSystemValues());
 			Register("MikanMonoIntrinsics", () => new MikanMonoIntrinsics());
 			Register("MikanNetworkVideoSourceValues", () => new MikanNetworkVideoSourceValues());
+			Register("MikanOutputComponentValues", () => new MikanOutputComponentValues());
 			Register("MikanPropertyDescriptor", () => new MikanPropertyDescriptor());
 			Register("MikanPropertyUpdateEvent", () => new MikanPropertyUpdateEvent());
 			Register("MikanPropertyValue", () => new MikanPropertyValue());
@@ -115,12 +116,14 @@ namespace MikanXR
 			Register("MikanRGBSpotLightComponentValues", () => new MikanRGBSpotLightComponentValues());
 			Register("MikanRGBSpotLightSystemValues", () => new MikanRGBSpotLightSystemValues());
 			Register("MikanRotator3f", () => new MikanRotator3f());
+			Register("MikanRTPOutputComponentValues", () => new MikanRTPOutputComponentValues());
 			Register("MikanSceneComponentValues", () => new MikanSceneComponentValues());
 			Register("MikanSceneSystemValues", () => new MikanSceneSystemValues());
 			Register("MikanScriptComponentValues", () => new MikanScriptComponentValues());
 			Register("MikanScriptMessageInfo", () => new MikanScriptMessageInfo());
 			Register("MikanScriptMessagePostedEvent", () => new MikanScriptMessagePostedEvent());
 			Register("MikanShapeComponentValues", () => new MikanShapeComponentValues());
+			Register("MikanSpoutOutputComponentValues", () => new MikanSpoutOutputComponentValues());
 			Register("MikanSpoutTextureSourceValues", () => new MikanSpoutTextureSourceValues());
 			Register("MikanStageComponentValues", () => new MikanStageComponentValues());
 			Register("MikanStencilComponentValues", () => new MikanStencilComponentValues());

@@ -72,6 +72,16 @@ using SceneObjectSystemDefinitionPtr= std::shared_ptr<SceneObjectSystemDefinitio
 using SceneObjectSystemDefinitionConstPtr= std::shared_ptr<const SceneObjectSystemDefinition>;
 using SceneObjectSystemDefinitionWeakPtr= std::weak_ptr<SceneObjectSystemDefinition>;
 
+class RTPOutputSystemDefinition;
+using RTPOutputSystemDefinitionPtr= std::shared_ptr<RTPOutputSystemDefinition>;
+using RTPOutputSystemDefinitionConstPtr= std::shared_ptr<const RTPOutputSystemDefinition>;
+using RTPOutputSystemDefinitionWeakPtr= std::weak_ptr<RTPOutputSystemDefinition>;
+
+class SpoutOutputSystemDefinition;
+using SpoutOutputSystemDefinitionPtr= std::shared_ptr<SpoutOutputSystemDefinition>;
+using SpoutOutputSystemDefinitionConstPtr= std::shared_ptr<const SpoutOutputSystemDefinition>;
+using SpoutOutputSystemDefinitionWeakPtr= std::weak_ptr<SpoutOutputSystemDefinition>;
+
 class SpoutTextureSourceSystemDefinition;
 using SpoutTextureSourceSystemDefinitionPtr= std::shared_ptr<SpoutTextureSourceSystemDefinition>;
 using SpoutTextureSourceSystemDefinitionConstPtr= std::shared_ptr<const SpoutTextureSourceSystemDefinition>;

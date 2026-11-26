@@ -99,6 +99,9 @@ public:
 	}
 
 	virtual bool deleteObject(MikanObjectPtr objectPtr);
+	// Whether a user, client, or automation request may destroy one of this system's
+	// objects on its own. False when another object owns their lifetime.
+	virtual bool allowsObjectDestroyRequests() const { return true; }
 	void deleteAllObjects();
 	inline const MikanObjectList& getObjectList() const { return m_objects; }
 

@@ -24,6 +24,8 @@
 #include "LegacyTakeMigration.h"
 #include "SceneObjectSystem.h"
 #include "ScriptObjectSystem.h"
+#include "RTPOutputSystem.h"
+#include "SpoutOutputSystem.h"
 #include "SpoutTextureSourceSystem.h"
 #include "CEFTextureSourceSystem.h"
 #include "BoxShapeSystem.h"
@@ -103,6 +105,8 @@ bool ProjectManager::startup(MainWindow* mainWindow)
 	addSystem<DMXFixtureGroupSystem>();
 	addSystem<DMXPresetSystem>();
 	addSystem<LightEnvironmentSystem>();
+	addSystem<SpoutOutputSystem>();
+	addSystem<RTPOutputSystem>();
 	// Last: scripts look up the other systems' objects by name when they load
 	addSystem<ScriptObjectSystem>();
 
@@ -229,7 +233,15 @@ bool ProjectManager::newProject(const std::string& projectFilePath)
 	auto newProjectConfig= createEmptyProjectConfig();
 	newProjectConfig->save(projectFilePath);
 
-	return loadProject(projectFilePath);
+	if (!loadProject(projectFilePath))
+		return false;
+
+	// Every project starts with one Spout output, so a first scene is published
+	// without the user having to go and add one
+	getSystemOfType<SpoutOutputSystem>()->addNewObjectByTypedDefinition();
+	saveProject(projectFilePath);
+
+	return true;
 }
 
 // Every asset folder the catalog knows exists in a loaded project, empty when the
@@ -348,6 +360,9 @@ bool ProjectManager::loadProject(const std::string& projectFilePath)
 	// Loose takes recorded before captures existed are packed once, after the
 	// captures folder exists to receive them
 	LegacyTakeMigration::migrateProject(projectDir, projectFilePath);
+	// A project saved under an older scene hierarchy is moved onto the current one
+	m_hierarchyMigrationReport= ProjectHierarchyMigration::Report();
+	ProjectHierarchyMigration::migrateProject(projectFilePath, m_hierarchyMigrationReport);
 
 	// create an empty project config
 	m_projectConfig= createEmptyProjectConfig();
@@ -437,6 +452,13 @@ std::vector<AssetPathRepair> ProjectManager::takeAssetPathRepairs()
 	std::vector<AssetPathRepair> repairs;
 	repairs.swap(m_assetPathRepairs);
 	return repairs;
+}
+
+ProjectHierarchyMigration::Report ProjectManager::takeHierarchyMigrationReport()
+{
+	ProjectHierarchyMigration::Report report;
+	std::swap(report, m_hierarchyMigrationReport);
+	return report;
 }
 
 bool ProjectManager::saveProject(const std::string& projectFilePath)

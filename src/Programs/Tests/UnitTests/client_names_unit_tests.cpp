@@ -15,6 +15,7 @@
 #include "MikanShapeTypes.h"
 #include "MikanStageTypes.h"
 #include "MikanStencilTypes.h"
+#include "MikanOutputTypes.h"
 #include "MikanTextureSourceTypes.h"
 #include "MikanTrackingMountTypes.h"
 #include "MikanTrackingVolumeTypes.h"
@@ -79,6 +80,8 @@ const ComponentNamesEntry k_componentEntries[]= {
 	COMPONENT_NAMES(MikanTrackingMountComponentValues),
 	COMPONENT_NAMES(MikanScriptComponentValues),
 	COMPONENT_NAMES(MikanClientTextureSourceValues),
+	COMPONENT_NAMES(MikanRTPOutputComponentValues),
+	COMPONENT_NAMES(MikanSpoutOutputComponentValues),
 	COMPONENT_NAMES(MikanSpoutTextureSourceValues),
 	COMPONENT_NAMES(MikanCEFTextureSourceValues),
 	COMPONENT_NAMES(MikanNetworkVideoSourceValues),

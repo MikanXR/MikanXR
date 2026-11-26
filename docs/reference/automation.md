@@ -97,8 +97,8 @@ These reach every object system and component through the property and function 
 
 - `system list` replies one object system class name per line
 - `component list <system> [componentClass]` replies `<componentId> <componentClass>` per live component
-- `component create <system> <componentClass>` creates an object of the system's primary component type with a default definition, replying the new component id
-- `component destroy <system> <componentId>` destroys the object owning the component
+- `component create <system> <componentClass>` creates an object of the system's primary component type with a default definition, replying the new component id. Creating a `SceneComponent` also creates the compositor it owns, and `CompositorObjectSystem` refuses a create of its own
+- `component destroy <system> <componentId>` destroys the object owning the component. A system whose objects another object owns refuses (`MikanObjectSystem::allowsObjectDestroyRequests`): a compositor goes only with its scene
 - `property list [system] [componentClass]` replies `<system> <componentClass> <name> <type> <ro|rw>` per property
 - `property get <system> <componentId> <name>` replies the value as text
 - `property set <system> <componentId> <name> <value...>` writes a property, coercing the value tokens to the descriptor's type
@@ -122,7 +122,7 @@ Value syntax for `property get`/`set`:
 
 ### Screenshots (screenshot)
 
-- `screenshot compositor [componentId] [path]` writes the composited frame to a PNG and replies the absolute path. The component id may be omitted when the project has exactly one compositor. Without a path it writes `mikan_compositor.png` in the working directory, overwritten each capture.
+- `screenshot compositor [componentId] [path]` writes the composited frame to a PNG and replies the absolute path. Without a component id it captures the current scene's compositor. Without a path it writes `mikan_compositor.png` in the working directory, overwritten each capture.
 - `screenshot window [windowIndex] [path]` writes a window's back buffer (the editor UI included) at the end of that window's frame render, replying the absolute path once the capture lands. The index comes from `window list`; omitting it means the main window. Default `mikan_window.png`.
 - `screenshot viewport <viewportId> [path]` writes a torn-out panel's OS window the same way, read between its render and its swap in the main window's platform window pass. The id comes from `gui viewports`, and the image is that window's client area, so its pixels are the coordinates `input ... viewport` takes. The main viewport's id captures the main window. A viewport that does not render that frame (closed, hidden, minimized) answers with an error. Default `mikan_viewport.png`.
 
@@ -144,7 +144,6 @@ A panel dragged past the main window's edge becomes its own OS window, which ImG
 	- `Settings`
 	- `"HTTP Triggers"`
 	- `Scenes`
-	- `Compositors`
 	- `Assets`
 	- `Log`
 	- `DMX`
@@ -230,7 +229,7 @@ The view cube drives through the input verbs over the image's top right corner. 
 
 Drives the node editor window and its snapshot undo history ([transactions.md](./transactions.md)). One node editor window is targeted at a time; the commands answer an error when none is open.
 
-- `nodegraph open [compositorComponentId]` opens the compositor graph editor window (the id may be omitted when the project has exactly one compositor)
+- `nodegraph open [compositorComponentId]` opens the compositor graph editor window (without an id, the current scene's compositor)
 - `nodegraph open material <graphPath>` opens the material graph editor window on a `.matgraph` file, reusing and raising the window when one is already open. A relative path resolves against the project (then the app resources) and otherwise against the working directory. The command answers an error when the file does not load or is not a material graph.
 - `nodegraph open material new [compositor|shape]` opens the material editor with a fresh graph of that domain (default `compositor`)
 - `nodegraph errors [compositorComponentId]` replies the compositor's last evaluation diagnostics, one `<error|warning> <nodeId> <pinId> <message>` line each, empty for a clean frame. Like `open` it needs no editor window, and it is the way to see why a layer draws nothing without opening one.
@@ -363,7 +362,7 @@ Mutations and undo/redo run inside the node editor window's next update (its GL 
 ```
 python tools/automate.py "app info"
 python tools/automate.py "app resume" sleep:1 "screenshot compositor"
-python tools/automate.py "property get CompositorObjectSystem 1051 spout_output_name"
+python tools/automate.py "property get SpoutOutputSystem 2230 spout_output_name"
 ```
 
 Three arguments run client-side instead of being sent:

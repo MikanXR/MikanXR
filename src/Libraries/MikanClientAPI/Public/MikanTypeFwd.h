@@ -38,6 +38,9 @@ using MikanShapeID= int32_t;
 /// The ID of a stencil
 using MikanStencilID= int32_t;
 
+/// The ID of a project output
+using MikanOutputID= int32_t;
+
 /// The ID of a texture source
 using MikanTextureSourceID= int32_t;
 

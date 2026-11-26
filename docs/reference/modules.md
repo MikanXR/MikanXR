@@ -67,7 +67,7 @@ Empty directories, not referenced by `src/Libraries/CMakeLists.txt` (leftover sc
 
 ## src/Plugins
 
-Each plugin is a `SHARED` DLL with hidden symbol visibility that links only low-level libraries and exports two C functions, `AllocatePluginModule` and `FreePluginModule` (names fixed by `IMikanModule.h`). The editor never links a plugin; at runtime the ECS device systems ask `IMikanModuleManager` (in `MikanCoreApp`, backed by `dylib`) to load the DLL by module name and cast the result to the expected module interface, e.g. `getMikanModuleManager()->getModule<IUsbVideoDeviceModule>(moduleName)` in `src/Editor/ECS/VideoSource/USBVideoSourceSystem.cpp`. Video-source behavior is covered in [videosources.md](./videosources.md).
+Each plugin is a `SHARED` DLL with hidden symbol visibility that links only low-level libraries and exports two C functions, `AllocatePluginModule` and `FreePluginModule` (names fixed by `IMikanModule.h`). The editor never links a plugin; at runtime the ECS device systems ask `IMikanModuleManager` (in `MikanCoreApp`, backed by `dylib`) to load the DLL by module name and cast the result to the expected module interface, e.g. `getMikanModuleManager()->getModule<IUsbVideoDeviceModule>(moduleName)` in `src/Editor/ECS/VideoSource/USBVideoSourceSystem.cpp`. Those systems load and dispose their module from their own worker threads, several at once at project load, so the manager holds one mutex across each of its calls, the plugin load included. Video-source behavior is covered in [videosources.md](./videosources.md).
 
 - `MikanWMFVideo`: USB webcams via Windows Media Foundation (`mfplat`, `mf`, `mfuuid`, `mfreadwrite`, `wmcodecdspuuid`). Module class implements `IUsbVideoDeviceModule`. Links `MikanCoreApp`, `MikanUtility`. Loaded by `USBVideoSourceSystem`.
 
@@ -105,7 +105,7 @@ Subdirectories (each is a source group, not a separate target):
 
 - `AppCore`: `App` (GUI app object, state machine over `AppStages`), `CmdApp` (headless commands and `-runTests`), entry points, settings config, frame timer.
 
-- `AppStages` holds the modal UI screens, one folder per stage: calibration flows (`MonoLensCalibration`, `AlignmentCalibration`, `AnchorTriangulation`, `LightFixtureCalibration`, `PointCloudAlignment`, `StencilAlignment`, `AlignCameraByOriginMarker`, `AlignCameraByUtilityMarker`, `VRTrackingRecenter`), the ML capture tools (`SceneLightingCapture`, `DepthMeshCapture`), the occlusion mesh build (`OcclusionMeshBuild`), `MainMenu`, `Project`, settings and modal dialogs.
+- `AppStages` holds the modal UI screens, one folder per stage: calibration flows (`MonoLensCalibration`, `AlignmentCalibration`, `AnchorTriangulation`, `PointCloudAlignment`, `StencilAlignment`, `AlignCameraByOriginMarker`, `AlignCameraByUtilityMarker`, `VRTrackingRecenter`), the ML capture tools (`SceneLightingCapture`, `DepthMeshCapture`), the occlusion mesh build (`OcclusionMeshBuild`), `MainMenu`, `Project`, settings and modal dialogs.
 
 - `Asset`: asset references (models, materials, textures, node graphs) with `Import/` and `Export/` subfolders.
 
@@ -118,7 +118,7 @@ Subdirectories (each is a source group, not a separate target):
 
 - `Delegates`: header-only `SinglecastDelegate`/`MulticastDelegate`.
 
-- `ECS` holds the entity/component scene representation, one folder per object system: `Anchor`, `Camera`, `Collision`, `Compositor`, `Editor`, `Light`, `Marker`, `Scene`, `Script`, `Shape`, `Stage`, `Stencil`, `TextureSource`, `TrackingMount`, `TrackingVolume`, `VideoSource`, `VRObject`. Device-backed systems here load the plugins. See [objects.md](./objects.md) and [compositor.md](./compositor.md).
+- `ECS` holds the entity/component scene representation, one folder per object system: `Anchor`, `Camera`, `Collision`, `Compositor`, `Editor`, `Light`, `Marker`, `Output`, `Scene`, `Script`, `Shape`, `Stage`, `Stencil`, `TextureSource`, `TrackingMount`, `TrackingVolume`, `VideoSource`, `VRObject`. Device-backed systems here load the plugins. See [objects.md](./objects.md) and [compositor.md](./compositor.md).
 
 - `Events`: `EventBus`.
 

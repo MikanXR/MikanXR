@@ -237,7 +237,7 @@ The component values a client mirrors are relative, never absolute. `MikanTransf
 Two things on the wire are absolute, and both are therefore stage-relative rather than world-relative:
 
 - `MikanCameraNewFrameEvent` and `MikanCameraNewPropertiesEvent` (`MikanCameraEvents.h`) carry `camera_position` / `camera_forward` / `camera_up` from `CameraComponent::getStageSpaceAperturePose`. A world-space pose here would be applied a second time by the client's own stage anchor, putting the composited CG off by the stage transform.
-- `MikanLightEnvironmentComponentValues`' `sh_coefficients` and `key_light_direction` (`MikanLightTypes.h`) are in the stage space of the capturing camera's stage, so a stage's lighting travels with the stage. Spherical harmonics do not transform like vectors. See [conventions.md](./conventions.md) and [scene-lighting.md](./scene-lighting.md) for why a client evaluates them in Mikan space rather than converting them.
+- `MikanLightEnvironmentComponentValues`' `sh_coefficients` and `key_light_direction` (`MikanLightTypes.h`) are in the stage space of the owner scene's stage, so a stage's lighting travels with the stage. A client finds a scene's probe through `MikanSceneComponentValues.light_environment_id`. Spherical harmonics do not transform like vectors. See [conventions.md](./conventions.md) and [scene-lighting.md](./scene-lighting.md) for why a client evaluates them in Mikan space rather than converting them.
 
 ---
 

@@ -24,6 +24,7 @@ export * from './MikanLightTypes.js';
 export * from './MikanMarkerRequests.js';
 export * from './MikanMarkerTypes.js';
 export * from './MikanMathTypes.js';
+export * from './MikanOutputTypes.js';
 export * from './MikanPropertyEvents.js';
 export * from './MikanPropertyRequests.js';
 export * from './MikanPropertyTypes.js';

@@ -45,7 +45,6 @@
 #include "Project/ProjectGuiPanelContext.h"
 #include "Project/GuiPanel_ProjectOutliner.h"
 #include "Project/GuiPanel_Assets.h"
-#include "Project/GuiPanel_CompositorList.h"
 #include "Project/GuiPanel_CompositorOutput.h"
 #include "Project/GuiPanel_HttpTriggers.h"
 #include "Project/GuiPanel_ProjectSettings.h"
@@ -102,6 +101,33 @@ static std::string formatAssetPathRepairs(const std::vector<AssetPathRepair>& re
 	}
 
 	return locFormat("project.assetPathsRepairedFmt", repairList.c_str());
+}
+
+// The compositors the hierarchy migration moved to scenes of their own, one per entry
+static std::string formatSceneSplits(const std::vector<ProjectHierarchyMigration::SceneSplit>& sceneSplits)
+{
+	std::string splitList;
+	for (const ProjectHierarchyMigration::SceneSplit& split : sceneSplits)
+	{
+		splitList+= "\n" + split.compositorName;
+		if (!split.oldSceneName.empty())
+			splitList+= " (" + split.oldSceneName + ")";
+		splitList+= "\n    -> " + split.newSceneName + "\n";
+	}
+
+	return locFormat("project.sceneSplitsFmt", splitList.c_str());
+}
+
+// The lighting probes the hierarchy migration could not place under a scene
+static std::string formatDroppedProbes(const std::vector<std::string>& droppedProbeNames)
+{
+	std::string probeList;
+	for (const std::string& probeName : droppedProbeNames)
+	{
+		probeList+= "\n" + probeName;
+	}
+
+	return locFormat("project.droppedProbesFmt", probeList.c_str());
 }
 
 //-- public methods -----
@@ -199,12 +225,9 @@ void AppStage_Project::enter()
 		m_projectOutlinerPanel= addGuiPanel<GuiPanel_ProjectOutliner>();
 		m_projectOutlinerPanel->init(m_projectGuiPanelContext);
 
-		// The list panels push their picks into the outliner, so it exists first
+		// The scene list pushes its pick into the outliner, so it exists first
 		m_sceneListPanel= addGuiPanel<GuiPanel_SceneList>();
 		m_sceneListPanel->init(m_projectGuiPanelContext, m_projectOutlinerPanel);
-
-		m_compositorListPanel= addGuiPanel<GuiPanel_CompositorList>();
-		m_compositorListPanel->init(m_projectGuiPanelContext, m_projectOutlinerPanel);
 
 		m_compositorOutputPanel= addGuiPanel<GuiPanel_CompositorOutput>();
 		m_compositorOutputPanel->init(getGraphicsContext());
@@ -221,19 +244,40 @@ void AppStage_Project::enter()
 		scriptSystem->OnScriptsReloaded+= MakeDelegate(this, &AppStage_Project::onScriptsReloaded);
 	}
 
-	// The project loaded before this stage existed, so any asset path repair or
-	// script load error from then is surfaced now
+	// The project loaded before this stage existed, so any asset path repair,
+	// hierarchy migration, or script load error from then is surfaced now
+	m_pendingLoadNotices.clear();
 	const std::vector<AssetPathRepair> repairs= m_ownerWindow->getProjectManager()->takeAssetPathRepairs();
 	if (!repairs.empty())
 	{
-		// The load errors follow once the notice is closed, since a second modal would hide behind it
-		ModalDialog_MessageBox::showMessageBox(this, formatAssetPathRepairs(repairs), "",
-											   [this]() { showLastScriptLoadErrors(); });
+		m_pendingLoadNotices.push_back(formatAssetPathRepairs(repairs));
 	}
-	else
+	const ProjectHierarchyMigration::Report migrationReport=
+		m_ownerWindow->getProjectManager()->takeHierarchyMigrationReport();
+	if (!migrationReport.sceneSplits.empty())
+	{
+		m_pendingLoadNotices.push_back(formatSceneSplits(migrationReport.sceneSplits));
+	}
+	if (!migrationReport.droppedProbeNames.empty())
+	{
+		m_pendingLoadNotices.push_back(formatDroppedProbes(migrationReport.droppedProbeNames));
+	}
+	showNextLoadNotice();
+}
+
+void AppStage_Project::showNextLoadNotice()
+{
+	// One notice at a time, and the load errors last, since a second modal would
+	// hide behind the first
+	if (m_pendingLoadNotices.empty())
 	{
 		showLastScriptLoadErrors();
+		return;
 	}
+
+	const std::string notice= m_pendingLoadNotices.front();
+	m_pendingLoadNotices.erase(m_pendingLoadNotices.begin());
+	ModalDialog_MessageBox::showMessageBox(this, notice, "", [this]() { showNextLoadNotice(); });
 }
 
 void AppStage_Project::showLastScriptLoadErrors()
@@ -277,7 +321,6 @@ void AppStage_Project::exit()
 	m_projectSettingsPanel= nullptr;
 	m_httpTriggersPanel= nullptr;
 	m_sceneListPanel= nullptr;
-	m_compositorListPanel= nullptr;
 	m_compositorOutputPanel= nullptr;
 	m_assetsPanel= nullptr;
 
@@ -369,6 +412,8 @@ void AppStage_Project::update(float deltaSeconds)
 		case eOutlinerNodeKind::textureSource:
 		case eOutlinerNodeKind::folderScripts:
 		case eOutlinerNodeKind::script:
+		case eOutlinerNodeKind::folderOutputs:
+		case eOutlinerNodeKind::output:
 		default:
 			setViewMode(eProjectViewMode::scene);
 			break;
@@ -449,16 +494,8 @@ void AppStage_Project::onGui()
 			m_sceneListPanel->onGui();
 		}
 	}
-	if (m_bCompositorListVisible && m_compositorListPanel != nullptr)
-	{
-		MkGuiScopedWindow compositorListWindow(locWindowTitle("windows.compositors"), &m_bCompositorListVisible);
-		if (compositorListWindow)
-		{
-			m_compositorListPanel->onGui();
-		}
-	}
 
-	// The composite of the current scene's display compositor. A hidden tab
+	// The composite of the current scene's compositor. A hidden tab
 	// renders nothing that frame.
 	if (m_bCompositorOutputVisible && m_compositorOutputPanel != nullptr)
 	{
@@ -544,7 +581,6 @@ void AppStage_Project::onMenuBarGui()
 		ImGui::MenuItem(locLabel("project.panelSettings"), nullptr, &m_bSettingsPanelVisible);
 		ImGui::MenuItem(locLabel("project.panelHttpTriggers"), nullptr, &m_bHttpTriggersPanelVisible);
 		ImGui::MenuItem(locLabel("project.panelScenes"), nullptr, &m_bSceneListVisible);
-		ImGui::MenuItem(locLabel("project.panelCompositors"), nullptr, &m_bCompositorListVisible);
 		ImGui::MenuItem(locLabel("project.panelCompositorOutput"), nullptr, &m_bCompositorOutputVisible);
 		ImGui::MenuItem(locLabel("project.panelAssets"), nullptr, &m_bAssetsPanelVisible);
 		ImGui::MenuItem(locLabel("project.panelDMX"), nullptr, &m_bDMXPanelVisible);
@@ -560,7 +596,6 @@ void AppStage_Project::onMenuBarGui()
 			m_bSettingsPanelVisible= true;
 			m_bHttpTriggersPanelVisible= true;
 			m_bSceneListVisible= true;
-			m_bCompositorListVisible= true;
 			m_bCompositorOutputVisible= true;
 			m_bAssetsPanelVisible= true;
 			m_bShowLogPanel= true;
@@ -612,17 +647,16 @@ void AppStage_Project::onBuildDefaultDockLayout(unsigned int dockspaceId)
 {
 	// Project and Settings tabbed on the right. In the middle, the scene view and
 	// the compositor output side by side. Along the bottom of the scene view, left
-	// to right: the scene list, the compositor list, the assets browser, and the
-	// log. The Scene panel takes the central node.
+	// to right: the scene list, the assets browser, and the log. The Scene panel
+	// takes the central node.
 	ImGuiID remaining= (ImGuiID)dockspaceId;
 	const ImGuiID rightId= MkGui::dockBuilderSplit(remaining, ImGuiDir_Right, 0.28f, remaining);
 	const ImGuiID compositorOutputId= MkGui::dockBuilderSplit(remaining, ImGuiDir_Right, 0.45f, remaining);
 	// The bottom row is tall enough for a row of asset tiles, and the assets
-	// browser takes half of what the two lists leave, so its folder list and
+	// browser takes half of what the scene list leaves, so its folder list and
 	// tile grid both fit at a 720p window
 	ImGuiID bottomId= MkGui::dockBuilderSplit(remaining, ImGuiDir_Down, 0.32f, remaining);
-	const ImGuiID scenesId= MkGui::dockBuilderSplit(bottomId, ImGuiDir_Left, 0.15f, bottomId);
-	const ImGuiID compositorsId= MkGui::dockBuilderSplit(bottomId, ImGuiDir_Left, 0.2f, bottomId);
+	const ImGuiID scenesId= MkGui::dockBuilderSplit(bottomId, ImGuiDir_Left, 0.3f, bottomId);
 	const ImGuiID assetsId= MkGui::dockBuilderSplit(bottomId, ImGuiDir_Left, 0.55f, bottomId);
 
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.project"), rightId);
@@ -631,7 +665,6 @@ void AppStage_Project::onBuildDefaultDockLayout(unsigned int dockspaceId)
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.dmx"), rightId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.compositorOutput"), compositorOutputId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.scenes"), scenesId);
-	MkGui::dockBuilderDockWindow(locWindowTitle("windows.compositors"), compositorsId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.assets"), assetsId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.log"), bottomId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.scene"), remaining);
@@ -1186,8 +1219,13 @@ void AppStage_Project::renderEnvironmentLightComponents(IMkGraphicsContext* grap
 	if (viewportCamera->getProjectionMode() == eCameraProjectionMode::perspective)
 	{
 		getObjectSystemOfType<LightEnvironmentSystem>()->customRender(
-			graphicsContext, viewportCamera, [stageComponent](LightEnvironmentComponentPtr lightEnv)
-			{ return lightEnv->getOwnerStageComponent() == stageComponent; });
+			graphicsContext, viewportCamera,
+			[stageComponent](LightEnvironmentComponentPtr lightEnv)
+			{
+				// A probe belongs to a scene, so it draws only while that scene does
+				return lightEnv->getOwnerStageComponent() == stageComponent
+					   && isSceneGeometryRendered(lightEnv->getOwnerObject());
+			});
 	}
 }
 
@@ -1217,13 +1255,13 @@ void AppStage_Project::renderCameraAlignmentDebug(IMkGraphicsContext* graphicsCo
 	drawTransformedAxes(graphicsContext, glm::mat4(1.f), 0.25f, true);
 	drawTextAtWorldPosition(graphicsContext, style, glm::vec3(0.f), L"stage origin");
 
-	// For each compositor on the current scene, draw its tracking puck + camera aperture in stage
+	// For the current scene's compositor, draw its tracking puck + camera aperture in stage
 	// space so the pose chain (VR->stage, puck->aperture lever arm) is directly inspectable in 3D.
 	SceneComponentConstPtr currentScene= getCurrentSceneConst();
 	if (!currentScene)
 		return;
 
-	for (const CompositorComponentPtr& compositor : currentScene->getOutputCompositors())
+	for (const CompositorComponentPtr& compositor : {currentScene->getCompositor()})
 	{
 		if (!compositor)
 			continue;
@@ -1281,8 +1319,9 @@ void AppStage_Project::renderCameraAlignmentGui()
 		int compositorCount= 0;
 
 		SceneComponentConstPtr currentScene= getCurrentSceneConst();
-		const std::vector<CompositorComponentPtr> compositors=
-			currentScene ? currentScene->getOutputCompositors() : std::vector<CompositorComponentPtr>();
+		std::vector<CompositorComponentPtr> compositors;
+		if (currentScene)
+			compositors.push_back(currentScene->getCompositor());
 
 		for (const CompositorComponentPtr& compositor : compositors)
 		{

@@ -49,21 +49,24 @@ local TransformComponent = {}
 
 ---@class SceneComponent : TransformComponent
 ---@field parentStageId integer ID of the parent stage (read-only)
----@field displayCompositorId integer ID of the display compositor (read-only)
+---@field cameraId integer ID of the camera the scene is shot through (read/write)
+---@field lightEnvironmentId integer ID of the scene's lighting probe, -1 before the first capture (read-only)
+---@field lightingPresetId integer ID of the lighting preset the scene falls back to, -1 for none (read/write)
 local SceneComponent = {}
 
 --- Get the parent StageComponent.
 ---@return StageComponent
 function SceneComponent:getParentStage() end
 
---- Get the number of output compositors for this scene.
----@return integer
-function SceneComponent:getOutputCompositorCount() end
+--- Open the scene lighting capture tool through the scene's camera.
+function SceneComponent:captureSceneLighting() end
 
---- Get the output compositor at the given index.
----@param index integer Zero-based index
+--- Open the depth mesh capture tool through the scene's camera.
+function SceneComponent:captureDepthMesh() end
+
+--- Get the compositor this scene owns.
 ---@return CompositorComponent
-function SceneComponent:getOutputCompositorAtIndex(index) end
+function SceneComponent:getCompositor() end
 
 ------------------------------------------------------------------------
 -- StageComponent : TransformComponent
@@ -193,9 +196,6 @@ local ModelShapeComponent = {}
 ---@field isDisabled boolean Whether the fixture is disabled (read/write)
 ---@field ownerStageId integer ID of the owning stage (read-only)
 local DMXFixtureComponent = {}
-
---- Triangulate the light position using camera data.
-function DMXFixtureComponent:triangulateLight() end
 
 --- Get the owning StageComponent.
 ---@return StageComponent
@@ -396,11 +396,9 @@ function MarkerComponent:printMarker() end
 
 ---@class CompositorComponent : MikanComponent
 ---@field compositorId integer Unique compositor ID (read-only)
----@field cameraId integer ID of the associated camera (read-only)
+---@field cameraId integer ID of the owner scene's camera (read-only)
 ---@field ownerSceneId integer ID of the owning scene (read-only)
 ---@field ownerStageId integer ID of the owning stage (read-only)
----@field isSpoutOutputStreaming boolean Whether Spout output streaming is active (read/write)
----@field isRtpOutputStreaming boolean Whether RTP output streaming is active (read/write)
 local CompositorComponent = {}
 
 --- Open the compositor graph editor UI.
@@ -503,3 +501,30 @@ BoxShapeSystem = nil
 --- The ModelShapeSystem singleton.
 ---@type ModelShapeSystem
 ModelShapeSystem = nil
+
+------------------------------------------------------------------------
+-- OutputComponent : MikanComponent
+------------------------------------------------------------------------
+
+---@class OutputComponent : MikanComponent
+---@field isEnabled boolean Whether the output takes the composited frame (read/write)
+local OutputComponent = {}
+
+------------------------------------------------------------------------
+-- SpoutOutputComponent : OutputComponent
+------------------------------------------------------------------------
+
+---@class SpoutOutputComponent : OutputComponent
+---@field spoutOutputName string The name receivers find the sender by (read/write)
+---@field isSenderOpen boolean Whether the Spout sender is open right now (read-only)
+local SpoutOutputComponent = {}
+
+------------------------------------------------------------------------
+-- RTPOutputComponent : OutputComponent
+------------------------------------------------------------------------
+
+---@class RTPOutputComponent : OutputComponent
+---@field rtpOutputHost string Where the RTP packets go, empty to send nothing (read/write)
+---@field rtpOutputPort integer Destination port (read/write)
+---@field statusText string What the stream reports, or why nothing streams (read-only)
+local RTPOutputComponent = {}

@@ -13,9 +13,10 @@
 
 /// A client that receives the compositor's RTP output asks for it here. The destination
 /// lives on the client's connection: it goes with the connection or with enable false.
-/// compositor_id -1 means every compositor allowed to publish output, which is the
-/// scene's display compositor. The feed is sent beside the compositor's own
-/// rtp_output_host at the compositor's size and bitrate.
+/// compositor_id -1 means whichever compositor publishes output, which is the
+/// current scene's. A feed that names a compositor flows only while that one
+/// publishes. The feeds are a stream of their own at 720 lines and 4000 kbps,
+/// whatever RTP outputs the project has.
 struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanCompositorRequest")) SetCompositorReturnFeed
 	: public MikanRequest
 {

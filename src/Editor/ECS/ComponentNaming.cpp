@@ -24,6 +24,8 @@
 #include "Stencil/QuadStencilComponent.h"
 #include "TextureSource/CEFTextureSourceComponent.h"
 #include "TextureSource/ClientTextureSourceComponent.h"
+#include "Output/RTPOutputComponent.h"
+#include "Output/SpoutOutputComponent.h"
 #include "TextureSource/SpoutTextureSourceComponent.h"
 #include "TrackingMount/TrackingMountComponent.h"
 #include "TrackingVolume/MarkerTrackingVolumeComponent.h"
@@ -42,6 +44,8 @@ const std::vector<ComponentNamePrefixEntry>& getComponentNamePrefixEntries()
 		{RGBPixelGridComponent::k_componentClassName, "LIGHT"},
 		{CameraComponent::k_componentClassName, "CAM"},
 		{CompositorComponent::k_componentClassName, "COMP"},
+		{SpoutOutputComponent::k_componentClassName, "OUT"},
+		{RTPOutputComponent::k_componentClassName, "OUT"},
 		{MarkerComponent::k_componentClassName, "MRK"},
 		{USBVideoSourceComponent::k_componentClassName, "SRC"},
 		{NetworkVideoSourceComponent::k_componentClassName, "SRC"},

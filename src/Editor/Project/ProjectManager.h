@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AssetPathRepair.h"
+#include "ProjectHierarchyMigration.h"
 #include "CommonConfigFwd.h"
 #include "ComponentFwd.h"
 #include "MikanTypeFwd.h"
@@ -98,6 +99,9 @@ public:
 	// The asset paths the last load repointed, handed over once so the notice shows
 	// once per load
 	std::vector<AssetPathRepair> takeAssetPathRepairs();
+	// What the last load's hierarchy migration changed that the user has to know
+	// about, handed over once the same way
+	ProjectHierarchyMigration::Report takeHierarchyMigrationReport();
 
 	MulticastDelegate<void(ProjectManagerPtr oldProject)> OnProjectPreUnload;
 	MulticastDelegate<void(ProjectManagerPtr newProject)> OnProjectLoaded;
@@ -116,4 +120,5 @@ private:
 	// Project Config
 	ProjectConfigPtr m_projectConfig;
 	std::vector<AssetPathRepair> m_assetPathRepairs;
+	ProjectHierarchyMigration::Report m_hierarchyMigrationReport;
 };

@@ -75,7 +75,7 @@ private:
 	// The project's editor settings, which hold the tree's open state
 	EditorObjectSystemDefinitionPtr getEditorConfig() const;
 
-	// Active scene and active display compositor highlighting
+	// Current scene and running compositor highlighting
 	bool isActiveHighlightNode(ProjectOutlinerNodePtr node) const;
 
 	// Object system delegate handlers

@@ -1,6 +1,6 @@
 #include "CompositorStreamRequestHandler.h"
-#include "CompositorComponent.h"
-#include "CompositorObjectSystem.h"
+#include "RTPOutputComponent.h"
+#include "RTPOutputSystem.h"
 #include "JsonUtils.h"
 #include "MikanServer.h"
 
@@ -28,8 +28,8 @@ CompositorStreamRequestHandler::~CompositorStreamRequestHandler() {}
 
 bool CompositorStreamRequestHandler::startup(MainWindow* mainWindow)
 {
-	return registerRoute(m_owner->getHttpMessageServer(), [this](int compositorId, CompositorStreamInfo& outInfo)
-						 { return queryOnMainThread(compositorId, outInfo); });
+	return registerRoute(m_owner->getHttpMessageServer(), [this](int outputId, CompositorStreamInfo& outInfo)
+						 { return queryOnMainThread(outputId, outInfo); });
 }
 
 void CompositorStreamRequestHandler::shutdown()
@@ -51,7 +51,7 @@ std::string CompositorStreamRequestHandler::buildSdp(const CompositorStreamInfo&
 	std::ostringstream ss;
 	ss << "v=0\r\n";
 	ss << "o=- 0 0 IN IP4 " << info.host << "\r\n";
-	ss << "s=MikanXR compositor " << info.compositorId << "\r\n";
+	ss << "s=MikanXR output " << info.outputId << "\r\n";
 	ss << "c=IN IP4 " << info.host << "\r\n";
 	ss << "t=0 0\r\n";
 	ss << "m=video " << info.port << " RTP/AVP 96\r\n";
@@ -78,31 +78,31 @@ HttpRouteResponse CompositorStreamRequestHandler::buildResponse(const HttpRouteR
 		return makeStreamErrorResponse(405, "Query with GET");
 	}
 
-	int compositorId= -1;
-	const auto idIt= request.queryArgs.find("compositor");
+	int outputId= -1;
+	const auto idIt= request.queryArgs.find("output");
 	if (idIt != request.queryArgs.end())
 	{
 		char* end= nullptr;
 		const long parsedId= std::strtol(idIt->second.c_str(), &end, 10);
 		if (idIt->second.empty() || end == idIt->second.c_str() || *end != '\0' || parsedId < 0)
 		{
-			return makeStreamErrorResponse(400, "compositor must be a component id");
+			return makeStreamErrorResponse(400, "output must be a component id");
 		}
-		compositorId= (int)parsedId;
+		outputId= (int)parsedId;
 	}
 
 	CompositorStreamInfo info;
-	switch (query(compositorId, info))
+	switch (query(outputId, info))
 	{
 	case eCompositorStreamQueryResult::found:
 		break;
-	case eCompositorStreamQueryResult::unknownCompositor:
-		return makeStreamErrorResponse(404, compositorId >= 0 ? "No compositor with id " + std::to_string(compositorId)
-															  : "The project has no compositor");
-	case eCompositorStreamQueryResult::ambiguousCompositor:
-		return makeStreamErrorResponse(400, "The project has several compositors, give a compositor id");
+	case eCompositorStreamQueryResult::unknownOutput:
+		return makeStreamErrorResponse(404, outputId >= 0 ? "No RTP output with id " + std::to_string(outputId)
+														  : "The project has no RTP output");
+	case eCompositorStreamQueryResult::ambiguousOutput:
+		return makeStreamErrorResponse(400, "The project has several RTP outputs, give an output id");
 	case eCompositorStreamQueryResult::notStreaming:
-		return makeStreamErrorResponse(404, "The compositor's RTP output is off");
+		return makeStreamErrorResponse(404, "The RTP output is off or has no destination");
 	default:
 		return makeStreamErrorResponse(504, "Timed out waiting for the editor");
 	}
@@ -113,7 +113,7 @@ HttpRouteResponse CompositorStreamRequestHandler::buildResponse(const HttpRouteR
 	return response;
 }
 
-eCompositorStreamQueryResult CompositorStreamRequestHandler::queryOnMainThread(int compositorId,
+eCompositorStreamQueryResult CompositorStreamRequestHandler::queryOnMainThread(int outputId,
 																			   CompositorStreamInfo& outInfo)
 {
 	struct QueryResult
@@ -123,9 +123,9 @@ eCompositorStreamQueryResult CompositorStreamRequestHandler::queryOnMainThread(i
 	};
 	auto queryResult= std::make_shared<QueryResult>();
 
-	// The compositors are main-thread state
+	// The outputs are main-thread state
 	const bool bRan= m_owner->getHttpMessageServer()->runOnMainThread(
-		[this, compositorId, queryResult]() { queryResult->result= queryNow(compositorId, queryResult->info); },
+		[this, outputId, queryResult]() { queryResult->result= queryNow(outputId, queryResult->info); },
 		k_streamHopTimeoutMs);
 	if (!bRan)
 		return eCompositorStreamQueryResult::unavailable;
@@ -134,40 +134,41 @@ eCompositorStreamQueryResult CompositorStreamRequestHandler::queryOnMainThread(i
 	return queryResult->result;
 }
 
-eCompositorStreamQueryResult CompositorStreamRequestHandler::queryNow(int compositorId, CompositorStreamInfo& outInfo)
+eCompositorStreamQueryResult CompositorStreamRequestHandler::queryNow(int outputId, CompositorStreamInfo& outInfo)
 {
-	CompositorObjectSystemPtr compositorSystem= getObjectSystemOfType<CompositorObjectSystem>();
-	if (!compositorSystem)
-		return eCompositorStreamQueryResult::unknownCompositor;
+	RTPOutputSystemPtr rtpOutputSystem= getObjectSystemOfType<RTPOutputSystem>();
+	if (!rtpOutputSystem)
+		return eCompositorStreamQueryResult::unknownOutput;
 
-	if (compositorId < 0)
+	if (outputId < 0)
 	{
-		// Default to the project's single compositor; several need an explicit id
-		std::vector<int> compositorIds;
-		compositorSystem->getComponentIdList(CompositorComponent::k_componentClassName, compositorIds);
-		if (compositorIds.empty())
-			return eCompositorStreamQueryResult::unknownCompositor;
-		if (compositorIds.size() > 1)
-			return eCompositorStreamQueryResult::ambiguousCompositor;
-		compositorId= compositorIds[0];
+		// Default to the project's single RTP output; several need an explicit id
+		std::vector<int> outputIds;
+		rtpOutputSystem->getComponentIdList(RTPOutputComponent::k_componentClassName, outputIds);
+		if (outputIds.empty())
+			return eCompositorStreamQueryResult::unknownOutput;
+		if (outputIds.size() > 1)
+			return eCompositorStreamQueryResult::ambiguousOutput;
+		outputId= outputIds[0];
 	}
 
-	CompositorComponentPtr compositor= compositorSystem->getCompositorById(compositorId);
-	if (!compositor)
-		return eCompositorStreamQueryResult::unknownCompositor;
+	RTPOutputComponentPtr output= rtpOutputSystem->getOutputById(outputId);
+	if (!output)
+		return eCompositorStreamQueryResult::unknownOutput;
 
-	CompositorDefinitionConstPtr definition= compositor->getCompositorDefinition();
-	if (!definition->getIsRtpOutputStreaming() || definition->getRtpOutputHost().empty())
+	if (!output->getHasDestination())
 		return eCompositorStreamQueryResult::notStreaming;
 
-	outInfo.compositorId= compositorId;
+	RTPOutputDefinitionConstPtr definition= output->getRTPOutputDefinition();
+	outInfo.outputId= outputId;
 	outInfo.host= definition->getRtpOutputHost();
 	outInfo.port= definition->getRtpOutputPort();
-	outInfo.fps= compositor->getRtpOutputFrameRate();
-	if (!compositor->getRtpOutputSize(outInfo.width, outInfo.height))
+	// The picture is known once a scene has published a frame through the output
+	if (!output->getStreamFormat(outInfo.width, outInfo.height, outInfo.fps))
 	{
 		outInfo.width= 0;
 		outInfo.height= 0;
+		outInfo.fps= 0.f;
 	}
 
 	return eCompositorStreamQueryResult::found;

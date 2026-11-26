@@ -95,7 +95,6 @@ public:
 	virtual bool canAttachToParent(TransformComponentConstPtr newParentComponent) const override;
 
 	StageComponentConstPtr getOwnerStageComponent() const;
-	eTrackingVolumeType getTrackingVolumeType() const;
 
 	virtual void init() override;
 
@@ -122,11 +121,4 @@ protected:
 	static void getPropertyDescriptors(std::vector<PropertyDescriptorConstPtr>& outDescriptors);
 	virtual bool getPropertyValue(const std::string& propertyName, MikanVariant& outValue) const override;
 	virtual bool setPropertyValue(const std::string& propertyName, const MikanVariant& inValue) override;
-
-	// -- IFunctionInterface ----
-	static const std::string k_triangulateLightFunctionId;
-	static void getFunctionDescriptors(std::vector<FunctionDescriptorConstPtr>& outDescriptors);
-	virtual bool invokeFunction(const std::string& functionName) override;
-
-	void triangulateLight();
 };

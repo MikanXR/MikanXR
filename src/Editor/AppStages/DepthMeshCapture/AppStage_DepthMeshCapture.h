@@ -6,6 +6,7 @@
 #include "MikanRendererFwd.h"
 #include "MikanTypeFwd.h"
 #include "MoGeInference.h"
+#include "SceneFwd.h"
 #include "VideoDisplayConstants.h"
 
 #include <atomic>
@@ -38,6 +39,8 @@ public:
 	/// recovery needs, and the pose the stencil is placed at. Call before
 	/// enter().
 	void setSourceCamera(CameraComponentPtr cameraComponent);
+	/// Scene the captured stencil is parented to. Call before enter().
+	void setTargetScene(SceneComponentPtr sceneComponent);
 
 	virtual void enter() override;
 	virtual void exit() override;
@@ -120,6 +123,7 @@ private:
 	class GuiPanel_DepthMeshCapture* m_capturePanel= nullptr;
 
 	CameraComponentPtr m_currentSceneCameraComponent;
+	SceneComponentWeakPtr m_targetScene;
 	VideoSourceComponentPtr m_videoSourceComponent;
 	class VideoFrameDistortionView* m_monoDistortionView= nullptr;
 

@@ -1,19 +1,13 @@
-#include "AppStage.h"
-#include "CameraObjectSystem.h"
 #include "DMXFixtureComponent.h"
 #include "DMXObjectSystem.h"
-#include "LightFixtureCalibration\AppStage_LightFixtureCalibration.h"
 #include "MikanLightTypes.h"
 #include "MikanObject.h"
 #include "MikanObjectSystem.h"
 #include "MikanVariantTypes.h"
-#include "ModalMessageBox/ModalDialog_MessageBox.h"
-#include "ModalSelectCamera/ModalDialog_SelectCamera.h"
 #include "ProjectManager.h"
 #include "StringUtils.h"
 #include "StageObjectSystem.h"
 #include "StageComponent.h"
-#include "TrackingVolumeComponent.h"
 
 #include "lua.hpp"
 #include "LuaBridge/LuaBridge.h"
@@ -164,8 +158,6 @@ void DMXFixtureComponentDefinition::setDMXChannelCount(uint16_t count)
 }
 
 // -- DMXFixtureComponent -----
-const std::string DMXFixtureComponent::k_triangulateLightFunctionId= "triangulate_light";
-
 DMXFixtureComponent::DMXFixtureComponent(MikanObjectWeakPtr owner)
 	: TransformComponent(owner)
 {
@@ -189,20 +181,6 @@ StageComponentConstPtr DMXFixtureComponent::getOwnerStageComponent() const
 	MikanStageID stageId= getDMXFixtureDefinition()->getOwnerStageId();
 
 	return getObjectSystemOfType<StageObjectSystem>()->getStageById(stageId);
-}
-
-eTrackingVolumeType DMXFixtureComponent::getTrackingVolumeType() const
-{
-	StageComponentConstPtr ownerStage= getOwnerStageComponent();
-	if (ownerStage != nullptr)
-	{
-		TrackingVolumeDefinitionConstPtr trackingVolume= ownerStage->getTrackingVolumeDefinitionConst();
-		if (trackingVolume != nullptr)
-		{
-			return trackingVolume->getTrackingVolumeType();
-		}
-	}
-	return eTrackingVolumeType::INVALID;
 }
 
 // -- IEntityAccessor --
@@ -229,7 +207,8 @@ void DMXFixtureComponent::getPropertyDescriptors(std::vector<PropertyDescriptorC
 		DMXFixtureComponentDefinition::k_dmxStartChannelPropertyId, MikanVariantType::USHORT));
 	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(
 								 DMXFixtureComponentDefinition::k_dmxChannelCountPropertyId, MikanVariantType::USHORT)
-								 ->setReadOnly());
+								 ->setReadOnly()
+								 ->setUIHidden());
 	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(DMXFixtureComponentDefinition::k_isDisabledPropertyId,
 																  MikanVariantType::BOOL));
 	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(DMXFixtureComponentDefinition::k_maxWattagePropertyId,
@@ -316,61 +295,6 @@ bool DMXFixtureComponent::setPropertyValue(const std::string& propertyName, cons
 	return TransformComponent::setPropertyValue(propertyName, inValue);
 }
 
-// -- IFunctionInterface ----
-void DMXFixtureComponent::getFunctionDescriptors(std::vector<FunctionDescriptorConstPtr>& outDescriptors)
-{
-	TransformComponent::getFunctionDescriptors(outDescriptors);
-
-	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_triangulateLightFunctionId, "Triangulate Light"));
-}
-
-bool DMXFixtureComponent::invokeFunction(const std::string& functionName)
-{
-	if (functionName == DMXFixtureComponent::k_triangulateLightFunctionId)
-	{
-		triangulateLight();
-		return true;
-	}
-
-	return TransformComponent::invokeFunction(functionName);
-}
-
-void DMXFixtureComponent::triangulateLight()
-{
-	AppStage* currentAppStage= getOwnerEditorWindow()->getCurrentAppStage();
-
-	switch (getTrackingVolumeType())
-	{
-	case eTrackingVolumeType::vr:
-	{
-		AppStage* currentAppStage= getOwnerEditorWindow()->getCurrentAppStage();
-
-		ModalDialog_SelectCamera::selectCamera(
-			currentAppStage,
-			[this](MikanCameraID cameraId)
-			{
-				// Show Light Triangulation Tool
-				AppStage_LightFixtureCalibration* anchorTriangulation=
-					getOwnerEditorWindow()->pushAppStageOfType<AppStage_LightFixtureCalibration>();
-				CameraComponentPtr camera= getObjectSystemOfType<CameraObjectSystem>()->getCameraById(cameraId);
-
-				anchorTriangulation->setSourceCamera(camera);
-				anchorTriangulation->setTargetFixture(getSelfPtr<DMXFixtureComponent>());
-			});
-	}
-	break;
-	case eTrackingVolumeType::marker:
-		ModalDialog_MessageBox::showMessageBox(currentAppStage,
-											   "Unable to triangulate lights using marker based tracking.");
-		break;
-	default:
-		ModalDialog_MessageBox::showMessageBox(
-			currentAppStage,
-			"Stage missing tracking volume. Please assign a tracking volume to the stage this camera is attached to.");
-		break;
-	}
-}
-
 // -- Lua Binding --
 void DMXFixtureComponent::bindLuaFunctions(lua_State* L)
 {
@@ -393,7 +317,6 @@ void DMXFixtureComponent::bindLuaFunctions(lua_State* L)
 					 { return static_cast<int>(c->getDMXFixtureDefinition()->getDMXChannelCount()); })
 		.addProperty("ownerStageId",
 					 [](DMXFixtureComponent* c) -> int { return c->getDMXFixtureDefinition()->getOwnerStageId(); })
-		.addFunction("triangulateLight", [](DMXFixtureComponent* c) { c->triangulateLight(); })
 		.addFunction("getOwnerStage", [](DMXFixtureComponent* c) -> StageComponent*
 					 { return const_cast<StageComponent*>(c->getOwnerStageComponent().get()); })
 		.endClass();

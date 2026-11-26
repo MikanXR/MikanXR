@@ -1,4 +1,4 @@
-#include "CompositorRtpOutput.h"
+#include "RtpFrameSender.h"
 #include "IMkFrameBuffer.h"
 #include "IMkGraphicsContext.h"
 #include "IMkState.h"
@@ -21,16 +21,16 @@ static constexpr int k_minOutputWidth= 160;
 static constexpr int k_minOutputHeight= 64;
 static constexpr int k_maxOutputHeight= 4096;
 
-CompositorRtpOutput::CompositorRtpOutput(IMkGraphicsContext* graphicsContext)
+RtpFrameSender::RtpFrameSender(IMkGraphicsContext* graphicsContext)
 	: m_graphicsContext(graphicsContext)
 {
 	refreshStatusText();
 }
 
-CompositorRtpOutput::~CompositorRtpOutput() { stop(); }
+RtpFrameSender::~RtpFrameSender() { stop(); }
 
-void CompositorRtpOutput::computeOutputSize(int sourceWidth, int sourceHeight, int requestedHeight, int& outWidth,
-											int& outHeight)
+void RtpFrameSender::computeOutputSize(int sourceWidth, int sourceHeight, int requestedHeight, int& outWidth,
+									   int& outHeight)
 {
 	if (sourceWidth <= 0 || sourceHeight <= 0)
 	{
@@ -50,25 +50,7 @@ void CompositorRtpOutput::computeOutputSize(int sourceWidth, int sourceHeight, i
 	outHeight= height & ~1;
 }
 
-std::vector<RtpDestination> CompositorRtpOutput::mergeDestinations(const std::vector<RtpDestination>& persisted,
-																   const std::vector<RtpDestination>& clientFeeds)
-{
-	std::vector<RtpDestination> merged;
-	for (const std::vector<RtpDestination>* list : {&persisted, &clientFeeds})
-	{
-		for (const RtpDestination& destination : *list)
-		{
-			if (std::find(merged.begin(), merged.end(), destination) == merged.end())
-			{
-				merged.push_back(destination);
-			}
-		}
-	}
-
-	return merged;
-}
-
-bool CompositorRtpOutput::start(IRtpVideoSenderPtr sender, const Settings& settings, int sourceWidth, int sourceHeight)
+bool RtpFrameSender::start(IRtpVideoSenderPtr sender, const Settings& settings, int sourceWidth, int sourceHeight)
 {
 	stop();
 
@@ -92,7 +74,7 @@ bool CompositorRtpOutput::start(IRtpVideoSenderPtr sender, const Settings& setti
 	return bOpened;
 }
 
-void CompositorRtpOutput::stop()
+void RtpFrameSender::stop()
 {
 	if (m_sender)
 	{
@@ -106,9 +88,9 @@ void CompositorRtpOutput::stop()
 	m_readbackBuffer.clear();
 }
 
-bool CompositorRtpOutput::getIsStreaming() const { return m_sender && m_sender->getIsOpen(); }
+bool RtpFrameSender::getIsStreaming() const { return m_sender && m_sender->getIsOpen(); }
 
-bool CompositorRtpOutput::setDestinations(const std::vector<RtpDestination>& destinations)
+bool RtpFrameSender::setDestinations(const std::vector<RtpDestination>& destinations)
 {
 	if (!getIsStreaming() || !m_sender->setDestinations(destinations))
 		return false;
@@ -120,17 +102,17 @@ bool CompositorRtpOutput::setDestinations(const std::vector<RtpDestination>& des
 	return true;
 }
 
-void CompositorRtpOutput::setUnavailable(const std::string& reason)
+void RtpFrameSender::setUnavailable(const std::string& reason)
 {
 	if (m_unavailableReason != reason)
 	{
 		m_unavailableReason= reason;
-		MIKAN_LOG_WARNING("CompositorRtpOutput::setUnavailable") << "RTP output unavailable: " << reason;
+		MIKAN_LOG_WARNING("RtpFrameSender::setUnavailable") << "RTP output unavailable: " << reason;
 		refreshStatusText();
 	}
 }
 
-bool CompositorRtpOutput::openSender(int sourceWidth, int sourceHeight)
+bool RtpFrameSender::openSender(int sourceWidth, int sourceHeight)
 {
 	m_sourceWidth= sourceWidth;
 	m_sourceHeight= sourceHeight;
@@ -179,7 +161,7 @@ bool CompositorRtpOutput::openSender(int sourceWidth, int sourceHeight)
 	return true;
 }
 
-bool CompositorRtpOutput::ensureFrameBuffer(int width, int height)
+bool RtpFrameSender::ensureFrameBuffer(int width, int height)
 {
 	if (width <= 0 || height <= 0)
 		return false;
@@ -187,7 +169,7 @@ bool CompositorRtpOutput::ensureFrameBuffer(int width, int height)
 	if (!m_frameBuffer)
 	{
 		// 8-bit RGBA, whose color texture reads back through a double pixel buffer object
-		m_frameBuffer= createMkFrameBuffer("Compositor RTP Output Frame Buffer");
+		m_frameBuffer= createMkFrameBuffer("RTP Output Frame Buffer");
 		m_frameBuffer->setFrameBufferType(IMkFrameBuffer::eFrameBufferType::COLOR);
 		m_frameBuffer->setColorFormat(IMkFrameBuffer::eColorFormat::RGBA);
 	}
@@ -210,7 +192,7 @@ bool CompositorRtpOutput::ensureFrameBuffer(int width, int height)
 	return true;
 }
 
-void CompositorRtpOutput::writeFrame(IMkTexturePtr compositedTexture)
+void RtpFrameSender::writeFrame(IMkTexturePtr compositedTexture)
 {
 	if (!getIsStreaming() || !compositedTexture || !m_frameBuffer || !m_quadMesh)
 		return;
@@ -260,7 +242,7 @@ void CompositorRtpOutput::writeFrame(IMkTexturePtr compositedTexture)
 	}
 }
 
-void CompositorRtpOutput::update(float deltaSeconds)
+void RtpFrameSender::update(float deltaSeconds)
 {
 	if (m_sender)
 	{
@@ -287,7 +269,7 @@ void CompositorRtpOutput::update(float deltaSeconds)
 	refreshStatusText();
 }
 
-void CompositorRtpOutput::refreshStatusText()
+void RtpFrameSender::refreshStatusText()
 {
 	std::ostringstream ss;
 

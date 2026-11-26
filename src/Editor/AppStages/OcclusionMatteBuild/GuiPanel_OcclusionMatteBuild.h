@@ -73,7 +73,7 @@ public:
 private:
 	eOcclusionMatteBuildMenuState m_menuState= eOcclusionMatteBuildMenuState::inactive;
 
-	eOcclusionMatteModel m_model= eOcclusionMatteModel::small;
+	eOcclusionMatteModel m_model= eOcclusionMatteModel::sam2Small;
 	int m_bandPx= 64;
 	int m_matteScale= 1;
 	int m_frameStep= 1;

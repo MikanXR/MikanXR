@@ -462,6 +462,13 @@ void PropertyRequestHandler::destroySystemObjectHandler(const ClientRequest& req
 		return;
 	}
 
+	// An object another object owns goes only with its owner
+	if (!objectSystem->allowsObjectDestroyRequests())
+	{
+		writeSimpleJsonResponse(request.requestId, MikanAPIResult::RequestFailed, response);
+		return;
+	}
+
 	// Destroy the owner object that contains the component
 	if (!componentPtr->destroyOwnerObject())
 	{

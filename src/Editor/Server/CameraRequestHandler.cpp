@@ -298,13 +298,12 @@ void CameraRequestHandler::getCameraPropertiesHandler(const ClientRequest& reque
 	propertiesResponse.principal_point= properties.principal_point;
 	propertiesResponse.z_bounds= properties.z_bounds;
 
-	// Running means any compositor bound to the camera, the scene's display one or an editor-held one
+	// Running means any compositor whose scene uses the camera, the current scene's or an editor-held one
 	auto compositorSystem= projectManager->getSystemOfType<CompositorObjectSystem>();
 	for (const auto& compositorPair : compositorSystem->getComponentMap())
 	{
 		CompositorComponentPtr compositor= compositorPair.second.lock();
-		if (compositor && compositor->getIsRunning()
-			&& compositor->getCompositorDefinition()->getCameraId() == propertiesRequest.camera_id)
+		if (compositor && compositor->getIsRunning() && compositor->getCameraId() == propertiesRequest.camera_id)
 		{
 			propertiesResponse.compositor_running= true;
 			break;

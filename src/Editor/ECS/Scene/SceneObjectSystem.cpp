@@ -1,9 +1,19 @@
 #include "App.h"
+#include "CompositorComponent.h"
+#include "CompositorObjectSystem.h"
+#include "DMXPresetComponent.h"
+#include "DMXPresetSystem.h"
+#include "DMXSequenceComponent.h"
+#include "DMXSequenceSystem.h"
+#include "IEditorWindow.h"
+#include "LightEnvironmentComponent.h"
+#include "LightEnvironmentSystem.h"
 #include "MikanObject.h"
 #include "MikanPropertyDatabase.h"
 #include "SceneComponent.h"
 #include "SceneObjectSystem.h"
 #include "ProjectConfig.h"
+#include "TransactionHistory.h"
 
 #include "lua.hpp"
 #include "LuaBridge/LuaBridge.h"
@@ -99,6 +109,112 @@ void SceneObjectSystem::dispose()
 	Super::dispose();
 }
 
+SceneComponentPtr SceneObjectSystem::addNewScene(DefinitionInitFunction definitionInit)
+{
+	IEditorWindow* ownerWindow= getOwnerWindow();
+	TransactionCompositeScope compositeScope(ownerWindow ? ownerWindow->getTransactionHistory() : nullptr);
+
+	SceneComponentPtr scene= addNewObjectByTypedDefinition(definitionInit);
+	if (!scene)
+		return scene;
+
+	const MikanSceneID sceneId= scene->getSceneId();
+	getObjectSystemOfType<CompositorObjectSystem>()->addNewObjectByTypedDefinition(
+		[sceneId](auto definition)
+		{
+			definition->setOwnerSceneId(sceneId);
+			return true;
+		});
+
+	if (scene->isCurrentScene())
+	{
+		scene->refreshActiveCompositors();
+	}
+
+	return scene;
+}
+
+MikanComponentPtr SceneObjectSystem::addNewObjectByUntypedDefinition(const std::string& primaryComponentClass,
+																	 Serialization::PolymorphicObjectPtr initParams)
+{
+	if (primaryComponentClass != SceneComponent::k_componentClassName)
+		return MikanComponentPtr();
+
+	MikanObjectSystem* ownerObjectSystem= this;
+
+	return addNewScene([ownerObjectSystem, &initParams](SceneComponentDefinitionPtr definition)
+					   { return definition->readFromInitParams(ownerObjectSystem, initParams); });
+}
+
+MikanComponentPtr SceneObjectSystem::addNewObjectWithDefaultDefinition(const std::string& primaryComponentClass)
+{
+	if (primaryComponentClass != SceneComponent::k_componentClassName)
+		return MikanComponentPtr();
+
+	return addNewScene();
+}
+
+bool SceneObjectSystem::deleteObject(MikanObjectPtr objectPtr)
+{
+	auto scene= objectPtr->getComponentOfType<SceneComponent>();
+	if (!scene)
+		return false;
+
+	IEditorWindow* ownerWindow= getOwnerWindow();
+	TransactionCompositeScope compositeScope(ownerWindow ? ownerWindow->getTransactionHistory() : nullptr);
+
+	// Never leave current_scene_id pointing at a dead scene
+	if (scene->isCurrentScene())
+	{
+		setCurrentSceneById(INVALID_MIKAN_ID);
+	}
+
+	CompositorComponentPtr compositor= scene->getCompositor();
+	if (compositor)
+	{
+		getObjectSystemOfType<CompositorObjectSystem>()->removeObjectByPrimaryComponentId(
+			compositor->getCompositorId());
+	}
+
+	LightEnvironmentComponentPtr probe= scene->getLightEnvironment();
+	if (probe)
+	{
+		getObjectSystemOfType<LightEnvironmentSystem>()->removeObjectByPrimaryComponentId(probe->getComponentId());
+	}
+
+	return Super::deleteObject(objectPtr);
+}
+
+void SceneObjectSystem::applyCurrentSceneLightingPreset(MikanDMXFixtureGroupID groupId)
+{
+	SceneComponentPtr currentScene= getCurrentScene();
+	DMXPresetSystemPtr presetSystem= getObjectSystemOfType<DMXPresetSystem>();
+	if (!currentScene || !presetSystem)
+		return;
+
+	DMXPresetComponentPtr preset=
+		presetSystem->getPresetById(currentScene->getSceneComponentDefinition()->getLightingPresetId());
+	if (!preset)
+		return;
+
+	const MikanDMXFixtureGroupID presetGroupId= preset->getDMXPresetDefinition()->getGroupId();
+	if (groupId != INVALID_MIKAN_ID && groupId != presetGroupId)
+		return;
+
+	bool bGroupHasPlayingSequence= false;
+	if (DMXSequenceSystemPtr sequenceSystem= getObjectSystemOfType<DMXSequenceSystem>())
+	{
+		sequenceSystem->visitComponents(
+			[&bGroupHasPlayingSequence](DMXSequenceComponentPtr sequence) { bGroupHasPlayingSequence= true; },
+			[presetGroupId](DMXSequenceComponentPtr sequence)
+			{ return sequence->isPlaying() && sequence->getDMXSequenceDefinition()->getGroupId() == presetGroupId; });
+	}
+	if (bGroupHasPlayingSequence)
+		return;
+
+	preset->apply();
+}
+
 MikanSceneID SceneObjectSystem::getCurrentSceneId() const
 {
 	SceneObjectSystemDefinitionConstPtr sceneSystemConfigPtr= getTypedDefinitionConst();
@@ -142,6 +258,12 @@ void SceneObjectSystem::setCurrentSceneById(MikanSceneID newSceneId)
 				{
 					OnSceneActivated(newScene);
 				}
+			}
+			else
+			{
+				// With no scene current nothing composites or publishes. A switch to
+				// another scene skips this, so the outputs' senders stay open across it.
+				getObjectSystemOfType<CompositorObjectSystem>()->setActiveCompositors({});
 			}
 		}
 	}

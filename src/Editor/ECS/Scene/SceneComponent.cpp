@@ -1,8 +1,18 @@
+#include "CameraComponent.h"
+#include "CameraObjectSystem.h"
 #include "CompositorObjectSystem.h"
 #include "CompositorComponent.h"
+#include "AppStage.h"
 #include "ColliderComponent.h"
+#include "DepthMeshCapture/AppStage_DepthMeshCapture.h"
+#include "IEditorWindow.h"
+#include "LightEnvironmentComponent.h"
+#include "LightEnvironmentSystem.h"
+#include "LocText.h"
+#include "ModalMessageBox/ModalDialog_MessageBox.h"
+#include "SceneLightingCapture/AppStage_SceneLightingCapture.h"
+#include "TransactionHistory.h"
 #include "IMkSceneRenderable.h"
-#include "ModalSceneAddCompositor/ModalDialog_SceneAddCompositor.h"
 #include "MikanObject.h"
 #include "MikanSceneTypes.h"
 #include "MkScene.h"
@@ -26,7 +36,9 @@
 #include <queue>
 
 // -- SceneComponentDefinition -----
-const std::string SceneComponentDefinition::k_displayCompositorIdPropertyId= "display_compositor_id";
+const std::string SceneComponentDefinition::k_cameraIdPropertyId= "camera_id";
+const std::string SceneComponentDefinition::k_lightEnvironmentIdPropertyId= "light_environment_id";
+const std::string SceneComponentDefinition::k_lightingPresetIdPropertyId= "lighting_preset_id";
 const std::string SceneComponentDefinition::k_forceRenderPropertyId= "force_render";
 
 SceneComponentDefinition::SceneComponentDefinition()
@@ -43,7 +55,9 @@ configuru::Config SceneComponentDefinition::writeToJSON()
 {
 	configuru::Config pt= TransformComponentDefinition::writeToJSON();
 
-	pt[k_displayCompositorIdPropertyId]= m_displayCompositorId;
+	pt[k_cameraIdPropertyId]= m_cameraId;
+	pt[k_lightEnvironmentIdPropertyId]= m_lightEnvironmentId;
+	pt[k_lightingPresetIdPropertyId]= m_lightingPresetId;
 	pt[k_forceRenderPropertyId]= m_bForceRender;
 
 	return pt;
@@ -53,7 +67,9 @@ void SceneComponentDefinition::readFromJSON(const configuru::Config& pt)
 {
 	TransformComponentDefinition::readFromJSON(pt);
 
-	m_displayCompositorId= pt.get_or<int>(k_displayCompositorIdPropertyId, INVALID_MIKAN_ID);
+	m_cameraId= pt.get_or<int>(k_cameraIdPropertyId, INVALID_MIKAN_ID);
+	m_lightEnvironmentId= pt.get_or<int>(k_lightEnvironmentIdPropertyId, INVALID_MIKAN_ID);
+	m_lightingPresetId= pt.get_or<int>(k_lightingPresetIdPropertyId, INVALID_MIKAN_ID);
 	m_bForceRender= pt.get_or<bool>(k_forceRenderPropertyId, false);
 }
 
@@ -66,19 +82,39 @@ bool SceneComponentDefinition::readFromInitParams(MikanObjectSystem* ownerObject
 	const auto* componentValues= initParams.getTypedPointer<MikanSceneComponentValues>();
 	if (componentValues)
 	{
-		m_displayCompositorId= componentValues->display_compositor_id;
+		m_cameraId= componentValues->camera_id;
+		m_lightEnvironmentId= componentValues->light_environment_id;
+		m_lightingPresetId= componentValues->lighting_preset_id;
 		m_bForceRender= componentValues->force_render;
 	}
 
 	return true;
 }
 
-void SceneComponentDefinition::setDisplayCompositorId(MikanCompositorID compositorId)
+void SceneComponentDefinition::setCameraId(MikanCameraID cameraId)
 {
-	if (m_displayCompositorId != compositorId)
+	if (m_cameraId != cameraId)
 	{
-		m_displayCompositorId= compositorId;
-		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_displayCompositorIdPropertyId));
+		m_cameraId= cameraId;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_cameraIdPropertyId));
+	}
+}
+
+void SceneComponentDefinition::setLightEnvironmentId(MikanLightID lightEnvironmentId)
+{
+	if (m_lightEnvironmentId != lightEnvironmentId)
+	{
+		m_lightEnvironmentId= lightEnvironmentId;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_lightEnvironmentIdPropertyId));
+	}
+}
+
+void SceneComponentDefinition::setLightingPresetId(MikanDMXPresetID lightingPresetId)
+{
+	if (m_lightingPresetId != lightingPresetId)
+	{
+		m_lightingPresetId= lightingPresetId;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_lightingPresetIdPropertyId));
 	}
 }
 
@@ -128,41 +164,20 @@ StageComponentPtr SceneComponent::getParentStage() const
 	return StageComponentPtr();
 }
 
-std::vector<MikanCompositorID> SceneComponent::getOutputCompositorIDs() const
+CameraComponentPtr SceneComponent::getCameraComponent() const
 {
-	std::vector<MikanCompositorID> compositorIDs;
-
-	auto& componentMap= getObjectSystemOfType<CompositorObjectSystem>()->getComponentMap();
-	for (const auto& pair : componentMap)
-	{
-		CompositorComponentPtr compositor= pair.second.lock();
-
-		if (compositor && compositor->getCompositorDefinition()->getOwnerSceneId() == getSceneId())
-		{
-			compositorIDs.push_back(pair.first);
-		}
-	}
-
-	return compositorIDs;
+	return getObjectSystemOfType<CameraObjectSystem>()->getCameraById(getSceneComponentDefinition()->getCameraId());
 }
 
-std::vector<CompositorComponentPtr> SceneComponent::getOutputCompositors() const
+LightEnvironmentComponentPtr SceneComponent::getLightEnvironment() const
 {
-	std::vector<CompositorComponentPtr> outputCompositors;
+	return getObjectSystemOfType<LightEnvironmentSystem>()->getTypedComponentById(
+		getSceneComponentDefinition()->getLightEnvironmentId());
+}
 
-	const std::vector<MikanCompositorID>& compositorIDs= getOutputCompositorIDs();
-	for (MikanCompositorID compositorId : compositorIDs)
-	{
-		auto compositorSystem= getObjectSystemOfType<CompositorObjectSystem>();
-		CompositorComponentPtr compositor= compositorSystem->getCompositorById(compositorId);
-
-		if (compositor)
-		{
-			outputCompositors.push_back(compositor);
-		}
-	}
-
-	return outputCompositors;
+CompositorComponentPtr SceneComponent::getCompositor() const
+{
+	return getObjectSystemOfType<CompositorObjectSystem>()->getCompositorForScene(getSceneId());
 }
 
 // -- TransformComponent ----
@@ -196,29 +211,34 @@ void SceneComponent::onDefinitionMarkedDirty(CommonConfigPtr configPtr,
 {
 	TransformComponent::onDefinitionMarkedDirty(configPtr, changedPropertySet);
 
-	// Only the current scene drives the active compositors. Another scene's choice
+	// Only the current scene's preset is on the fixtures. Another scene's choice
 	// takes effect when activateScene() runs on switching to it.
-	if (changedPropertySet.hasPropertyName(SceneComponentDefinition::k_displayCompositorIdPropertyId)
-		&& isCurrentScene())
+	if (changedPropertySet.hasPropertyName(SceneComponentDefinition::k_lightingPresetIdPropertyId) && isCurrentScene())
 	{
-		refreshActiveCompositors();
+		getObjectSystemOfType<SceneObjectSystem>()->applyCurrentSceneLightingPreset();
 	}
 }
 
-void SceneComponent::activateScene() { refreshActiveCompositors(); }
+void SceneComponent::activateScene()
+{
+	refreshActiveCompositors();
+
+	// Each scene brings up its own look
+	getObjectSystemOfType<SceneObjectSystem>()->applyCurrentSceneLightingPreset();
+}
 
 void SceneComponent::deactivateScene() {}
 
 void SceneComponent::refreshActiveCompositors()
 {
 	CompositorObjectSystemPtr compositorSystem= getObjectSystemOfType<CompositorObjectSystem>();
-	MikanCompositorID compositorId= getSceneComponentDefinition()->getDisplayCompositorId();
+	CompositorComponentPtr compositor= getCompositor();
 
 	std::vector<MikanCompositorID> activeCompositorIDs;
 
-	if (compositorId != INVALID_MIKAN_ID)
+	if (compositor)
 	{
-		activeCompositorIDs.push_back(compositorId);
+		activeCompositorIDs.push_back(compositor->getCompositorId());
 	}
 
 	// Set active compositors for this scene
@@ -229,8 +249,18 @@ void SceneComponent::getPropertyDescriptors(std::vector<PropertyDescriptorConstP
 {
 	TransformComponent::getPropertyDescriptors(outDescriptors);
 
+	outDescriptors.push_back(
+		std::make_shared<PropertyDescriptor>(SceneComponentDefinition::k_cameraIdPropertyId, MikanVariantType::INT)
+			->setDefaultValue(-1)
+			->setUIHidden());
+
 	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(
-								 SceneComponentDefinition::k_displayCompositorIdPropertyId, MikanVariantType::INT)
+								 SceneComponentDefinition::k_lightEnvironmentIdPropertyId, MikanVariantType::INT)
+								 ->setDefaultValue(-1)
+								 ->setUIHidden());
+
+	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(
+								 SceneComponentDefinition::k_lightingPresetIdPropertyId, MikanVariantType::INT)
 								 ->setDefaultValue(-1)
 								 ->setUIHidden());
 
@@ -241,9 +271,21 @@ void SceneComponent::getPropertyDescriptors(std::vector<PropertyDescriptorConstP
 
 bool SceneComponent::getPropertyValue(const std::string& propertyName, MikanVariant& outValue) const
 {
-	if (propertyName == SceneComponentDefinition::k_displayCompositorIdPropertyId)
+	if (propertyName == SceneComponentDefinition::k_cameraIdPropertyId)
 	{
-		outValue= getSceneComponentDefinition()->getDisplayCompositorId();
+		outValue= getSceneComponentDefinition()->getCameraId();
+		return true;
+	}
+
+	if (propertyName == SceneComponentDefinition::k_lightEnvironmentIdPropertyId)
+	{
+		outValue= getSceneComponentDefinition()->getLightEnvironmentId();
+		return true;
+	}
+
+	if (propertyName == SceneComponentDefinition::k_lightingPresetIdPropertyId)
+	{
+		outValue= getSceneComponentDefinition()->getLightingPresetId();
 		return true;
 	}
 
@@ -258,11 +300,21 @@ bool SceneComponent::getPropertyValue(const std::string& propertyName, MikanVari
 
 bool SceneComponent::setPropertyValue(const std::string& propertyName, const MikanVariant& inValue)
 {
-	if (propertyName == SceneComponentDefinition::k_displayCompositorIdPropertyId)
+	if (propertyName == SceneComponentDefinition::k_cameraIdPropertyId)
 	{
-		MikanCompositorID compositorId= inValue.getIntValue();
+		getSceneComponentDefinition()->setCameraId(inValue.getIntValue());
+		return true;
+	}
 
-		getSceneComponentDefinition()->setDisplayCompositorId(compositorId);
+	if (propertyName == SceneComponentDefinition::k_lightEnvironmentIdPropertyId)
+	{
+		getSceneComponentDefinition()->setLightEnvironmentId(inValue.getIntValue());
+		return true;
+	}
+
+	if (propertyName == SceneComponentDefinition::k_lightingPresetIdPropertyId)
+	{
+		getSceneComponentDefinition()->setLightingPresetId(inValue.getIntValue());
 		return true;
 	}
 
@@ -277,12 +329,17 @@ bool SceneComponent::setPropertyValue(const std::string& propertyName, const Mik
 
 // -- IFunctionInterface ----
 const std::string SceneComponent::k_activateSceneFunctionId= "activate_scene";
+const std::string SceneComponent::k_captureSceneLightingFunctionId= "capture_scene_lighting";
+const std::string SceneComponent::k_captureDepthMeshFunctionId= "capture_depth_mesh";
 
 void SceneComponent::getFunctionDescriptors(std::vector<FunctionDescriptorConstPtr>& outDescriptors)
 {
 	TransformComponent::getFunctionDescriptors(outDescriptors);
 
 	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_activateSceneFunctionId, "Activate Scene"));
+	outDescriptors.push_back(
+		std::make_shared<FunctionDescriptor>(k_captureSceneLightingFunctionId, "Capture Scene Lighting"));
+	outDescriptors.push_back(std::make_shared<FunctionDescriptor>(k_captureDepthMeshFunctionId, "Capture Depth Mesh"));
 }
 
 bool SceneComponent::invokeFunction(const std::string& functionName)
@@ -297,7 +354,81 @@ bool SceneComponent::invokeFunction(const std::string& functionName)
 		return true;
 	}
 
+	if (functionName == SceneComponent::k_captureSceneLightingFunctionId)
+	{
+		captureSceneLighting();
+		return true;
+	}
+
+	if (functionName == SceneComponent::k_captureDepthMeshFunctionId)
+	{
+		captureDepthMesh();
+		return true;
+	}
+
 	return TransformComponent::invokeFunction(functionName);
+}
+
+CameraComponentPtr SceneComponent::requireCameraForCapture() const
+{
+	CameraComponentPtr camera= getCameraComponent();
+	if (!camera)
+	{
+		ModalDialog_MessageBox::showMessageBox(getOwnerEditorWindow()->getCurrentAppStage(),
+											   locText("project.sceneCaptureNeedsCamera"));
+	}
+
+	return camera;
+}
+
+void SceneComponent::captureSceneLighting()
+{
+	// The estimate is only meaningful in stage space if the frame it was captured
+	// from has a known camera pose, so the scene has to name its camera first
+	CameraComponentPtr camera= requireCameraForCapture();
+	if (!camera)
+		return;
+
+	LightEnvironmentComponentPtr probe= getLightEnvironment();
+	if (!probe)
+	{
+		// The probe and the id that names it are one undo step
+		TransactionCompositeScope compositeScope(getOwnerEditorWindow()->getTransactionHistory());
+
+		const MikanSceneID sceneId= getSceneId();
+		probe= getObjectSystemOfType<LightEnvironmentSystem>()->addNewObjectByTypedDefinition(
+			[sceneId](auto definition)
+			{
+				definition->setParentTransformId(sceneId);
+				definition->setRelativeTransform(GlmTransform());
+				return true;
+			});
+		if (!probe)
+			return;
+
+		getSceneComponentDefinition()->setLightEnvironmentId(probe->getComponentId());
+	}
+
+	auto* captureStage= getOwnerEditorWindow()->pushAppStageOfType<AppStage_SceneLightingCapture>();
+	if (captureStage != nullptr)
+	{
+		captureStage->setSourceCamera(camera);
+		captureStage->setTargetProbe(probe);
+	}
+}
+
+void SceneComponent::captureDepthMesh()
+{
+	CameraComponentPtr camera= requireCameraForCapture();
+	if (!camera)
+		return;
+
+	auto* captureStage= getOwnerEditorWindow()->pushAppStageOfType<AppStage_DepthMeshCapture>();
+	if (captureStage != nullptr)
+	{
+		captureStage->setSourceCamera(camera);
+		captureStage->setTargetScene(getSelfPtr<SceneComponent>());
+	}
 }
 
 // -- Lua Binding ----
@@ -307,10 +438,17 @@ void SceneComponent::bindLuaFunctions(struct lua_State* L)
 		.deriveClass<SceneComponent, TransformComponent>(SceneComponent::k_componentClassName.c_str())
 		.addProperty("parentStageId", [](SceneComponent* component) -> int { return component->getParentStageId(); })
 		.addProperty(
-			"displayCompositorId", [](SceneComponent* component) -> int
-			{ return component->getSceneComponentDefinition()->getDisplayCompositorId(); },
-			[](SceneComponent* component, int compositorId)
-			{ component->getSceneComponentDefinition()->setDisplayCompositorId(compositorId); })
+			"cameraId",
+			[](SceneComponent* component) -> int { return component->getSceneComponentDefinition()->getCameraId(); },
+			[](SceneComponent* component, int cameraId)
+			{ component->getSceneComponentDefinition()->setCameraId(cameraId); })
+		.addProperty("lightEnvironmentId", [](SceneComponent* component) -> int
+					 { return component->getSceneComponentDefinition()->getLightEnvironmentId(); })
+		.addProperty(
+			"lightingPresetId", [](SceneComponent* component) -> int
+			{ return component->getSceneComponentDefinition()->getLightingPresetId(); },
+			[](SceneComponent* component, int presetId)
+			{ component->getSceneComponentDefinition()->setLightingPresetId(presetId); })
 		.addProperty(
 			"forceRender", [](SceneComponent* component) -> bool
 			{ return component->getSceneComponentDefinition()->getForceRender(); },
@@ -318,14 +456,10 @@ void SceneComponent::bindLuaFunctions(struct lua_State* L)
 			{ component->getSceneComponentDefinition()->setForceRender(bForceRender); })
 		.addProperty("isCurrentScene", [](SceneComponent* component) -> bool { return component->isCurrentScene(); })
 		.addFunction("getParentStage", [](SceneComponent* c) -> StageComponent* { return c->getParentStage().get(); })
-		.addFunction("getOutputCompositorCount",
-					 [](SceneComponent* c) -> int { return static_cast<int>(c->getOutputCompositors().size()); })
-		.addFunction("getOutputCompositorAtIndex",
-					 [](SceneComponent* c, int i) -> CompositorComponent*
-					 {
-						 auto v= c->getOutputCompositors();
-						 return (i >= 0 && i < static_cast<int>(v.size())) ? v[i].get() : nullptr;
-					 })
+		.addFunction("captureSceneLighting", [](SceneComponent* c) { c->captureSceneLighting(); })
+		.addFunction("captureDepthMesh", [](SceneComponent* c) { c->captureDepthMesh(); })
+		.addFunction("getCompositor",
+					 [](SceneComponent* c) -> CompositorComponent* { return c->getCompositor().get(); })
 		.endClass();
 }
 

@@ -20,6 +20,8 @@
 #include "Shared/GuiPanel_SceneComponent.h"
 #include "Shared/GuiPanel_ScriptComponent.h"
 #include "Shared/GuiPanel_CEFTextureSourceComponent.h"
+#include "Shared/GuiPanel_RTPOutputComponent.h"
+#include "Shared/GuiPanel_SpoutOutputComponent.h"
 #include "Shared/GuiPanel_SpoutTextureSourceComponent.h"
 #include "Shared/GuiPanel_RGBPixelGridComponent.h"
 #include "Shared/GuiPanel_RGBSpotLightComponent.h"
@@ -127,6 +129,12 @@ bool ProjectGuiPanelContext::init()
 
 	m_scriptPanel= m_ownerAppStage->addGuiPanel<GuiPanel_ScriptComponent>();
 	m_scriptPanel->init();
+
+	m_spoutOutputPanel= m_ownerAppStage->addGuiPanel<GuiPanel_SpoutOutputComponent>();
+	m_spoutOutputPanel->init();
+
+	m_rtpOutputPanel= m_ownerAppStage->addGuiPanel<GuiPanel_RTPOutputComponent>();
+	m_rtpOutputPanel->init();
 
 	m_usbVideoSourcePanel= m_ownerAppStage->addGuiPanel<GuiPanel_USBVideoSourceComponent>();
 	m_usbVideoSourcePanel->init();

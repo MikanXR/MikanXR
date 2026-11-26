@@ -1,5 +1,4 @@
 #include "LightEnvironmentComponent.h"
-#include "CameraObjectSystem.h"
 #include "IEditorWindow.h"
 #include "IMkGraphicsContext.h"
 #include "IMkShaderCache.h"
@@ -11,9 +10,9 @@
 #include "MkMaterial.h"
 #include "MkMaterialInstance.h"
 #include "MkStateStack.h"
-#include "ModalSelectCamera/ModalDialog_SelectCamera.h"
 #include "PropertyInterface.h"
-#include "SceneLightingCapture/AppStage_SceneLightingCapture.h"
+#include "SceneComponent.h"
+#include "SceneObjectSystem.h"
 #include "SerializableList.h"
 #include "StageComponent.h"
 
@@ -334,24 +333,23 @@ SHLightingEnvironment LightEnvironmentComponent::getScaledLightingEnvironment() 
 // -- TransformComponent ----
 bool LightEnvironmentComponent::canAttachToParent(TransformComponentConstPtr newParentComponent) const
 {
-	// The probe belongs to the camera whose frame recovered it, not to the stage
-	// its readings are expressed in
-	return std::dynamic_pointer_cast<const CameraComponent>(newParentComponent) != nullptr;
+	// The probe belongs to the scene it was captured for, so it draws and hides
+	// with that scene, not to the stage its readings are expressed in
+	return std::dynamic_pointer_cast<const SceneComponent>(newParentComponent) != nullptr;
 }
 
-/// Get the camera component that owns this light environment
-CameraComponentConstPtr LightEnvironmentComponent::getOwnerCameraComponent() const
+SceneComponentPtr LightEnvironmentComponent::getOwnerSceneComponent() const
 {
 	MikanTransformID transformId= getLightEnvironmentDefinition()->getParentTransformId();
 
-	return getObjectSystemOfType<CameraObjectSystem>()->getCameraById(transformId);
+	return getObjectSystemOfType<SceneObjectSystem>()->getSceneById(transformId);
 }
 
 StageComponentConstPtr LightEnvironmentComponent::getOwnerStageComponent() const
 {
-	CameraComponentConstPtr ownerCamera= getOwnerCameraComponent();
+	SceneComponentPtr ownerScene= getOwnerSceneComponent();
 
-	return (ownerCamera) ? ownerCamera->getOwnerStageComponent() : nullptr;
+	return ownerScene ? ownerScene->getParentStage() : nullptr;
 }
 
 Serialization::StructTypeHandle LightEnvironmentComponent::getClientAPIValuesStructType() const
@@ -495,24 +493,15 @@ bool LightEnvironmentComponent::invokeFunction(const std::string& functionName)
 
 void LightEnvironmentComponent::captureSceneLighting()
 {
-	// The estimate is only meaningful in world space if the frame it was
-	// captured from has a known camera pose, so the camera is chosen up front
-	// rather than guessed at.
-	auto parentCamera= std::dynamic_pointer_cast<CameraComponent>(getParentTransformComponent());
-	if (parentCamera != nullptr)
+	// The owner scene names the camera and writes into this probe
+	SceneComponentPtr ownerScene= getOwnerSceneComponent();
+	if (ownerScene)
 	{
-		auto* captureStage= getOwnerEditorWindow()->pushAppStageOfType<AppStage_SceneLightingCapture>();
-		if (captureStage != nullptr)
-		{
-			captureStage->setSourceCamera(parentCamera);
-			captureStage->setTargetProbe(getSelfPtr<LightEnvironmentComponent>());
-		}
-		return;
+		ownerScene->captureSceneLighting();
 	}
 	else
 	{
 		MIKAN_LOG_WARNING("LightEnvironmentComponent::captureSceneLighting")
-			<< "Called on a probe that is not parented to a camera. "
-			<< "The scene lighting capture tool requires a camera to be selected first.";
+			<< "Called on a probe that is not parented to a scene";
 	}
 }

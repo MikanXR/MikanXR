@@ -85,6 +85,8 @@ void AppStage_DepthMeshCapture::setSourceCamera(CameraComponentPtr cameraCompone
 	m_videoSourceComponent= cameraComponent ? cameraComponent->getVideoSourceComponent() : nullptr;
 }
 
+void AppStage_DepthMeshCapture::setTargetScene(SceneComponentPtr sceneComponent) { m_targetScene= sceneComponent; }
+
 void AppStage_DepthMeshCapture::enter()
 {
 	AppStage::enter();
@@ -701,15 +703,15 @@ bool AppStage_DepthMeshCapture::createStencilFromMesh()
 		return false;
 	}
 
-	// Parent the stencil under the active scene so it lands in that scene's
-	// subtree in the project outliner. With no active scene it falls back to
-	// the camera's stage, which files it in the outliner's unparented tray.
+	// Parent the stencil under the scene the capture was started from, so it
+	// lands in that scene's subtree and its compositor draws it. With no scene
+	// it falls back to the camera's stage, which files it in the outliner's
+	// unparented tray.
 	MikanTransformID parentTransformId= INVALID_MIKAN_ID;
-	auto sceneSystem= getSystemOfType<SceneObjectSystem>();
-	SceneComponentPtr currentScene= sceneSystem ? sceneSystem->getCurrentScene() : nullptr;
-	if (currentScene)
+	SceneComponentPtr targetScene= m_targetScene.lock();
+	if (targetScene)
 	{
-		parentTransformId= currentScene->getSceneId();
+		parentTransformId= targetScene->getSceneId();
 	}
 	else
 	{
