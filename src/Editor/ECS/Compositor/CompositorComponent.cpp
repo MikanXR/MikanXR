@@ -56,7 +56,6 @@
 
 // -- CompositorConfig -----
 const std::string CompositorDefinition::k_compositorGraphPathPropertyId= "compositor_graph_path";
-const std::string CompositorDefinition::k_cameraIdPropertyId= "camera_id";
 const std::string CompositorDefinition::k_ownerScenePropertyId= "owner_scene_id";
 const std::string CompositorDefinition::k_spoutEnableOutputNamePropertyId= "spout_enable_output";
 const std::string CompositorDefinition::k_spoutOutputNamePropertyId= "spout_output_name";
@@ -93,7 +92,6 @@ configuru::Config CompositorDefinition::writeToJSON()
 {
 	configuru::Config pt= MikanComponentDefinition::writeToJSON();
 
-	pt[k_cameraIdPropertyId]= m_cameraId;
 	pt[k_ownerScenePropertyId]= m_ownerSceneId;
 	pt[k_spoutEnableOutputNamePropertyId]= m_bIsSpoutOutputStreaming;
 	pt[k_spoutOutputNamePropertyId]= m_spoutOutputName;
@@ -115,7 +113,6 @@ void CompositorDefinition::readFromJSON(const configuru::Config& pt)
 {
 	MikanComponentDefinition::readFromJSON(pt);
 
-	m_cameraId= pt.get_or<int>(k_cameraIdPropertyId, INVALID_MIKAN_ID);
 	m_ownerSceneId= pt.get_or<int>(k_ownerScenePropertyId, INVALID_MIKAN_ID);
 	m_bIsSpoutOutputStreaming= pt.get_or<bool>(k_spoutEnableOutputNamePropertyId, m_bIsSpoutOutputStreaming);
 	m_spoutOutputName= pt.get_or<std::string>(k_spoutOutputNamePropertyId, m_spoutOutputName);
@@ -144,7 +141,6 @@ bool CompositorDefinition::readFromInitParams(MikanObjectSystem* ownerObjectSyst
 	if (componentValues)
 	{
 		m_ownerSceneId= componentValues->owner_scene_id;
-		m_cameraId= componentValues->camera_id;
 
 		const std::string graphPathString= componentValues->compositor_graph_path.getUtf8Value();
 		if (!graphPathString.empty())
@@ -169,15 +165,6 @@ bool CompositorDefinition::readFromInitParams(MikanObjectSystem* ownerObjectSyst
 	}
 
 	return true;
-}
-
-void CompositorDefinition::setCameraId(MikanCameraID cameraId)
-{
-	if (m_cameraId != cameraId)
-	{
-		m_cameraId= cameraId;
-		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_cameraIdPropertyId));
-	}
 }
 
 void CompositorDefinition::setOwnerSceneId(MikanSceneID stageId)
@@ -1063,7 +1050,7 @@ void CompositorComponent::publishCompositorLifecycleEvent(bool bStarted)
 		return;
 
 	CameraRequestHandler* cameraRequestHandler= mikanServer->getCameraRequestHandler();
-	const MikanCameraID cameraId= getCompositorDefinition()->getCameraId();
+	const MikanCameraID cameraId= getCameraId();
 	if (bStarted)
 		cameraRequestHandler->publishCompositorStartedEvent(getCompositorId(), cameraId);
 	else
@@ -1103,11 +1090,16 @@ bool CompositorComponent::ownsSceneObject(MikanObjectConstPtr objectPtr) const
 	return ownerStageId != INVALID_MIKAN_ID && findOwnerStageId(objectPtr) == ownerStageId;
 }
 
+MikanCameraID CompositorComponent::getCameraId() const
+{
+	SceneComponentPtr ownerScene= getOwnerSceneComponent();
+
+	return ownerScene ? ownerScene->getSceneComponentDefinition()->getCameraId() : INVALID_MIKAN_ID;
+}
+
 CameraComponentPtr CompositorComponent::getCameraComponent() const
 {
-	MikanCameraID cameraId= getCompositorDefinition()->getCameraId();
-
-	return getObjectSystemOfType<CameraObjectSystem>()->getCameraById(cameraId);
+	return getObjectSystemOfType<CameraObjectSystem>()->getCameraById(getCameraId());
 }
 
 VideoSourceComponentPtr CompositorComponent::getVideoSourceComponent() const
@@ -1119,22 +1111,6 @@ VideoSourceComponentPtr CompositorComponent::getVideoSourceComponent() const
 	}
 
 	return VideoSourceComponentPtr();
-}
-
-void CompositorComponent::setCameraComponent(CameraComponentPtr newCameraComponent)
-{
-	CameraComponentPtr oldCameraComponent= getCameraComponent();
-	MikanCameraID oldCameraId= oldCameraComponent ? oldCameraComponent->getCameraId() : INVALID_MIKAN_ID;
-	MikanCameraID newCameraId= newCameraComponent ? newCameraComponent->getCameraId() : INVALID_MIKAN_ID;
-
-	if (newCameraId != oldCameraId)
-	{
-		// Update the camera ID in the compositor definition
-		getCompositorDefinition()->setCameraId(newCameraId);
-
-		// Update video streaming state for the new camera
-		updateVideoSourceStreaming();
-	}
 }
 
 std::filesystem::path CompositorComponent::getCompositorGraphAssetPath() const
@@ -1223,10 +1199,6 @@ void CompositorComponent::getPropertyDescriptors(std::vector<PropertyDescriptorC
 	MikanComponent::getPropertyDescriptors(outDescriptors);
 
 	outDescriptors.push_back(
-		std::make_shared<PropertyDescriptor>(CompositorDefinition::k_cameraIdPropertyId, MikanVariantType::INT)
-			->setDefaultValue(-1)
-			->setUIHidden());
-	outDescriptors.push_back(
 		std::make_shared<PropertyDescriptor>(CompositorDefinition::k_ownerScenePropertyId, MikanVariantType::INT)
 			->setDefaultValue(-1)
 			->setReadOnly()
@@ -1260,12 +1232,7 @@ void CompositorComponent::getPropertyDescriptors(std::vector<PropertyDescriptorC
 
 bool CompositorComponent::getPropertyValue(const std::string& propertyName, MikanVariant& outValue) const
 {
-	if (propertyName == CompositorDefinition::k_cameraIdPropertyId)
-	{
-		outValue= getCompositorDefinition()->getCameraId();
-		return true;
-	}
-	else if (propertyName == CompositorDefinition::k_ownerScenePropertyId)
+	if (propertyName == CompositorDefinition::k_ownerScenePropertyId)
 	{
 		outValue= getCompositorDefinition()->getOwnerSceneId();
 		return true;
@@ -1321,15 +1288,9 @@ bool CompositorComponent::getPropertyValue(const std::string& propertyName, Mika
 
 bool CompositorComponent::setPropertyValue(const std::string& propertyName, const MikanVariant& inValue)
 {
-	if (propertyName == CompositorDefinition::k_cameraIdPropertyId)
-	{
-		const MikanCameraID cameraId= inValue.getIntValue();
-		getCompositorDefinition()->setCameraId(cameraId);
-		return true;
-	}
 	// No owner scene id branch: a compositor belongs to the scene it was created
 	// with for life, and the scene system reaches setOwnerSceneId on the definition
-	else if (propertyName == CompositorDefinition::k_compositorGraphPathPropertyId)
+	if (propertyName == CompositorDefinition::k_compositorGraphPathPropertyId)
 	{
 		const std::string fileString= inValue.getUtf8Value();
 		const std::filesystem::path filePath(fileString);
@@ -1425,8 +1386,7 @@ void CompositorComponent::bindLuaFunctions(struct lua_State* L)
 	luabridge::getGlobalNamespace(L)
 		.deriveClass<CompositorComponent, MikanComponent>(CompositorComponent::k_componentClassName.c_str())
 		.addProperty("compositorId", [](CompositorComponent* c) -> int { return c->getCompositorId(); })
-		.addProperty("cameraId",
-					 [](CompositorComponent* c) -> int { return c->getCompositorDefinition()->getCameraId(); })
+		.addProperty("cameraId", [](CompositorComponent* c) -> int { return c->getCameraId(); })
 		.addProperty("ownerSceneId",
 					 [](CompositorComponent* c) -> int { return c->getCompositorDefinition()->getOwnerSceneId(); })
 		.addProperty("ownerStageId", [](CompositorComponent* c) -> int { return c->getOwnerStageId(); })

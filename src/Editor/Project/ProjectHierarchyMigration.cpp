@@ -148,7 +148,8 @@ bool migrateProjectJson(configuru::Config& projectJson, Report& outReport)
 	const int savedNextId= projectJson.has_key(k_idAllocatorKey)
 							   ? projectJson[k_idAllocatorKey].get_or<int>(k_nextIdKey, k_invalidId)
 							   : k_invalidId;
-	int nextId= std::max(savedNextId, maxComponentId + 1);
+	const int firstNewId= std::max(savedNextId, maxComponentId + 1);
+	int nextId= firstNewId;
 
 	configuru::Config& scenes= ensureDefinitions(projectJson, k_sceneSystemKey, k_scenePoolKey);
 	configuru::Config& compositors= ensureDefinitions(projectJson, k_compositorSystemKey, k_compositorPoolKey);
@@ -235,7 +236,6 @@ bool migrateProjectJson(configuru::Config& projectJson, Report& outReport)
 		compositor[k_componentNameKey]=
 			getDefaultComponentNamePrefix(CompositorComponent::k_componentClassName) + "_" + nameStem(sceneName);
 		compositor[k_ownerSceneIdKey]= kept_pair.first;
-		compositor[k_cameraIdKey]= k_invalidId;
 		newCompositors.push_back(compositor);
 
 		MIKAN_LOG_INFO("ProjectHierarchyMigration") << "Added a compositor to scene '" << sceneName << "'";
@@ -253,7 +253,28 @@ bool migrateProjectJson(configuru::Config& projectJson, Report& outReport)
 		bChanged|= scene.erase(k_displayCompositorIdKey);
 	}
 
-	if (bChanged && nextId > savedNextId)
+	// The camera moves from each compositor to the scene that owns it, which the
+	// steps above have left with exactly that one compositor
+	for (configuru::Config& compositor : compositors.as_array())
+	{
+		if (!compositor.has_key(k_cameraIdKey))
+			continue;
+
+		const int ownerSceneId= compositor.get_or<int>(k_ownerSceneIdKey, k_invalidId);
+		for (configuru::Config& scene : scenes.as_array())
+		{
+			if (scene.get_or<int>(k_componentIdKey, k_invalidId) == ownerSceneId && !scene.has_key(k_cameraIdKey))
+			{
+				scene[k_cameraIdKey]= compositor.get_or<int>(k_cameraIdKey, k_invalidId);
+			}
+		}
+
+		compositor.erase(k_cameraIdKey);
+		bChanged= true;
+	}
+
+	// The saved counter moves only when an id was handed out
+	if (nextId != firstNewId)
 	{
 		if (!projectJson.has_key(k_idAllocatorKey))
 			projectJson[k_idAllocatorKey]= configuru::Config::object();

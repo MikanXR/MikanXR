@@ -44,10 +44,6 @@ public:
 
 	MikanCompositorID getCompositorId() const { return getComponentId(); }
 
-	static const std::string k_cameraIdPropertyId;
-	inline MikanCameraID getCameraId() const { return m_cameraId; }
-	void setCameraId(MikanCameraID cameraId);
-
 	static const std::string k_ownerScenePropertyId;
 	inline MikanSceneID getOwnerSceneId() const { return m_ownerSceneId; }
 	void setOwnerSceneId(MikanSceneID sceneId);
@@ -87,7 +83,6 @@ public:
 
 private:
 	MikanSceneID m_ownerSceneId= INVALID_MIKAN_ID;
-	MikanCameraID m_cameraId= INVALID_MIKAN_ID;
 	AssetReferenceConfigPtr m_nodeGraphAssetRef;
 	bool m_bIsSpoutOutputStreaming= false;
 	std::string m_spoutOutputName;
@@ -137,8 +132,9 @@ public:
 	bool ownsSceneObject(MikanObjectConstPtr objectPtr) const;
 	VideoSourceComponentPtr getVideoSourceComponent() const;
 
+	// The owner scene's camera: a compositor has none of its own
+	MikanCameraID getCameraId() const;
 	CameraComponentPtr getCameraComponent() const;
-	void setCameraComponent(CameraComponentPtr cameraComponent);
 
 	std::filesystem::path getCompositorGraphAssetPath() const;
 	void setCompositorGraphAssetPath(const std::filesystem::path& assetRefPath);

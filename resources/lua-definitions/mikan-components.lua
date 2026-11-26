@@ -49,6 +49,7 @@ local TransformComponent = {}
 
 ---@class SceneComponent : TransformComponent
 ---@field parentStageId integer ID of the parent stage (read-only)
+---@field cameraId integer ID of the camera the scene is shot through (read/write)
 local SceneComponent = {}
 
 --- Get the parent StageComponent.
@@ -387,7 +388,7 @@ function MarkerComponent:printMarker() end
 
 ---@class CompositorComponent : MikanComponent
 ---@field compositorId integer Unique compositor ID (read-only)
----@field cameraId integer ID of the associated camera (read-only)
+---@field cameraId integer ID of the owner scene's camera (read-only)
 ---@field ownerSceneId integer ID of the owning scene (read-only)
 ---@field ownerStageId integer ID of the owning stage (read-only)
 ---@field isSpoutOutputStreaming boolean Whether Spout output streaming is active (read/write)

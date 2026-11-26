@@ -22,11 +22,17 @@ public:
 
 	MikanSceneID getSceneId() const { return getComponentId(); }
 
+	// The camera the scene is shot through: its compositor takes its video and pose from it
+	static const std::string k_cameraIdPropertyId;
+	MikanCameraID getCameraId() const { return m_cameraId; }
+	void setCameraId(MikanCameraID cameraId);
+
 	static const std::string k_forceRenderPropertyId;
 	bool getForceRender() const { return m_bForceRender; }
 	void setForceRender(bool bForceRender);
 
 protected:
+	MikanCameraID m_cameraId= INVALID_MIKAN_ID;
 	bool m_bForceRender= false;
 };
 
@@ -72,6 +78,7 @@ public:
 
 	MikanStageID getParentStageId() const;
 	StageComponentPtr getParentStage() const;
+	CameraComponentPtr getCameraComponent() const;
 	// The scene's one compositor, the compositor whose owner scene this is. Null only
 	// between the scene's creation and its compositor's, and while an undo is mid-flight.
 	CompositorComponentPtr getCompositor() const;

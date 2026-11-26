@@ -41,7 +41,7 @@ Creation entry points: `addNewObjectByTypedDefinition(initFunc)` in C++, and `ad
 
 Primary component families (each with a matching `*Definition` config class):
 
-- Scene structure: `SceneComponent` and `StageComponent` (both extend `TransformComponent`; a scene attaches to a stage via `attachToStage`, a stage references a tracking volume and stores stage bounds).
+- Scene structure: `SceneComponent` and `StageComponent` (both extend `TransformComponent`; a scene attaches to a stage via `attachToStage` and names the camera it is shot through in `camera_id`, a stage references a tracking volume and stores stage bounds).
 - Spatial: `AnchorComponent`, `MarkerComponent` (ArUco id + physical length in mm), `TrackingMountComponent` (binds a VR device by path/socket), `TrackingVolumeComponent` with `VRTrackingVolumeComponent` / `MarkerTrackingVolumeComponent` subclasses, `VRDeviceComponent` (runtime-only, under `VRObjectSystem`).
 - Camera/video: `CameraComponent` (stage id, tracking mount id, video source id, aperture offset, frame sync mode, and the runtime-only pose-driven flag that resolves the mode's auto setting), `VideoSourceComponent` with `USBVideoSourceComponent` / `NetworkVideoSourceComponent` / `ARKitVideoSourceComponent` / `FileVideoSourceComponent` subclasses (see [videosources.md](./videosources.md)).
 - Compositing inputs: `CompositorComponent`, `TextureSourceComponent` with `ClientTextureSourceComponent` / `SpoutTextureSourceComponent` / `CEFTextureSourceComponent` (see [compositor.md](./compositor.md)).
@@ -93,7 +93,7 @@ A `CompositorComponent` is not a `TransformComponent`, so the parent table does 
 
 - `CompositorObjectSystem` refuses the generic create paths and reports `allowsObjectDestroyRequests()` false, which the outliner, the client `SystemDestroyObject` request, and `component destroy` all honor. Undo and redo recreate and destroy a compositor by its saved definition and are not refused
 
-A project saved while a scene could hold several compositors is rewritten on load by `ProjectHierarchyMigration` (`src/Editor/Project/`), which runs on the raw JSON beside the legacy content and take migrations. Each scene keeps the compositor it displayed, or its first. Every other compositor moves to a new, empty scene on the same stage, named from the compositor, and `AppStage_Project` lists those moves in a message box on enter. The new scenes are empty because a compositor composites only its own scene's stencils and shapes (`CompositorComponent::ownsSceneObject`).
+A project saved while a scene could hold several compositors is rewritten on load by `ProjectHierarchyMigration` (`src/Editor/Project/`), which runs on the raw JSON beside the legacy content and take migrations. Each scene keeps the compositor it displayed, or its first. Every other compositor moves to a new, empty scene on the same stage, named from the compositor, and `AppStage_Project` lists those moves in a message box on enter. The camera each compositor named then moves to its scene. The new scenes are empty because a compositor composites only its own scene's stencils and shapes (`CompositorComponent::ownsSceneObject`).
 
 ---
 

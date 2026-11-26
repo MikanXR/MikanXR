@@ -141,9 +141,9 @@ bool project_hierarchy_migration_test_kept_and_split()
 	success&= findByName(sceneDefinitions(projectJson), "SCN_DeskPhone") != nullptr;
 	success&= findByName(sceneDefinitions(projectJson), "SCN_StageTight") != nullptr;
 
-	// The compositor keeps everything else it had
+	// The compositor keeps its identity
 	const configuru::Config* deskVideoCompositor= findById(compositorDefinitions(projectJson), 20);
-	success&= deskVideoCompositor && deskVideoCompositor->get_or<int>("camera_id", -1) == 30;
+	success&= deskVideoCompositor && deskVideoCompositor->get_or<std::string>("component_name", "") == "COMP_DeskVideo";
 
 	// The orphan gets an unparented scene with a whole transform
 	const configuru::Config* orphanScene= findById(sceneDefinitions(projectJson), ownerSceneOf(projectJson, 26));
@@ -180,8 +180,46 @@ bool project_hierarchy_migration_test_empty_scene_gains_compositor()
 	if (newCompositor)
 	{
 		success&= newCompositor->get_or<int>("owner_scene_id", -1) == 12;
-		success&= newCompositor->get_or<int>("camera_id", 0) == -1;
 	}
+	UNIT_TEST_COMPLETE()
+}
+
+bool project_hierarchy_migration_test_camera_moves_to_scene()
+{
+	UNIT_TEST_BEGIN("a compositor's camera moves to the scene that owns it")
+	configuru::Config projectJson= configuru::parse_string(k_legacyProject, configuru::JSON, "legacy");
+	ProjectHierarchyMigration::Report report;
+	success&= ProjectHierarchyMigration::migrateProjectJson(projectJson, report);
+
+	for (const configuru::Config& compositor : compositorDefinitions(projectJson).as_array())
+	{
+		success&= !compositor.has_key("camera_id");
+	}
+
+	// The kept compositor's camera lands on the old scene, a moved one's on its new scene
+	const configuru::Config* deskScene= findById(sceneDefinitions(projectJson), 10);
+	const configuru::Config* deskVideoScene= findByName(sceneDefinitions(projectJson), "SCN_DeskVideo");
+	const configuru::Config* emptyScene= findById(sceneDefinitions(projectJson), 12);
+	success&= deskScene && deskScene->get_or<int>("camera_id", -1) == 31;
+	success&= deskVideoScene && deskVideoScene->get_or<int>("camera_id", -1) == 30;
+	// The scene that gained a compositor has no camera to take
+	success&= emptyScene && !emptyScene->has_key("camera_id");
+
+	// A project already one compositor per scene still has its cameras moved
+	configuru::Config oneToOneJson= configuru::parse_string(R"({
+		"SceneObjectSystem": { "SceneComponentPool": { "component_definitions": [
+			{ "component_id": 10, "component_name": "SCN_A", "parent_transform_id": 5,
+			  "relative_scale": [1.0, 1.0, 1.0], "relative_quaternion": [1.0, 0.0, 0.0, 0.0],
+			  "relative_position": [0.0, 0.0, 0.0], "force_render": false } ] } },
+		"CompositorObjectSystem": { "CompositorComponentPool": { "component_definitions": [
+			{ "component_id": 20, "component_name": "COMP_A", "camera_id": 30, "owner_scene_id": 10 } ] } }
+	})",
+															configuru::JSON, "oneToOne");
+	ProjectHierarchyMigration::Report oneToOneReport;
+	success&= ProjectHierarchyMigration::migrateProjectJson(oneToOneJson, oneToOneReport);
+	success&= oneToOneReport.isEmpty();
+	success&= sceneDefinitions(oneToOneJson)[0].get_or<int>("camera_id", -1) == 30;
+	success&= !oneToOneJson.has_key("persistentIDAllocator");
 	UNIT_TEST_COMPLETE()
 }
 
@@ -236,6 +274,7 @@ bool run_project_hierarchy_migration_tests()
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_one_compositor_per_scene);
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_kept_and_split);
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_empty_scene_gains_compositor);
+	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_camera_moves_to_scene);
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_new_ids);
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_idempotent);
 	UNIT_TEST_MODULE_END()

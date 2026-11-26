@@ -34,6 +34,9 @@ struct MIKAN_API
 	static const char* k_componentClassName;
 	static const char* k_ownerSystemName;
 
+	// The camera the scene is shot through. Its compositor takes video and pose from it.
+	FIELD() MikanCameraID camera_id= INVALID_MIKAN_ID;
+
 	// Draws this scene's geometry even while another scene is the current one.
 	// Without it only the current scene's subtree renders.
 	FIELD() bool force_render= false;

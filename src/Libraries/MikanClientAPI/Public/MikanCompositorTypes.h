@@ -22,7 +22,6 @@ struct MIKAN_API STRUCT(Serialization::CodeGenModule("MikanCompositorTypes"),
 	static const char* k_ownerSystemName;
 
 	FIELD() MikanSceneID owner_scene_id= INVALID_MIKAN_ID;
-	FIELD() MikanCameraID camera_id= INVALID_MIKAN_ID;
 	FIELD() Serialization::String compositor_graph_path;
 	FIELD() bool spout_enable_output= false;
 	FIELD() Serialization::String spout_output_name;

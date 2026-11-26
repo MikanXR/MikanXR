@@ -1,3 +1,5 @@
+#include "CameraComponent.h"
+#include "CameraObjectSystem.h"
 #include "CompositorObjectSystem.h"
 #include "CompositorComponent.h"
 #include "ColliderComponent.h"
@@ -25,6 +27,7 @@
 #include <queue>
 
 // -- SceneComponentDefinition -----
+const std::string SceneComponentDefinition::k_cameraIdPropertyId= "camera_id";
 const std::string SceneComponentDefinition::k_forceRenderPropertyId= "force_render";
 
 SceneComponentDefinition::SceneComponentDefinition()
@@ -41,6 +44,7 @@ configuru::Config SceneComponentDefinition::writeToJSON()
 {
 	configuru::Config pt= TransformComponentDefinition::writeToJSON();
 
+	pt[k_cameraIdPropertyId]= m_cameraId;
 	pt[k_forceRenderPropertyId]= m_bForceRender;
 
 	return pt;
@@ -50,6 +54,7 @@ void SceneComponentDefinition::readFromJSON(const configuru::Config& pt)
 {
 	TransformComponentDefinition::readFromJSON(pt);
 
+	m_cameraId= pt.get_or<int>(k_cameraIdPropertyId, INVALID_MIKAN_ID);
 	m_bForceRender= pt.get_or<bool>(k_forceRenderPropertyId, false);
 }
 
@@ -62,10 +67,20 @@ bool SceneComponentDefinition::readFromInitParams(MikanObjectSystem* ownerObject
 	const auto* componentValues= initParams.getTypedPointer<MikanSceneComponentValues>();
 	if (componentValues)
 	{
+		m_cameraId= componentValues->camera_id;
 		m_bForceRender= componentValues->force_render;
 	}
 
 	return true;
+}
+
+void SceneComponentDefinition::setCameraId(MikanCameraID cameraId)
+{
+	if (m_cameraId != cameraId)
+	{
+		m_cameraId= cameraId;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_cameraIdPropertyId));
+	}
 }
 
 void SceneComponentDefinition::setForceRender(bool bForceRender)
@@ -112,6 +127,11 @@ StageComponentPtr SceneComponent::getParentStage() const
 	}
 
 	return StageComponentPtr();
+}
+
+CameraComponentPtr SceneComponent::getCameraComponent() const
+{
+	return getObjectSystemOfType<CameraObjectSystem>()->getCameraById(getSceneComponentDefinition()->getCameraId());
 }
 
 CompositorComponentPtr SceneComponent::getCompositor() const
@@ -170,12 +190,23 @@ void SceneComponent::getPropertyDescriptors(std::vector<PropertyDescriptorConstP
 	TransformComponent::getPropertyDescriptors(outDescriptors);
 
 	outDescriptors.push_back(
+		std::make_shared<PropertyDescriptor>(SceneComponentDefinition::k_cameraIdPropertyId, MikanVariantType::INT)
+			->setDefaultValue(-1)
+			->setUIHidden());
+
+	outDescriptors.push_back(
 		std::make_shared<PropertyDescriptor>(SceneComponentDefinition::k_forceRenderPropertyId, MikanVariantType::BOOL)
 			->setDefaultValue(false));
 }
 
 bool SceneComponent::getPropertyValue(const std::string& propertyName, MikanVariant& outValue) const
 {
+	if (propertyName == SceneComponentDefinition::k_cameraIdPropertyId)
+	{
+		outValue= getSceneComponentDefinition()->getCameraId();
+		return true;
+	}
+
 	if (propertyName == SceneComponentDefinition::k_forceRenderPropertyId)
 	{
 		outValue= getSceneComponentDefinition()->getForceRender();
@@ -187,6 +218,12 @@ bool SceneComponent::getPropertyValue(const std::string& propertyName, MikanVari
 
 bool SceneComponent::setPropertyValue(const std::string& propertyName, const MikanVariant& inValue)
 {
+	if (propertyName == SceneComponentDefinition::k_cameraIdPropertyId)
+	{
+		getSceneComponentDefinition()->setCameraId(inValue.getIntValue());
+		return true;
+	}
+
 	if (propertyName == SceneComponentDefinition::k_forceRenderPropertyId)
 	{
 		getSceneComponentDefinition()->setForceRender(inValue.getBoolValue());
@@ -227,6 +264,11 @@ void SceneComponent::bindLuaFunctions(struct lua_State* L)
 	luabridge::getGlobalNamespace(L)
 		.deriveClass<SceneComponent, TransformComponent>(SceneComponent::k_componentClassName.c_str())
 		.addProperty("parentStageId", [](SceneComponent* component) -> int { return component->getParentStageId(); })
+		.addProperty(
+			"cameraId",
+			[](SceneComponent* component) -> int { return component->getSceneComponentDefinition()->getCameraId(); },
+			[](SceneComponent* component, int cameraId)
+			{ component->getSceneComponentDefinition()->setCameraId(cameraId); })
 		.addProperty(
 			"forceRender", [](SceneComponent* component) -> bool
 			{ return component->getSceneComponentDefinition()->getForceRender(); },

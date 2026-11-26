@@ -17,6 +17,7 @@ class Config;
 //     scene is missing gets a scene of its own
 //   - the scene's display compositor choice is dropped, since there is nothing
 //     left to choose
+//   - the camera a compositor named moves to the scene that owns it
 // Every step keys on the shape it repairs, so a current project is left untouched
 // and a project migrated once is not migrated again.
 namespace ProjectHierarchyMigration
