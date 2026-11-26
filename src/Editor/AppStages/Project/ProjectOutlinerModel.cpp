@@ -51,6 +51,8 @@
 #include "ScriptObjectSystem.h"
 #include "SelectionComponent.h"
 #include "ShapeComponent.h"
+#include "SpoutOutputComponent.h"
+#include "SpoutOutputSystem.h"
 #include "SpoutTextureSourceComponent.h"
 #include "SpoutTextureSourceSystem.h"
 #include "StageComponent.h"
@@ -86,6 +88,10 @@ static const char* pickNodeIcon(eOutlinerNodeKind kind, const std::string& compo
 		return ICON_FK_SHARE_ALT;
 	if (componentClassName == CEFTextureSourceComponent::k_componentClassName)
 		return ICON_FK_CHROME;
+
+	// Outputs
+	if (componentClassName == SpoutOutputComponent::k_componentClassName)
+		return ICON_FK_SIGN_OUT;
 
 	// Lights, replacing the old [Env]/[Spot]/[Grid] name prefixes
 	if (componentClassName == LightEnvironmentComponent::k_componentClassName)
@@ -166,6 +172,9 @@ std::string ProjectOutlinerModel::getNodeStateKey(const ProjectOutlinerNode& nod
 	case eOutlinerNodeKind::folderScripts:
 		folderName= "scripts";
 		break;
+	case eOutlinerNodeKind::folderOutputs:
+		folderName= "outputs";
+		break;
 	case eOutlinerNodeKind::folderCameras:
 		folderName= "cameras";
 		break;
@@ -200,6 +209,7 @@ bool ProjectOutlinerModel::getNodeDefaultOpen(eOutlinerNodeKind kind)
 	case eOutlinerNodeKind::folderLightGroups:
 	case eOutlinerNodeKind::folderScenes:
 	case eOutlinerNodeKind::folderScripts:
+	case eOutlinerNodeKind::folderOutputs:
 	case eOutlinerNodeKind::trackingVolume:
 	case eOutlinerNodeKind::stage:
 	case eOutlinerNodeKind::scene:
@@ -245,6 +255,8 @@ void ProjectOutlinerModel::rebuild(ProjectManagerPtr projectManager)
 		addFolderNode(m_root, eOutlinerNodeKind::folderTrackingVolumes, "project.outlinerTrackingGroup");
 	ProjectOutlinerNodePtr scriptsFolder=
 		addFolderNode(m_root, eOutlinerNodeKind::folderScripts, "project.outlinerScriptsGroup");
+	ProjectOutlinerNodePtr outputsFolder=
+		addFolderNode(m_root, eOutlinerNodeKind::folderOutputs, "project.outlinerOutputsGroup");
 
 	// Video sources
 	if (auto sys= projectManager->getSystemOfType<USBVideoSourceSystem>())
@@ -307,6 +319,11 @@ void ProjectOutlinerModel::rebuild(ProjectManagerPtr projectManager)
 	if (auto sys= projectManager->getSystemOfType<ScriptObjectSystem>())
 		sys->visitComponents([&](ScriptComponentPtr comp)
 							 { addComponentNode(scriptsFolder, eOutlinerNodeKind::script, comp); });
+
+	// Project outputs
+	if (auto sys= projectManager->getSystemOfType<SpoutOutputSystem>())
+		sys->visitComponents([&](SpoutOutputComponentPtr comp)
+							 { addComponentNode(outputsFolder, eOutlinerNodeKind::output, comp); });
 
 	// Stages parent under their volume; one with a missing volume falls back to the root
 	if (auto stageSystem= projectManager->getSystemOfType<StageObjectSystem>())

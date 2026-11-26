@@ -126,6 +126,26 @@ using ClientTextureSourceComponentPtr= std::shared_ptr<ClientTextureSourceCompon
 using ClientTextureSourceComponentConstPtr= std::shared_ptr<const ClientTextureSourceComponent>;
 using ClientTextureSourceComponentWeakPtr= std::weak_ptr<ClientTextureSourceComponent>;
 
+class OutputDefinition;
+using OutputDefinitionPtr= std::shared_ptr<OutputDefinition>;
+using OutputDefinitionConstPtr= std::shared_ptr<const OutputDefinition>;
+using OutputDefinitionWeakPtr= std::weak_ptr<OutputDefinition>;
+
+class OutputComponent;
+using OutputComponentPtr= std::shared_ptr<OutputComponent>;
+using OutputComponentConstPtr= std::shared_ptr<const OutputComponent>;
+using OutputComponentWeakPtr= std::weak_ptr<OutputComponent>;
+
+class SpoutOutputDefinition;
+using SpoutOutputDefinitionPtr= std::shared_ptr<SpoutOutputDefinition>;
+using SpoutOutputDefinitionConstPtr= std::shared_ptr<const SpoutOutputDefinition>;
+using SpoutOutputDefinitionWeakPtr= std::weak_ptr<SpoutOutputDefinition>;
+
+class SpoutOutputComponent;
+using SpoutOutputComponentPtr= std::shared_ptr<SpoutOutputComponent>;
+using SpoutOutputComponentConstPtr= std::shared_ptr<const SpoutOutputComponent>;
+using SpoutOutputComponentWeakPtr= std::weak_ptr<SpoutOutputComponent>;
+
 class SpoutTextureSourceDefinition;
 using SpoutTextureSourceDefinitionPtr= std::shared_ptr<SpoutTextureSourceDefinition>;
 using SpoutTextureSourceDefinitionConstPtr= std::shared_ptr<const SpoutTextureSourceDefinition>;

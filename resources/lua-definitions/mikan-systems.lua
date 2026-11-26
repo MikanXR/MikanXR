@@ -395,3 +395,29 @@ function DMXSequenceSystem:createSequence(groupId, name) end
 ---@param sequenceId integer
 ---@return boolean
 function DMXSequenceSystem:removeSequence(sequenceId) end
+
+------------------------------------------------------------------------
+-- SpoutOutputSystem
+------------------------------------------------------------------------
+
+---@class SpoutOutputSystem
+SpoutOutputSystem = {}
+
+--- Get a Spout output by ID.
+---@param id integer
+---@return SpoutOutputComponent
+function SpoutOutputSystem:getOutputById(id) end
+
+--- Get a Spout output by component name.
+---@param name string
+---@return SpoutOutputComponent
+function SpoutOutputSystem:getOutputByName(name) end
+
+--- Get the number of Spout outputs.
+---@return integer
+function SpoutOutputSystem:getOutputCount() end
+
+--- Get the Spout output at the given index.
+---@param index integer Zero-based index
+---@return SpoutOutputComponent
+function SpoutOutputSystem:getOutputAtIndex(index) end

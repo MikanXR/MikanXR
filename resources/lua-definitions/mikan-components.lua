@@ -398,7 +398,6 @@ function MarkerComponent:printMarker() end
 ---@field cameraId integer ID of the owner scene's camera (read-only)
 ---@field ownerSceneId integer ID of the owning scene (read-only)
 ---@field ownerStageId integer ID of the owning stage (read-only)
----@field isSpoutOutputStreaming boolean Whether Spout output streaming is active (read/write)
 ---@field isRtpOutputStreaming boolean Whether RTP output streaming is active (read/write)
 local CompositorComponent = {}
 
@@ -502,3 +501,20 @@ BoxShapeSystem = nil
 --- The ModelShapeSystem singleton.
 ---@type ModelShapeSystem
 ModelShapeSystem = nil
+
+------------------------------------------------------------------------
+-- OutputComponent : MikanComponent
+------------------------------------------------------------------------
+
+---@class OutputComponent : MikanComponent
+---@field isEnabled boolean Whether the output takes the composited frame (read/write)
+local OutputComponent = {}
+
+------------------------------------------------------------------------
+-- SpoutOutputComponent : OutputComponent
+------------------------------------------------------------------------
+
+---@class SpoutOutputComponent : OutputComponent
+---@field spoutOutputName string The name receivers find the sender by (read/write)
+---@field isSenderOpen boolean Whether the Spout sender is open right now (read-only)
+local SpoutOutputComponent = {}

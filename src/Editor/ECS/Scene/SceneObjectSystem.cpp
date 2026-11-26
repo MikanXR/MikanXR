@@ -225,6 +225,12 @@ void SceneObjectSystem::setCurrentSceneById(MikanSceneID newSceneId)
 					OnSceneActivated(newScene);
 				}
 			}
+			else
+			{
+				// With no scene current nothing composites or publishes. A switch to
+				// another scene skips this, so the outputs' senders stay open across it.
+				getObjectSystemOfType<CompositorObjectSystem>()->setActiveCompositors({});
+			}
 		}
 	}
 }

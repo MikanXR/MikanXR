@@ -53,14 +53,6 @@ public:
 	std::filesystem::path getCompositorGraphPath() const;
 	void setCompositorGraphPath(const std::filesystem::path& graphPath);
 
-	static const std::string k_spoutEnableOutputNamePropertyId;
-	inline bool getIsSpoutOutputStreaming() const { return m_bIsSpoutOutputStreaming; }
-	void setIsSpoutOutputStreaming(bool bIsStreaming);
-
-	static const std::string k_spoutOutputNamePropertyId;
-	inline const std::string& getSpoutOutputName() const { return m_spoutOutputName; }
-	void setSpoutOutputName(const std::string& spoutOutputName);
-
 	static const std::string k_rtpEnableOutputPropertyId;
 	inline bool getIsRtpOutputStreaming() const { return m_bIsRtpOutputStreaming; }
 	void setIsRtpOutputStreaming(bool bIsStreaming);
@@ -84,8 +76,6 @@ public:
 private:
 	MikanSceneID m_ownerSceneId= INVALID_MIKAN_ID;
 	AssetReferenceConfigPtr m_nodeGraphAssetRef;
-	bool m_bIsSpoutOutputStreaming= false;
-	std::string m_spoutOutputName;
 	bool m_bIsRtpOutputStreaming= false;
 	std::string m_rtpOutputHost;
 	int m_rtpOutputPort= 0;
@@ -118,6 +108,7 @@ public:
 	// Whether the compositor may publish its output; the owning system grants it
 	// only to the current scene's compositor
 	void setOutputStreamingAllowed(bool bAllowed) { m_bOutputStreamingAllowed= bAllowed; }
+	bool getIsOutputStreamingAllowed() const { return m_bOutputStreamingAllowed; }
 
 	inline static const std::string k_componentClassName= "CompositorComponent";
 	virtual std::string getComponentClassName() const override { return k_componentClassName; }
@@ -202,12 +193,6 @@ protected:
 	// Video Source
 	void updateVideoSourceStreaming();
 
-	// Spout Output
-	void updateOutputStreaming();
-	bool startOutputStreaming();
-	bool getIsOutputStreaming() const;
-	void stopOutputStreaming();
-
 	// RTP Output
 	void updateRtpOutputStreaming();
 	bool startRtpOutputStreaming(const std::vector<RtpDestination>& destinations);
@@ -275,8 +260,7 @@ private:
 	VideoSourceComponentWeakPtr m_videoDistortionSource;
 	VideoFrameDistortionViewPtr m_videoDistortionView;
 
-	// Output sinks: the Spout sender and the RTP sender
-	ISharedTextureWriteAccessorPtr m_renderTargetWriteAccessor;
+	// The RTP sender. The project's output components hold every other sink.
 	CompositorRtpOutputPtr m_rtpOutput;
 	// Whether a connected client asked for this compositor's output on the last update
 	bool m_bHasRtpClientFeeds= false;

@@ -212,7 +212,8 @@ bool project_hierarchy_migration_test_camera_moves_to_scene()
 			  "relative_scale": [1.0, 1.0, 1.0], "relative_quaternion": [1.0, 0.0, 0.0, 0.0],
 			  "relative_position": [0.0, 0.0, 0.0], "force_render": false } ] } },
 		"CompositorObjectSystem": { "CompositorComponentPool": { "component_definitions": [
-			{ "component_id": 20, "component_name": "COMP_A", "camera_id": 30, "owner_scene_id": 10 } ] } }
+			{ "component_id": 20, "component_name": "COMP_A", "camera_id": 30, "owner_scene_id": 10 } ] } },
+		"SpoutOutputSystem": { "SpoutOutputComponentPool": { "component_definitions": [] } }
 	})",
 															configuru::JSON, "oneToOne");
 	ProjectHierarchyMigration::Report oneToOneReport;
@@ -297,6 +298,75 @@ bool project_hierarchy_migration_test_probes_move_to_scenes()
 	UNIT_TEST_COMPLETE()
 }
 
+bool project_hierarchy_migration_test_spout_outputs()
+{
+	UNIT_TEST_BEGIN("compositor Spout settings become project outputs")
+	// Two compositors share the default sender name, one of them enabled. A third
+	// has its own name and is off. A fourth left its name empty.
+	configuru::Config projectJson= configuru::parse_string(R"({
+		"SceneObjectSystem": { "SceneComponentPool": { "component_definitions": [
+			{ "component_id": 10, "component_name": "SCN_A", "parent_transform_id": 5 },
+			{ "component_id": 11, "component_name": "SCN_B", "parent_transform_id": 5 },
+			{ "component_id": 12, "component_name": "SCN_C", "parent_transform_id": 5 },
+			{ "component_id": 13, "component_name": "SCN_D", "parent_transform_id": 5 } ] } },
+		"CompositorObjectSystem": { "CompositorComponentPool": { "component_definitions": [
+			{ "component_id": 20, "component_name": "COMP_A", "owner_scene_id": 10,
+			  "spout_enable_output": false, "spout_output_name": "MikanXR", "rtp_enable_output": false },
+			{ "component_id": 21, "component_name": "COMP_B", "owner_scene_id": 11,
+			  "spout_enable_output": true, "spout_output_name": "MikanXR" },
+			{ "component_id": 22, "component_name": "COMP_C", "owner_scene_id": 12,
+			  "spout_enable_output": false, "spout_output_name": "Preview" },
+			{ "component_id": 23, "component_name": "COMP_D", "owner_scene_id": 13,
+			  "spout_enable_output": false, "spout_output_name": "" } ] } }
+	})",
+														   configuru::JSON, "spout");
+	ProjectHierarchyMigration::Report report;
+	success&= ProjectHierarchyMigration::migrateProjectJson(projectJson, report);
+
+	const configuru::Config& outputs=
+		projectJson["SpoutOutputSystem"]["SpoutOutputComponentPool"]["component_definitions"];
+	const configuru::Config* sharedOutput= findByName(outputs, "OUT_MikanXR");
+	const configuru::Config* previewOutput= findByName(outputs, "OUT_Preview");
+
+	success&= outputs.array_size() == 2;
+	success&= sharedOutput && sharedOutput->get_or<bool>("enabled", false)
+			  && sharedOutput->get_or<std::string>("spout_output_name", "") == "MikanXR";
+	success&= previewOutput && !previewOutput->get_or<bool>("enabled", true)
+			  && previewOutput->get_or<std::string>("spout_output_name", "") == "Preview";
+	success&= sharedOutput && previewOutput
+			  && sharedOutput->get_or<int>("component_id", -1) != previewOutput->get_or<int>("component_id", -1);
+
+	// The compositors keep everything but the Spout settings
+	for (const configuru::Config& compositor : compositorDefinitions(projectJson).as_array())
+	{
+		success&= !compositor.has_key("spout_enable_output") && !compositor.has_key("spout_output_name");
+	}
+	const configuru::Config* compositorA= findById(compositorDefinitions(projectJson), 20);
+	success&= compositorA && compositorA->has_key("rtp_enable_output");
+
+	// A second pass adds no output, and a user who deleted every output keeps none
+	ProjectHierarchyMigration::Report secondReport;
+	success&= !ProjectHierarchyMigration::migrateProjectJson(projectJson, secondReport);
+	configuru::Config noOutputsJson= configuru::parse_string(
+		R"({ "SpoutOutputSystem": { "SpoutOutputComponentPool": { "component_definitions": [] } } })", configuru::JSON,
+		"noOutputs");
+	success&= !ProjectHierarchyMigration::migrateProjectJson(noOutputsJson, secondReport);
+	success&= noOutputsJson["SpoutOutputSystem"]["SpoutOutputComponentPool"]["component_definitions"].array_size() == 0;
+
+	// A project with no compositor settings to carry gets the one default output
+	configuru::Config emptyJson= configuru::parse_string("{}", configuru::JSON, "empty");
+	success&= ProjectHierarchyMigration::migrateProjectJson(emptyJson, secondReport);
+	const configuru::Config& defaultOutputs=
+		emptyJson["SpoutOutputSystem"]["SpoutOutputComponentPool"]["component_definitions"];
+	success&= defaultOutputs.array_size() == 1;
+	if (defaultOutputs.array_size() == 1)
+	{
+		success&= defaultOutputs[0].get_or<bool>("enabled", false);
+		success&= defaultOutputs[0].get_or<std::string>("spout_output_name", "") == "MikanXR";
+	}
+	UNIT_TEST_COMPLETE()
+}
+
 bool project_hierarchy_migration_test_new_ids()
 {
 	UNIT_TEST_BEGIN("new ids start past the saved counter and every id in the file")
@@ -304,8 +374,8 @@ bool project_hierarchy_migration_test_new_ids()
 	ProjectHierarchyMigration::Report report;
 	success&= ProjectHierarchyMigration::migrateProjectJson(projectJson, report);
 
-	// The file's highest id was 26 although the counter said 20. Four scenes and
-	// one compositor were added.
+	// The file's highest id was 26 although the counter said 20. Four scenes, one
+	// compositor and the default Spout output were added.
 	std::map<int, int> useCountById;
 	for (const configuru::Config& scene : sceneDefinitions(projectJson).as_array())
 		useCountById[scene.get_or<int>("component_id", -1)]++;
@@ -316,7 +386,7 @@ bool project_hierarchy_migration_test_new_ids()
 		success&= use_pair.second == 1;
 	}
 	success&= useCountById.count(27) == 1 && useCountById.count(31) == 1;
-	success&= projectJson["persistentIDAllocator"].get_or<int>("next_id", -1) == 32;
+	success&= projectJson["persistentIDAllocator"].get_or<int>("next_id", -1) == 33;
 	UNIT_TEST_COMPLETE()
 }
 
@@ -333,12 +403,14 @@ bool project_hierarchy_migration_test_idempotent()
 	success&= secondReport.isEmpty();
 	success&= configuru::dump_string(projectJson, configuru::JSON) == migratedText;
 
-	// A project with no scenes and no compositors has nothing to migrate
+	// A project with no scenes and no compositors gains nothing but its output
 	configuru::Config emptyJson=
 		configuru::parse_string(R"({ "persistentIDAllocator": { "next_id": 1 } })", configuru::JSON, "empty");
 	ProjectHierarchyMigration::Report emptyReport;
-	success&= !ProjectHierarchyMigration::migrateProjectJson(emptyJson, emptyReport);
+	success&= ProjectHierarchyMigration::migrateProjectJson(emptyJson, emptyReport);
 	success&= !emptyJson.has_key("SceneObjectSystem");
+	success&= !emptyJson.has_key("CompositorObjectSystem");
+	success&= emptyReport.isEmpty();
 	UNIT_TEST_COMPLETE()
 }
 
@@ -350,6 +422,7 @@ bool run_project_hierarchy_migration_tests()
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_empty_scene_gains_compositor);
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_camera_moves_to_scene);
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_probes_move_to_scenes);
+	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_spout_outputs);
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_new_ids);
 	UNIT_TEST_MODULE_CALL_TEST(project_hierarchy_migration_test_idempotent);
 	UNIT_TEST_MODULE_END()

@@ -29,6 +29,7 @@ class GuiPanel_RGBSpotLightComponent;
 class GuiPanel_SceneComponent;
 class GuiPanel_ScriptComponent;
 class GuiPanel_CEFTextureSourceComponent;
+class GuiPanel_SpoutOutputComponent;
 class GuiPanel_SpoutTextureSourceComponent;
 class GuiPanel_StageComponent;
 class GuiPanel_TrackingMountComponent;
@@ -82,6 +83,7 @@ public:
 	inline GuiPanel_RGBSpotLightComponent* getSpotLightPanel() const { return m_spotLightPanel; }
 	inline GuiPanel_SceneComponent* getScenePanel() const { return m_scenePanel; }
 	inline GuiPanel_ScriptComponent* getScriptPanel() const { return m_scriptPanel; }
+	inline GuiPanel_SpoutOutputComponent* getSpoutOutputPanel() const { return m_spoutOutputPanel; }
 	inline GuiPanel_CEFTextureSourceComponent* getCEFTextureSourcePanel() const { return m_cefTextureSourcePanel; }
 	inline GuiPanel_SpoutTextureSourceComponent* getSpoutTextureSourcePanel() const
 	{
@@ -123,6 +125,7 @@ private:
 	GuiPanel_RGBSpotLightComponent* m_spotLightPanel= nullptr;
 	GuiPanel_SceneComponent* m_scenePanel= nullptr;
 	GuiPanel_ScriptComponent* m_scriptPanel= nullptr;
+	GuiPanel_SpoutOutputComponent* m_spoutOutputPanel= nullptr;
 	GuiPanel_CEFTextureSourceComponent* m_cefTextureSourcePanel= nullptr;
 	GuiPanel_SpoutTextureSourceComponent* m_spoutTextureSourcePanel= nullptr;
 	GuiPanel_StageComponent* m_stagePanel= nullptr;

@@ -8,6 +8,9 @@
 #include "CompositorObjectSystem.h"
 #include "CameraComponent.h"
 #include "CompositorComponent.h"
+#include "OutputComponent.h"
+#include "SpoutOutputComponent.h"
+#include "SpoutOutputSystem.h"
 #include "DMXFixtureComponent.h"
 #include "DMXFixtureGroupComponent.h"
 #include "DMXFixtureGroupSystem.h"
@@ -100,6 +103,7 @@ bool ProjectScriptContext::bindContextFunctions()
 	DMXSequenceSystem::bindLuaFunctions(m_luaState);
 	AnchorObjectSystem::bindLuaFunctions(m_luaState);
 	CompositorObjectSystem::bindLuaFunctions(m_luaState);
+	SpoutOutputSystem::bindLuaFunctions(m_luaState);
 	ModelStencilSystem::bindLuaFunctions(m_luaState);
 	BoxStencilSystem::bindLuaFunctions(m_luaState);
 	QuadStencilSystem::bindLuaFunctions(m_luaState);
@@ -110,6 +114,8 @@ bool ProjectScriptContext::bindContextFunctions()
 	// Bind in dependency order: parent classes before derived classes
 	MikanComponent::bindLuaFunctions(m_luaState);
 	CompositorComponent::bindLuaFunctions(m_luaState);
+	OutputComponent::bindLuaFunctions(m_luaState);
+	SpoutOutputComponent::bindLuaFunctions(m_luaState);
 	TransformComponent::bindLuaFunctions(m_luaState);
 	SceneComponent::bindLuaFunctions(m_luaState);
 	StageComponent::bindLuaFunctions(m_luaState);
@@ -162,6 +168,7 @@ bool ProjectScriptContext::bindContextFunctions()
 	luabridge::setGlobal(m_luaState, projectManager->getSystemOfType<AnchorObjectSystem>().get(), "AnchorSystem");
 	luabridge::setGlobal(m_luaState, projectManager->getSystemOfType<CompositorObjectSystem>().get(),
 						 "CompositorSystem");
+	luabridge::setGlobal(m_luaState, projectManager->getSystemOfType<SpoutOutputSystem>().get(), "SpoutOutputSystem");
 	luabridge::setGlobal(m_luaState, projectManager->getSystemOfType<StageObjectSystem>().get(), "StageSystem");
 	luabridge::setGlobal(m_luaState, projectManager->getSystemOfType<DMXObjectSystem>().get(), "DMXSystem");
 	luabridge::setGlobal(m_luaState, projectManager->getSystemOfType<RGBSpotLightSystem>().get(), "RGBSpotLightSystem");

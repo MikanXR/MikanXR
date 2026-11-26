@@ -22,6 +22,9 @@ class Config;
 //     the current scene when it is one of them, else the first. A probe whose
 //     camera no scene uses goes to the first scene on that camera's stage. A probe
 //     left with no scene, or whose scene already has one, is dropped
+//   - the Spout output settings each compositor carried become project outputs,
+//     one per sender name. A project with no output system yet gets one enabled
+//     output under the default name when no compositor carried any
 // Every step keys on the shape it repairs, so a current project is left untouched
 // and a project migrated once is not migrated again.
 namespace ProjectHierarchyMigration

@@ -58,6 +58,8 @@
 
 #include "MikanStageTypes.rfks.h"
 
+#include "MikanOutputTypes.rfks.h"
+
 #include "MikanShapeTypes.rfks.h"
 
 #include "MikanStencilTypes.rfks.h"
@@ -87,6 +89,7 @@
 #include "MikanCompositorTypes.h"
 #include "MikanLightTypes.h"
 #include "MikanMarkerTypes.h"
+#include "MikanOutputTypes.h"
 #include "MikanSceneTypes.h"
 #include "MikanStageTypes.h"
 #include "MikanScriptTypes.h"
@@ -189,6 +192,9 @@ const char* MikanScriptComponentValues::k_ownerSystemName= "ScriptObjectSystem";
 
 const char* MikanClientTextureSourceValues::k_componentClassName= "ClientTextureSourceComponent";
 const char* MikanClientTextureSourceValues::k_ownerSystemName= "ClientTextureSourceSystem";
+
+const char* MikanSpoutOutputComponentValues::k_componentClassName= "SpoutOutputComponent";
+const char* MikanSpoutOutputComponentValues::k_ownerSystemName= "SpoutOutputSystem";
 
 const char* MikanSpoutTextureSourceValues::k_componentClassName= "SpoutTextureSourceComponent";
 const char* MikanSpoutTextureSourceValues::k_ownerSystemName= "SpoutTextureSourceSystem";

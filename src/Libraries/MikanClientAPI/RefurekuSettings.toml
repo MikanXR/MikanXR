@@ -37,6 +37,7 @@ toProcessFiles = [
 	'''./Public/MikanScriptEvents.h''',
 	'''./Public/MikanScriptTypes.h''',
 	'''./Public/MikanScriptRequests.h''',
+	'''./Public/MikanOutputTypes.h''',
 	'''./Public/MikanStageTypes.h''',
 	'''./Public/MikanShapeTypes.h''',
 	'''./Public/MikanStencilTypes.h''',

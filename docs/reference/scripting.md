@@ -168,6 +168,7 @@ What is scriptable: `ProjectScriptContext::bindContextFunctions()` binds LuaBrid
 - `StageSystem`
 - `AnchorSystem`
 - `CompositorSystem`
+- `SpoutOutputSystem`
 - `DMXSystem`
 - `RGBSpotLightSystem`
 - `DMXFixtureGroupSystem`

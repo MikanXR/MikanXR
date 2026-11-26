@@ -22,6 +22,7 @@ enum class eOutlinerNodeKind : int
 	folderLightGroups,
 	folderScenes,
 	folderScripts,
+	folderOutputs,
 	unparentedGroup,
 	videoSource,
 	textureSource,
@@ -38,6 +39,7 @@ enum class eOutlinerNodeKind : int
 	scene,
 	sceneActor,
 	script,
+	output,
 
 	COUNT
 };

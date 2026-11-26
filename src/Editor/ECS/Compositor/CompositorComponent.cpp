@@ -31,7 +31,7 @@
 #include "ProjectConfigConstants.h"
 #include "SceneComponent.h"
 #include "SceneObjectSystem.h"
-#include "SharedTextureWriter.h"
+#include "OutputQueries.h"
 #include "StageComponent.h"
 #include "StageObjectSystem.h"
 #include "TransformComponent.h"
@@ -57,8 +57,6 @@
 // -- CompositorConfig -----
 const std::string CompositorDefinition::k_compositorGraphPathPropertyId= "compositor_graph_path";
 const std::string CompositorDefinition::k_ownerScenePropertyId= "owner_scene_id";
-const std::string CompositorDefinition::k_spoutEnableOutputNamePropertyId= "spout_enable_output";
-const std::string CompositorDefinition::k_spoutOutputNamePropertyId= "spout_output_name";
 const std::string CompositorDefinition::k_rtpEnableOutputPropertyId= "rtp_enable_output";
 const std::string CompositorDefinition::k_rtpOutputHostPropertyId= "rtp_output_host";
 const std::string CompositorDefinition::k_rtpOutputPortPropertyId= "rtp_output_port";
@@ -68,8 +66,6 @@ const std::string CompositorDefinition::k_rtpOutputBitrateKbpsPropertyId= "rtp_o
 CompositorDefinition::CompositorDefinition()
 	: MikanComponentDefinition()
 	, m_nodeGraphAssetRef(std::make_shared<AssetReferenceConfig>())
-	, m_bIsSpoutOutputStreaming(false)
-	, m_spoutOutputName(DEFAULT_SPOUT_OUTPUT_NAME)
 	, m_rtpOutputPort(DEFAULT_RTP_OUTPUT_PORT)
 	, m_rtpOutputHeight(DEFAULT_RTP_OUTPUT_HEIGHT)
 	, m_rtpOutputBitrateKbps(DEFAULT_RTP_OUTPUT_BITRATE_KBPS)
@@ -80,8 +76,6 @@ CompositorDefinition::CompositorDefinition(MikanCompositorID compositorId)
 	: MikanComponentDefinition(compositorId, "")
 	, m_ownerSceneId(INVALID_MIKAN_ID)
 	, m_nodeGraphAssetRef(std::make_shared<AssetReferenceConfig>())
-	, m_bIsSpoutOutputStreaming(false)
-	, m_spoutOutputName(DEFAULT_SPOUT_OUTPUT_NAME)
 	, m_rtpOutputPort(DEFAULT_RTP_OUTPUT_PORT)
 	, m_rtpOutputHeight(DEFAULT_RTP_OUTPUT_HEIGHT)
 	, m_rtpOutputBitrateKbps(DEFAULT_RTP_OUTPUT_BITRATE_KBPS)
@@ -93,8 +87,6 @@ configuru::Config CompositorDefinition::writeToJSON()
 	configuru::Config pt= MikanComponentDefinition::writeToJSON();
 
 	pt[k_ownerScenePropertyId]= m_ownerSceneId;
-	pt[k_spoutEnableOutputNamePropertyId]= m_bIsSpoutOutputStreaming;
-	pt[k_spoutOutputNamePropertyId]= m_spoutOutputName;
 	pt[k_rtpEnableOutputPropertyId]= m_bIsRtpOutputStreaming;
 	pt[k_rtpOutputHostPropertyId]= m_rtpOutputHost;
 	pt[k_rtpOutputPortPropertyId]= m_rtpOutputPort;
@@ -114,10 +106,6 @@ void CompositorDefinition::readFromJSON(const configuru::Config& pt)
 	MikanComponentDefinition::readFromJSON(pt);
 
 	m_ownerSceneId= pt.get_or<int>(k_ownerScenePropertyId, INVALID_MIKAN_ID);
-	m_bIsSpoutOutputStreaming= pt.get_or<bool>(k_spoutEnableOutputNamePropertyId, m_bIsSpoutOutputStreaming);
-	m_spoutOutputName= pt.get_or<std::string>(k_spoutOutputNamePropertyId, m_spoutOutputName);
-	if (m_spoutOutputName.empty())
-		m_spoutOutputName= DEFAULT_SPOUT_OUTPUT_NAME;
 	m_bIsRtpOutputStreaming= pt.get_or<bool>(k_rtpEnableOutputPropertyId, m_bIsRtpOutputStreaming);
 	m_rtpOutputHost= pt.get_or<std::string>(k_rtpOutputHostPropertyId, m_rtpOutputHost);
 	m_rtpOutputPort= pt.get_or<int>(k_rtpOutputPortPropertyId, m_rtpOutputPort);
@@ -148,8 +136,6 @@ bool CompositorDefinition::readFromInitParams(MikanObjectSystem* ownerObjectSyst
 			setCompositorGraphPath(std::filesystem::path(graphPathString));
 		}
 
-		m_bIsSpoutOutputStreaming= componentValues->spout_enable_output;
-		m_spoutOutputName= componentValues->spout_output_name.getUtf8Value();
 		m_bIsRtpOutputStreaming= componentValues->rtp_enable_output;
 		m_rtpOutputHost= componentValues->rtp_output_host.getUtf8Value();
 		m_rtpOutputPort= componentValues->rtp_output_port;
@@ -189,24 +175,6 @@ void CompositorDefinition::setCompositorGraphPath(const std::filesystem::path& g
 		m_nodeGraphAssetRef->assetPath= stored;
 		notifyPropertyChanged(
 			ConfigPropertyChangeSet().addPropertyName(CompositorDefinition::k_compositorGraphPathPropertyId));
-	}
-}
-
-void CompositorDefinition::setIsSpoutOutputStreaming(bool bIsStreaming)
-{
-	if (m_bIsSpoutOutputStreaming != bIsStreaming)
-	{
-		m_bIsSpoutOutputStreaming= bIsStreaming;
-		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_spoutEnableOutputNamePropertyId));
-	}
-}
-
-void CompositorDefinition::setSpoutOutputName(const std::string& spoutOutputName)
-{
-	if (m_spoutOutputName != spoutOutputName)
-	{
-		m_spoutOutputName= spoutOutputName;
-		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_spoutOutputNamePropertyId));
 	}
 }
 
@@ -443,7 +411,6 @@ void CompositorComponent::update(float deltaSeconds)
 	updateVideoSourceStreaming();
 
 	// Update the output streaming state in case it changed while we were stopped
-	updateOutputStreaming();
 	updateRtpOutputStreaming();
 	if (m_rtpOutput)
 	{
@@ -630,18 +597,10 @@ void CompositorComponent::evaluateCompositorNodeGraph(CompositorNodeGraphPtr nod
 
 	if (nodeGraph->compositeFrame(evaluator))
 	{
-		// Publish the composited frame to Spout if streaming is enabled
-		if (getIsOutputStreaming())
+		// The current scene's compositor feeds every enabled project output
+		if (m_bOutputStreamingAllowed)
 		{
-			IMkTexturePtr frameTexture= getCompositedFrameTextureMutable();
-
-			if (frameTexture != nullptr && m_renderTargetWriteAccessor->getIsInitialized())
-			{
-				// Get the raw pointer to the underlying graphics API specific texture resource
-				void* platformTexturePtr= frameTexture->getPlatformTexture();
-
-				m_renderTargetWriteAccessor->writeColorFrameTexture(platformTexturePtr);
-			}
+			OutputQueries::writeFrameToOutputs(getOwnerProjectManager(), getCompositedFrameTextureMutable());
 		}
 
 		if (getIsRtpOutputStreaming())
@@ -741,72 +700,6 @@ void CompositorComponent::startVideoSourceStreaming(VideoSourceComponentPtr vide
 
 	// Register the view as a stream consumer — VideoSourceComponent::update() drives the retry loop
 	videoSource->startVideoStream(m_videoDistortionView.get());
-}
-
-void CompositorComponent::updateOutputStreaming()
-{
-	CompositorDefinitionConstPtr definition= getCompositorDefinition();
-	const bool bWantsOutput= m_bOutputStreamingAllowed && definition->getIsSpoutOutputStreaming()
-							 && !definition->getSpoutOutputName().empty();
-	const bool bIsStreaming= getIsOutputStreaming();
-
-	// Create the Spout sender if we don't have one already but want to stream
-	if (bWantsOutput && !bIsStreaming)
-	{
-		startOutputStreaming();
-	}
-	// Stop streaming if we are currently streaming but don't want to anymore
-	else if (!bWantsOutput && bIsStreaming)
-	{
-		stopOutputStreaming();
-	}
-}
-
-bool CompositorComponent::startOutputStreaming()
-{
-	// If we are already streaming, do nothing
-	if (getIsOutputStreaming())
-		return true;
-
-	// Make sure we have a valid texture to stream
-	const std::string& spoutOutputName= getCompositorDefinition()->getSpoutOutputName();
-	if (spoutOutputName.empty())
-		return false;
-
-	IMkTextureConstPtr compositorTexture= getCompositedFrameTexture();
-	if (compositorTexture == nullptr)
-		return false;
-
-	// Compositing buffer should always be RGBA 32BPP
-	// Spout can only support RGBA32 and BGRA32
-	assert(compositorTexture->getBufferFormat() == MK_RGBA);
-
-	SharedTextureDescriptor sharedTextureDescriptor;
-	sharedTextureDescriptor.color_buffer_type= SharedColorBufferType::RGBA32;
-	sharedTextureDescriptor.depth_buffer_type= SharedDepthBufferType::NODEPTH;
-	sharedTextureDescriptor.width= compositorTexture->getTextureWidth();
-	sharedTextureDescriptor.height= compositorTexture->getTextureHeight();
-	sharedTextureDescriptor.graphicsAPI= SharedClientGraphicsApi::OpenGL;
-
-	// Setup render target write accessor
-	m_renderTargetWriteAccessor= createSharedTextureWriteAccessor(spoutOutputName, INVALID_MIKAN_ID);
-	m_renderTargetWriteAccessor->initialize(&sharedTextureDescriptor, true, nullptr);
-
-	return true;
-}
-
-bool CompositorComponent::getIsOutputStreaming() const
-{
-	return m_renderTargetWriteAccessor && m_renderTargetWriteAccessor->getIsInitialized();
-}
-
-void CompositorComponent::stopOutputStreaming()
-{
-	if (m_renderTargetWriteAccessor)
-	{
-		m_renderTargetWriteAccessor->dispose();
-		m_renderTargetWriteAccessor= nullptr;
-	}
 }
 
 void CompositorComponent::updateRtpOutputStreaming()
@@ -974,13 +867,23 @@ void CompositorComponent::stop()
 	m_bIsRunning= false;
 
 	stopVideoSourceStreaming();
-	stopOutputStreaming();
 	stopRtpOutputStreaming();
 	m_bHasRtpClientFeeds= false;
 
 	m_lastPublishedCameraProperties.reset();
 	if (bWasRunning)
 		publishCompositorLifecycleEvent(false);
+
+	// The publisher going away without another taking over leaves the project
+	// outputs with nothing to carry, so their senders close. A scene switch
+	// revokes this compositor's grant before stopping it, so the senders stay
+	// open for the next scene's compositor.
+	if (bWasRunning && m_bOutputStreamingAllowed)
+	{
+		CompositorObjectSystemPtr ownerSystem= getOwnerObjectSystem();
+		if (ownerSystem)
+			ownerSystem->closeOutputsIfNothingPublishes();
+	}
 }
 
 // -- Client notification ----
@@ -1167,17 +1070,6 @@ void CompositorComponent::handleCompositorNodeGraphChanged(const std::filesystem
 void CompositorComponent::onDefinitionChanged(CommonConfigPtr configPtr,
 											  const ConfigPropertyChangeSet& changedPropertySet)
 {
-	if (changedPropertySet.hasPropertyName(CompositorDefinition::k_spoutEnableOutputNamePropertyId))
-	{
-		stopOutputStreaming();
-		updateOutputStreaming();
-	}
-
-	if (changedPropertySet.hasPropertyName(CompositorDefinition::k_spoutOutputNamePropertyId))
-	{
-		updateOutputStreaming();
-	}
-
 	// Any RTP setting rebuilds the output, since the sender's caps are fixed at open and a
 	// rebuild is what clears a failed sender
 	if (changedPropertySet.hasPropertyName(CompositorDefinition::k_rtpEnableOutputPropertyId)
@@ -1207,10 +1099,6 @@ void CompositorComponent::getPropertyDescriptors(std::vector<PropertyDescriptorC
 																  MikanVariantType::STRING)
 								 ->addMetaData(std::make_shared<AssetReferenceFactoryMetaData>(
 									 AssetReferenceFactory::createFactory<CompositorGraphAssetReferenceFactory>())));
-	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(
-		CompositorDefinition::k_spoutEnableOutputNamePropertyId, MikanVariantType::BOOL));
-	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(CompositorDefinition::k_spoutOutputNamePropertyId,
-																  MikanVariantType::STRING));
 	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(CompositorDefinition::k_rtpEnableOutputPropertyId,
 																  MikanVariantType::BOOL));
 	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(CompositorDefinition::k_rtpOutputHostPropertyId,
@@ -1240,16 +1128,6 @@ bool CompositorComponent::getPropertyValue(const std::string& propertyName, Mika
 	else if (propertyName == CompositorDefinition::k_compositorGraphPathPropertyId)
 	{
 		outValue= getCompositorDefinition()->getCompositorGraphPath();
-		return true;
-	}
-	else if (propertyName == CompositorDefinition::k_spoutEnableOutputNamePropertyId)
-	{
-		outValue= getCompositorDefinition()->getIsSpoutOutputStreaming();
-		return true;
-	}
-	else if (propertyName == CompositorDefinition::k_spoutOutputNamePropertyId)
-	{
-		outValue= getCompositorDefinition()->getSpoutOutputName().c_str();
 		return true;
 	}
 	else if (propertyName == CompositorDefinition::k_rtpEnableOutputPropertyId)
@@ -1298,18 +1176,6 @@ bool CompositorComponent::setPropertyValue(const std::string& propertyName, cons
 		// Route through the asset-path setter so the live node graph
 		// rebuilds along with the definition
 		setCompositorGraphAssetPath(filePath);
-		return true;
-	}
-	else if (propertyName == CompositorDefinition::k_spoutEnableOutputNamePropertyId)
-	{
-		const bool bIsStreaming= inValue.getBoolValue();
-		getCompositorDefinition()->setIsSpoutOutputStreaming(bIsStreaming);
-		return true;
-	}
-	else if (propertyName == CompositorDefinition::k_spoutOutputNamePropertyId)
-	{
-		const std::string spoutOutputName= inValue.getUtf8Value();
-		getCompositorDefinition()->setSpoutOutputName(spoutOutputName);
 		return true;
 	}
 	else if (propertyName == CompositorDefinition::k_rtpEnableOutputPropertyId)
@@ -1390,10 +1256,6 @@ void CompositorComponent::bindLuaFunctions(struct lua_State* L)
 		.addProperty("ownerSceneId",
 					 [](CompositorComponent* c) -> int { return c->getCompositorDefinition()->getOwnerSceneId(); })
 		.addProperty("ownerStageId", [](CompositorComponent* c) -> int { return c->getOwnerStageId(); })
-		.addProperty(
-			"isSpoutOutputStreaming",
-			[](CompositorComponent* c) -> bool { return c->getCompositorDefinition()->getIsSpoutOutputStreaming(); },
-			[](CompositorComponent* c, bool v) { c->getCompositorDefinition()->setIsSpoutOutputStreaming(v); })
 		.addProperty(
 			"isRtpOutputStreaming",
 			[](CompositorComponent* c) -> bool { return c->getCompositorDefinition()->getIsRtpOutputStreaming(); },

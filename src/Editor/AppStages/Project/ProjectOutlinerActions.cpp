@@ -31,6 +31,7 @@
 #include "RGBSpotLightSystem.h"
 #include "SceneObjectSystem.h"
 #include "ScriptObjectSystem.h"
+#include "SpoutOutputSystem.h"
 #include "SpoutTextureSourceSystem.h"
 #include "StageObjectSystem.h"
 #include "TrackingMountComponent.h"
@@ -360,6 +361,12 @@ int addScript(ProjectManagerPtr projectManager)
 {
 	auto sys= projectManager->getSystemOfType<ScriptObjectSystem>();
 	return sys ? componentIdOrInvalid(sys->addNewScript()) : INVALID_MIKAN_ID;
+}
+
+int addSpoutOutput(ProjectManagerPtr projectManager)
+{
+	auto sys= projectManager->getSystemOfType<SpoutOutputSystem>();
+	return sys ? componentIdOrInvalid(sys->addNewObjectByTypedDefinition()) : INVALID_MIKAN_ID;
 }
 
 int countSubtreeObjects(ProjectOutlinerNodeConstPtr node)

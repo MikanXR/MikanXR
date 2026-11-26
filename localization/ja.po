@@ -4717,6 +4717,11 @@ msgid "Add Spot Light"
 msgstr "スポットライトを追加"
 
 #. Section: project
+msgctxt "project.outlinerAddSpoutOutput"
+msgid "Add Spout Output"
+msgstr ""
+
+#. Section: project
 #, fuzzy
 msgctxt "project.outlinerAddSpoutSource"
 msgid "Add Spout Texture Source"
@@ -4787,6 +4792,11 @@ msgstr "ライト"
 msgctxt "project.outlinerMarkersGroup"
 msgid "Markers"
 msgstr "マーカー"
+
+#. Section: project
+msgctxt "project.outlinerOutputsGroup"
+msgid "Outputs"
+msgstr ""
 
 #. Section: project
 #, fuzzy
@@ -5519,6 +5529,11 @@ msgid "Duration (s)"
 msgstr "長さ (秒)"
 
 #. Section: properties
+msgctxt "properties.enabled"
+msgid "Enabled"
+msgstr ""
+
+#. Section: properties
 #, fuzzy
 msgctxt "properties.exposure_scale"
 msgid "Exposure Scale"
@@ -5884,12 +5899,6 @@ msgstr "ソケット名"
 msgctxt "properties.socket_names"
 msgid "Socket Names"
 msgstr "ソケット名の一覧"
-
-#. Section: properties
-#, fuzzy
-msgctxt "properties.spout_enable_output"
-msgid "Enable Spout Output"
-msgstr "Spout 出力を有効化"
 
 #. Section: properties
 #, fuzzy
@@ -7143,6 +7152,11 @@ msgstr "カメラを選択"
 #~ msgctxt "properties.dmx_channel_count"
 #~ msgid "DMX Channel Count"
 #~ msgstr "DMX チャンネル数"
+
+#, fuzzy
+#~ msgctxt "properties.spout_enable_output"
+#~ msgid "Enable Spout Output"
+#~ msgstr "Spout 出力を有効化"
 
 #, fuzzy
 #~ msgctxt "windows.addCompositor"

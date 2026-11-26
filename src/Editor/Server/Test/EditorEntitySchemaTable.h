@@ -19,6 +19,7 @@
 #include "MikanEditorTypes.h"
 #include "MikanLightTypes.h"
 #include "MikanMarkerTypes.h"
+#include "MikanOutputTypes.h"
 #include "MikanSceneTypes.h"
 #include "MikanShapeTypes.h"
 #include "MikanStageTypes.h"
@@ -66,6 +67,7 @@
 #include "Stencil/StencilComponent.h"
 #include "TextureSource/CEFTextureSourceComponent.h"
 #include "TextureSource/ClientTextureSourceComponent.h"
+#include "Output/SpoutOutputComponent.h"
 #include "TextureSource/SpoutTextureSourceComponent.h"
 #include "TextureSource/TextureSourceComponent.h"
 #include "TrackingMount/TrackingMountComponent.h"
@@ -128,6 +130,8 @@ inline const SchemaTestEntry k_schemaTestEntries[]= {
 	SCHEMA_ENTRY(StencilComponent, MikanStencilComponentValues),
 	SCHEMA_ENTRY(CEFTextureSourceComponent, MikanCEFTextureSourceValues),
 	SCHEMA_ENTRY(ClientTextureSourceComponent, MikanClientTextureSourceValues),
+	SCHEMA_ENTRY(OutputComponent, MikanOutputComponentValues),
+	SCHEMA_ENTRY(SpoutOutputComponent, MikanSpoutOutputComponentValues),
 	SCHEMA_ENTRY(SpoutTextureSourceComponent, MikanSpoutTextureSourceValues),
 	SCHEMA_ENTRY(TextureSourceComponent, MikanTextureSourceValues),
 	SCHEMA_ENTRY(TrackingMountComponent, MikanTrackingMountComponentValues),

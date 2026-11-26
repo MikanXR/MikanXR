@@ -2,6 +2,7 @@
 #include "CompositorComponent.h"
 #include "ComponentNaming.h"
 #include "Logger.h"
+#include "ProjectConfigConstants.h"
 #include "SceneComponent.h"
 
 #include <configuru.hpp>
@@ -39,6 +40,11 @@ const char* const k_cameraStageIdKey= "stage_id";
 const char* const k_lightEnvironmentSystemKey= "LightEnvironmentSystem";
 const char* const k_lightEnvironmentPoolKey= "LightEnvironmentComponentPool";
 const char* const k_lightEnvironmentIdKey= "light_environment_id";
+const char* const k_spoutOutputSystemKey= "SpoutOutputSystem";
+const char* const k_spoutOutputPoolKey= "SpoutOutputComponentPool";
+const char* const k_spoutEnableOutputKey= "spout_enable_output";
+const char* const k_spoutOutputNameKey= "spout_output_name";
+const char* const k_enabledKey= "enabled";
 
 const int k_invalidId= -1;
 
@@ -252,27 +258,75 @@ bool migrateLightingProbes(configuru::Config& projectJson, configuru::Config& sc
 
 	return bChanged;
 }
-} // namespace
-
-bool migrateProjectJson(configuru::Config& projectJson, Report& outReport)
+// Moves the Spout output settings each compositor carried onto project outputs,
+// one per sender name, and gives a project that has no output system yet its
+// default output. Returns true when anything changed.
+bool migrateSpoutOutputs(configuru::Config& projectJson, int& inOutNextId)
 {
-	if (!projectJson.is_object())
-		return false;
-
-	const bool bHasScenes= hasDefinitions(projectJson, k_sceneSystemKey, k_scenePoolKey);
-	const bool bHasCompositors= hasDefinitions(projectJson, k_compositorSystemKey, k_compositorPoolKey);
-	if (!bHasScenes && !bHasCompositors)
-		return false;
-
+	struct SpoutSettings
+	{
+		std::string name;
+		bool bEnabled;
+	};
+	std::vector<SpoutSettings> foundSettings;
 	bool bChanged= false;
 
-	int maxComponentId= k_invalidId;
-	findMaxComponentId(projectJson, maxComponentId);
-	const int savedNextId= projectJson.has_key(k_idAllocatorKey)
-							   ? projectJson[k_idAllocatorKey].get_or<int>(k_nextIdKey, k_invalidId)
-							   : k_invalidId;
-	const int firstNewId= std::max(savedNextId, maxComponentId + 1);
-	int nextId= firstNewId;
+	if (hasDefinitions(projectJson, k_compositorSystemKey, k_compositorPoolKey))
+	{
+		for (configuru::Config& compositor :
+			 projectJson[k_compositorSystemKey][k_compositorPoolKey][k_definitionsKey].as_array())
+		{
+			if (!compositor.has_key(k_spoutOutputNameKey) && !compositor.has_key(k_spoutEnableOutputKey))
+				continue;
+
+			std::string name= compositor.get_or<std::string>(k_spoutOutputNameKey, "");
+			if (name.empty())
+				name= DEFAULT_SPOUT_OUTPUT_NAME;
+			const bool bEnabled= compositor.get_or<bool>(k_spoutEnableOutputKey, false);
+
+			// Compositors that shared a sender name share one output, enabled when
+			// any of them published under it
+			auto found_it= std::find_if(foundSettings.begin(), foundSettings.end(),
+										[&name](const SpoutSettings& settings) { return settings.name == name; });
+			if (found_it != foundSettings.end())
+				found_it->bEnabled|= bEnabled;
+			else
+				foundSettings.push_back({name, bEnabled});
+
+			compositor.erase(k_spoutOutputNameKey);
+			compositor.erase(k_spoutEnableOutputKey);
+			bChanged= true;
+		}
+	}
+
+	// A project that already has the output system keeps the outputs it has
+	if (projectJson.has_key(k_spoutOutputSystemKey))
+		return bChanged;
+
+	if (foundSettings.empty())
+		foundSettings.push_back({DEFAULT_SPOUT_OUTPUT_NAME, true});
+
+	configuru::Config& outputs= ensureDefinitions(projectJson, k_spoutOutputSystemKey, k_spoutOutputPoolKey);
+	for (const SpoutSettings& settings : foundSettings)
+	{
+		configuru::Config output= configuru::Config::object();
+		output[k_componentIdKey]= inOutNextId++;
+		output[k_componentNameKey]= "OUT_" + settings.name;
+		output[k_enabledKey]= settings.bEnabled;
+		output[k_spoutOutputNameKey]= settings.name;
+		outputs.push_back(output);
+
+		MIKAN_LOG_INFO("ProjectHierarchyMigration") << "Added Spout output '" << settings.name << "'";
+	}
+
+	return true;
+}
+
+// One compositor per scene, the camera and the lighting probe on the scene.
+// Returns true when anything changed.
+bool migrateSceneHierarchy(configuru::Config& projectJson, int& nextId, Report& outReport)
+{
+	bool bChanged= false;
 
 	configuru::Config& scenes= ensureDefinitions(projectJson, k_sceneSystemKey, k_scenePoolKey);
 	configuru::Config& compositors= ensureDefinitions(projectJson, k_compositorSystemKey, k_compositorPoolKey);
@@ -398,6 +452,31 @@ bool migrateProjectJson(configuru::Config& projectJson, Report& outReport)
 
 	// The lighting probes follow, once every scene knows its camera
 	bChanged|= migrateLightingProbes(projectJson, scenes, outReport);
+
+	return bChanged;
+}
+} // namespace
+
+bool migrateProjectJson(configuru::Config& projectJson, Report& outReport)
+{
+	if (!projectJson.is_object())
+		return false;
+
+	int maxComponentId= k_invalidId;
+	findMaxComponentId(projectJson, maxComponentId);
+	const int savedNextId= projectJson.has_key(k_idAllocatorKey)
+							   ? projectJson[k_idAllocatorKey].get_or<int>(k_nextIdKey, k_invalidId)
+							   : k_invalidId;
+	const int firstNewId= std::max(savedNextId, maxComponentId + 1);
+	int nextId= firstNewId;
+
+	bool bChanged= false;
+	if (hasDefinitions(projectJson, k_sceneSystemKey, k_scenePoolKey)
+		|| hasDefinitions(projectJson, k_compositorSystemKey, k_compositorPoolKey))
+	{
+		bChanged|= migrateSceneHierarchy(projectJson, nextId, outReport);
+	}
+	bChanged|= migrateSpoutOutputs(projectJson, nextId);
 
 	// The saved counter moves only when an id was handed out
 	if (nextId != firstNewId)

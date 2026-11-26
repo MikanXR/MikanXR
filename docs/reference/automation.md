@@ -362,7 +362,7 @@ Mutations and undo/redo run inside the node editor window's next update (its GL 
 ```
 python tools/automate.py "app info"
 python tools/automate.py "app resume" sleep:1 "screenshot compositor"
-python tools/automate.py "property get CompositorObjectSystem 1051 spout_output_name"
+python tools/automate.py "property get SpoutOutputSystem 2230 spout_output_name"
 ```
 
 Three arguments run client-side instead of being sent:

@@ -29,6 +29,7 @@
 #include "SceneObjectSystem.h"
 #include "ScriptObjectSystem.h"
 #include "StageObjectSystem.h"
+#include "SpoutOutputSystem.h"
 #include "SpoutTextureSourceSystem.h"
 #include "CEFTextureSourceSystem.h"
 #include "StringUtils.h"
@@ -102,6 +103,8 @@ ProjectConfig::ProjectConfig(const std::string& fnamebase)
 		addTypedDefinition<DMXSequenceSystemDefinition, DMXSequenceSystem>(persistentIDAllocator);
 	lightEnvironmentSystemDefinition=
 		addTypedDefinition<LightEnvironmentSystemDefinition, LightEnvironmentSystem>(persistentIDAllocator);
+	spoutOutputSystemDefinition=
+		addTypedDefinition<SpoutOutputSystemDefinition, SpoutOutputSystem>(persistentIDAllocator);
 	scriptSystemDefinition= addTypedDefinition<ScriptObjectSystemDefinition, ScriptObjectSystem>(persistentIDAllocator);
 
 	// Create object system definitions for the runtime only components, using the transient ID allocator

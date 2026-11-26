@@ -64,6 +64,8 @@ public:
 	void setActiveCompositors(const std::vector<MikanCompositorID>& activeCompositorIdList);
 	// Starts and stops compositors to match the scene list plus the editor holds
 	void refreshRunningCompositors();
+	// Closes the project outputs' senders when no running compositor may publish
+	void closeOutputsIfNothingPublishes();
 	MulticastDelegate<void(CompositorComponentPtr oldCompositor)> OnCompositorDeactivated;
 	MulticastDelegate<void(CompositorComponentPtr newCompositor)> OnCompositorActivated;
 

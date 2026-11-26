@@ -33,6 +33,7 @@ int addAnchor(ProjectManagerPtr projectManager, int parentTransformId);
 int addStencil(ProjectManagerPtr projectManager, eStencilType stencilType, int parentTransformId);
 int addShape(ProjectManagerPtr projectManager, eShapeType shapeType, int parentTransformId);
 int addScript(ProjectManagerPtr projectManager);
+int addSpoutOutput(ProjectManagerPtr projectManager);
 
 // Number of objects a cascade delete of this node would remove
 int countSubtreeObjects(ProjectOutlinerNodeConstPtr node);

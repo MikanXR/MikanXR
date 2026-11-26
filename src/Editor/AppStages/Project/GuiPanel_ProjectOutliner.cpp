@@ -62,12 +62,14 @@
 #include "Shared/GuiPanel_SceneComponent.h"
 #include "Shared/GuiPanel_ScriptComponent.h"
 #include "Shared/GuiPanel_ShapeComponent.h"
+#include "Shared/GuiPanel_SpoutOutputComponent.h"
 #include "Shared/GuiPanel_SpoutTextureSourceComponent.h"
 #include "Shared/GuiPanel_StageComponent.h"
 #include "Shared/GuiPanel_StencilComponent.h"
 #include "Shared/GuiPanel_TrackingMountComponent.h"
 #include "Shared/GuiPanel_USBVideoSourceComponent.h"
 #include "Shared/GuiPanel_VRTrackingVolumeComponent.h"
+#include "SpoutOutputComponent.h"
 #include "SpoutTextureSourceComponent.h"
 #include "StageComponent.h"
 #include "TrackingMountComponent.h"
@@ -281,7 +283,7 @@ void GuiPanel_ProjectOutliner::drawNode(ProjectOutlinerNodePtr node)
 		|| node->kind == eOutlinerNodeKind::folderMarkers || node->kind == eOutlinerNodeKind::folderTrackingVolumes
 		|| node->kind == eOutlinerNodeKind::folderCameras || node->kind == eOutlinerNodeKind::folderLights
 		|| node->kind == eOutlinerNodeKind::folderLightGroups || node->kind == eOutlinerNodeKind::folderScenes
-		|| node->kind == eOutlinerNodeKind::folderScripts;
+		|| node->kind == eOutlinerNodeKind::folderScripts || node->kind == eOutlinerNodeKind::folderOutputs;
 	const bool bIsSelected= (node->componentId != INVALID_MIKAN_ID && node->componentId == m_selectedComponentId)
 							|| (bIsSyntheticSelectable && m_selectedComponentId == INVALID_MIKAN_ID
 								&& node->kind == m_selectedKind && node->ownerId == m_selectedOwnerId);
@@ -446,6 +448,10 @@ void GuiPanel_ProjectOutliner::drawSelectedNodeActions(ProjectOutlinerNodePtr se
 	case eOutlinerNodeKind::folderScripts:
 		if (drawAddButton("outlinerAddScript", ICON_FK_FILE_CODE_O, "project.outlinerAddScript"))
 			deferAddAction([](ProjectManagerPtr pm) { return ProjectOutlinerActions::addScript(pm); });
+		break;
+	case eOutlinerNodeKind::folderOutputs:
+		if (drawAddButton("outlinerAddSpoutOutput", ICON_FK_SIGN_OUT, "project.outlinerAddSpoutOutput"))
+			deferAddAction([](ProjectManagerPtr pm) { return ProjectOutlinerActions::addSpoutOutput(pm); });
 		break;
 	case eOutlinerNodeKind::trackingVolume:
 	{
@@ -810,6 +816,8 @@ GuiPanel_MikanComponent* GuiPanel_ProjectOutliner::getPanelForComponentClass(
 		return m_context->getModelShapePanel();
 	if (componentClassName == ScriptComponent::k_componentClassName)
 		return m_context->getScriptPanel();
+	if (componentClassName == SpoutOutputComponent::k_componentClassName)
+		return m_context->getSpoutOutputPanel();
 
 	return nullptr;
 }
@@ -845,6 +853,7 @@ void GuiPanel_ProjectOutliner::clearComponentPanels()
 	m_context->getBoxShapePanel()->setComponent(nullptr);
 	m_context->getModelShapePanel()->setComponent(nullptr);
 	m_context->getScriptPanel()->setComponent(nullptr);
+	m_context->getSpoutOutputPanel()->setComponent(nullptr);
 }
 
 void GuiPanel_ProjectOutliner::drawComponentPanelForNode(ProjectOutlinerNodePtr node)

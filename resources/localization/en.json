@@ -2,9 +2,9 @@
 	"_meta": {
 		"code": "en",
 		"nativeName": "English",
-		"stringCount": 1205,
-		"translatedCount": 1205,
-		"reviewedCount": 1205
+		"stringCount": 1207,
+		"translatedCount": 1207,
+		"reviewedCount": 1207
 	},
 	"CEFTextureSourceComponent": {
 		"show_texture_source_settings": "Show Browser Window"
@@ -879,6 +879,7 @@
 		"outlinerAddScript": "Add Script",
 		"outlinerAddSequence": "Add Sequence",
 		"outlinerAddSpotLight": "Add Spot Light",
+		"outlinerAddSpoutOutput": "Add Spout Output",
 		"outlinerAddSpoutSource": "Add Spout Texture Source",
 		"outlinerAddStage": "Add Stage",
 		"outlinerAddUSBSource": "Add USB Video Source",
@@ -891,6 +892,7 @@
 		"outlinerLightGroupsGroup": "Light Groups",
 		"outlinerLightsGroup": "Lights",
 		"outlinerMarkersGroup": "Markers",
+		"outlinerOutputsGroup": "Outputs",
 		"outlinerRoot": "Project",
 		"outlinerScenesGroup": "Scenes",
 		"outlinerScriptsGroup": "Scripts",
@@ -1016,6 +1018,7 @@
 		"dmx_start_channel": "DMX Start Channel",
 		"dmx_universe": "DMX Universe",
 		"duration_seconds": "Duration (s)",
+		"enabled": "Enabled",
 		"exposure_scale": "Exposure Scale",
 		"focus_distance": "Focus Distance (m)",
 		"font_path": "Font",
@@ -1080,7 +1083,6 @@
 		"shape_graph_path": "Shape Graph Path",
 		"socket_name": "Socket Name",
 		"socket_names": "Socket Names",
-		"spout_enable_output": "Enable Spout Output",
 		"spout_output_name": "Spout Output Name",
 		"spout_source": "Spout Source",
 		"sprite_fps": "Sprite Frame Rate",

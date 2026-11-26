@@ -118,7 +118,7 @@ Subdirectories (each is a source group, not a separate target):
 
 - `Delegates`: header-only `SinglecastDelegate`/`MulticastDelegate`.
 
-- `ECS` holds the entity/component scene representation, one folder per object system: `Anchor`, `Camera`, `Collision`, `Compositor`, `Editor`, `Light`, `Marker`, `Scene`, `Script`, `Shape`, `Stage`, `Stencil`, `TextureSource`, `TrackingMount`, `TrackingVolume`, `VideoSource`, `VRObject`. Device-backed systems here load the plugins. See [objects.md](./objects.md) and [compositor.md](./compositor.md).
+- `ECS` holds the entity/component scene representation, one folder per object system: `Anchor`, `Camera`, `Collision`, `Compositor`, `Editor`, `Light`, `Marker`, `Output`, `Scene`, `Script`, `Shape`, `Stage`, `Stencil`, `TextureSource`, `TrackingMount`, `TrackingVolume`, `VideoSource`, `VRObject`. Device-backed systems here load the plugins. See [objects.md](./objects.md) and [compositor.md](./compositor.md).
 
 - `Events`: `EventBus`.
 

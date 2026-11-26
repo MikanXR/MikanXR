@@ -1,6 +1,7 @@
 #include "App.h"
 #include "MikanObject.h"
 #include "MikanPropertyDatabase.h"
+#include "OutputQueries.h"
 #include "CompositorComponent.h"
 #include "CompositorObjectSystem.h"
 #include "ProjectConfig.h"
@@ -123,6 +124,20 @@ void CompositorObjectSystem::refreshRunningCompositors()
 			}
 		}
 	}
+
+	closeOutputsIfNothingPublishes();
+}
+
+void CompositorObjectSystem::closeOutputsIfNothingPublishes()
+{
+	for (const auto& compositorPair : Super::getComponentMap())
+	{
+		CompositorComponentPtr compositor= compositorPair.second.lock();
+		if (compositor && compositor->getIsRunning() && compositor->getIsOutputStreamingAllowed())
+			return;
+	}
+
+	OutputQueries::closeOutputs(getOwnerProjectManager());
 }
 // -- Lua Binding ----
 void CompositorObjectSystem::bindLuaFunctions(struct lua_State* L)

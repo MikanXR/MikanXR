@@ -24,6 +24,7 @@
 #include "LegacyTakeMigration.h"
 #include "SceneObjectSystem.h"
 #include "ScriptObjectSystem.h"
+#include "SpoutOutputSystem.h"
 #include "SpoutTextureSourceSystem.h"
 #include "CEFTextureSourceSystem.h"
 #include "BoxShapeSystem.h"
@@ -103,6 +104,7 @@ bool ProjectManager::startup(MainWindow* mainWindow)
 	addSystem<DMXFixtureGroupSystem>();
 	addSystem<DMXPresetSystem>();
 	addSystem<LightEnvironmentSystem>();
+	addSystem<SpoutOutputSystem>();
 	// Last: scripts look up the other systems' objects by name when they load
 	addSystem<ScriptObjectSystem>();
 
@@ -229,7 +231,15 @@ bool ProjectManager::newProject(const std::string& projectFilePath)
 	auto newProjectConfig= createEmptyProjectConfig();
 	newProjectConfig->save(projectFilePath);
 
-	return loadProject(projectFilePath);
+	if (!loadProject(projectFilePath))
+		return false;
+
+	// Every project starts with one Spout output, so a first scene is published
+	// without the user having to go and add one
+	getSystemOfType<SpoutOutputSystem>()->addNewObjectByTypedDefinition();
+	saveProject(projectFilePath);
+
+	return true;
 }
 
 // Every asset folder the catalog knows exists in a loaded project, empty when the

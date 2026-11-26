@@ -2,8 +2,8 @@
 	"_meta": {
 		"code": "ja",
 		"nativeName": "日本語",
-		"stringCount": 1205,
-		"translatedCount": 872,
+		"stringCount": 1207,
+		"translatedCount": 871,
 		"reviewedCount": 1
 	},
 	"CEFTextureSourceComponent": {
@@ -879,6 +879,7 @@
 		"outlinerAddScript": "スクリプトを追加",
 		"outlinerAddSequence": "シーケンスを追加",
 		"outlinerAddSpotLight": "スポットライトを追加",
+		"outlinerAddSpoutOutput": "Add Spout Output",
 		"outlinerAddSpoutSource": "Spoutテクスチャソースを追加",
 		"outlinerAddStage": "ステージを追加",
 		"outlinerAddUSBSource": "USB映像ソースを追加",
@@ -891,6 +892,7 @@
 		"outlinerLightGroupsGroup": "ライトグループ",
 		"outlinerLightsGroup": "ライト",
 		"outlinerMarkersGroup": "マーカー",
+		"outlinerOutputsGroup": "Outputs",
 		"outlinerRoot": "プロジェクト",
 		"outlinerScenesGroup": "シーン",
 		"outlinerScriptsGroup": "スクリプト",
@@ -1016,6 +1018,7 @@
 		"dmx_start_channel": "DMX 開始チャンネル",
 		"dmx_universe": "DMX ユニバース",
 		"duration_seconds": "長さ (秒)",
+		"enabled": "Enabled",
 		"exposure_scale": "露出スケール",
 		"focus_distance": "Focus Distance (m)",
 		"font_path": "フォント",
@@ -1080,7 +1083,6 @@
 		"shape_graph_path": "シェイプグラフのパス",
 		"socket_name": "ソケット名",
 		"socket_names": "ソケット名の一覧",
-		"spout_enable_output": "Spout 出力を有効化",
 		"spout_output_name": "Spout 出力名",
 		"spout_source": "Spout ソース",
 		"sprite_fps": "スプライトフレームレート",
