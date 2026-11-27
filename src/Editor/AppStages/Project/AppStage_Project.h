@@ -152,6 +152,7 @@ protected:
 	class GuiPanel_SceneList* m_sceneListPanel= nullptr;
 	class GuiPanel_CompositorOutput* m_compositorOutputPanel= nullptr;
 	class GuiPanel_Assets* m_assetsPanel= nullptr;
+	class GuiPanel_Pipeline* m_pipelinePanel= nullptr;
 	eProjectViewMode m_viewMode= eProjectViewMode::INVALID;
 	// Window visibility, driven by the View menu (session-only)
 	bool m_bSceneViewVisible= true;
@@ -161,6 +162,7 @@ protected:
 	bool m_bSceneListVisible= true;
 	bool m_bCompositorOutputVisible= true;
 	bool m_bAssetsPanelVisible= true;
+	bool m_bPipelineVisible= true;
 	bool m_bDMXPanelVisible= false;
 	bool m_bShowLogPanel= true;
 	bool m_bShowIdStackTool= false; // localization diagnostic, off by default

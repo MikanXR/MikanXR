@@ -29,6 +29,7 @@
 #include "MikanShaderConfig.h"
 #include "MkGuiContext.h"
 #include "PathUtils.h"
+#include "Project/ProjectPipelineGather.h"
 #include "ProjectConfig.h"
 #include "ProjectManager.h"
 #include "PropertyDatabaseEnumerator.h"
@@ -591,6 +592,11 @@ void AutomationServer::registerCoreNamespaces()
 
 	registerCommandNamespace("client", {"client stats"},
 							 std::bind(&AutomationServer::handleClientCommand, this, _1, _2, _3));
+
+	registerCommandNamespace("pipeline",
+							 {"pipeline stages", "pipeline status <id>", "pipeline select <id>|none",
+							  "pipeline selected", "pipeline tool <id>"},
+							 std::bind(&AutomationServer::handlePipelineCommand, this, _1, _2, _3));
 
 	registerCommandNamespace("nodegraph",
 							 {"nodegraph open [compositorComponentId]",
@@ -2337,6 +2343,90 @@ bool AutomationServer::handleClientCommand(const std::vector<std::string>& args,
 												  " last_frame=", clientSource->frameIndex, " ring_misses=", ringMisses,
 												  " publishes=", clientSource->publishCount));
 	}
+
+	return true;
+}
+
+bool AutomationServer::handlePipelineCommand(const std::vector<std::string>& args, std::vector<std::string>& outLines,
+											 std::string& outError)
+{
+	const bool bIsStages= args.size() == 1 && args[0] == "stages";
+	const bool bIsStatus= args.size() == 2 && args[0] == "status";
+	const bool bIsSelect= args.size() == 2 && args[0] == "select";
+	const bool bIsSelected= args.size() == 1 && args[0] == "selected";
+	const bool bIsTool= args.size() == 2 && args[0] == "tool";
+	if (!bIsStages && !bIsStatus && !bIsSelect && !bIsSelected && !bIsTool)
+	{
+		outError= "usage: pipeline stages | pipeline status <id> | pipeline select <id>|none | pipeline selected | "
+				  "pipeline tool <id>";
+		return false;
+	}
+
+	// The selection is the panel's, so these verbs go to the stage that owns it
+	if (bIsSelect || bIsSelected || bIsTool)
+	{
+		AppStage* currentAppStage= m_mainWindow->getCurrentAppStage();
+		std::vector<std::string> results;
+		if (bIsTool)
+		{
+			if (currentAppStage == nullptr
+				|| !currentAppStage->handleRemoteControlCommand("pipeline_tool", {args[1]}, results))
+			{
+				outError= "unknown pipeline node or no tool '" + args[1] + "'";
+				return false;
+			}
+			outLines.push_back("invoked");
+			return true;
+		}
+		if (bIsSelect)
+		{
+			if (currentAppStage == nullptr
+				|| !currentAppStage->handleRemoteControlCommand("pipeline_select", {args[1]}, results))
+			{
+				outError= "unknown pipeline node '" + args[1] + "'";
+				return false;
+			}
+			outLines.push_back("selected");
+			return true;
+		}
+
+		if (currentAppStage == nullptr
+			|| !currentAppStage->handleRemoteControlCommand("pipeline_selected", {}, results))
+		{
+			outError= "no pipeline panel";
+			return false;
+		}
+		outLines.push_back(results.empty() ? "none" : results[0]);
+		return true;
+	}
+
+	const PipelineSnapshot snapshot=
+		gatherProjectPipeline(m_mainWindow->getProjectManager(), m_mainWindow->getClientSourceManager());
+	auto formatNodeLine= [&snapshot](int nodeIndex)
+	{
+		const PipelineStatus status= ProjectPipelineModel::computeStatus(snapshot, nodeIndex);
+		return StringUtils::stringify(snapshot.nodes[nodeIndex].id, " ",
+									  ProjectPipelineModel::getStateName(status.state), " | ",
+									  formatPipelineText(status.value), " | ", formatPipelineText(status.reason));
+	};
+
+	if (bIsStatus)
+	{
+		const int nodeIndex= ProjectPipelineModel::findNodeById(snapshot, args[1]);
+		if (nodeIndex < 0)
+		{
+			outError= "unknown pipeline node '" + args[1] + "'";
+			return false;
+		}
+		outLines.push_back(formatNodeLine(nodeIndex));
+		return true;
+	}
+
+	const int sceneIndex= ProjectPipelineModel::findNodeById(snapshot, "scene");
+	const bool bHasSceneId= snapshot.bHasCurrentScene && sceneIndex >= 0;
+	outLines.push_back("scene " + (bHasSceneId ? std::to_string(snapshot.nodes[sceneIndex].componentId) : "none"));
+	for (int nodeIndex= 0; nodeIndex < (int)snapshot.nodes.size(); ++nodeIndex)
+		outLines.push_back(formatNodeLine(nodeIndex));
 
 	return true;
 }

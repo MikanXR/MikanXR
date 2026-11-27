@@ -182,6 +182,27 @@ One caveat worth knowing when a click seems to vanish: an ImGui window's capture
 
 `client stats` replies one line per connected client render target, `<clientId> camera=<id> publishes_per_sec=<rate> last_frame=<index> ring_misses=<count> publishes=<total>`. The rate is measured over the last completed one second window of `PublishCameraRenderTargetTextures` requests, so it reads the rate a client actually delivers frames at rather than the rate the composite appears to run at. Ring misses count composites that found no texture for their frame index ([compositor.md](./compositor.md)).
 
+### Pipeline status (pipeline)
+
+The chain that feeds the outputs from the current scene, as the Pipeline panel shows it. `stages` and `status` gather a fresh snapshot from the object systems, so their replies do not depend on the panel being open. `select`, `selected`, and `tool` act on the panel and need the project stage. Every node has a stable untranslated id: a stage's own name, a sub-stage box under it (`camera.video`, `volume.origin`), and a kind box's members with the component id appended (`compositor.stencils.1042`).
+
+- `pipeline stages` replies `scene <sceneId>`, or `scene none` with no current scene, then one line per node in snapshot order, `<id> <state> | <value> | <reason>`. The six stages come first, then each stage's boxes, each kind box ahead of its members. The state is the rolled-up one, where a degraded or missing child marks its parent:
+	- `running`
+	- `configured`
+	- `degraded`
+	- `not-configured`
+	- `inactive`
+
+- `pipeline status <id>` replies the one line for that node, and an unknown id is an error
+
+- `pipeline select <id>|none` selects that box in the Pipeline panel as a click would, opening the rows that hold it and selecting its component in the outliner on the next frame, and `none` clears the selection. An id the current chain does not hold is an error
+
+- `pipeline selected` replies the selected box's id, or `none`
+
+- `pipeline tool <id>` selects that box and runs its tool as a double-click would, replying `invoked`. The tool runs on the next frame, so a window it opens shows in `window list` after that. An unknown id or a box with no tool is an error
+
+The value and the reason are the panel's display text in the current language, and either is empty when the node has nothing to say.
+
 ### Log access (log)
 
 `log tail <lineCount> [minLevel]` replies the most recent log lines at or above the level, oldest first, from an in-process ring of the last 2000 lines. Levels are the logger's names:

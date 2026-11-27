@@ -8,6 +8,12 @@ The living plan: what is in flight now, what comes next, and the open questions.
 - [ ] Cursor feedback in the interactive browser window: `CefDisplayHandler::OnCursorChange` fires but nothing consumes it, so the pointer stays an arrow over links and text fields. Deferred because it needs a new `IMkWindowContext::setCursor` plus an SDL system-cursor cache, and because ImGui's SDL2 backend calls `SDL_SetCursor` from `ImGui_ImplSDL2_UpdateMouseCursor` every `NewFrame` and would immediately overwrite it. Doing it means toggling `ImGuiConfigFlags_NoMouseCursorChange` on that window's io while the pointer is over the page area.
 
 ## Next
+- [ ] Pipeline panel, the remaining signals ([pipeline.md](./reference/pipeline.md)). The strip, its model, selection both ways, the double-click tools, the `pipeline` automation namespace, the compositor graph walk and the Depth Mesh box are in.
+	- [ ] The return feed's destination count, which `RTPOutputSystem` collects per frame and does not keep, so a running Return Feed box cannot say how many clients take it
+	- [ ] `ColorTextureSourceNode` and `DepthTextureSourceNode` save a source they cannot resolve as -1, so any save or undo turns a Missing Source into an unassigned node, which feeds black and reads as nothing. Decide whether saving keeps the stored id and whether an unassigned node reads not configured
+	- [ ] A shape graph's texture source that no longer resolves reads as nothing rather than as Missing Source, since `GraphTextureSourceProperty` drops a name it cannot resolve on load
+	- [ ] Signals that need runtime work: a validity flag on a VR device pose, whether a marker volume sees its origin marker, and which writer last held a light group (a script's write is invisible)
+	- [ ] A pipeline status clients can read, so the phone can explain a black return feed
 - [ ] Marker alignment accuracy, [marker-alignment-accuracy.md](./proposals/marker-alignment-accuracy.md): a take's marker shot catches ARKit's world at one instant, millimetres from the world its mesh is averaged in.
 	- [ ] Phone guidance: the marker shot under 0.45 m, with the distance shown while framing
 	- [ ] Live alignment that follows the world's wander, decided after the take work lands

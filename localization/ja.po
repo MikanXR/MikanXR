@@ -4291,6 +4291,492 @@ msgctxt "occlusionMeshBuild.working"
 msgid "Working..."
 msgstr ""
 
+#. Section: pipeline
+msgctxt "pipeline.boxCamera"
+msgid "Camera"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxCameraMount"
+msgid "Tracking Mount"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxCompositor"
+msgid "Compositor"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxDepthMeshes"
+msgid "Depth Mesh"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxDmx"
+msgid "DMX"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxEnvironmentLight"
+msgid "Environment Light"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxFirstClientTextureSource"
+msgid "First Client"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxLensCalibration"
+msgid "Lens Calibration"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxLightGroups"
+msgid "Light Groups"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxLightingPreset"
+msgid "Lighting Preset"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxMatMount"
+msgid "Mat Mount"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxOriginMarker"
+msgid "Origin Marker"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxOutput"
+msgid "Output"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxReturnFeed"
+msgid "Return Feed"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxScene"
+msgid "Scene"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxShapes"
+msgid "Shapes"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxStage"
+msgid "Stage"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxSteamVR"
+msgid "SteamVR"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxStencils"
+msgid "Stencils"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxTextureSources"
+msgid "Texture Sources"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxTrackingMounts"
+msgid "Tracking Mounts"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxUngroupedLights"
+msgid "Ungrouped"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxUnresolvedTextureSource"
+msgid "Missing Source"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxVideoSource"
+msgid "Video Source"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.boxVolume"
+msgid "Volume"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.noMembers"
+msgid "Nothing here"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonBrowserLoading"
+msgid "The page is still loading"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonCompositorStopped"
+msgid "The compositor is not running"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonDeviceNotConnected"
+msgid "The mount's tracking device is not connected"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonDmxNotRunning"
+msgid "The DMX sender failed to start"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonEditorHeld"
+msgid "Running only for the graph editor, so it feeds no output"
+msgstr ""
+
+#. Section: pipeline
+#, c-format
+msgctxt "pipeline.reasonGraphErrorsFmt"
+msgid "The compositor graph reported %.0f errors on the last frame"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonLensResolutionMismatch"
+msgid "The lens calibration was made at another resolution"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonLensUncalibrated"
+msgid "The video source has no lens calibration"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonModelFailed"
+msgid "The model file did not load"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonNoBrowser"
+msgid "The browser did not start"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonNoCamera"
+msgid "The scene names no camera"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonNoCompositor"
+msgid "The scene has no compositor"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonNoCurrentScene"
+msgid "No scene is current, so nothing composites"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonNoDestination"
+msgid "The output has no destination"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonNoGraph"
+msgid "The compositor has no valid graph"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonNoOriginMarker"
+msgid "The tracking volume names no origin marker"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonNoStage"
+msgid "The scene is attached to no stage"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonNoVideoSource"
+msgid "The camera names no video source"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonNoVolume"
+msgid "The stage names no tracking volume"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonNotAssigned"
+msgid "Nothing is assigned here"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonNotCaptured"
+msgid "The scene lighting has not been captured"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonNotUsedByGraph"
+msgid "Not used by the compositor graph"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonRuntimeFailed"
+msgid "SteamVR failed to start"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonRuntimeNotRunning"
+msgid "SteamVR is not running"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonRuntimeStarting"
+msgid "SteamVR is starting"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonUnresolvedTextureSource"
+msgid "The compositor graph names a texture source the project does not have"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonVideoFailed"
+msgid "The video source failed to open"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonVideoStarting"
+msgid "The video source is starting"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonVideoStopped"
+msgid "The video source is stopped"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonWaitingForClient"
+msgid "Waiting for a client to connect and publish"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.reasonWaitingForSender"
+msgid "Waiting for the Spout sender"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.selectHint"
+msgid "Select a stage to see what it is made of"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.stateConfigured"
+msgid "Configured"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.stateDegraded"
+msgid "Degraded"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.stateInactive"
+msgid "Inactive"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.stateNotConfigured"
+msgid "Not configured"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.stateRunning"
+msgid "Running"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.toolHint"
+msgid "Double-click to open its tool"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueCalibrated"
+msgid "calibrated"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueConfigured"
+msgid "set"
+msgstr ""
+
+#. Section: pipeline
+#, c-format
+msgctxt "pipeline.valueCountFmt"
+msgid "%.0f"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueDark"
+msgid "dark"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueDisabled"
+msgid "disabled"
+msgstr ""
+
+#. Section: pipeline
+#, c-format
+msgctxt "pipeline.valueErrorsFmt"
+msgid "%.0f errors"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueFailed"
+msgid "failed"
+msgstr ""
+
+#. Section: pipeline
+#, c-format
+msgctxt "pipeline.valueFpsFmt"
+msgid "%.0f fps"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueIdle"
+msgid "idle"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueLoading"
+msgid "loading"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueMismatch"
+msgid "mismatch"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueMissing"
+msgid "missing"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueNoBrowser"
+msgid "no browser"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueNoDestination"
+msgid "no destination"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueNoDevice"
+msgid "no device"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueNoGraph"
+msgid "no graph"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueNone"
+msgid "none"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueNotCaptured"
+msgid "not captured"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueNotRunning"
+msgid "not running"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueOff"
+msgid "off"
+msgstr ""
+
+#. Section: pipeline
+#, c-format
+msgctxt "pipeline.valuePublishingFmt"
+msgid "%.0f publishing"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueReady"
+msgid "ready"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueReceiving"
+msgid "receiving"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueStarting"
+msgid "starting"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueStopped"
+msgid "stopped"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueStreaming"
+msgid "streaming"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueUncalibrated"
+msgid "uncalibrated"
+msgstr ""
+
+#. Section: pipeline
+#, c-format
+msgctxt "pipeline.valueUniversesFmt"
+msgid "%.0f universes"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueUnused"
+msgid "unused"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueVolumeMarker"
+msgid "marker"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueVolumeVR"
+msgid "VR"
+msgstr ""
+
+#. Section: pipeline
+msgctxt "pipeline.valueWaiting"
+msgid "waiting"
+msgstr ""
+
 #. Section: pointCloudAlignment
 #, fuzzy
 msgctxt "pointCloudAlignment.accept"
@@ -4865,6 +5351,11 @@ msgstr ""
 msgctxt "project.panelHttpTriggers"
 msgid "HTTP Triggers"
 msgstr "HTTPトリガー"
+
+#. Section: project
+msgctxt "project.panelPipeline"
+msgid "Pipeline"
+msgstr ""
 
 #. Section: project
 #, fuzzy
@@ -6983,6 +7474,11 @@ msgstr "ページ"
 msgctxt "windows.nodeVariablesPanel"
 msgid "Variables"
 msgstr "変数"
+
+#. Section: windows
+msgctxt "windows.pipeline"
+msgid "Pipeline"
+msgstr ""
 
 #. Section: windows
 #, fuzzy
