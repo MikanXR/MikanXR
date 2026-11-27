@@ -2,6 +2,7 @@
 
 #include "ComponentFwd.h"
 #include "MikanRendererFwd.h"
+#include "SceneFwd.h"
 
 struct ImVec2;
 class EditorObjectSystem;
