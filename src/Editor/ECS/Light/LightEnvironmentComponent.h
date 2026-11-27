@@ -34,6 +34,8 @@ public:
 	static const std::string k_shCoefficientsPropertyId;
 	const std::vector<float>& getSHCoefficients() const { return m_shCoefficients; }
 	void setSHCoefficients(const std::vector<float>& coefficients);
+	/// False until a capture writes the coefficients: a new probe holds all zeros.
+	bool hasCapturedLighting() const;
 
 	static const std::string k_exposureScalePropertyId;
 	float getExposureScale() const { return m_exposureScale; }

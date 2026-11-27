@@ -39,6 +39,9 @@ public:
 	inline static const std::string k_componentClassName= "SpoutTextureSourceComponent";
 	virtual std::string getComponentClassName() const override { return k_componentClassName; }
 	const std::string& getSpoutSourceName() const;
+	// A sender is being received. The texture is freed the update after the sender
+	// closes, as Spout then reports a zero sender size.
+	inline bool getIsReceiving() const { return m_colorTexture != nullptr; }
 
 	// Texture Source Interface
 	virtual IMkTexturePtr getClientColorSourceTexture(MikanCameraID cameraId,

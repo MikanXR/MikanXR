@@ -16,6 +16,7 @@
 #include "SerializableList.h"
 #include "StageComponent.h"
 
+#include <algorithm>
 #include <cmath>
 #include <vector>
 
@@ -55,6 +56,12 @@ void LightEnvironmentDefinition::setSHCoefficients(const std::vector<float>& coe
 		m_shCoefficients[i]= coefficients[i];
 
 	notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_shCoefficientsPropertyId));
+}
+
+bool LightEnvironmentDefinition::hasCapturedLighting() const
+{
+	return std::any_of(m_shCoefficients.begin(), m_shCoefficients.end(),
+					   [](float coefficient) { return coefficient != 0.f; });
 }
 
 void LightEnvironmentDefinition::setExposureScale(float scale)

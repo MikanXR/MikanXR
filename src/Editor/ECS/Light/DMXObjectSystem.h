@@ -92,6 +92,10 @@ public:
 	// DMX Universe Data helpers
 	void writeUniverseData(uint16_t universeId, uint16_t startChannel, const uint8_t* values, uint16_t count);
 	std::set<uint16_t> getActiveDMXUniverseIdSet() const;
+	// Whether the E1.31 send thread is up. False when its startup failed.
+	bool getIsSenderRunning() const { return m_dmxManager && m_dmxManager->getIsRunning(); }
+	// The universes written at least once since the project loaded
+	int getUniverseCount() const { return (int)m_universeBuffers.size(); }
 
 	// The universes written since the last update tick. Only populated inside the
 	// OnDMXDataChanged callback, since update() clears the flags once the change has gone out.
