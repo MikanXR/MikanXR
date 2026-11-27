@@ -52,6 +52,14 @@ const std::string ModelStencilDefinition::k_geometryUrlPropertyId= "geometry_url
 const std::string ModelStencilDefinition::k_clientHoldoutPropertyId= "client_holdout";
 const std::string ModelStencilDefinition::k_alignedVideoSourceIdPropertyId= "aligned_video_source_id";
 const std::string ModelStencilDefinition::k_alignedSessionIdPropertyId= "aligned_session_id";
+const std::string ModelStencilDefinition::k_captureKindPropertyId= "capture_kind";
+
+namespace
+{
+// The persisted spelling, indexed by eModelStencilCaptureKind
+const std::string g_modelStencilCaptureKindStrings[(int)eModelStencilCaptureKind::COUNT]= {"none", "depth_proxy",
+																						   "occlusion_mesh"};
+} // namespace
 
 ModelStencilDefinition::ModelStencilDefinition()
 	: StencilComponentDefinition()
@@ -75,6 +83,7 @@ configuru::Config ModelStencilDefinition::writeToJSON()
 	}
 
 	pt[k_clientHoldoutPropertyId]= m_bClientHoldout;
+	pt[k_captureKindPropertyId]= g_modelStencilCaptureKindStrings[(int)m_captureKind];
 
 	if (m_alignedVideoSourceId != INVALID_MIKAN_ID)
 	{
@@ -95,6 +104,13 @@ void ModelStencilDefinition::readFromJSON(const configuru::Config& pt)
 	}
 
 	m_bClientHoldout= pt.get_or<bool>(k_clientHoldoutPropertyId, true);
+	// A stencil saved before the tag existed, or with an unknown one, reads as placed by hand
+	const std::string captureKindString= pt.get_or<std::string>(
+		k_captureKindPropertyId, g_modelStencilCaptureKindStrings[(int)eModelStencilCaptureKind::none]);
+	m_captureKind=
+		StringUtils::FindEnumValue<eModelStencilCaptureKind>(captureKindString, g_modelStencilCaptureKindStrings);
+	if (m_captureKind == eModelStencilCaptureKind::INVALID)
+		m_captureKind= eModelStencilCaptureKind::none;
 	m_alignedVideoSourceId= pt.get_or<int>(k_alignedVideoSourceIdPropertyId, INVALID_MIKAN_ID);
 	m_alignedSessionId= pt.get_or<std::string>(k_alignedSessionIdPropertyId, std::string());
 }
@@ -148,6 +164,15 @@ void ModelStencilDefinition::setAlignedTake(MikanVideoSourceID videoSourceId, co
 		m_alignedVideoSourceId= videoSourceId;
 		m_alignedSessionId= sessionId;
 		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_alignedVideoSourceIdPropertyId));
+	}
+}
+
+void ModelStencilDefinition::setCaptureKind(eModelStencilCaptureKind captureKind)
+{
+	if (captureKind != m_captureKind)
+	{
+		m_captureKind= captureKind;
+		notifyPropertyChanged(ConfigPropertyChangeSet().addPropertyName(k_captureKindPropertyId));
 	}
 }
 
@@ -447,6 +472,12 @@ void ModelStencilComponent::getPropertyDescriptors(std::vector<PropertyDescripto
 			->setReadOnly());
 	outDescriptors.push_back(std::make_shared<PropertyDescriptor>(ModelStencilDefinition::k_clientHoldoutPropertyId,
 																  MikanVariantType::BOOL));
+	// An eModelStencilCaptureKind, set by the capture stages
+	outDescriptors.push_back(
+		std::make_shared<PropertyDescriptor>(ModelStencilDefinition::k_captureKindPropertyId, MikanVariantType::INT)
+			->setDefaultValue((int)eModelStencilCaptureKind::none)
+			->setUIHidden()
+			->setClientAPIHidden());
 }
 
 bool ModelStencilComponent::getPropertyValue(const std::string& propertyName, MikanVariant& outValue) const
@@ -468,6 +499,11 @@ bool ModelStencilComponent::getPropertyValue(const std::string& propertyName, Mi
 		outValue= getModelStencilDefinition()->getClientHoldout();
 		return true;
 	}
+	if (propertyName == ModelStencilDefinition::k_captureKindPropertyId)
+	{
+		outValue= (int)getModelStencilDefinition()->getCaptureKind();
+		return true;
+	}
 
 	return StencilComponent::getPropertyValue(propertyName, outValue);
 }
@@ -485,6 +521,15 @@ bool ModelStencilComponent::setPropertyValue(const std::string& propertyName, co
 	if (propertyName == ModelStencilDefinition::k_clientHoldoutPropertyId)
 	{
 		getModelStencilDefinition()->setClientHoldout(inValue.getBoolValue());
+		return true;
+	}
+	if (propertyName == ModelStencilDefinition::k_captureKindPropertyId)
+	{
+		const int captureKind= inValue.getIntValue();
+		if (captureKind < 0 || captureKind >= (int)eModelStencilCaptureKind::COUNT)
+			return false;
+
+		getModelStencilDefinition()->setCaptureKind((eModelStencilCaptureKind)captureKind);
 		return true;
 	}
 

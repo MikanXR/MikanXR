@@ -579,6 +579,7 @@ bool AppStage_OcclusionMeshBuild::createStencilFromMesh()
 			definition->setRelativeTransform(GlmTransform());
 			definition->setIsDisabled(false);
 			definition->setModelPath(meshPath);
+			definition->setCaptureKind(eModelStencilCaptureKind::occlusionMesh);
 			return true;
 		});
 	if (!stencilComponent)

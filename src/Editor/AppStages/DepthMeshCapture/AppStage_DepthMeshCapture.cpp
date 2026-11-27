@@ -730,6 +730,7 @@ bool AppStage_DepthMeshCapture::createStencilFromMesh()
 			definition->setRelativeTransform(GlmTransform());
 			definition->setIsDisabled(false);
 			definition->setModelPath(objPath);
+			definition->setCaptureKind(eModelStencilCaptureKind::depthProxy);
 			return true;
 		});
 	if (!stencilComponent)
