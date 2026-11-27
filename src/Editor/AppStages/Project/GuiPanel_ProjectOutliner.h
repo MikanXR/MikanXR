@@ -4,6 +4,7 @@
 #include "ComponentFwd.h"
 #include "IMkGuiStyle.h"
 #include "MkGuiDrawUtils.h"
+#include "MulticastDelegate.h"
 #include "ObjectFwd.h"
 #include "ObjectSystemConfigFwd.h"
 #include "ObjectSystemFwd.h"
@@ -33,6 +34,12 @@ public:
 	// Select a component's row from another panel, scrolling the tree to it.
 	// Call outside the ImGui frame (from a deferred gui event).
 	void selectComponent(int componentId);
+	// The selected row's component, -1 for a folder row or the root
+	int getSelectedComponentId() const { return m_selectedComponentId; }
+
+	// Raised on every selection, from any path, with the selected row's component
+	// id or -1. A tree rebuild raises it again with the same id.
+	MulticastDelegate<void(int componentId)> OnSelectedComponentChanged;
 
 private:
 	void rebuildIfDirty();

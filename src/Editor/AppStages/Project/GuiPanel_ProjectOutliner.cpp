@@ -757,6 +757,9 @@ void GuiPanel_ProjectOutliner::setSelectedNode(ProjectOutlinerNodePtr node, bool
 		if (EditorObjectSystemPtr editorSystem= m_editorSystem.lock())
 			editorSystem->setSelection(node ? node->selection.lock() : nullptr);
 	}
+
+	if (OnSelectedComponentChanged)
+		OnSelectedComponentChanged(m_selectedComponentId);
 }
 
 GuiPanel_MikanComponent* GuiPanel_ProjectOutliner::getPanelForComponentClass(
