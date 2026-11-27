@@ -104,11 +104,11 @@ bool ColorTextureSourceNode::loadFromConfig(NodeConfigConstPtr nodeConfig)
 		m_bUseFirstClientTextureSource= textureSourceNodeConfig->bUseFirstClientTextureSource;
 
 		// Get the client video source component corresponding to the saved video source id
+		m_textureSourceId= textureSourceNodeConfig->textureSourceId;
 		ProjectManagerPtr projectManager= getOwnerProject();
 		if (projectManager)
 		{
-			m_textureSourceComponent=
-				TextureSourceQueries::getTextureSourceById(projectManager, textureSourceNodeConfig->textureSourceId);
+			m_textureSourceComponent= TextureSourceQueries::getTextureSourceById(projectManager, m_textureSourceId);
 		}
 
 		return true;
@@ -632,7 +632,9 @@ void ColorTextureSourceNode::editorRenderPropertySheet(const NodeEditorState& ed
 				if (MkGui::drawComboBoxProperty(propertyStyle, "textureSourceIndex", locText("nodes.source"),
 												&dataSource, selectedIndex))
 				{
-					m_textureSourceComponent= dataSource.getEntryAtIndex(selectedIndex);
+					TextureSourceComponentPtr selectedSource= dataSource.getEntryAtIndex(selectedIndex);
+					m_textureSourceComponent= selectedSource;
+					m_textureSourceId= selectedSource ? selectedSource->getTextureSourceId() : INVALID_MIKAN_ID;
 				}
 			}
 		}

@@ -60,6 +60,8 @@ public:
 	// -- Shape Node Graph ----
 	bool hasValidShapeGraph() const;
 	void setEditorShapeNodeGraph(ShapeNodeGraphPtr editorNodeGraph);
+	// The graph the shape renders with: an open editor window's ahead of the saved one
+	ShapeNodeGraphPtr getActiveShapeNodeGraph() const;
 	void addNewShapeGraph();
 	void editShapeGraph();
 	void removeShapeGraph();

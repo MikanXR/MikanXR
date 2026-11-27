@@ -1,6 +1,7 @@
 #include "ShapeNodeGraph.h"
 #include "Logger.h"
 #include "NodeEditorState.h"
+#include "TextureSourceComponent.h"
 
 // Asset References
 #include "ShapeMaterialAssetReference.h"
@@ -99,6 +100,23 @@ bool ShapeNodeGraph::renderShape(const glm::mat4& vpMatrix, NodeEvaluator& evalu
 	}
 
 	return !evaluator.hasErrors();
+}
+
+void ShapeNodeGraph::gatherReferencedTextureSources(std::set<int>& outTextureSourceIds) const
+{
+	visitNodesReachableFromEvent(m_renderShapeEventNode,
+								 [&outTextureSourceIds](NodeConstPtr node)
+								 {
+									 auto textureSourceNode= std::dynamic_pointer_cast<const TextureSourceNode>(node);
+									 if (!textureSourceNode)
+										 return;
+
+									 if (TextureSourceComponentPtr textureSource=
+											 textureSourceNode->getTextureSourceComponent())
+									 {
+										 outTextureSourceIds.insert(textureSource->getComponentId());
+									 }
+								 });
 }
 
 bool ShapeNodeGraph::bindToShapeComponent(ShapeComponentPtr shapeComponent)

@@ -66,6 +66,8 @@ public:
 
 	// Whether the output would send given a frame: enabled with a destination
 	bool getHasDestination() const;
+	// Whether the encoder is open and sending
+	bool getIsStreaming() const;
 	// The encoded picture size and frame rate. False until a frame has been handed in.
 	bool getStreamFormat(int& outWidth, int& outHeight, float& outFps) const;
 	// "off", "no destination", "idle" while nothing publishes, else the sender's own report

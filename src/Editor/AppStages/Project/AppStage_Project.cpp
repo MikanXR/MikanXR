@@ -47,6 +47,7 @@
 #include "Project/GuiPanel_Assets.h"
 #include "Project/GuiPanel_CompositorOutput.h"
 #include "Project/GuiPanel_HttpTriggers.h"
+#include "Project/GuiPanel_Pipeline.h"
 #include "Project/GuiPanel_ProjectSettings.h"
 #include "Project/GuiPanel_SceneList.h"
 #include "Project/GuiPanel_SceneView.h"
@@ -222,8 +223,14 @@ void AppStage_Project::enter()
 		m_httpTriggersPanel= addGuiPanel<GuiPanel_HttpTriggers>();
 		m_httpTriggersPanel->init(m_projectGuiPanelContext);
 
+		// The pipeline strip subscribes to the outliner's selection, so it is
+		// added ahead of the outliner to be disposed while the outliner still exists
+		m_pipelinePanel= addGuiPanel<GuiPanel_Pipeline>();
+
 		m_projectOutlinerPanel= addGuiPanel<GuiPanel_ProjectOutliner>();
 		m_projectOutlinerPanel->init(m_projectGuiPanelContext);
+
+		m_pipelinePanel->init(m_projectOutlinerPanel);
 
 		// The scene list pushes its pick into the outliner, so it exists first
 		m_sceneListPanel= addGuiPanel<GuiPanel_SceneList>();
@@ -323,6 +330,7 @@ void AppStage_Project::exit()
 	m_sceneListPanel= nullptr;
 	m_compositorOutputPanel= nullptr;
 	m_assetsPanel= nullptr;
+	m_pipelinePanel= nullptr;
 
 	// Unregister all viewports from the editor
 	m_editorSystem.lock()->clearViewports();
@@ -522,6 +530,16 @@ void AppStage_Project::onGui()
 		}
 	}
 
+	// The chain feeding the outputs from the current scene
+	if (m_bPipelineVisible && m_pipelinePanel != nullptr)
+	{
+		MkGuiScopedWindow pipelineWindow(locWindowTitle("windows.pipeline"), &m_bPipelineVisible);
+		if (pipelineWindow)
+		{
+			m_pipelinePanel->onGui();
+		}
+	}
+
 	// The DMX lighting transport settings
 	if (m_bDMXPanelVisible && m_projectGuiPanelContext != nullptr)
 	{
@@ -583,6 +601,7 @@ void AppStage_Project::onMenuBarGui()
 		ImGui::MenuItem(locLabel("project.panelScenes"), nullptr, &m_bSceneListVisible);
 		ImGui::MenuItem(locLabel("project.panelCompositorOutput"), nullptr, &m_bCompositorOutputVisible);
 		ImGui::MenuItem(locLabel("project.panelAssets"), nullptr, &m_bAssetsPanelVisible);
+		ImGui::MenuItem(locLabel("project.panelPipeline"), nullptr, &m_bPipelineVisible);
 		ImGui::MenuItem(locLabel("project.panelDMX"), nullptr, &m_bDMXPanelVisible);
 		ImGui::Separator();
 		ImGui::MenuItem(locLabel("mainWindow.logPanel"), nullptr, &m_bShowLogPanel);
@@ -598,6 +617,7 @@ void AppStage_Project::onMenuBarGui()
 			m_bSceneListVisible= true;
 			m_bCompositorOutputVisible= true;
 			m_bAssetsPanelVisible= true;
+			m_bPipelineVisible= true;
 			m_bShowLogPanel= true;
 			m_bDockLayoutResetRequested= true;
 		}
@@ -645,11 +665,14 @@ void AppStage_Project::applyPendingProjectActions()
 
 void AppStage_Project::onBuildDefaultDockLayout(unsigned int dockspaceId)
 {
-	// Project and Settings tabbed on the right. In the middle, the scene view and
+	// The pipeline strip across the top, full width, tall enough for its three
+	// rows at a 720p window. Below it, Project and Settings tabbed on the right.
+	// In the middle, the scene view and
 	// the compositor output side by side. Along the bottom of the scene view, left
 	// to right: the scene list, the assets browser, and the log. The Scene panel
 	// takes the central node.
 	ImGuiID remaining= (ImGuiID)dockspaceId;
+	const ImGuiID pipelineId= MkGui::dockBuilderSplit(remaining, ImGuiDir_Up, 0.29f, remaining);
 	const ImGuiID rightId= MkGui::dockBuilderSplit(remaining, ImGuiDir_Right, 0.28f, remaining);
 	const ImGuiID compositorOutputId= MkGui::dockBuilderSplit(remaining, ImGuiDir_Right, 0.45f, remaining);
 	// The bottom row is tall enough for a row of asset tiles, and the assets
@@ -659,6 +682,7 @@ void AppStage_Project::onBuildDefaultDockLayout(unsigned int dockspaceId)
 	const ImGuiID scenesId= MkGui::dockBuilderSplit(bottomId, ImGuiDir_Left, 0.3f, bottomId);
 	const ImGuiID assetsId= MkGui::dockBuilderSplit(bottomId, ImGuiDir_Left, 0.55f, bottomId);
 
+	MkGui::dockBuilderDockWindow(locWindowTitle("windows.pipeline"), pipelineId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.project"), rightId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.projectSettings"), rightId);
 	MkGui::dockBuilderDockWindow(locWindowTitle("windows.httpTriggers"), rightId);
@@ -1425,6 +1449,29 @@ bool AppStage_Project::handleRemoteControlCommand(const std::string& command,
 				outResults.push_back(entry->folderId);
 				outResults.push_back(entry->storedPath);
 			}
+		}
+
+		return true;
+	}
+	else if (command == "pipeline_select")
+	{
+		if (parameters.empty() || m_pipelinePanel == nullptr)
+			return false;
+
+		return m_pipelinePanel->selectNodeById(parameters[0] == "none" ? std::string() : parameters[0]);
+	}
+	else if (command == "pipeline_tool")
+	{
+		if (parameters.empty() || m_pipelinePanel == nullptr)
+			return false;
+
+		return m_pipelinePanel->invokeNodeTool(parameters[0]);
+	}
+	else if (command == "pipeline_selected")
+	{
+		if (m_pipelinePanel != nullptr && !m_pipelinePanel->getSelectedNodeId().empty())
+		{
+			outResults.push_back(m_pipelinePanel->getSelectedNodeId());
 		}
 
 		return true;

@@ -53,6 +53,8 @@ public:
 	void closeReturnFeed();
 	// "off" with no client feed, else the sender's own report
 	std::string getReturnFeedStatusText() const;
+	// Whether a client holds a feed and the stream is sending to it
+	bool getIsReturnFeedStreaming() const;
 
 	// -- IPropertyInterface ----
 	// Read-only, editor-side: the return feed stream's encoder tier, size, rate and counters

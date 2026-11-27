@@ -129,6 +129,8 @@ public:
 	bool getCompositedFrameWorldAperturePose(glm::mat4& outCameraPose) const;
 
 	bool hasValidCompositorGraph() const;
+	// The graph a composite evaluates: the one a graph editor holds, else the project's own
+	CompositorNodeGraphPtr getActiveCompositorNodeGraph() const;
 	void addNewCompositorGraph();
 	void editCompositorGraph();
 	void removeCompositorGraph();

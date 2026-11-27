@@ -88,6 +88,11 @@ std::string RTPOutputSystem::getReturnFeedStatusText() const
 	return m_returnFeedStream->getStatusText();
 }
 
+bool RTPOutputSystem::getIsReturnFeedStreaming() const
+{
+	return m_bHasReturnFeeds && m_returnFeedStream && m_returnFeedStream->getIsStreaming();
+}
+
 // -- IPropertyInterface ----
 const std::string RTPOutputSystem::k_returnFeedStatusPropertyId= "return_feed_status";
 

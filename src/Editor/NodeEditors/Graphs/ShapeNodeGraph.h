@@ -3,6 +3,7 @@
 #include "NodeGraph.h"
 #include "ComponentFwd.h"
 
+#include <set>
 #include <string>
 
 #include "glm/ext/matrix_float4x4.hpp"
@@ -20,6 +21,10 @@ public:
 
 	// Evaluation — sets the transient VP matrix, evaluates the OnRenderShape chain
 	bool renderShape(const glm::mat4& vpMatrix, NodeEvaluator& evaluator);
+
+	// The texture sources the OnRenderShape chain reads, by component id, found by
+	// walking the graph rather than evaluating it
+	void gatherReferencedTextureSources(std::set<int>& outTextureSourceIds) const;
 
 	// Binding
 	bool bindToShapeComponent(ShapeComponentPtr shapeComponent);

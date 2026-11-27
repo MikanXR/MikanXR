@@ -29,7 +29,9 @@
 
 #include <filesystem>
 #include <functional>
+#include <set>
 #include <utility>
+#include <vector>
 
 // -- NodeGraphConfig -----
 NodeGraphConfig::NodeGraphConfig()
@@ -1069,6 +1071,47 @@ void NodeGraph::visitAllNodes(const NodeConstVisitor& visitor) const
 	for (const auto& nodePair : m_Nodes)
 	{
 		visitor(nodePair.second);
+	}
+}
+
+void NodeGraph::visitNodesReachableFromEvent(NodePtr eventNode, const NodeConstVisitor& visitor) const
+{
+	std::set<const Node*> visitedNodes;
+	std::vector<NodePtr> pendingNodes;
+	auto addPendingNode= [&visitedNodes, &pendingNodes](NodePtr node)
+	{
+		if (node && visitedNodes.insert(node.get()).second)
+			pendingNodes.push_back(node);
+	};
+
+	// The chain as the evaluator steps it, ending at a node with no linked flow
+	// output or at one it already passed
+	NodePtr flowNode= eventNode;
+	while (flowNode && visitedNodes.count(flowNode.get()) == 0)
+	{
+		addPendingNode(flowNode);
+
+		FlowPinPtr outputFlowPin= flowNode->getOutputFlowPin();
+		NodePinPtr inputFlowPin= outputFlowPin ? outputFlowPin->getConnectedTargetPin() : NodePinPtr();
+		flowNode= inputFlowPin ? inputFlowPin->getOwnerNode() : NodePtr();
+	}
+
+	// Upstream through the value pins. A flow input leads back along the chain or
+	// into a chain the event never runs, so it is not followed.
+	while (!pendingNodes.empty())
+	{
+		NodePtr node= pendingNodes.back();
+		pendingNodes.pop_back();
+		visitor(node);
+
+		for (NodePinPtr inputPin : node->getInputPins())
+		{
+			if (std::dynamic_pointer_cast<FlowPin>(inputPin))
+				continue;
+
+			if (NodePinPtr sourcePin= inputPin->getConnectedSourcePin())
+				addPendingNode(sourcePin->getOwnerNode());
+		}
 	}
 }
 

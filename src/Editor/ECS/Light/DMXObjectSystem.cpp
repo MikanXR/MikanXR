@@ -251,8 +251,10 @@ void DMXObjectSystem::writeUniverseData(uint16_t universeId, uint16_t startChann
 	assert(startChannel >= 1 && startChannel <= 512);
 
 	// Forward universe data write directly on to the DMX E1.31 protocol handler
-	// to set the physical lights
-	m_dmxManager->setChannels(universeId, startChannel, values, count);
+	// to set the physical lights. A sender that failed to start is gone, and the
+	// write still lands in the universe buffer below for the clients.
+	if (m_dmxManager)
+		m_dmxManager->setChannels(universeId, startChannel, values, count);
 
 	// Update the universe data and mark dirty
 	// This

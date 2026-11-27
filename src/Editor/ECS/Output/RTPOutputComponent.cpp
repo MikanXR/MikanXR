@@ -183,6 +183,8 @@ bool RTPOutputComponent::getHasDestination() const
 	return definition->getIsEnabled() && !definition->getRtpOutputHost().empty();
 }
 
+bool RTPOutputComponent::getIsStreaming() const { return m_stream && m_stream->getIsStreaming(); }
+
 bool RTPOutputComponent::getStreamFormat(int& outWidth, int& outHeight, float& outFps) const
 {
 	return m_stream && m_stream->getStreamFormat(outWidth, outHeight, outFps);

@@ -69,7 +69,7 @@ What Create Stencil does:
 
 - Writes `<project>/models/DepthProxy_<timestamp>.obj`. The name is unique per capture because the model resource cache keys on the file path - regenerating under a reused path would serve the stale mesh.
 
-- Creates a `ModelStencilComponent` through `ModelStencilSystem::addNewObjectByTypedDefinition` with the **absolute** OBJ path (the importer loads the stored path verbatim; a relative one silently fails to resolve), **parented under the scene the capture was started from** so it lands in that scene's subtree in the project outliner and its compositor draws it. With no target scene it falls back to the camera's stage, which files it in the outliner's unparented tray.
+- Creates a `ModelStencilComponent` through `ModelStencilSystem::addNewObjectByTypedDefinition` with the **absolute** OBJ path (the importer loads the stored path verbatim; a relative one silently fails to resolve), **parented under the scene the capture was started from** so it lands in that scene's subtree in the project outliner and its compositor draws it. With no target scene it falls back to the camera's stage, which files it in the outliner's unparented tray. The definition is tagged `capture_kind` depth proxy inside the creation, so the tag rides the create transaction. It is an editor-only property (UI and client hidden) that the Pipeline panel's Depth Mesh box lists by ([pipeline.md](./pipeline.md)).
 
 - Sets the stencil's world transform to the capturing camera's `getStageSpaceAperturePose` (back-solved into a stage-relative transform by `setWorldTransform`). The vertices are camera-local, so the stencil rides the camera pose and the OBJ stays reusable.
 

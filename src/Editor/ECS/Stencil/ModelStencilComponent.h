@@ -17,6 +17,18 @@
 #include "glm/ext/vector_float3.hpp"
 #include "glm/ext/quaternion_float.hpp"
 
+// Which capture made a model stencil, none for one placed by hand
+enum class eModelStencilCaptureKind : int
+{
+	INVALID= -1,
+
+	none= 0,
+	depthProxy,
+	occlusionMesh,
+
+	COUNT
+};
+
 class ModelStencilDefinition : public StencilComponentDefinition
 {
 public:
@@ -53,9 +65,16 @@ public:
 	inline const std::string& getAlignedSessionId() const { return m_alignedSessionId; }
 	void setAlignedTake(MikanVideoSourceID videoSourceId, const std::string& sessionId);
 
+	// Editor only, so the Pipeline panel can list the captured meshes and offer the
+	// capture that made each one
+	static const std::string k_captureKindPropertyId;
+	inline eModelStencilCaptureKind getCaptureKind() const { return m_captureKind; }
+	void setCaptureKind(eModelStencilCaptureKind captureKind);
+
 private:
 	AssetReferenceConfigPtr m_modelAssetRefConfig;
 	bool m_bClientHoldout= true;
+	eModelStencilCaptureKind m_captureKind= eModelStencilCaptureKind::none;
 	MikanVideoSourceID m_alignedVideoSourceId= INVALID_MIKAN_ID;
 	std::string m_alignedSessionId;
 };

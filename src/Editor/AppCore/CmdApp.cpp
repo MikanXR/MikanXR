@@ -19,6 +19,7 @@
 #include "CaptureMarkerAlignmentTests.h"
 #include "ClientApiPropertySchemaTests.h"
 #include "ComponentNamingTests.h"
+#include "CompositorGraphReferencesTests.h"
 #include "CompositorStreamRouteTests.h"
 #include "DepthOfFieldTests.h"
 #include "DepthMeshGeneratorTests.h"
@@ -52,6 +53,7 @@
 #include "OcclusionPromptsTests.h"
 #include "PixelGridLayoutTests.h"
 #include "ProjectAssetCatalogTests.h"
+#include "ProjectPipelineModelTests.h"
 #include "PropertyNotificationGuardTests.h"
 #include "ScriptContextTests.h"
 #include "ScriptEditorCommandTests.h"
@@ -106,6 +108,7 @@ bool run_all_editor_unit_tests()
 	success&= run_capture_marker_alignment_tests();
 	success&= run_client_api_property_schema_tests();
 	success&= run_component_naming_tests();
+	success&= run_compositor_graph_references_tests();
 	success&= run_compositor_stream_route_tests();
 	success&= run_depth_of_field_tests();
 	success&= run_depth_mesh_generator_unit_tests();
@@ -139,6 +142,7 @@ bool run_all_editor_unit_tests()
 	success&= run_occlusion_prompts_unit_tests();
 	success&= run_pixel_grid_layout_tests();
 	success&= run_project_asset_catalog_tests();
+	success&= run_project_pipeline_model_tests();
 	success&= run_property_notification_guard_tests();
 	success&= run_script_context_tests();
 	success&= run_script_editor_command_tests();
