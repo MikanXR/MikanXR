@@ -919,7 +919,7 @@ void CompositorComponent::getFunctionDescriptors(std::vector<FunctionDescriptorC
 	MikanComponent::getFunctionDescriptors(outDescriptors);
 
 	outDescriptors.push_back(
-		std::make_shared<FunctionDescriptor>(k_editCompositorGraphFunctionId, "Add Compositor Graph")->setUIHidden());
+		std::make_shared<FunctionDescriptor>(k_addNewCompositorGraphFunctionId, "Add Compositor Graph")->setUIHidden());
 	outDescriptors.push_back(
 		std::make_shared<FunctionDescriptor>(k_editCompositorGraphFunctionId, "Edit Compositor Graph")->setUIHidden());
 	outDescriptors.push_back(
