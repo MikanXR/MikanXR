@@ -19,10 +19,21 @@
 #include "Logger.h"
 #include "PathUtils.h"
 #include "ModelStencilComponent.h"
+#include "QuadStencilComponent.h"
 #include "QuadStencilSystem.h"
+#include "BoxStencilComponent.h"
 #include "BoxStencilSystem.h"
 #include "ModelStencilSystem.h"
+#include "BoxShapeComponent.h"
+#include "BoxShapeSystem.h"
+#include "ModelShapeComponent.h"
+#include "ModelShapeSystem.h"
+#include "QuadShapeComponent.h"
+#include "QuadShapeSystem.h"
+#include "ProjectManager.h"
+#include "TextureSourceComponent.h"
 #include "VideoSourceComponent.h"
+#include "Graphs/ShapeNodeGraph.h"
 
 // Assets References
 #include "ModelAssetReference.h"
@@ -65,6 +76,8 @@
 
 #include <easy/profiler.h>
 #include <GL/glew.h>
+
+#include <map>
 
 // -- CompositorNodeGraph -----
 const std::string CompositorNodeGraph::k_compositeFrameEventName= "OnCompositeFrame";
@@ -331,34 +344,127 @@ VideoSourceComponentPtr CompositorNodeGraph::getBoundVideoSourceComponent() cons
 	return VideoSourceComponentPtr();
 }
 
-void CompositorNodeGraph::gatherAllReferencedClientSourceIDs(std::set<std::string>& outClientSourceIds) const
+namespace
 {
-	visitAllNodes(
-		[&outClientSourceIds](NodeConstPtr node)
+void addTextureSourceReference(bool bUsesFirstClientSource, TextureSourceComponentPtr textureSource,
+							   MikanTextureSourceID storedTextureSourceId, CompositorGraphReferences& outReferences)
+{
+	// The first client option reads no stored source, so the stored one is ignored
+	if (bUsesFirstClientSource)
+	{
+		outReferences.bUsesFirstClientSource= true;
+	}
+	else if (textureSource)
+	{
+		outReferences.textureSourceIds.insert(textureSource->getComponentId());
+	}
+	else if (storedTextureSourceId != INVALID_MIKAN_ID)
+	{
+		++outReferences.unresolvedTextureSourceCount;
+	}
+}
+
+using PulledShapeMap= std::map<int, ShapeComponentPtr>;
+
+template <class t_system_type, class t_component_ptr, class t_visitor>
+void visitOwnedComponents(ProjectManagerPtr projectManager, CompositorComponentPtr compositor, t_visitor visitor)
+{
+	std::shared_ptr<t_system_type> system= projectManager->getSystemOfType<t_system_type>();
+	if (!system)
+		return;
+
+	system->visitComponents(visitor, [&compositor](t_component_ptr component)
+							{ return compositor->ownsSceneObject(component->getOwnerObject()); });
+}
+
+void addSelectedStencils(const StencilSelectNode& selectNode, ProjectManagerPtr projectManager,
+						 CompositorComponentPtr compositor, std::set<int>& outStencilIds)
+{
+	auto addStencil= [&outStencilIds](auto stencil) { outStencilIds.insert(stencil->getComponentId()); };
+	if (selectNode.getEnableQuadStencils())
+		visitOwnedComponents<QuadStencilSystem, QuadStencilComponentPtr>(projectManager, compositor, addStencil);
+	if (selectNode.getEnableBoxStencils())
+		visitOwnedComponents<BoxStencilSystem, BoxStencilComponentPtr>(projectManager, compositor, addStencil);
+	// The node skips a model stencil with no model, as nothing would draw
+	if (selectNode.getEnableModelStencils())
+	{
+		visitOwnedComponents<ModelStencilSystem, ModelStencilComponentPtr>(
+			projectManager, compositor,
+			[&outStencilIds](ModelStencilComponentPtr stencil)
+			{
+				if (stencil->getModelStencilDefinition()->hasModelPath())
+					outStencilIds.insert(stencil->getComponentId());
+			});
+	}
+}
+
+void addSelectedShapes(const ShapeSelectNode& selectNode, ProjectManagerPtr projectManager,
+					   CompositorComponentPtr compositor, PulledShapeMap& outShapes)
+{
+	auto addShape= [&outShapes](auto shape) { outShapes[shape->getComponentId()]= shape; };
+	if (selectNode.getEnableQuadShapes())
+		visitOwnedComponents<QuadShapeSystem, QuadShapeComponentPtr>(projectManager, compositor, addShape);
+	if (selectNode.getEnableBoxShapes())
+		visitOwnedComponents<BoxShapeSystem, BoxShapeComponentPtr>(projectManager, compositor, addShape);
+	if (selectNode.getEnableModelShapes())
+		visitOwnedComponents<ModelShapeSystem, ModelShapeComponentPtr>(projectManager, compositor, addShape);
+}
+} // namespace
+
+void CompositorNodeGraph::gatherReferencedSceneObjects(CompositorGraphReferences& outReferences) const
+{
+	// A select node can only answer for the compositor and project it runs against
+	CompositorComponentPtr compositor= getBoundCompositorComponent();
+	ProjectManagerPtr projectManager= getOwnerProject();
+	const bool bCanResolveSelections= compositor && projectManager;
+
+	PulledShapeMap pulledShapes;
+	visitNodesReachableFromEvent(
+		m_compositeFrameEventNode,
+		[&](NodeConstPtr node)
 		{
-			// Check if this node is a texture source node
-			TextureSourceComponentPtr textureSourceComponent;
-			if (auto clientSourceNode= std::dynamic_pointer_cast<const ColorTextureSourceNode>(node))
+			if (auto stencilNode= std::dynamic_pointer_cast<const StencilNode>(node))
 			{
-				textureSourceComponent= clientSourceNode->getTextureSourceComponent();
+				if (StencilComponentPtr stencil= stencilNode->getStencilComponent())
+					outReferences.stencilIds.insert(stencil->getComponentId());
 			}
-			else if (auto clientDepthNode= std::dynamic_pointer_cast<const DepthTextureSourceNode>(node))
+			else if (auto shapeNode= std::dynamic_pointer_cast<const ShapeNode>(node))
 			{
-				textureSourceComponent= clientDepthNode->getTextureSourceComponent();
+				if (ShapeComponentPtr shape= shapeNode->getShapeComponent())
+					pulledShapes[shape->getComponentId()]= shape;
 			}
-
-			// If it is, see if it's a client texture source component and gather the client source ID
-			if (textureSourceComponent)
+			else if (auto stencilSelectNode= std::dynamic_pointer_cast<const StencilSelectNode>(node))
 			{
-				auto clientTextureSourceComponent=
-					std::dynamic_pointer_cast<ClientTextureSourceComponent>(textureSourceComponent);
-
-				if (clientTextureSourceComponent)
-				{
-					outClientSourceIds.insert(clientTextureSourceComponent->getClientSourceName());
-				}
+				if (bCanResolveSelections)
+					addSelectedStencils(*stencilSelectNode, projectManager, compositor, outReferences.stencilIds);
+			}
+			else if (auto shapeSelectNode= std::dynamic_pointer_cast<const ShapeSelectNode>(node))
+			{
+				if (bCanResolveSelections)
+					addSelectedShapes(*shapeSelectNode, projectManager, compositor, pulledShapes);
+			}
+			else if (auto colorSourceNode= std::dynamic_pointer_cast<const ColorTextureSourceNode>(node))
+			{
+				addTextureSourceReference(colorSourceNode->getUsesFirstClientTextureSource(),
+										  colorSourceNode->getTextureSourceComponent(),
+										  colorSourceNode->getTextureSourceId(), outReferences);
+			}
+			else if (auto depthSourceNode= std::dynamic_pointer_cast<const DepthTextureSourceNode>(node))
+			{
+				addTextureSourceReference(depthSourceNode->getUsesFirstClientTextureSource(),
+										  depthSourceNode->getTextureSourceComponent(),
+										  depthSourceNode->getTextureSourceId(), outReferences);
 			}
 		});
+
+	// A pulled shape draws through its own shape graph, which can read texture
+	// sources nothing else in the composite reads
+	for (const auto& [shapeId, shape] : pulledShapes)
+	{
+		outReferences.shapeIds.insert(shapeId);
+		if (ShapeNodeGraphPtr shapeGraph= shape->getActiveShapeNodeGraph())
+			shapeGraph->gatherReferencedTextureSources(outReferences.textureSourceIds);
+	}
 }
 
 MikanRenderModelResourcePtr CompositorNodeGraph::getOrLoadStencilRenderModel(

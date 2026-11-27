@@ -19,6 +19,7 @@
 #include "CaptureMarkerAlignmentTests.h"
 #include "ClientApiPropertySchemaTests.h"
 #include "ComponentNamingTests.h"
+#include "CompositorGraphReferencesTests.h"
 #include "CompositorStreamRouteTests.h"
 #include "DepthOfFieldTests.h"
 #include "DepthMeshGeneratorTests.h"
@@ -107,6 +108,7 @@ bool run_all_editor_unit_tests()
 	success&= run_client_api_property_schema_tests();
 	success&= run_component_naming_tests();
 	success&= run_compositor_stream_route_tests();
+	success&= run_compositor_graph_references_tests();
 	success&= run_depth_of_field_tests();
 	success&= run_depth_mesh_generator_unit_tests();
 	success&= run_depth_rasterizer_unit_tests();

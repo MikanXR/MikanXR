@@ -4,6 +4,7 @@
 #include "ComponentFwd.h"
 #include "DepthPreviewRenderer.h"
 #include "Node.h"
+#include "MikanCoreTypes.h"
 #include "ObjectSystemFwd.h"
 #include "MikanRendererFwd.h"
 #include "MikanTypeFwd.h"
@@ -35,6 +36,10 @@ public:
 	virtual void saveToConfig(NodeConfigPtr nodeConfig) const override;
 
 	TextureSourceComponentPtr getTextureSourceComponent() const;
+	// The source the node was given, which stays set when that source no longer
+	// resolves, so the node can be told apart from one never given a source
+	inline MikanTextureSourceID getTextureSourceId() const { return m_textureSourceId; }
+	inline bool getUsesFirstClientTextureSource() const { return m_bUseFirstClientTextureSource; }
 	IMkTexturePtr getTextureResource() const;
 
 	virtual bool evaluateNode(NodeEvaluator& evaluator) override;
@@ -54,6 +59,7 @@ protected:
 	MkMaterialInstancePtr m_depthMaterialInstance;
 	eTextureSourceDepthType m_clientTextureType= eTextureSourceDepthType::depthPackRGBA;
 	TextureSourceComponentWeakPtr m_textureSourceComponent;
+	MikanTextureSourceID m_textureSourceId= INVALID_MIKAN_ID;
 	bool m_bVerticalFlip= false;
 	bool m_bUseFirstClientTextureSource= false;
 

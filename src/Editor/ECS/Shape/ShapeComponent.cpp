@@ -157,6 +157,13 @@ bool ShapeComponent::hasValidShapeGraph() const { return m_nodeGraph != nullptr;
 
 void ShapeComponent::setEditorShapeNodeGraph(ShapeNodeGraphPtr editorNodeGraph) { m_editorNodeGraph= editorNodeGraph; }
 
+ShapeNodeGraphPtr ShapeComponent::getActiveShapeNodeGraph() const
+{
+	ShapeNodeGraphPtr editorNodeGraph= m_editorNodeGraph.lock();
+
+	return editorNodeGraph ? editorNodeGraph : m_nodeGraph;
+}
+
 void ShapeComponent::addNewShapeGraph()
 {
 	removeShapeGraph();
@@ -177,10 +184,7 @@ void ShapeComponent::removeShapeGraph() { setShapeGraphAssetPath(std::filesystem
 
 void ShapeComponent::renderShapeGraph(const glm::mat4& vpMatrix, IMkGraphicsContext* graphicsContext)
 {
-	// Editor graph takes priority over asset-based graph
-	ShapeNodeGraphPtr nodeGraph= m_editorNodeGraph.lock();
-	if (!nodeGraph)
-		nodeGraph= m_nodeGraph;
+	ShapeNodeGraphPtr nodeGraph= getActiveShapeNodeGraph();
 	if (!nodeGraph)
 		return;
 

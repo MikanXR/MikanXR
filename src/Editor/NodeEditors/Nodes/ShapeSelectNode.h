@@ -37,6 +37,10 @@ public:
 	virtual bool loadFromConfig(NodeConfigConstPtr nodeConfig) override;
 	virtual void saveToConfig(NodeConfigPtr nodeConfig) const override;
 
+	inline bool getEnableQuadShapes() const { return m_bEnableQuadShapes; }
+	inline bool getEnableBoxShapes() const { return m_bEnableBoxShapes; }
+	inline bool getEnableModelShapes() const { return m_bEnableModelShapes; }
+
 	virtual bool evaluateNode(NodeEvaluator& evaluator) override;
 	virtual void editorRenderNode(const NodeEditorState& editorState) override;
 	virtual void editorRenderPropertySheet(const NodeEditorState& editorState) override;

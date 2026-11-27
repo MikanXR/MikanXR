@@ -3,6 +3,7 @@
 #include "CompositorConstants.h"
 #include "ComponentFwd.h"
 #include "Node.h"
+#include "MikanCoreTypes.h"
 #include "MikanTypeFwd.h"
 #include "MikanRendererFwd.h"
 
@@ -34,6 +35,10 @@ public:
 	virtual void saveToConfig(NodeConfigPtr nodeConfig) const override;
 
 	TextureSourceComponentPtr getTextureSourceComponent() const;
+	// The source the node was given, which stays set when that source no longer
+	// resolves, so the node can be told apart from one never given a source
+	inline MikanTextureSourceID getTextureSourceId() const { return m_textureSourceId; }
+	inline bool getUsesFirstClientTextureSource() const { return m_bUseFirstClientTextureSource; }
 	IMkTexturePtr getTextureResource() const;
 
 	virtual bool evaluateNode(NodeEvaluator& evaluator) override;
@@ -71,6 +76,7 @@ protected:
 	eColorTextureFallbackMode m_fallbackMode= eColorTextureFallbackMode::autoByType;
 	eColorTextureResolveAlphaMode m_resolveAlphaMode= eColorTextureResolveAlphaMode::none;
 	TextureSourceComponentWeakPtr m_textureSourceComponent;
+	MikanTextureSourceID m_textureSourceId= INVALID_MIKAN_ID;
 	bool m_bVerticalFlip= false;
 	bool m_bUseFirstClientTextureSource= false;
 	// True while the framebuffer pass is downsampling rather than only flipping, which

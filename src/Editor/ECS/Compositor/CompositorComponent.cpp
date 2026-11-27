@@ -217,13 +217,7 @@ void CompositorComponent::tryCompositeOldestFrame(float deltaSeconds)
 	MIKAN_LOG_TRACE("CompositorComponent::tryCompositeOldestFrame")
 		<< "Compositing frame " << oldestPendingFrame.frameEvent.frame;
 
-	// Try to get the editor node graph first...
-	CompositorNodeGraphPtr nodeGraph= m_editorNodeGraph.lock();
-	if (!nodeGraph)
-	{
-		// ...then fallback to asset reference (default case)
-		nodeGraph= m_nodeGraph;
-	}
+	CompositorNodeGraphPtr nodeGraph= getActiveCompositorNodeGraph();
 
 	// If we have a valid compositor node graph, use that to composite the frame.
 	// The editor pause skips evaluation but keeps the frame queue draining,
@@ -432,15 +426,10 @@ void CompositorComponent::setEditorCompositorNodeGraph(CompositorNodeGraphPtr ed
 
 IMkTextureConstPtr CompositorComponent::getCompositedFrameTexture() const
 {
-	// Prefer the editor graph, mirroring the evaluation fallback in
-	// tryCompositeOldestFrame: whichever graph composites is the one shown
-	CompositorNodeGraphPtr editorNodeGraph= m_editorNodeGraph.lock();
-	if (editorNodeGraph)
-	{
-		return editorNodeGraph->getCompositedFrameTexture();
-	}
+	// Whichever graph composites is the one shown
+	CompositorNodeGraphPtr nodeGraph= getActiveCompositorNodeGraph();
 
-	return m_nodeGraph ? m_nodeGraph->getCompositedFrameTexture() : IMkTextureConstPtr();
+	return nodeGraph ? nodeGraph->getCompositedFrameTexture() : IMkTextureConstPtr();
 }
 
 IMkTexturePtr CompositorComponent::getCompositedFrameTextureMutable()
@@ -465,6 +454,13 @@ bool CompositorComponent::getCompositedFrameWorldAperturePose(glm::mat4& outCame
 }
 
 bool CompositorComponent::hasValidCompositorGraph() const { return m_nodeGraph != nullptr; }
+
+CompositorNodeGraphPtr CompositorComponent::getActiveCompositorNodeGraph() const
+{
+	CompositorNodeGraphPtr editorNodeGraph= m_editorNodeGraph.lock();
+
+	return editorNodeGraph ? editorNodeGraph : m_nodeGraph;
+}
 
 void CompositorComponent::addNewCompositorGraph()
 {

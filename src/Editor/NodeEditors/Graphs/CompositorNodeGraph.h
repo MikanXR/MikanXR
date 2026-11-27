@@ -10,6 +10,19 @@
 
 typedef int32_t MikanStencilID;
 
+// The scene objects a compositor graph pulls into its composite, by component id
+struct CompositorGraphReferences
+{
+	std::set<int> stencilIds;
+	std::set<int> shapeIds;
+	// Read by the graph, or by the shape graph of a shape it pulls
+	std::set<int> textureSourceIds;
+	// Texture source nodes naming a source that no longer resolves
+	int unresolvedTextureSourceCount= 0;
+	// A texture source node reads whichever client publishes first for the camera
+	bool bUsesFirstClientSource= false;
+};
+
 class CompositorNodeGraph : public NodeGraph
 {
 public:
@@ -35,7 +48,12 @@ public:
 	VideoSourceComponentPtr getBoundVideoSourceComponent() const;
 
 	// Sources
-	void gatherAllReferencedClientSourceIDs(std::set<std::string>& outClientSourceIds) const;
+
+	// What the OnCompositeFrame chain pulls, found by walking the graph rather than
+	// evaluating it. A select node contributes everything of its enabled types the
+	// bound compositor owns, ignoring camera facing and the disabled flag, which
+	// change per frame.
+	void gatherReferencedSceneObjects(CompositorGraphReferences& outReferences) const;
 
 	// Stencil Models
 	MikanRenderModelResourcePtr getOrLoadStencilRenderModel(ModelStencilDefinitionPtr stencilDefinition);

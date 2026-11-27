@@ -37,6 +37,10 @@ public:
 	virtual bool loadFromConfig(NodeConfigConstPtr nodeConfig) override;
 	virtual void saveToConfig(NodeConfigPtr nodeConfig) const override;
 
+	inline bool getEnableQuadStencils() const { return m_bEnableQuadStencils; }
+	inline bool getEnableBoxStencils() const { return m_bEnableBoxStencils; }
+	inline bool getEnableModelStencils() const { return m_bEnableModelStencils; }
+
 	virtual bool evaluateNode(NodeEvaluator& evaluator) override;
 	virtual void editorRenderNode(const NodeEditorState& editorState) override;
 	virtual void editorRenderPropertySheet(const NodeEditorState& editorState) override;

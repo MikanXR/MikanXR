@@ -341,6 +341,10 @@ public:
 
 	using NodeConstVisitor= std::function<void(NodeConstPtr nodePtr)>;
 	void visitAllNodes(const NodeConstVisitor& visitor) const;
+	// Visits, once each, the nodes a flow chain from the event node evaluates and
+	// every node feeding one of them through a value input pin. A static walk that
+	// evaluates nothing, so a node the chain cannot reach is never visited.
+	void visitNodesReachableFromEvent(NodePtr eventNode, const NodeConstVisitor& visitor) const;
 
 	template <class t_node_class>
 	std::shared_ptr<t_node_class> createTypedNode(const NodeEditorState& nodeEditorState)

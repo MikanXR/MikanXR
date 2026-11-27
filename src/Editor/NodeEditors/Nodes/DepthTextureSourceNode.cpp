@@ -80,11 +80,11 @@ bool DepthTextureSourceNode::loadFromConfig(NodeConfigConstPtr nodeConfig)
 		m_depthPreviewSettings= clientTextureNodeConfig->depthPreviewSettings;
 
 		// Get the client video source component corresponding to the saved video source id
+		m_textureSourceId= clientTextureNodeConfig->textureVideoSourceId;
 		ProjectManagerPtr projectManager= getOwnerProject();
 		if (projectManager)
 		{
-			m_textureSourceComponent= TextureSourceQueries::getTextureSourceById(
-				projectManager, clientTextureNodeConfig->textureVideoSourceId);
+			m_textureSourceComponent= TextureSourceQueries::getTextureSourceById(projectManager, m_textureSourceId);
 		}
 
 		return true;
@@ -348,7 +348,9 @@ void DepthTextureSourceNode::editorRenderPropertySheet(const NodeEditorState& ed
 				if (MkGui::drawComboBoxProperty(propertyStyle, "textureSourceIndex", locText("nodes.source"),
 												&dataSource, selectedIndex))
 				{
-					m_textureSourceComponent= dataSource.getEntryAtIndex(selectedIndex);
+					TextureSourceComponentPtr selectedSource= dataSource.getEntryAtIndex(selectedIndex);
+					m_textureSourceComponent= selectedSource;
+					m_textureSourceId= selectedSource ? selectedSource->getTextureSourceId() : INVALID_MIKAN_ID;
 				}
 			}
 		}
